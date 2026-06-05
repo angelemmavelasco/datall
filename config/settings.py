@@ -26,7 +26,8 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = [
     'localhost',
     'datall.angel-velasco.com',
-    '192.168.100.114'
+    '192.168.100.114',
+    '127.0.0.1' 
 
 ]
 CSRF_TRUSTED_ORIGINS = [
