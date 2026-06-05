@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"></script>
+    <title>{% block title %}{% endblock %}</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
+
+    <style type="text/tailwindcss">
+        @theme {
+            --color-page: var(--bg-page);
+            --color-body: var(--text-body);
+            --color-container: var(--bg-container);
+            --color-title: var(--text-title);
+            --color-strong: var(--text-strong);
+            --color-muted: var(--text-muted);
+            --color-border: var(--border);
+            --color-placeholder: var(--placeholder);
+            --color-hover: var(--hover);
+
+            --color-msg-error-bg: oklch(80.8% 0.114 19.571);
+            --color-msg-error-txt: oklch(25.8% 0.092 26.042);
+            --color-msg-error-border: oklch(50.5% 0.213 27.518);
+
+            --color-msg-warn-bg: oklch(83.7% 0.128 66.29);
+            --color-msg-warn-txt: oklch(26.6% 0.079 36.259);
+            --color-msg-warn-border: oklch(55.3% 0.195 38.402);
+
+            --color-msg-succ-bg: oklch(86.9% 0.022 252.894);
+            --color-msg-succ-txt: oklch(12.9% 0.042 264.695);
+            --color-msg-succ-border: oklch(37.2% 0.044 257.287);
+
+            --color-chart-green: var(--chart-green);
+            --color-chart-red: var(--chart-red);
+            --color-chart-blue: var(--chart-blue);
+            --color-chart-yellow: var(--chart-yellow);
+            --color-chart-orange: var(--chart-orange);
+            --color-chart-purple: var(--chart-purple);
+        }
+
+        :root {
+            --bg-page: oklch(98.4% 0.003 247.858);
+            --bg-container: oklch(94.6% 0.01 255);
+            --text-title: oklch(44.6% 0.03 256.802);
+            --text-body: oklch(12.9% 0.042 264.695);
+            --text-strong: oklch(37.2% 0.044 257.287);
+            --border: oklch(86.9% 0.022 252.894);
+            --placeholder: oklch(55.4% 0.046 257.417);
+            --hover: oklch(70.7% 0.022 261.325);
+
+            --chart-green: #89E891;
+            --chart-red: #E3583B;
+            --chart-blue: #89CBE8;
+            --chart-yellow: #E5E889;
+            --chart-orange: #E8B789;
+            --chart-purple: #C489E8;
+
+        }
+
+        :root.dark {
+            --bg-page: oklch(13% 0.028 261.692);
+            --bg-container: oklch(18% 0.033 260);
+            --text-title: oklch(70.7% 0.022 261.325);
+            --text-body: oklch(98.4% 0.003 247.858);
+            --text-strong: oklch(78% 0.035 256.788);
+            --border: oklch(27.9% 0.041 260.031);
+            --placeholder: oklch(55.4% 0.046 257.417);
+            --hover: oklch(44.6% 0.03 256.802);
+
+            --chart-green: #43B54B;
+            --chart-red: #B54343;
+            --chart-blue: #435AB5;
+            --chart-yellow: #B5B543;
+            --chart-orange: #B56743;
+            --chart-purple: #A843B5;
+
+        }
+
+        html,
+        body {
+            min-height: 100dvh;
+            background-color: var(--bg-page);
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) var(--bg-page);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px; /* Ancho para scroll vertical */
+            height: 6px; /* Alto para scroll horizontal*/
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-page);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--hover);
+        }
+
+
+    </style>
+
+    <script>
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        const getThemeColor = (variableName, fallbackColor) => {
+            const color = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim();
+            return color || fallbackColor;
+        };
+    </script>
+</head>
+
+<body
+    class="min-h-dvh overflow-x-hidden bg-page text-xs font-normal text-body antialiased transition-colors duration-300">
+    {% load permission_tags %}
+
+    <!-- overlay for left sidebar -->
+    <div id="sidebar-overlay" class="fixed inset-0 z-40 hidden bg-black opacity-60 lg:hidden"
+        onclick="closeMobileMenu()"></div>
+
+    <!--  overlay for filters-->
+    <div id="filter-overlay" class="fixed inset-0 z-40 hidden bg-black opacity-60" onclick="closeFilters()"></div>
+
+    <!-- right sidebar for filters-->
+
+    <aside id="filter-sidebar"
+        class="fixed inset-y-0 right-0 z-50 flex w-64 translate-x-full flex-col overflow-y-auto border-l border-border bg-container p-4 transition-transform duration-300">
+        <div class="flex items-center justify-between border-b border-border pb-2 mb-4">
+            <h3 class="text-title tracking-wider">Filtros de búsqueda</h3>
+            <button type="button" onclick="closeFilters()" class="text-muted hover:text-hover cursor-pointer"
+                title="Cerrar filtros">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-circle-x-icon lucide-circle-x">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m15 9-6 6" />
+                    <path d="m9 9 6 6" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="flex-1">
+            {% block filters %}{% endblock %}
+        </div>
+    </aside>
+
+    <!--  left sidebar for navigation-->
+
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-50 flex w-50 -translate-x-full flex-col overflow-y-auto border-r border-border bg-container p-4 transition-transform duration-300 lg:translate-x-0">
+        <div class="flex flex-col gap-6">
+            <nav class="flex flex-col gap-5" aria-label="Navegacion principal">
+
+
+
+                {% for section in sections %}
+
+
+
+                <section class="flex flex-col gap-2">
+                    <p class="text-title">{{ section.name|title }}</p>
+                    <ul class="ml-3 flex flex-col gap-1.5 border-l border-border pl-4 text-body">
+                        {% for module in section.modules.all %}
+
+                        <li><a href="{% url module.url_name %}" class="block py-1 hover:text-hover transition-colors">
+                                {{ module.name|title }}
+                            </a>
+                        </li>
+
+                        {% endfor %}
+                    </ul>
+                </section>
+
+
+
+                {% endfor %}
+            </nav>
+        </div>
+    </aside>
+
+
+    <!--  header-->
+    <div class="min-h-dvh lg:pl-50">
+        <header class="sticky top-0 z-30 border-b border-border bg-page p-2 backdrop-blur">
+
+            <div class="flex min-h-5 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex min-w-0 items-center gap-2">
+                    <button type="button" onclick="toggleMobileMenu()"
+                        class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded text-title transition-colors hover:text-hover lg:hidden cursor-pointer"
+                        title="Abrir menu">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-ellipsis-vertical-icon lucide-ellipsis-vertical">
+                            <circle cx="12" cy="12" r="1" />
+                            <circle cx="12" cy="5" r="1" />
+                            <circle cx="12" cy="19" r="1" />
+                        </svg>
+                    </button>
+
+                    <p class="text-title text-xl w-50 shrink-0">
+                        {% block module_name %}{% endblock %}
+                    </p>
+                </div>
+
+                <div class="flex min-w-0 w-full items-center gap-3 justify-end">
+                    <div
+                        class="flex items-center gap-4 text-strong overflow-x-auto whitespace-nowrap pb-4 sm:p-0 scrollbar-none">
+                        {% block module_actions %}{% endblock %}
+                    </div>
+
+                    <div class="flex items-center gap-3 border-l border-border pl-3 pb-4 sm:pb-0">
+                        <p class="hidden max-w-40 truncate sm:block">{{ request.user.first_name|title }}
+                            {{ request.user.last_name|title }}</p>
+
+                        <button type="button" onclick="toggleDarkMode()"
+                            class="inline-flex items-center justify-center cursor-pointer text-title transition-colors hover:text-hover"
+                            title="Cambiar modo oscuro">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M12 2a7 7 0 1 0 10 10" />
+                            </svg>
+                        </button>
+
+                        <form action="{% url 'logout' %}" method="post">
+                            {% csrf_token %}
+                            <button type="submit"
+                                class="inline-flex items-center justify-center cursor-pointer text-title transition-colors hover:text-hover"
+                                title="Cerrar sesión">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" aria-hidden="true">
+                                    <path d="m16 17 5-5-5-5" />
+                                    <path d="M21 12H9" />
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                                </svg>
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        </header>
+
+        <main class="p-2">
+            {% if messages %}
+            {% for message in messages %}
+            <div id="alert-message" class="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-3xl items-center gap-2 rounded border p-3 text-sm shadow-sm
+{% if message.tags == 'error' %} bg-msg-error-bg text-msg-error-txt border-msg-error-border
+{% elif message.tags == 'warning' %} bg-msg-warn-bg text-msg-warn-txt border-msg-warn-border
+{% else %} bg-msg-succ-bg text-msg-succ-txt border-msg-succ-border {% endif %}">
+
+                {% if message.tags == 'error' %}
+                <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M4.929 4.929 19.07 19.071" />
+                </svg>
+                {% elif message.tags == 'warning' %}
+                <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" x2="12" y1="8" y2="12" />
+                    <line x1="12" x2="12.01" y1="16" y2="16" />
+                </svg>
+                {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m9 12 2 2 4-4" />
+                </svg>
+                {% endif %}
+
+                <span>{{ message }}</span>
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <div class="mx-auto w-full max-w-7xl">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        function closeMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        }
+
+        function toggleFilters() {
+            const sidebar = document.getElementById('filter-sidebar');
+            const overlay = document.getElementById('filter-overlay');
+
+            sidebar.classList.toggle('translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        function closeFilters() {
+            const sidebar = document.getElementById('filter-sidebar');
+            const overlay = document.getElementById('filter-overlay');
+
+            sidebar.classList.add('translate-x-full');
+            overlay.classList.add('hidden');
+        }
+
+        function toggleDarkMode() {
+            const htmlElement = document.documentElement;
+
+            htmlElement.classList.toggle('dark');
+
+            if (htmlElement.classList.contains('dark')) {
+                localStorage.setItem('theme', 'dark');
+            } else {
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const alertMessage = document.getElementById('alert-message');
+
+            if (alertMessage) {
+                setTimeout(() => {
+                    alertMessage.remove();
+                }, 7000);
+            }
+        });
+
+        window.addEventListener('resize', function () {
+            if (window.matchMedia('(min-width: 1024px)').matches) {
+                closeMobileMenu();
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

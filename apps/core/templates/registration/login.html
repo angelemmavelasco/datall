@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <title>Datall - Login</title>
+
+    <script>
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        const getThemeColor = (variableName, fallbackColor) => {
+            const color = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim();
+            return color || fallbackColor;
+        };
+    </script>
+
+    <style type="text/tailwindcss">
+        @theme {
+            --color-page: var(--bg-page);
+            --color-body: var(--text-body);
+            --color-container: var(--bg-container);
+            --color-title: var(--text-title);
+            --color-strong: var(--text-strong);
+            --color-muted: var(--text-muted);
+            --color-border: var(--border);
+            --color-placeholder: var(--placeholder);
+            --color-hover: var(--hover);
+
+            --color-msg-error-bg: oklch(80.8% 0.114 19.571);
+            --color-msg-error-txt: oklch(25.8% 0.092 26.042);
+            --color-msg-error-border: oklch(50.5% 0.213 27.518);
+
+            --color-msg-warn-bg: oklch(83.7% 0.128 66.29);
+            --color-msg-warn-txt: oklch(26.6% 0.079 36.259);
+            --color-msg-warn-border: oklch(55.3% 0.195 38.402);
+
+            --color-msg-succ-bg: oklch(86.9% 0.022 252.894);
+            --color-msg-succ-txt: oklch(12.9% 0.042 264.695);
+            --color-msg-succ-border: oklch(37.2% 0.044 257.287);
+
+            --color-chart-green: var(--chart-green);
+            --color-chart-red: var(--chart-red);
+            --color-chart-blue: var(--chart-blue);
+            --color-chart-yellow: var(--chart-yellow);
+            --color-chart-orange: var(--chart-orange);
+            --color-chart-purple: var(--chart-purple);
+        }
+
+        :root {
+            --bg-page: oklch(98.4% 0.003 247.858);
+            --bg-container: oklch(94.6% 0.01 255);
+            --text-title: oklch(44.6% 0.03 256.802);
+            --text-body: oklch(12.9% 0.042 264.695);
+            --text-strong: oklch(37.2% 0.044 257.287);
+            --border: oklch(86.9% 0.022 252.894);
+            --placeholder: oklch(55.4% 0.046 257.417);
+            --hover: oklch(70.7% 0.022 261.325);
+
+            --chart-green: #89E891;
+            --chart-red: #E3583B;
+            --chart-blue: #89CBE8;
+            --chart-yellow: #E5E889;
+            --chart-orange: #E8B789;
+            --chart-purple: #C489E8;
+
+        }
+
+        :root.dark {
+            --bg-page: oklch(13% 0.028 261.692);
+            --bg-container: oklch(18% 0.033 260);
+            --text-title: oklch(70.7% 0.022 261.325);
+            --text-body: oklch(98.4% 0.003 247.858);
+            --text-strong: oklch(78% 0.035 256.788);
+            --border: oklch(27.9% 0.041 260.031);
+            --placeholder: oklch(55.4% 0.046 257.417);
+            --hover: oklch(44.6% 0.03 256.802);
+
+            --chart-green: #43B54B;
+            --chart-red: #B54343;
+            --chart-blue: #435AB5;
+            --chart-yellow: #B5B543;
+            --chart-orange: #B56743;
+            --chart-purple: #A843B5;
+
+        }
+
+        html,
+        body {
+            min-height: 100dvh;
+            background-color: var(--color-page); /* Corregido para usar la variable de tailwind */
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) var(--bg-page);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px; 
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-page);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--hover);
+        }
+    </style>
+
+</head>
+
+<body class="relative min-h-screen flex items-center justify-center overflow-hidden bg-page">
+
+    <div id="bg-chart" class="absolute inset-0 w-full h-full z-0"></div>
+
+    <div
+        class="relative z-10 w-3/4 max-w-md min-h-screen p-2 bg-container/10 backdrop-blur-xl rounded border border-border flex flex-col items-center justify-center">
+
+        <h1 class="text-2xl text-center text-title my-10">datall</h1>
+
+        <form class="flex flex-col gap-4 w-full items-center" method="POST" action="{% url 'login' %}">
+            {% csrf_token %}
+
+            {% if form.errors %}
+            <div class="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-200">
+                Usuario o contraseña incorrectos.
+            </div>
+            {% endif %}
+
+            <div class="flex items-center gap-2 text-body">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-user-icon lucide-user text-muted">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                </svg>
+                <input id="id_username" name="username" type="text" required placeholder="Usuario"
+                    class="w-full border-b border-border bg-transparent focus:outline-none transition-all text-body placeholder-placeholder">
+            </div>
+
+            <div class="flex items-center gap-2 mt-4 text-body">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-key-icon lucide-key text-muted">
+                    <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4" />
+                    <path d="m21 2-9.6 9.6" />
+                    <circle cx="7.5" cy="15.5" r="5.5" />
+                </svg>
+                <input id="id_password" name="password" type="password" required placeholder="Contraseña"
+                    class="w-full border-b border-border bg-transparent focus:outline-none transition-all text-body placeholder-placeholder">
+            </div>
+
+            <button type="submit"
+                class="cursor-pointer text-body hover:text-hover flex items-center gap-2 justify-center transition-colors duration-300 border border-border rounded p-2 mt-10 mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-log-in-icon lucide-log-in">
+                    <path d="m10 17 5-5-5-5" />
+                    <path d="M15 12H3" />
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                </svg>
+                <span>Ingresar</span>
+            </button>
+        </form>
+    </div>
+
+</body>
+
+<script>
+    var app = {};
+    var chartDom = document.getElementById('bg-chart');
+    var myChart = echarts.init(chartDom);
+    var option;
+
+    // Detectamos inicialmente si estamos en dark mode para asignar colores
+    const isDarkMode = () => document.documentElement.classList.contains('dark');
+
+    let noise = getNoiseHelper();
+    let config = (app.config = {
+        frequency: 500,
+        offsetX: 0,
+        offsetY: 100,
+        minSize: 5,
+        maxSize: 22,
+        duration: 4000,
+        // Asignamos los colores iniciales dependiendo del tema
+        color0: isDarkMode() ? '#1a1b26' : '#FFFFFF',
+        color1: isDarkMode() ? '#000000' : '#E3E3E3',
+        backgroundColor: 'transparent',
+        onChange() {
+            myChart.setOption({
+                backgroundColor: config.backgroundColor,
+                graphic: {
+                    elements: createElements()
+                }
+            });
+        }
+    });
+
+    window.addEventListener('theme-changed', () => {
+        config.color0 = isDarkMode() ? '#1a1b26' : '#FFFFFF';
+        config.color1 = isDarkMode() ? '#0F0F17' : '#E3E3E3';
+        config.onChange();
+    });
+
+    noise.seed(Math.random());
+
+    function createElements() {
+        const elements = [];
+        for (let x = 20; x < myChart.getWidth(); x += 40) {
+            for (let y = 20; y < myChart.getHeight(); y += 40) {
+                const rand = noise.perlin2(
+                    x / config.frequency + config.offsetX,
+                    y / config.frequency + config.offsetY
+                );
+                elements.push({
+                    type: 'circle',
+                    x,
+                    y,
+                    style: { fill: config.color1 },
+                    shape: { r: config.maxSize },
+                    keyframeAnimation: {
+                        duration: config.duration,
+                        loop: true,
+                        delay: (rand - 1) * 4000,
+                        keyframes: [
+                            {
+                                percent: 0.5,
+                                easing: 'sinusoidalInOut',
+                                style: { fill: config.color0 },
+                                scaleX: config.minSize / config.maxSize,
+                                scaleY: config.minSize / config.maxSize
+                            },
+                            {
+                                percent: 1,
+                                easing: 'sinusoidalInOut',
+                                style: { fill: config.color1 },
+                                scaleX: 1,
+                                scaleY: 1
+                            }
+                        ]
+                    }
+                });
+            }
+        }
+        return elements;
+    }
+
+    option = {
+        backgroundColor: config.backgroundColor,
+        graphic: { elements: createElements() }
+    };
+
+    if (option && typeof option === 'object') {
+        myChart.setOption(option);
+    }
+
+    window.addEventListener('resize', function () {
+        myChart.resize();
+        myChart.setOption({
+            graphic: { elements: createElements() }
+        });
+    });
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Simplex and perlin noise helper from https://github.com/josephg/noisejs
+    ///////////////////////////////////////////////////////////////////////////
+    function getNoiseHelper() {
+        class Grad {
+            constructor(x, y, z) { this.x = x; this.y = y; this.z = z; }
+            dot2(x, y) { return this.x * x + this.y * y; }
+            dot3(x, y, z) { return this.x * x + this.y * y + this.z * z; }
+        }
+        const grad3 = [
+            new Grad(1, 1, 0), new Grad(-1, 1, 0), new Grad(1, -1, 0), new Grad(-1, -1, 0),
+            new Grad(1, 0, 1), new Grad(-1, 0, 1), new Grad(1, 0, -1), new Grad(-1, 0, -1),
+            new Grad(0, 1, 1), new Grad(0, -1, 1), new Grad(0, 1, -1), new Grad(0, -1, -1)
+        ];
+        const p = [
+            151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140,
+            36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23, 190, 6, 148, 247, 120,
+            234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32, 57, 177, 33,
+            88, 237, 149, 56, 87, 174, 20, 125, 136, 171, 168, 68, 175, 74, 165, 71,
+            134, 139, 48, 27, 166, 77, 146, 158, 231, 83, 111, 229, 122, 60, 211, 133,
+            230, 220, 105, 92, 41, 55, 46, 245, 40, 244, 102, 143, 54, 65, 25, 63, 161,
+            1, 216, 80, 73, 209, 76, 132, 187, 208, 89, 18, 169, 200, 196, 135, 130,
+            116, 188, 159, 86, 164, 100, 109, 198, 173, 186, 3, 64, 52, 217, 226, 250,
+            124, 123, 5, 202, 38, 147, 118, 126, 255, 82, 85, 212, 207, 206, 59, 227,
+            47, 16, 58, 17, 182, 189, 28, 42, 223, 183, 170, 213, 119, 248, 152, 2, 44,
+            154, 163, 70, 221, 153, 101, 155, 167, 43, 172, 9, 129, 22, 39, 253, 19, 98,
+            108, 110, 79, 113, 224, 232, 178, 185, 112, 104, 218, 246, 97, 228, 251, 34,
+            242, 193, 238, 210, 144, 12, 191, 179, 162, 241, 81, 51, 145, 235, 249, 14,
+            239, 107, 49, 192, 214, 31, 181, 199, 106, 157, 184, 84, 204, 176, 115, 121,
+            50, 45, 127, 4, 150, 254, 138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243,
+            141, 128, 195, 78, 66, 215, 61, 156, 180
+        ];
+        let perm = new Array(512);
+        let gradP = new Array(512);
+        function seed(seed) {
+            if (seed > 0 && seed < 1) { seed *= 65536; }
+            seed = Math.floor(seed);
+            if (seed < 256) { seed |= seed << 8; }
+            for (let i = 0; i < 256; i++) {
+                let v = (i & 1) ? (p[i] ^ (seed & 255)) : (p[i] ^ ((seed >> 8) & 255));
+                perm[i] = perm[i + 256] = v;
+                gradP[i] = gradP[i + 256] = grad3[v % 12];
+            }
+        }
+        seed(0);
+        function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+        function lerp(a, b, t) { return (1 - t) * a + t * b; }
+        function perlin2(x, y) {
+            let X = Math.floor(x), Y = Math.floor(y);
+            x = x - X; y = y - Y;
+            X = X & 255; Y = Y & 255;
+            let n00 = gradP[X + perm[Y]].dot2(x, y);
+            let n01 = gradP[X + perm[Y + 1]].dot2(x, y - 1);
+            let n10 = gradP[X + 1 + perm[Y]].dot2(x - 1, y);
+            let n11 = gradP[X + 1 + perm[Y + 1]].dot2(x - 1, y - 1);
+            let u = fade(x);
+            return lerp(lerp(n00, n10, u), lerp(n01, n11, u), fade(y));
+        }
+        return { seed, perlin2 };
+    }
+</script>
+
+</html>

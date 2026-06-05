@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalles de Empleado{% endblock %}
+
+{% block module_name %}Detalles de Empleado{% endblock %}
+
+{% block module_actions %}
+<a href="{% url 'human_resources:employees' %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+    <span>Volver a empleados</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+
+    <!-- User Information (Person) -->
+    <div class="flex flex-col gap-4">
+        <p class="text-title    tracking-wider">Información Personal</p>
+        <hr class="border-border border">
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 items-start bg-container p-4 rounded">
+            <div class="flex flex-col gap-1">
+                <span class="text-title ">Nombre completo</span>
+                <span class="text-body ">{{ user.first_name|title }} {{ user.last_name|title }} {{ user.second_last_name|title|default:"" }}</span>
+            </div>
+            
+            <div class="flex flex-col gap-1">
+                <span class="text-title ">Usuario (Sistema)</span>
+                <a href="{% url 'data_admin:user' user.id %}" class="text-strong hover:underline inline-flex items-center gap-1" target="_blank">
+                    {{ user.username }}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
+                </a>
+            </div>
+            
+            <div class="flex flex-col gap-1">
+                <span class="text-title ">Correo electrónico</span>
+                <span class="text-body">{{ user.email|default:"-" }}</span>
+            </div>
+            
+            <div class="flex flex-col gap-1">
+                <span class="text-title ">Teléfono</span>
+                <span class="text-body">{{ user.phone|default:"-" }}</span>
+            </div>
+
+            <div class="flex flex-col gap-1">
+                <span class="text-title ">RFC</span>
+                <span class="text-body ">{{ user.tax_id|default:"-" }}</span>
+            </div>
+
+            <div class="flex flex-col gap-1">
+                <span class="text-title ">CURP</span>
+                <span class="text-body ">{{ user.unique_personal_id|default:"-" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employment History -->
+    <div class="flex flex-col gap-4 mt-4">
+        <div class="flex items-center justify-between">
+            <p class="text-title    tracking-wider">Historial de Posiciones</p>
+            <a href="{% url 'human_resources:employee_create' %}?user_id={{ user.id }}" class="text-xs bg-strong text-container px-3 py-1.5 rounded hover:opacity-90 transition-opacity">
+                Asignar Nueva Posición
+            </a>
+        </div>
+        <hr class="border-border border">
+
+        <div class="w-full overflow-x-auto border border-border rounded bg-container">
+            <table class="w-full text-left border-collapse min-w-[1000px]">
+                <thead class="bg-page">
+                <tr class="border-b border-border">
+                    <th class="p-3 text-center text-title ">Estado</th>
+                    <th class="p-3 text-center text-title ">Posición</th>
+                    <th class="p-3 text-center text-title ">Gerencia</th>
+                    <th class="p-3 text-center text-title ">Ingreso - Baja</th>
+                    <th class="p-3 text-center text-title ">Líder directo</th>
+                    <th class="p-3 text-center text-title ">Detalles Nómina</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for emp in employee_history %}
+                <tr class="hover:bg-hover transition-colors duration-300 border-b border-border last:border-0 {% if emp.termination_date %}opacity-70{% endif %}">
+                    <td class="p-3 text-center">
+                        {% if emp.termination_date %}
+                            <span class="inline-block border border-red-500 text-red-500 rounded px-2 py-0.5 text-xs">Inactivo</span>
+                        {% else %}
+                            <span class="inline-block bg-strong text-container rounded px-2 py-0.5 text-xs">Activo</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3  text-body">
+                        {{ emp.position.name|title|default:"-" }}
+                    </td>
+                    <td class="p-3 text-body truncate">
+                        {{ emp.warehouse.name|title|default:"-" }}
+                    </td>
+                    <td class="p-3 text-center text-body ">
+                        {{ emp.hire_date|date:"d/m/Y" }} - {% if emp.termination_date %}{{ emp.termination_date|date:"d/m/Y" }}{% else %}Presente{% endif %}
+                    </td>
+                    <td class="p-3 text-center text-body truncate">
+                        {% if emp.manager and emp.manager.user %}
+                            {{ emp.manager.user.first_name|title }} {{ emp.manager.user.last_name|title }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="p-3 text-body ">
+                        <div class="flex flex-col gap-1">
+                            <span><span class="text-title">Sueldo:</span> ${{ emp.payroll_amount|default:"0.00" }}</span>
+                            <span><span class="text-title">Periodicidad:</span> {{ emp.payroll_periodicity.name|default:"-" }}</span>
+                            <span><span class="text-title">Régimen:</span> {{ emp.tax_system.name|default:"-" }}</span>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="p-8 text-center text-muted">
+                        No hay historial de posiciones para este usuario.
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

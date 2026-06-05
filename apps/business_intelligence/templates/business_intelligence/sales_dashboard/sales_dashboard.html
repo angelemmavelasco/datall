@@ -1,0 +1,903 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard de ventas{% endblock %}
+
+{% block module_name %}Dashboard de ventas{% endblock %}
+
+{% block module_actions %}
+
+<button class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button>
+
+<button onclick="toggleFilters()"
+    class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+        <path d="M10 5H3" />
+        <path d="M12 19H3" />
+        <path d="M14 3v4" />
+        <path d="M16 17v4" />
+        <path d="M21 12h-9" />
+        <path d="M21 19h-5" />
+        <path d="M21 5h-7" />
+        <path d="M8 10v4" />
+        <path d="M8 12H3" />
+    </svg>
+    <span>
+        Filtrar
+    </span>
+</button>
+
+
+
+{% endblock %}
+
+{% block content %}
+
+<div class="flex flex-col w-full gap-4">
+    <!-- Ban de resultados -->
+    <div class="grid grid-cols-4 gap-4">
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Venta neta</p>
+            <p class="text-xl text-title">100</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Objetivo</p>
+            <p class="text-xl text-title">100</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Alcance</p>
+            <p class="text-xl text-title">100</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col  bg-container">
+            <p class="text-muted text-sm text-strong">Diferencia</p>
+            <p class="text-xl text-title">100</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Venta total</p>
+            <p class="text-xl text-title">100</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Unidades</p>
+            <p class="text-xl text-title">100</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Utilidad</p>
+            <p class="text-xl text-title">100</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Margen</p>
+            <p class="text-xl text-title">100</p>
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="h-100 border border-border rounded bg-container">
+        <div id="timelineChart" class="w-full h-full"></div>
+    </div>
+
+
+    <!-- Ventas or centro de distribución, Barchart y Desglose por ruta, tabla -->
+
+    <div class="grid grid-cols-2 gap-4 h-100">
+        <div class=" border border-border rounded bg-container" id="warehouseBarChart">
+            <p class="text-title">Venta neta por centro de distribución</p>
+
+        </div>
+
+        <div class="border border-border rounded p-2 bg-container">
+            <p class="text-title text-sm text-center mt-2 mb-2">Venta neta por ruta</p>
+
+            <div class="overflow-x-auto rounded overflow-y-auto h-80">
+                <table class="table-fixed w-full rounded max-h-80">
+                    <thead>
+                        <tr class="border-b border-border">
+                            <th class="w-10 p-2">Ruta</th>
+                            <th class="w-30 p-2 text-right">Venta neta</th>
+                            <th class="w-30 p-2 text-right">Objetivo</th>
+                            <th class="w-30 p-2 text-right">Diferencia</th>
+                            <th class="w-20 p-2 text-right">Alcance</th>
+                            <th class="w-20 p-2 text-right">Margen</th>
+                            <th class="w-30 p-2 text-right">Utilidad</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+
+        </div>
+
+    </div>
+
+
+    <!-- Venta neta vs cuota por clase de producto -->
+
+    <div class="grid grid-cols-2 gap-4 h-100">
+        <div class=" border border-border rounded bg-container" id="productClassBarChart"></div>
+
+        <div class=" border border-border rounded bg-container" id="productCategoryChart"></div>
+
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 h-100">
+        <div class="border border-border rounded p-2 bg-container">
+            <p class="text-title text-sm text-center mt-2 mb-2">Top 50 productos</p>
+
+            <div class="overflow-x-auto rounded overflow-y-auto h-80">
+                <table class="table-fixed w-full rounded max-h-80">
+                    <thead>
+                        <tr class="border-b border-border">
+                            <th class="w-10 p-2">Ruta</th>
+                            <th class="w-30 p-2 text-right">Venta neta</th>
+                            <th class="w-30 p-2 text-right">Objetivo</th>
+                            <th class="w-30 p-2 text-right">Diferencia</th>
+                            <th class="w-20 p-2 text-right">Alcance</th>
+                            <th class="w-20 p-2 text-right">Margen</th>
+                            <th class="w-30 p-2 text-right">Utilidad</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+
+        </div>
+
+
+        <div class="border border-border rounded p-2 bg-container">
+            <p class="text-title text-sm text-center mt-2 mb-2">Top 50 clientes</p>
+
+            <div class="overflow-x-auto rounded overflow-y-auto h-80">
+                <table class="table-fixed w-full rounded max-h-80">
+                    <thead>
+                        <tr class="border-b border-border">
+                            <th class="w-10 p-2">Ruta</th>
+                            <th class="w-30 p-2 text-right">Venta neta</th>
+                            <th class="w-30 p-2 text-right">Objetivo</th>
+                            <th class="w-30 p-2 text-right">Diferencia</th>
+                            <th class="w-20 p-2 text-right">Alcance</th>
+                            <th class="w-20 p-2 text-right">Margen</th>
+                            <th class="w-30 p-2 text-right">Utilidad</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">26</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">1,200,000</td>
+                            <td class="p-2 text-right">0.00</td>
+                            <td class="p-2 text-right">100 %</td>
+                            <td class="p-2 text-right">40 %</td>
+                            <td class="p-2 text-right">500,000</td>
+
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+
+        </div>
+
+
+    </div>
+
+
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim();
+        const greenColor = '#43B54B'
+        const redColor = '#B54343'
+        const blueColor = '#435AB5'
+        const yellowColor = '#B5B543'
+        const orangeColor = '#B56743'
+        const purpleColor = '#A843B5'
+
+
+
+        // Timeline
+
+        const timelineChart = echarts.init(document.getElementById('timelineChart'),);
+
+        const timelineOptions = {
+            color: [greenColor, blueColor],
+            title: {
+                text: 'Evolución de Venta neta y unidades',
+                textStyle: {
+                    fontWeight: 'normal',
+                    fontSize: 14,
+                    color: titleColor
+                },
+
+            },
+            tooltip: {
+                trigger: 'axis'
+            },
+            legend: {
+                data: ['Venta neta', 'Unidades'],
+                top: 0,
+                left: 0,
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true,
+
+            },
+            toolbox: {
+                feature: {
+                    saveAsImage: {}
+                }
+            },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                splitLine: {
+                    show: false
+                }
+            },
+            yAxis: {
+                type: 'value',
+                splitLine: {
+                    lineStyle: {
+                        opacity: 0.10,
+                    },
+                    show: true
+                }
+            },
+            series: [
+                {
+                    name: 'Venta neta',
+                    type: 'line',
+                    data: [120, 132, 101, 134, 90, 230, 210],
+                    smooth: true
+                },
+                {
+                    name: 'Unidades',
+                    type: 'line',
+                    data: [220, 182, 191, 234, 290, 330, 310],
+                    smooth: true
+                }
+            ]
+        };
+
+        timelineChart.setOption(timelineOptions);
+
+        // Warehouse BarChart
+
+        const WarehouseBarOption = {
+            color: [greenColor, blueColor],
+            textStyle: {
+                fontWeight: 'normal',
+                fontSize: 14,
+                color: titleColor
+            },
+            title: {
+                text: 'Venta neta por centro de distribución',
+                textStyle: {
+                    fontWeight: 'normal',
+                    fontSize: 14,
+                    color: titleColor
+                }
+            },
+            toolbox: {
+                feature: {
+                    saveAsImage: {}
+                }
+            },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                }
+            },
+            legend: {},
+            xAxis: {
+                type: 'value',
+                boundaryGap: [0, 0.01],
+                splitLine: {
+                    lineStyle: {
+                        opacity: 0.10,
+                    },
+                    show: true
+                }
+            },
+            yAxis: {
+                type: 'category',
+                data: ['Cdmx', 'Gdl', 'Mty', 'Pue', 'Vha', 'Qro', 'Cul']
+            },
+            series: [
+                {
+                    name: 'Venta',
+                    type: 'bar',
+                    data: [18203, 23489, 29034, 104970, 131744, 630230, 630230],
+                },
+                {
+                    name: 'Objetivo',
+                    type: 'bar',
+                    data: [19325, 23438, 31000, 121594, 134141, 681807, 252342],
+                }
+            ]
+        };
+        const warehouseBarChart = echarts.init(document.getElementById('warehouseBarChart'),);
+        warehouseBarChart.setOption(WarehouseBarOption);
+
+
+        // Product class bar chart
+
+        const ProductClassBarOption = {
+            xAxis: {
+                type: 'category',
+                data: ['Dmd', 'Nat', 'Msd', 'Care', 'Zts', 'Vtq', 'Cv'],
+
+            },
+            yAxis: {
+                type: 'value',
+                splitLine: {
+                    lineStyle: {
+                        opacity: 0.1
+                    },
+                    show: true
+                }
+            },
+            series: [
+                {
+                    data: [120, 200, 150, 80, 70, 110, 130],
+                    type: 'bar',
+                }
+            ]
+        };
+
+        const productClassBarChart = echarts.init(document.getElementById('productClassBarChart'),);
+        productClassBarChart.setOption(ProductClassBarOption);
+
+        // product cattegory pie chart
+
+        const productCategoryOption = {
+            tooltip: {
+                trigger: 'item'
+            },
+            legend: {
+                top: '5%',
+                left: 'center'
+            },
+            series: [
+                {
+                    name: 'Access From',
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    padAngle: 5,
+                    itemStyle: {
+                        borderRadius: 10
+                    },
+                    label: {
+                        show: false,
+                        position: 'center'
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: 40,
+                            fontWeight: 'bold'
+                        }
+                    },
+                    labelLine: {
+                        show: false
+                    },
+                    data: [
+                        { value: 1048, name: 'Search Engine' },
+                        { value: 735, name: 'Direct' },
+                        { value: 580, name: 'Email' },
+                        { value: 484, name: 'Union Ads' },
+                        { value: 300, name: 'Video Ads' }
+                    ]
+                }
+            ]
+        }
+
+        const productCategoryChart = echarts.init(document.getElementById('productCategoryChart'),);
+        productCategoryChart.setOption(productCategoryOption);
+    })
+
+
+</script>
+
+{% endblock %}

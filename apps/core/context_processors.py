@@ -1,0 +1,35 @@
+from apps.core.models import MenuSection, SystemModule
+from django.db.models import Prefetch
+
+
+def module_permissions(request):
+    if not request.user.is_authenticated:
+        return {}
+
+    user = request.user
+
+    if user.is_superuser:
+        sections = MenuSection.objects.filter(
+            modules__isnull=False
+        ).distinct().prefetch_related('modules')
+        
+        return {
+            'sections': sections
+        }
+
+    user_groups = user.groups.all()
+
+    allowed_modules = SystemModule.objects.filter(
+        allowed_groups__in=user_groups
+    ).distinct()
+
+    sections = MenuSection.objects.filter(
+        modules__in=allowed_modules
+    ).distinct().prefetch_related(Prefetch('modules', allowed_modules))
+
+
+    return {
+        'sections': sections
+    }
+        
+

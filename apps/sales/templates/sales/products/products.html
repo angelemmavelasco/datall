@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Productos{% endblock %}
+
+{% block module_name %}Productos{% endblock %}
+
+{% block module_actions %}
+    <button type="button" onclick="toggleImportModal()" title="Importar listado de productos" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0">
+        Importar
+    </button>
+
+    <a class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Exportar listado de productos">Exportar</a>
+
+    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors shrink-0 cursor-pointer">Filtrar</button>
+{% endblock %}
+
+{% block content %}
+
+    <div id="import-modal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300">
+        <div class="bg-container border border-border rounded shadow-lg p-6 w-full max-w-md flex flex-col gap-4">
+            <h2 class="text-title text-lg font-medium tracking-wider border-b border-border pb-2">Importar Productos</h2>
+
+            <form id="import-form" action="{% url 'sales:product_import' %}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-4">
+                {% csrf_token %}
+
+                <div class="border-2 border-dashed border-border rounded-md p-6 flex flex-col items-center justify-center text-center hover:bg-page transition-colors cursor-pointer relative">
+                    <input type="file" name="file" id="file-upload" accept=".csv, .xlsx" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="handleFileSelect(event)">
+
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload-cloud text-muted mb-2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>
+
+                    <span class="text-strong font-medium">Haz clic para subir un archivo</span>
+                    <span class="text-muted text-sm mt-1">Soporta formato CSV o Excel</span>
+
+                    <p id="file-name" class="mt-4 text-msg-succ-txt font-medium hidden text-sm break-all"></p>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-2">
+                    <button type="button" onclick="toggleImportModal()" class="px-4 py-1.5 border border-border rounded text-strong hover:text-hover transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btn-confirm-import" disabled class="px-4 py-1.5 bg-strong text-container rounded font-medium opacity-50 cursor-not-allowed transition-all">
+                        Confirmar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+        <table class="w-full table-fixed text-left border-collapse">
+            <thead>
+            <tr class="border-b border-border">
+                <th class="w-10 p-1 text-center text-title">ID</th>
+                <th class="w-40 p-1 text-center text-title">Nombre</th>
+                <th class="w-30 p-1 text-center text-title">Código de barras</th>
+                <th class="w-20 p-1 text-center text-title">Precio</th>
+                <th class="w-20 p-1 text-center text-title">Costo</th>
+                <th class="w-20 p-1 text-center text-title">Unidad de medida</th>
+                <th class="w-20 p-1 text-center text-title">Clase</th>
+                <th class="w-20 p-1 text-center text-title">Categoría</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            {% for product in products %}
+            <tr class="hover:bg-hover transition-colors duration-300">
+                <td class="p-2">
+                    <a href="{% url 'sales:product' product.id %}" target="_blank" class="flex items-center gap-2 underline text-strong">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
+                        <span>
+                            {{ product.id|upper }}
+                        </span>
+                    </a>
+                </td>
+                <td class="p-2 truncate">{{ product.name|title|default:"-" }}</td>
+                <td class="p-2 ">{{ product.barcode }}</td>
+                <td class="p-2 ">$ {{ product.price|default:0.0|intcomma|floatformat:2 }}</td>
+                <td class="p-2 ">$ {{ product.cost|default:0.0|intcomma|floatformat:2 }}</td>
+                <td class="p-2 ">{{ product.unit_of_measure|title|default:"-" }}</td>
+                <td class="p-2 ">{{ product.product_class.name|title|default:"-" }}</td>
+                <td class="p-2 ">{{ product.product_class.product_category.name|title|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleImportModal() {
+        const modal = document.getElementById('import-modal');
+        modal.classList.toggle('hidden');
+
+        // Resetear el formulario al cerrar el modal
+        if (modal.classList.contains('hidden')) {
+            document.getElementById('import-form').reset();
+            document.getElementById('file-name').classList.add('hidden');
+            document.getElementById('file-name').textContent = '';
+
+            const btn = document.getElementById('btn-confirm-import');
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            btn.classList.remove('hover:bg-hover');
+        }
+    }
+
+    function handleFileSelect(event) {
+        const fileInput = event.target;
+        const fileNameDisplay = document.getElementById('file-name');
+        const confirmBtn = document.getElementById('btn-confirm-import');
+
+        if (fileInput.files.length > 0) {
+            // Mostrar nombre del archivo
+            fileNameDisplay.textContent = `Documento cargado: ${fileInput.files[0].name}`;
+            fileNameDisplay.classList.remove('hidden');
+
+            // Habilitar botón de confirmación
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            confirmBtn.classList.add('hover:bg-hover');
+        } else {
+            // Si el usuario abre el explorador pero le da a cancelar
+            fileNameDisplay.classList.add('hidden');
+            fileNameDisplay.textContent = '';
+
+            confirmBtn.disabled = true;
+            confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            confirmBtn.classList.remove('hover:bg-hover');
+        }
+    }
+</script>
+{% endblock %}
