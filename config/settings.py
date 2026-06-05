@@ -23,7 +23,15 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 
 DEBUG = os.getenv('DEBUG')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    'localhost',
+    'datall.angel-velasco.com',
+    os.getenv('LOCAL_IP_ADDR')
+
+]
+CSRF_TRUSTED_ORIGINS = [
+    'https://datall.angel-velasco.com'
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
