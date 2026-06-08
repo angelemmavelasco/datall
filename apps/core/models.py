@@ -265,8 +265,8 @@ class Employee(models.Model):
         db_table = 'employees'
 
     def __str__(self):
-        if not self.user or not self.position or not self.warehouse:
-            return str(self.id)
+        if not self.position or not self.warehouse:
+            return f'{self.user.first_name.title()} {self.user.last_name.title()}, {str(self.id)[:7]}'
         else:
             return f'{self.user.first_name.title()} {self.user.last_name.title()}, {self.position.name.title()}: {self.warehouse.name.title()}'
 
