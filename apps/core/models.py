@@ -3,6 +3,7 @@ from django.db.models import Q
 from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import Group, AbstractUser
+from decimal import Decimal
 
 class User(AbstractUser):
     second_last_name = models.CharField(max_length=150, blank=True, null=True)
@@ -478,6 +479,200 @@ class RouteAssignment(models.Model):
             name = "Sin colaborador asignado"
 
         return f"Ruta {route}, {name}"
+
+
+
+
+
+
+
+
+
+
+
+# clientes
+
+class CustomerType(models.Model):
+    id = models.CharField(
+        max_length=100, 
+        primary_key=True
+    )
+    
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'customer_types'
+        verbose_name = 'Customer type'
+        verbose_name_plural = 'Customer types'
+
+    def __str__(self):
+        return f"{self.id} - {self.name}"
+
+class Customer(models.Model):
+    id = models.CharField(
+        max_length=100, 
+        primary_key=True,
+    )
+    
+    name = models.CharField(
+        max_length=255
+    )
+    
+    registration_date = models.DateField()
+    
+
+    credit_limit = models.DecimalField(
+        max_digits=18, 
+        decimal_places=2, 
+        default=Decimal('0.00'),
+    )
+    
+    credit_days = models.IntegerField(
+        default=0,
+    )
+    
+    customer_type = models.ForeignKey(
+        'CustomerType',
+        on_delete=models.PROTECT,
+        related_name='customers',
+    )
+    
+    opinion_leader = models.BooleanField(default=False)
+    
+    route = models.ForeignKey(
+        'Route',
+        on_delete=models.PROTECT,
+        related_name='customers',
+        blank=True,
+        null=True,
+    )
+
+    class Meta:
+        db_table = 'customers'
+        verbose_name = 'Customer'
+        verbose_name_plural = 'Customers'
+        indexes = [
+            models.Index(fields=["registration_date"]),
+            models.Index(fields=["route", "customer_type"]),
+        ]
+
+    def __str__(self):
+        return f"{self.id}: {self.name.strip().title()}"
+
+
+
+
+
+
+
+
+
+
+# transactions and targets
+
+class SaleTransaction(models.Model):
+    doc_id = models.CharField(
+        max_length=255
+    )
+
+    sale_date = models.DateField()
+
+    cost = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    net_amount = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    gross_amount= models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    profit= models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    quantity = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+
+
+    product_class = models.ForeignKey(
+        ProductClass,
+        on_delete=models.PROTECT,
+        related_name="sale_transactions"
+    )
+
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.PROTECT,
+        related_name="sale_transactions",
+        blank=True,
+        null=True
+    )
+
+
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.PROTECT,
+        related_name="sale_transactions"
+    )
+
+    route = models.ForeignKey(
+        Route,
+        on_delete=models.PROTECT,
+        related_name="sale_transactions",
+        blank=True,
+        null=True
+    )
+    warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.PROTECT,
+        related_name="sale_transactions",
+        blank=True,
+        null=True
+    )
+
+    class Meta:
+        db_table = "sale_transactions"
+        verbose_name = "Sale transaction"
+        verbose_name_plural = "Sale transactions"
+        indexes = [
+            models.Index(fields=["sale_date"]),
+            models.Index(fields=["doc_id"]),
+            models.Index(fields=["route", "sale_date"]),
+            models.Index(fields=["customer", "sale_date"]),
+        ]
+
+
+    def __str__(self):
+        if not self.quantity:
+            return f"{self.doc_id.upper()} {self.sale_date}"
+        
+        return (
+            f"{self.doc_id.upper()} ({self.sale_date}) | "
+            f"Prod: {self.product_id} x {self.quantity} | "
+            f"Cedis: {self.warehouse_id} | Ruta: {self.route_id}"
+        )
+
+
+class SaleTarget(models.Model):
+    period = models.DateField()
+    route = models.ForeignKey(Route, on_delete=models.PROTECT, related_name='sale_targets')
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='sale_targets')
+    product_class = models.ForeignKey(ProductClass, on_delete=models.PROTECT, related_name='sale_targets')
+    target_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal('0.00'))
+    is_valid_for_comission = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'sale_targets'
+        verbose_name = 'Sale target'
+        verbose_name_plural = 'Sale targets'
+        constraints = [
+            models.UniqueConstraint(
+                fields=["period", "route", "product_class"],
+                name="unique_sale_target_per_period_route_class"
+            )
+        ]
+
+    def __str__(self):
+        route = self.route_id
+        cls_name = (self.product_class_id or "").title()
+        return f'Ruta {route}, clase {cls_name}, periodo {self.period:%b %Y}'
+
+
+
+
+
 
 
 

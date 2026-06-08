@@ -3,7 +3,11 @@ from django.contrib.auth.decorators import login_required
 
 @login_required
 def sales_dashboard(request):
-    return render(request, 'business_intelligence/sales_dashboard/sales_dashboard.html')
+    template = 'business_intelligence/sales_dashboard/sales_dashboard.html'
+    context = {}
+
+    
+    return render(request, template, context)
 
 
 @login_required
