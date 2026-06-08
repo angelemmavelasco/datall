@@ -2,8 +2,7 @@ import uuid
 from django.db.models import Q
 from django.core.validators import RegexValidator
 from django.db import models
-from django.contrib.auth.models import Group
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import Group, AbstractUser
 
 class User(AbstractUser):
     second_last_name = models.CharField(max_length=150, blank=True, null=True)
@@ -100,6 +99,10 @@ class SystemModule(models.Model):
 
 
 
+
+
+
+
 class Department(models.Model):
     id = models.CharField(
         max_length=3,
@@ -177,6 +180,8 @@ class Position(models.Model):
     department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='positions')
     description = models.TextField(max_length=255, null=True, blank=True)
 
+    reports_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='positions')
+
     class Meta:
         verbose_name = 'Position'
         verbose_name_plural = 'Positions'
@@ -188,6 +193,27 @@ class Position(models.Model):
 
 
 
+
+class Region(models.Model):
+    id = models.CharField(max_length=5, primary_key=True)
+    name = models.CharField(max_length=255, unique=True)
+    description = models.TextField(max_length=500, null=True, blank=True)
+    manager = models.ForeignKey(
+        'Employee',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='managed_regions'
+    )
+
+    class Meta:
+        verbose_name = 'Region'
+        verbose_name_plural = 'Regions'
+        db_table = 'regions'
+
+    def __str__(self):
+        return f'{self.id.upper()} {self.name.title()}'
+    
 
 
 
@@ -203,6 +229,8 @@ class Warehouse(models.Model):
         blank=True,
         related_name='managed_warehouses'
     )
+
+    region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, blank=True, related_name='warehouses')
 
     class Meta:
         verbose_name = 'Warehouse'
@@ -237,10 +265,10 @@ class Employee(models.Model):
         db_table = 'employees'
 
     def __str__(self):
-        if not self.user_id or not self.position_id or not self.warehouse_id:
-            return self.code.upper()
+        if not self.user or not self.position or not self.warehouse:
+            return str(self.id)
         else:
-            return f'{self.user.first_name.title()} {self.user.last_name.title()}, {self.position.name.title()} - {self.warehouse.name.title()}'
+            return f'{self.user.first_name.title()} {self.user.last_name.title()}, {self.position.name.title()}: {self.warehouse.name.title()}'
 
     def get_reporting_tree_ids(self):
 
@@ -364,10 +392,6 @@ class SaleChannel(models.Model):
 
 
 class Route(models.Model):
-    class CommissionType(models.TextChoices):
-        PERCENTAGE = 'v', 'Porcentaje'
-        FIXED = 'f', 'Monto Fijo'
-        NONE = 'na', 'Sin comisión'
 
     id = models.CharField(primary_key=True, max_length=255)
     name = models.CharField(max_length=255, null=True, blank=True)
@@ -395,16 +419,7 @@ class Route(models.Model):
         related_name="routes"
     )
 
-    commission_type = models.CharField(
-        max_length=5, 
-        null=True, 
-        blank=True, 
-        choices=CommissionType.choices, 
-        default=CommissionType.NONE
-    )
-    commission = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, default=0)
-
-    notes = models.TextField(max_length=500, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         db_table = "routes"

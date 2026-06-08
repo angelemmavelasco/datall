@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from apps.core.models import (
     User, MenuSection, SystemModule, Department, TaxSystem,
-    PayrollType, Periodicity, Position, Warehouse, Employee,
+    PayrollType, Periodicity, Position, Region, Warehouse, Employee,
     ProductCategory, ProductClass, Product, Reference,
     RouteType, SaleChannel, Route, RouteAssignment
 )
@@ -65,6 +65,13 @@ class PositionAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name', 'department__name')
     list_filter = ('department',)
 
+
+@admin.register(Region)
+class RegionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'manager')
+    search_fields = ('id', 'name', 'manager__user__first_name', 'manager__user__last_name')
+
+
 @admin.register(Warehouse)
 class WarehouseAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'manager')
@@ -124,9 +131,9 @@ class SaleChannelAdmin(admin.ModelAdmin):
 
 @admin.register(Route)
 class RouteAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'warehouse', 'sale_channel', 'route_type', 'commission_type', 'commission')
+    list_display = ('id', 'name', 'warehouse', 'sale_channel', 'route_type', 'is_active')
     search_fields = ('id', 'name', 'warehouse__name', 'sale_channel__name', 'route_type__name')
-    list_filter = ('warehouse', 'sale_channel', 'route_type', 'commission_type')
+    list_filter = ('warehouse', 'sale_channel', 'route_type', 'is_active')
 
 
 @admin.register(RouteAssignment)

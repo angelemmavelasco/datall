@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
-{% block title %}Detalles de Empleado{% endblock %}
+{% block title %}Detalles de colaborador{% endblock %}
 
-{% block module_name %}Detalles de Empleado{% endblock %}
+{% block module_name %}Detalles de colaborador{% endblock %}
 
 {% block module_actions %}
-<a href="{% url 'human_resources:employees' %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
-    <span>Volver a empleados</span>
-</a>
+    <a href="{% url 'human_resources:employee_create' %}?user_id={{ user.id }}" target="_blank" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+        Asignar nueva posición
+    </a>
 {% endblock %}
 
 {% block content %}
@@ -16,111 +16,220 @@
 
     <!-- User Information (Person) -->
     <div class="flex flex-col gap-4">
-        <p class="text-title    tracking-wider">Información Personal</p>
-        <hr class="border-border border">
+
+        <div>
+            <p class="text-title text-sm">Accesos</p>
+            <hr class="border-border border">
+        </div>
         
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 items-start bg-container p-4 rounded">
-            <div class="flex flex-col gap-1">
-                <span class="text-title ">Nombre completo</span>
-                <span class="text-body ">{{ user.first_name|title }} {{ user.last_name|title }} {{ user.second_last_name|title|default:"" }}</span>
-            </div>
-            
-            <div class="flex flex-col gap-1">
-                <span class="text-title ">Usuario (Sistema)</span>
-                <a href="{% url 'data_admin:user' user.id %}" class="text-strong hover:underline inline-flex items-center gap-1" target="_blank">
-                    {{ user.username }}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
-                </a>
-            </div>
-            
-            <div class="flex flex-col gap-1">
-                <span class="text-title ">Correo electrónico</span>
-                <span class="text-body">{{ user.email|default:"-" }}</span>
-            </div>
-            
-            <div class="flex flex-col gap-1">
-                <span class="text-title ">Teléfono</span>
-                <span class="text-body">{{ user.phone|default:"-" }}</span>
+        <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+
+
+            <span class="text-title">Usuario</span>
+            <div>
+                <span class="view-el">{{ user.username }}</span>
+                <input type="text" name="username" value="{{ user.username }}" class="edit-el hidden w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
             </div>
 
-            <div class="flex flex-col gap-1">
-                <span class="text-title ">RFC</span>
-                <span class="text-body ">{{ user.tax_id|default:"-" }}</span>
+
+
+            <span class="text-title">Correo electrónico</span>
+            <div>
+                <span class="view-el">{{ user.email|default:'No definido' }}</span>
+                <input type="email" name="email" value="{{ user.email }}" class="edit-el hidden w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
             </div>
 
-            <div class="flex flex-col gap-1">
-                <span class="text-title ">CURP</span>
-                <span class="text-body ">{{ user.unique_personal_id|default:"-" }}</span>
+            <span class="text-title">Estado</span>
+            <div>
+                <span class="view-el">
+                    {% if user.is_active %}Activo{% else %}Inactivo{% endif %}
+                </span>
+                <select name="is_active" class="edit-el hidden w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
+                    <option value="True" {% if user.is_active %}selected{% endif %}>Activo</option>
+                    <option value="False" {% if not user.is_active %}selected{% endif %}>Inactivo</option>
+                </select>
             </div>
+
+
+            <span class="text-title">Fecha de registro</span>
+            <span>{{ user.date_joined|date:"d/m/Y H:i" }}</span>
+
+
+            <span class="text-title">Último ingreso</span>
+            <span>{{ user.last_login|date:"d/m/Y H:i"|default:'-' }}</span>
+
+
         </div>
     </div>
 
-    <!-- Employment History -->
-    <div class="flex flex-col gap-4 mt-4">
-        <div class="flex items-center justify-between">
-            <p class="text-title    tracking-wider">Historial de Posiciones</p>
-            <a href="{% url 'human_resources:employee_create' %}?user_id={{ user.id }}" class="text-xs bg-strong text-container px-3 py-1.5 rounded hover:opacity-90 transition-opacity">
-                Asignar Nueva Posición
-            </a>
-        </div>
+    <div >
+        <p class="text-title text-sm">Información personal</p>
         <hr class="border-border border">
+    </div>
 
-        <div class="w-full overflow-x-auto border border-border rounded bg-container">
-            <table class="w-full text-left border-collapse min-w-[1000px]">
-                <thead class="bg-page">
-                <tr class="border-b border-border">
-                    <th class="p-3 text-center text-title ">Estado</th>
-                    <th class="p-3 text-center text-title ">Posición</th>
-                    <th class="p-3 text-center text-title ">Gerencia</th>
-                    <th class="p-3 text-center text-title ">Ingreso - Baja</th>
-                    <th class="p-3 text-center text-title ">Líder directo</th>
-                    <th class="p-3 text-center text-title ">Detalles Nómina</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for emp in employee_history %}
+    <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+
+        <span class="text-title">Nombre (s)</span>
+        <span class="view-el">{{ user.first_name|title|default:'-' }}</span>
+
+        <span class="text-title">Primer apellido</span>
+        <span class="view-el">{{ user.last_name|title|default:'-' }}</span>
+
+        <span class="text-title">Segundo apellido</span>
+        <span class="view-el">
+            {% if user.second_last_name %}{{ user.second_last_name|title }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+
+        <span class="text-title">Género</span>
+        <span class="view-el">
+            {% if user.gender == 'm' %}Masculino
+            {% elif user.gender == 'f' %}Femenino
+            {% elif user.gender == 'o' %}Otro
+            {% elif user.gender == 'nb' %}No binario
+            {% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+
+        <span class="text-title">Fecha de nacimiento</span>
+        <span class="view-el">
+            {% if user.birth_date %}{{ user.birth_date|date:"d/m/Y" }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+
+        <span class="text-title">Fecha de nacimiento</span>
+        <span class="view-el">
+            {% if user.birth_date %}{{ user.birth_date|date:"d/m/Y" }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+
+        <span class="text-title">Registro Federal de Contribuyentes (RFC)</span>
+        <span class="view-el">
+            {% if user.tax_id %}{{ user.tax_id|upper }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+
+        <span class="text-title">Clave Única de Registro de Población (CURP)</span>
+        <span class="view-el">
+            {% if user.unique_personal_id %}{{ user.unique_personal_id|upper }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+    </div>
+
+    <div>
+        <p class="text-title text-sm">Contacto</p>
+        <hr class="border-border border">
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Teléfono</span>
+        <span class="view-el">
+            {% if user.phone %}{{ user.phone }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+
+        <span class="text-title">Calle</span>
+        <span class="view-el">
+            {% if user.street %}{{ user.street }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+
+        <span class="text-title">Número exterior</span>
+        <span class="view-el">
+            {% if user.street_no %}{{ user.street_no }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+
+        <span class="text-title">Número interior (si aplica)</span>
+        <span class="view-el">
+            {% if user.apt_suite %}{{ user.apt_suite }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+
+        <span class="text-title">Ciudad</span>
+        <span class="view-el">
+            {% if user.city %}{{ user.city }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+
+        <span class="text-title">Estado</span>
+        <span class="view-el">
+            {% if user.state %}{{ user.state }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+
+        <span class="text-title">País</span>
+        <span class="view-el">
+            {% if user.country %}{{ user.country }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+
+        <span class="text-title">Código postal</span>
+        <span class="view-el">
+            {% if user.zipcode %}{{ user.zipcode }}{% else %}<span class="text-strong italic">No especificado</span>{% endif %}
+        </span>
+    </div>
+
+    <div>
+        <p class="text-title text-sm">Adicionales</p>
+        <hr class="border-border border">
+    </div>
+
+    <div class="bg-container p-2 rounded text-wrap">
+        <div class="view-el">
+        {% if user.notes %}
+            {{ user.notes }}
+        {% else %}
+            <span class="text-strong italic">No se adjuntó información adicional</span>
+        {% endif %}
+        </div>
+        <textarea name="notes" rows="4" class="edit-el hidden w-full bg-page border border-border rounded p-2 text-body focus:outline-none resize-none">{% if user.notes %}{{ user.notes }}{% endif %}</textarea>
+    </div>
+
+    <div>
+        <p class="text-title text-sm">Historial de posiciones</p>
+        <hr class="border-border border">
+    </div>
+
+    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+        <table class="w-full table-fixed text-left border-collapse">
+            <thead>
+            <tr class="border-b border-border">
+                <th class="w-30 p-1 text-center text-title">Posición</th>
+                <th class="w-30 p-1 text-center text-title">Gerencia</th>
+                <th class="w-30 p-1 text-center text-title">Líder directo</th>
+                <th class="w-20 p-1 text-center text-title">Ingreso</th>
+                <th class="w-20 p-1 text-center text-title">Baja</th>
+                <th class="w-60 p-1 text-center text-title">Compensación</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for emp in employee_history %}
                 <tr class="hover:bg-hover transition-colors duration-300 border-b border-border last:border-0 {% if emp.termination_date %}opacity-70{% endif %}">
-                    <td class="p-3 text-center">
-                        {% if emp.termination_date %}
-                            <span class="inline-block border border-red-500 text-red-500 rounded px-2 py-0.5 text-xs">Inactivo</span>
-                        {% else %}
-                            <span class="inline-block bg-strong text-container rounded px-2 py-0.5 text-xs">Activo</span>
-                        {% endif %}
-                    </td>
                     <td class="p-3  text-body">
-                        {{ emp.position.name|title|default:"-" }}
+                        {{ emp.position.name|default:"-"|title }}
                     </td>
                     <td class="p-3 text-body truncate">
-                        {{ emp.warehouse.name|title|default:"-" }}
-                    </td>
-                    <td class="p-3 text-center text-body ">
-                        {{ emp.hire_date|date:"d/m/Y" }} - {% if emp.termination_date %}{{ emp.termination_date|date:"d/m/Y" }}{% else %}Presente{% endif %}
+                        {{ emp.warehouse.name|default:"-"|title }}
                     </td>
                     <td class="p-3 text-center text-body truncate">
                         {% if emp.manager and emp.manager.user %}
-                            {{ emp.manager.user.first_name|title }} {{ emp.manager.user.last_name|title }}
+                        {{ emp.manager.user.first_name|title }} {{ emp.manager.user.last_name|title }}
                         {% else %}
-                            -
+                        -
                         {% endif %}
                     </td>
-                    <td class="p-3 text-body ">
-                        <div class="flex flex-col gap-1">
-                            <span><span class="text-title">Sueldo:</span> ${{ emp.payroll_amount|default:"0.00" }}</span>
-                            <span><span class="text-title">Periodicidad:</span> {{ emp.payroll_periodicity.name|default:"-" }}</span>
-                            <span><span class="text-title">Régimen:</span> {{ emp.tax_system.name|default:"-" }}</span>
+                    <td class="p-3 text-center text-body ">
+                        {{ emp.hire_date|date:"d/m/Y" }}
+                    </td>
+                    <td class="p-3 text-center">
+                        {% if emp.termination_date %}{{ emp.termination_date|date:"d/m/Y" }}{% else %}Activo{% endif %}
+                    </td>
+                    <td class="p-3 text-body">
+                        <div class="grid grid-cols-2 gap-1">
+                            <span class="text-title">Régimen fiscal</span> <span>{{ emp.tax_system.name|default:"No especificado"|title }}</span>
+                            <span class="text-title">Tipo de compensación</span> <span>{{ emp.payroll_type|default:"No especificado"|title }}</span>
+                            <span class="text-title">Periodicidad</span> <span>{{ emp.payroll_periodicity|default:"No especificado"|title }}</span>
+                            <span class="text-title">Monto</span> <span>$ {{ emp.payroll_amount|default:0|floatformat:2|intcomma }}</span>
                         </div>
                     </td>
                 </tr>
-                {% empty %}
+            {% empty %}
                 <tr>
                     <td colspan="6" class="p-8 text-center text-muted">
                         No hay historial de posiciones para este usuario.
                     </td>
                 </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
+            {% endfor %}
+            </tbody>
+        </table>
     </div>
 
 </div>

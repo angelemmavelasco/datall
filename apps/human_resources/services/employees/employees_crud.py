@@ -86,3 +86,20 @@ class EmployeesCRUD:
         new_employee.save()
         
         return new_employee
+
+    def get_org_chart_employees(self, search_query: str = None):
+        queryset = Employee.objects.select_related(
+            'user', 'position', 'warehouse', 'manager'
+        ).prefetch_related(
+            'managed_regions'
+        ).filter(termination_date__isnull=True)
+        
+        if search_query:
+            search_query = search_query.strip()
+            queryset = queryset.filter(
+                Q(user__first_name__icontains=search_query) |
+                Q(user__last_name__icontains=search_query) |
+                Q(user__username__icontains=search_query) |
+                Q(user__email__icontains=search_query)
+            )
+        return queryset
