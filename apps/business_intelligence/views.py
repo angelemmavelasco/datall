@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
 
 @login_required
 def sales_dashboard(request):

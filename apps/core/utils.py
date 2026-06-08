@@ -1,4 +1,6 @@
-from apps.core.models import Reference
+from apps.core.models import Reference, Route, RouteAssignment, Employee
+from django.db.models import Q
+
 
 def get_reference(module: str, field_context: str, key: str, default: str | int | float | None = None):
 
@@ -37,3 +39,35 @@ def get_reference(module: str, field_context: str, key: str, default: str | int 
         return rule.reference
 
     return default
+
+
+
+def get_allowed_routes_for_user(user):
+    """
+    Returns a QuerySet of routes to which the user has access, based on their global group, CEDIS or their subordinate tree.
+    """
+
+    if user.groups.filter(name='acceso global').exists() or user.is_superuser:
+        return Route.objects.all()
+
+    employee = user.employees.first()
+    if not employee:
+        return Route.objects.none()
+
+    team_ids = employee.get_reporting_tree_ids()
+    
+
+    assigned_routes = RouteAssignment.objects.filter(
+        employee_id__in=team_ids,
+        end_date__isnull=True
+    ).values_list('route_id', flat=True)
+
+    commercial_warehouses = Route.objects.filter(
+        id__in=assigned_routes,
+        warehouse__isnull=False 
+    ).values_list('warehouse_id', flat=True).distinct()
+
+    allowed_routes = Route.objects.filter(
+        Q(warehouse_id__in=commercial_warehouses) | Q(id__in=assigned_routes)
+    ).distinct()
+    return allowed_routes
