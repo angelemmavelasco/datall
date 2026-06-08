@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block title %}Dashboard de ventas{% endblock %}
 
@@ -28,8 +29,69 @@
     </span>
 </button>
 
+{% endblock %}
 
+{% block filters %}
+<form method="GET" class="flex flex-col gap-4 text-body">
+    <div class="flex flex-col gap-1">
+        <label class="text-strong text-sm">Fecha Inicio</label>
+        <input type="date" name="date_start" value="{{ selected_date_start|default:'' }}" class="border border-border rounded p-1 bg-page text-sm">
+    </div>
+    <div class="flex flex-col gap-1">
+        <label class="text-strong text-sm">Fecha Fin</label>
+        <input type="date" name="date_end" value="{{ selected_date_end|default:'' }}" class="border border-border rounded p-1 bg-page text-sm">
+    </div>
+    
+    <div class="flex flex-col gap-1">
+        <label class="text-strong text-sm">Gerencia</label>
+        <select name="gerencia" multiple class="border border-border rounded p-1 bg-page text-sm h-24">
+            {% for w in filter_warehouses %}
+                <option value="{{ w.id }}" {% if w.id in selected_gerencias %}selected{% endif %}>{{ w.name|title }}</option>
+            {% endfor %}
+        </select>
+    </div>
 
+    <div class="flex flex-col gap-1">
+        <label class="text-strong text-sm">Lugar de Venta</label>
+        <select name="lugar_venta" multiple class="border border-border rounded p-1 bg-page text-sm h-24">
+            {% for w in filter_warehouses %}
+                <option value="{{ w.id }}" {% if w.id in selected_lugar_venta %}selected{% endif %}>{{ w.name|title }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label class="text-strong text-sm">Clase de Producto</label>
+        <select name="product_class" multiple class="border border-border rounded p-1 bg-page text-sm h-24">
+            {% for pc in filter_product_classes %}
+                <option value="{{ pc.id }}" {% if pc.id in selected_product_class %}selected{% endif %}>{{ pc.name|title }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label class="text-strong text-sm">Categoría de Producto</label>
+        <select name="product_category" multiple class="border border-border rounded p-1 bg-page text-sm h-24">
+            {% for cat in filter_product_categories %}
+                <option value="{{ cat.id }}" {% if cat.id in selected_product_category %}selected{% endif %}>{{ cat.name|title }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label class="text-strong text-sm">Rutas</label>
+        <select name="routes" multiple class="border border-border rounded p-1 bg-page text-sm h-24">
+            {% for r in filter_routes %}
+                <option value="{{ r.id }}" {% if r.id in selected_routes %}selected{% endif %}>{{ r.id|title }}: {{ r.name|title }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="flex gap-2 mt-2">
+        <button type="submit" class="flex-1 bg-chart-blue text-white rounded p-2 text-center hover:opacity-90 transition-opacity">Aplicar</button>
+        <a href="?" class="flex-1 border border-border text-center rounded p-2 hover:bg-page transition-colors">Limpiar</a>
+    </div>
+</form>
 {% endblock %}
 
 {% block content %}
@@ -39,35 +101,35 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Venta neta</p>
-            <p class="text-xl text-title">100</p>
+            <p class="text-xl text-title">$ {{ kpis.net_sale|default:0.00|floatformat:2|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Objetivo</p>
-            <p class="text-xl text-title">100</p>
+            <p class="text-xl text-title">$ {{ kpis.target|default:0.00|floatformat:2|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Alcance</p>
-            <p class="text-xl text-title">100</p>
+            <p class="text-xl text-title">{{ kpis.scope|default:0.00|floatformat:2|intcomma }} %</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col  bg-container">
             <p class="text-muted text-sm text-strong">Diferencia</p>
-            <p class="text-xl text-title">100</p>
+            <p class="text-xl text-title">$ {{ kpis.difference|default:0.00|floatformat:2|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Venta total</p>
-            <p class="text-xl text-title">100</p>
+            <p class="text-xl text-title">$ {{ kpis.total_sale|default:0.00|floatformat:2|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Unidades</p>
-            <p class="text-xl text-title">100</p>
+            <p class="text-xl text-title">$ {{ kpis.units|default:0.00|floatformat:2|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Utilidad</p>
-            <p class="text-xl text-title">100</p>
+            <p class="text-xl text-title">$ {{ kpis.profit|default:0.00|floatformat:2|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Margen</p>
-            <p class="text-xl text-title">100</p>
+            <p class="text-xl text-title">$ {{ kpis.margin|default:0.00|floatformat:2|intcomma }}</p>
         </div>
     </div>
 
@@ -93,180 +155,44 @@
                     <thead>
                         <tr class="border-b border-border">
                             <th class="w-10 p-2">Ruta</th>
-                            <th class="w-30 p-2 text-right">Venta neta</th>
-                            <th class="w-30 p-2 text-right">Objetivo</th>
-                            <th class="w-30 p-2 text-right">Diferencia</th>
-                            <th class="w-20 p-2 text-right">Alcance</th>
-                            <th class="w-20 p-2 text-right">Margen</th>
-                            <th class="w-30 p-2 text-right">Utilidad</th>
+                            <th class="w-30 p-2 text-center">Venta neta</th>
+                            <th class="w-30 p-2 text-center">Objetivo</th>
+                            <th class="w-30 p-2 text-center">Diferencia</th>
+                            <th class="w-20 p-2 text-center">Alcance</th>
+                            <th class="w-20 p-2 text-center">Margen</th>
                         </tr>
                     </thead>
 
                     <tbody>
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
+                        {% for route in route_table %}
+                            <tr>
+                                <td class="p-2 text-left">{{ route.id }} {{ route.name|title }}</td>
+                                <td class="p-2 text-right">$ {{ route.total_net_sale|floatformat:2|intcomma }}</td>
+                                <td class="p-2 text-right">$ {{ route.total_target|floatformat:2|intcomma }}</td>
+                                <td class="p-2 text-right">$ {{ route.total_difference|floatformat:2|intcomma }}</td>
+                                <td class="p-2 text-right">{{ route.total_scope|floatformat:2|intcomma }} %</td>
+                                <td class="p-2 text-center flex justify-center items-center
+                                {% if route.total_margin >= 35 %}
+                                text-green-700
+                                {% elif route.total_margin >= 25 %}
+                                text-yellow-700
+                                {% else %}
+                                text-red-700
+                                {% endif %}
+                                ">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
+                                        <circle cx="12" cy="12" r="10" />
+                                    </svg>
+                                </td>
 
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-gray-500">No hay datos para mostrar</td>
+                            </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -280,11 +206,13 @@
     <!-- Venta neta vs cuota por clase de producto -->
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-200 md:h-100">
-        <div class=" border border-border rounded bg-container flex min-h-98 items-center justify-center" id="productClassBarChart">
+        <div class=" border border-border rounded bg-container flex min-h-98 items-center justify-center"
+            id="productClassBarChart">
             <p class="text-title">Venta neta por clase de producto</p>
         </div>
 
-        <div class=" border border-border rounded bg-container min-h-98 flex items-center justify-center" id="productCategoryChart">
+        <div class=" border border-border rounded bg-container min-h-98 flex items-center justify-center"
+            id="productCategoryChart">
         </div>
 
     </div>
@@ -297,181 +225,48 @@
                 <table class="table-fixed w-full rounded max-h-80">
                     <thead>
                         <tr class="border-b border-border">
-                            <th class="w-10 p-2">Ruta</th>
-                            <th class="w-30 p-2 text-right">Venta neta</th>
-                            <th class="w-30 p-2 text-right">Objetivo</th>
-                            <th class="w-30 p-2 text-right">Diferencia</th>
-                            <th class="w-20 p-2 text-right">Alcance</th>
-                            <th class="w-20 p-2 text-right">Margen</th>
-                            <th class="w-30 p-2 text-right">Utilidad</th>
+                            <th class="w-20 p-2 text-center">Clave</th>
+                            <th class="w-40 p-2 text-center">Producto</th>
+                            <th class="w-20 p-2 text-center">Unidades</th>
+                            <th class="w-30 p-2 text-center">Venta neta</th>
+                            <th class="w-30 p-2 text-center">Venta total</th>
+                            <th class="w-20 p-2 text-center">Margen</th>
                         </tr>
                     </thead>
 
                     <tbody>
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
+                    <tbody>
+                        {% for product in product_table %}
+                            <tr>
+                                <td class="p-2">{{ product.id }}</td>
+                                <td class="p-2 text-right">{{ product.name|title }}</td>
+                                <td class="p-2 text-right">{{ product.total_units|floatformat:0|intcomma }}</td>
+                                <td class="p-2 text-right">$ {{ product.total_net_sale|floatformat:2|intcomma }}</td>
+                                <td class="p-2 text-right">$ {{ product.total_gross_sale|floatformat:2|intcomma }}</td>
+                                <td class="p-2 flex justify-center items-center
+                                {% if product.total_margin >= 35 %}
+                                text-green-700
+                                {% elif product.total_margin >= 25 %}
+                                text-yellow-700
+                                {% else %}
+                                text-red-700
+                                {% endif %}
+                                ">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
+                                        <circle cx="12" cy="12" r="10" />
+                                    </svg>
+                                </td>
 
-                        </tr>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-gray-500">No hay datos para mostrar</td>
+                            </tr>
+                        {% endfor %}
 
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
 
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -487,181 +282,46 @@
                 <table class="table-fixed w-full rounded max-h-80">
                     <thead>
                         <tr class="border-b border-border">
-                            <th class="w-10 p-2">Ruta</th>
-                            <th class="w-30 p-2 text-right">Venta neta</th>
-                            <th class="w-30 p-2 text-right">Objetivo</th>
-                            <th class="w-30 p-2 text-right">Diferencia</th>
-                            <th class="w-20 p-2 text-right">Alcance</th>
-                            <th class="w-20 p-2 text-right">Margen</th>
-                            <th class="w-30 p-2 text-right">Utilidad</th>
+                            <th class="w-10 p-2 text-center">Clave</th>
+                            <th class="w-30 p-2 text-center">Cliente</th>
+                            <th class="w-30 p-2 text-center">Venta neta</th>
+                            <th class="w-30 p-2 text-center">Venta total</th>
+                            <th class="w-20 p-2 text-center">Unidades</th>
+                            <th class="w-20 p-2 text-center">Margen</th>
                         </tr>
                     </thead>
 
                     <tbody>
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
+                        {% for customer in customer_table %}
+                            <tr>
+                                <td class="p-2">{{ customer.id }}</td>
+                                <td class="p-2 text-right">{{ customer.name }}</td>
+                                <td class="p-2 text-right">{{ customer.total_net_sale }}</td>
+                                <td class="p-2 text-right">{{ customer.total_gross_sale }}</td>
+                                <td class="p-2 text-right">{{ customer.total_units }}</td>
+                                <td class="p-2 flex justify-center items-center
+                                {% if customer.total_margin >= 35 %}
+                                text-green-700
+                                {% elif customer.total_margin >= 25 %}
+                                text-yellow-700
+                                {% else %}
+                                text-red-700
+                                {% endif %}
+                                ">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
+                                        <circle cx="12" cy="12" r="10" />
+                                    </svg>
+                                </td>
 
-                        </tr>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-gray-500">No hay datos para mostrar</td>
+                            </tr>
+                        {% endfor %}
 
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
-
-                        <tr>
-                            <td class="p-2">26</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">1,200,000</td>
-                            <td class="p-2 text-right">0.00</td>
-                            <td class="p-2 text-right">100 %</td>
-                            <td class="p-2 text-right">40 %</td>
-                            <td class="p-2 text-right">500,000</td>
-
-                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -694,6 +354,8 @@
 
 
         // Timeline
+
+        const timelineData = {{ timeline_data|safe }};
 
         const timelineChart = echarts.init(document.getElementById('timelineChart'),);
 
@@ -731,7 +393,7 @@
             xAxis: {
                 type: 'category',
                 boundaryGap: false,
-                data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                data: timelineData.categories,
                 splitLine: {
                     show: false
                 }
@@ -749,13 +411,13 @@
                 {
                     name: 'Venta neta',
                     type: 'line',
-                    data: [120, 132, 101, 134, 90, 230, 210],
+                    data: timelineData.sales,
                     smooth: true
                 },
                 {
                     name: 'Unidades',
                     type: 'line',
-                    data: [220, 182, 191, 234, 290, 330, 310],
+                    data: timelineData.units,
                     smooth: true
                 }
             ]
@@ -764,6 +426,8 @@
         timelineChart.setOption(timelineOptions);
 
         // Warehouse BarChart
+
+        const warehouseData = {{ warehouse_chart_data|safe }};
 
         const WarehouseBarOption = {
             color: [greenColor, blueColor],
@@ -804,18 +468,18 @@
             },
             yAxis: {
                 type: 'category',
-                data: ['Cdmx', 'Gdl', 'Mty', 'Pue', 'Vha', 'Qro', 'Cul']
+                data: warehouseData.categories
             },
             series: [
                 {
                     name: 'Venta',
                     type: 'bar',
-                    data: [18203, 23489, 29034, 104970, 131744, 630230, 630230],
+                    data: warehouseData.sales,
                 },
                 {
                     name: 'Objetivo',
                     type: 'bar',
-                    data: [19325, 23438, 31000, 121594, 134141, 681807, 252342],
+                    data: warehouseData.targets,
                 }
             ]
         };
@@ -824,6 +488,8 @@
 
 
         // Product class bar chart
+
+        const productClassData = {{ product_class_chart_data|safe }};
 
         const ProductClassBarOption = {
             title: {
@@ -841,7 +507,7 @@
             },
             xAxis: {
                 type: 'category',
-                data: ['Dmd', 'Nat', 'Msd', 'Care', 'Zts', 'Vtq', 'Cv'],
+                data: productClassData.categories,
 
             },
             yAxis: {
@@ -855,7 +521,7 @@
             },
             series: [
                 {
-                    data: [120, 200, 150, 80, 70, 110, 130],
+                    data: productClassData.sales,
                     type: 'bar',
                 }
             ]
@@ -865,6 +531,8 @@
         productClassBarChart.setOption(ProductClassBarOption);
 
         // product cattegory pie chart
+
+        const productCategoryData = {{ product_category_chart_data|safe }};
 
         const productCategoryOption = {
             title: {
@@ -889,7 +557,7 @@
             },
             series: [
                 {
-                    name: 'Access From',
+                    name: 'Ventas',
                     type: 'pie',
                     radius: ['45%', '70%'],
                     center: ['50%', '60%'],
@@ -912,13 +580,7 @@
                     labelLine: {
                         show: false
                     },
-                    data: [
-                        { value: 1048, name: 'Search Engine' },
-                        { value: 735, name: 'Direct' },
-                        { value: 580, name: 'Email' },
-                        { value: 484, name: 'Union Ads' },
-                        { value: 300, name: 'Video Ads' }
-                    ]
+                    data: productCategoryData
                 }
             ]
         }

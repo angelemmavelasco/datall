@@ -1,6 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
-from .models import SaleTransaction
+from apps.core.models import SaleTransaction
 
 class SaleTransactionCRUD:
     def __init__(self):
@@ -38,6 +38,7 @@ class SaleTransactionCRUD:
                 
         fk_fields = {
             'product_classes': 'product_class_id__in',
+            'product_categories': 'product_class__product_category_id__in',
             'products': 'product_id__in',
             'customers': 'customer_id__in',
             'routes': 'route_id__in',
