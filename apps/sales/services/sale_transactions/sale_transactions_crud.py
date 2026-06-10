@@ -43,6 +43,7 @@ class SaleTransactionCRUD:
             'customers': 'customer_id__in',
             'routes': 'route_id__in',
             'warehouses': 'warehouse_id__in', 
+            'regions': 'route__warehouse__region_id__in',
             'route_warehouse_ids': 'route__warehouse_id__in'
         }
         

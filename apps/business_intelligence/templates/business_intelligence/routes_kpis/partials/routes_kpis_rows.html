@@ -1,0 +1,291 @@
+{% load humanize %}
+{% for route in routes %}
+<div class="flex flex-col w-full gap-4 mb-8">
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="border border-border rounded p-2 flex flex-col items-center justify-center bg-container row-span-2 col-span-2 md:col-span-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="lucide lucide-circle-user-icon lucide-circle-user">
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="10" r="3" />
+                <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
+            </svg>
+        </div>
+
+        <div class="p-2 flex flex-col col-span-2 md:col-span-1 items-center justify-center">
+            <p class="text-muted text-sm text-strong">Ruta</p>
+            <p class="text-xl text-title">{{ route.id|upper }} {{ route.name|title }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container md:col-start-3">
+            <p class="text-muted text-sm text-strong">Venta neta</p>
+            <p class="text-xl text-title">$ {{ route.net_sale|floatformat:2|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container md:col-start-4">
+            <p class="text-muted text-sm text-strong">Objetivo</p>
+            <p class="text-xl text-title">$ {{ route.sale_target|floatformat:2|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container md:row-start-2 md:col-start-3">
+            <p class="text-muted text-sm text-strong">Diferencia</p>
+            <p class="text-xl text-title">$ {{ route.scope_diff|floatformat:2|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container md:row-start-2 md:col-start-4">
+            <p class="text-muted text-sm text-strong">Alcance</p>
+            <p class="text-xl text-title">{{ route.scope|floatformat:2|intcomma }} %</p>
+        </div>
+
+    </div>
+
+    <!-- alcance de cuotas anuales y por lineas -->
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Desempeño de ventas y objetivos por clase</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-1 gap-4">
+        <div class="border border-border rounded p-2 bg-container">
+            <div class="overflow-x-auto rounded overflow-y-auto">
+                <table class="table-fixed w-full rounded">
+                    <thead>
+                        <tr class="border-b border-border">
+                            <th class="w-30 p-2 text-left">Clase</th>
+                            <th class="w-20 p-2 text-right">Venta neta</th>
+                            <th class="w-20 p-2 text-right">Objetivo</th>
+                            <th class="w-20 p-2 text-right">Diferencia</th>
+                            <th class="w-20 p-2 text-right">Alcance</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr>
+                            <td class="p-2">Diamond</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.dmd.net_sales|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.dmd.target|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.dmd.difference|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ route.product_class_performance.dmd.scope|floatformat:2|intcomma }} %</td>
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">Diamond naturals</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.nat.net_sales|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.nat.target|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.nat.difference|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ route.product_class_performance.nat.scope|floatformat:2|intcomma }} %</td>
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">Care</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.care.net_sales|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.care.target|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.care.difference|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ route.product_class_performance.care.scope|floatformat:2|intcomma }} %</td>
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">Country value</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.cv.net_sales|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.cv.target|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.cv.difference|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ route.product_class_performance.cv.scope|floatformat:2|intcomma }} %</td>
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">Taste of the wild</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.tow.net_sales|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.tow.target|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.tow.difference|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ route.product_class_performance.tow.scope|floatformat:2|intcomma }} %</td>
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">Msd</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.msd.net_sales|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.msd.target|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.msd.difference|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ route.product_class_performance.msd.scope|floatformat:2|intcomma }} %</td>
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">Vetoquinol</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.vtq.net_sales|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.vtq.target|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.vtq.difference|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ route.product_class_performance.vtq.scope|floatformat:2|intcomma }} %</td>
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">Zoetis</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.zts.net_sales|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.zts.target|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.zts.difference|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ route.product_class_performance.zts.scope|floatformat:2|intcomma }} %</td>
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">Nutriforce</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.ntrf.net_sales|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.ntrf.target|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.ntrf.difference|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ route.product_class_performance.ntrf.scope|floatformat:2|intcomma }} %</td>
+                        </tr>
+
+                        <tr>
+                            <td class="p-2">Otros</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.otr.net_sales|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.otr.target|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.otr.difference|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ route.product_class_performance.otr.scope|floatformat:2|intcomma }} %</td>
+                        </tr>
+
+                        <tr class="border-t border-border">
+                            <td class="p-2">Total</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.total.net_sales|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.total.target|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.product_class_performance.total.difference|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ route.product_class_performance.total.scope|floatformat:2|intcomma }} %</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- cobranza -->
+    <div class="">
+        <p class="text-title text-sm mb-2">Cobranza</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Saldo total</p>
+            <p class="text-xl text-title">$ {{ route.collections.total_balance|floatformat:2|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Saldo al corriente</p>
+            <p class="text-xl text-title">$ {{ route.collections.current_balance|floatformat:2|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Vencido</p>
+            <p class="text-xl text-title">$ {{ route.collections.overdue_balance|floatformat:2|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Cuentas por cobrar</p>
+            <p class="text-xl text-title">{{ route.collections.overdue_count }}</p>
+        </div>
+    </div>
+
+    <div class="border border-border rounded p-2 bg-container">
+        <p class="text-title text-sm text-center mb-2">Desglose de cobranza</p>
+
+        <div class="hidden md:block overflow-x-auto rounded overflow-y-auto">
+            <table class="table-fixed w-full rounded">
+                <thead>
+                    <tr class="border-b border-border">
+                        <th class="p-2 text-center text-sm">Crédito</th>
+                        <th class="p-2 text-center text-sm">Uso</th>
+                        <th class="p-2 text-center text-sm">Saldo al corriente</th>
+                        <th class="p-2 text-center text-sm">1 a 15 días</th>
+                        <th class="p-2 text-center text-sm">16 a 30 días</th>
+                        <th class="p-2 text-center text-sm">31 a 60 días</th>
+                        <th class="p-2 text-center text-sm">+60 días</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td class="p-2 text-center text-sm">$ {{ route.collections.total_credit|floatformat:2|intcomma }}</td>
+                        <td class="p-2 text-center text-sm">{{ route.collections.credit_usage|floatformat:2|intcomma }} %</td>
+                        <td class="p-2 text-center text-sm">$ {{ route.collections.current_balance|floatformat:2|intcomma }}</td>
+                        <td class="p-2 text-center text-sm">$ {{ route.collections.days_1_15|floatformat:2|intcomma }}</td>
+                        <td class="p-2 text-center text-sm">$ {{ route.collections.days_16_30|floatformat:2|intcomma }}</td>
+                        <td class="p-2 text-center text-sm">$ {{ route.collections.days_31_60|floatformat:2|intcomma }}</td>
+                        <td class="p-2 text-center text-sm">$ {{ route.collections.days_60_over|floatformat:2|intcomma }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="md:hidden overflow-x-auto rounded overflow-y-auto">
+            <table class="table-fixed w-full rounded text-sm">
+                <thead>
+                    <tr class="border-b border-border">
+                        <th class="p-2 text-center">Concepto</th>
+                        <th class="p-2 text-center">Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="p-2 text-center">Crédito</td>
+                        <td class="p-2 text-center">$ {{ route.collections.total_credit|floatformat:2|intcomma }}</td>
+                    </tr>
+                    <tr>
+                        <td class="p-2 text-center">Uso</td>
+                        <td class="p-2 text-center">{{ route.collections.credit_usage|floatformat:2|intcomma }} %</td>
+                    </tr>
+                    <tr>
+                        <td class="p-2 text-center">Saldo al corriente</td>
+                        <td class="p-2 text-center">$ {{ route.collections.current_balance|floatformat:2|intcomma }}</td>
+                    </tr>
+                    <tr>
+                        <td class="p-2 text-center">1 a 15 días</td>
+                        <td class="p-2 text-center">$ {{ route.collections.days_1_15|floatformat:2|intcomma }}</td>
+                    </tr>
+                    <tr>
+                        <td class="p-2 text-center">16 a 30 días</td>
+                        <td class="p-2 text-center">$ {{ route.collections.days_16_30|floatformat:2|intcomma }}</td>
+                    </tr>
+                    <tr>
+                        <td class="p-2 text-center">31 a 60 días</td>
+                        <td class="p-2 text-center">$ {{ route.collections.days_31_60|floatformat:2|intcomma }}</td>
+                    </tr>
+                    <tr>
+                        <td class="p-2 text-center">+60 días</td>
+                        <td class="p-2 text-center">$ {{ route.collections.days_60_over|floatformat:2|intcomma }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- detalle de clientes -->
+    <div class="">
+        <p class="text-title text-sm mb-2">Clientes</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Cartera</p>
+            <p class="text-xl text-title">{{ route.clients }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Clientes nuevos</p>
+            <p class="text-xl text-title">{{ route.new_clients }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Clientes con compras</p>
+            <p class="text-xl text-title">{{ route.clients_with_purchases|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Alcance de cartera</p>
+            <p class="text-xl text-title">{{ route.coverage_percentage|floatformat:2|intcomma }} %</p>
+        </div>
+    </div>
+</div>
+{% empty %}
+<div class="flex items-center justify-center p-8 bg-container border border-border rounded">
+    <p class="text-muted">No se encontraron resultados para los filtros seleccionados.</p>
+</div>
+{% endfor %}

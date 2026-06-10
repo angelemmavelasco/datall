@@ -2,7 +2,7 @@ from decimal import Decimal
 from collections import defaultdict
 
 class SalesDashboardCalculator:
-    def __init__(self, transactions, targets):
+    def __init__(self, transactions, targets, date_start=None, date_end=None):
         """
         Receives two lists of dictionaries (from .values() execution) to avoid N+1 queries.
         transactions: list of dicts with sale_date, net_amount, gross_amount, quantity, profit, 
@@ -13,6 +13,54 @@ class SalesDashboardCalculator:
         """
         self.transactions = transactions
         self.targets = targets
+        self.date_start = self._parse_date(date_start)
+        self.date_end = self._parse_date(date_end)
+
+    def _parse_date(self, date_val):
+        from datetime import datetime
+        if isinstance(date_val, str) and date_val:
+            try:
+                return datetime.strptime(date_val, '%Y-%m-%d').date()
+            except ValueError:
+                return None
+        return date_val
+
+    def _prorate_target(self, t):
+        target_amount = self._safe_decimal(t.get('target_amount', 0))
+        if not self.date_start and not self.date_end:
+            return target_amount
+
+        from datetime import date
+        import calendar
+
+        period = t.get('period')
+        if not period:
+            return target_amount
+
+        if isinstance(period, str):
+            try:
+                from datetime import datetime
+                period = datetime.strptime(period, '%Y-%m-%d').date()
+            except ValueError:
+                return target_amount
+        
+        month_start = period
+        _, last_day = calendar.monthrange(month_start.year, month_start.month)
+        month_end = date(month_start.year, month_start.month, last_day)
+
+        start = self.date_start if self.date_start else month_start
+        end = self.date_end if self.date_end else month_end
+
+        overlap_start = max(month_start, start)
+        overlap_end = min(month_end, end)
+
+        if overlap_start > overlap_end:
+            return Decimal('0.00')
+
+        overlap_days = (overlap_end - overlap_start).days + 1
+        total_days = (month_end - month_start).days + 1
+
+        return target_amount * Decimal(overlap_days) / Decimal(total_days)
 
     def _safe_decimal(self, val):
         return Decimal(str(val)) if val is not None else Decimal('0.00')
@@ -31,7 +79,7 @@ class SalesDashboardCalculator:
 
         target = Decimal('0.00')
         for t in self.targets:
-            target += self._safe_decimal(t.get('target_amount', 0))
+            target += self._prorate_target(t)
 
         margin = (profit / net_sale * 100) if net_sale > 0 else Decimal('0.00')
         scope = (net_sale / target * 100) if target > 0 else Decimal('0.00')
@@ -69,16 +117,16 @@ class SalesDashboardCalculator:
         wh_data = defaultdict(lambda: {'sale': Decimal('0.00'), 'target': Decimal('0.00')})
         
         for t in self.transactions:
-            wh_name = t.get('warehouse__name') or 'N/A'
-            wh_data[wh_name]['sale'] += self._safe_decimal(t.get('net_amount', 0))
+            wh_id = t.get('warehouse_id') or 'N/A'
+            wh_data[wh_id]['sale'] += self._safe_decimal(t.get('net_amount', 0))
             
         for t in self.targets:
-            wh_name = t.get('warehouse__name') or 'N/A'
-            wh_data[wh_name]['target'] += self._safe_decimal(t.get('target_amount', 0))
+            wh_id = t.get('warehouse_id') or 'N/A'
+            wh_data[wh_id]['target'] += self._prorate_target(t)
             
         categories = sorted(wh_data.keys())
         return {
-            'categories': [str(c).title() for c in categories],
+            'categories': [str(c).upper() for c in categories],
             'sales': [float(wh_data[c]['sale']) for c in categories],
             'targets': [float(wh_data[c]['target']) for c in categories]
         }
@@ -86,12 +134,12 @@ class SalesDashboardCalculator:
     def calculate_product_class_chart(self):
         pc_sales = defaultdict(Decimal)
         for t in self.transactions:
-            pc_name = t.get('product_class__name') or 'N/A'
-            pc_sales[pc_name] += self._safe_decimal(t.get('net_amount', 0))
+            pc_id = t.get('product_class_id') or 'N/A'
+            pc_sales[pc_id] += self._safe_decimal(t.get('net_amount', 0))
             
         sorted_items = sorted(pc_sales.items(), key=lambda x: x[1], reverse=True)
         return {
-            'categories': [str(x[0]).title() for x in sorted_items],
+            'categories': [str(x[0]).upper() for x in sorted_items],
             'sales': [float(x[1]) for x in sorted_items]
         }
 
@@ -123,7 +171,7 @@ class SalesDashboardCalculator:
             
         for t in self.targets:
             r_id = t.get('route_id') or 'N/A'
-            route_data[r_id]['target'] += self._safe_decimal(t.get('target_amount', 0))
+            route_data[r_id]['target'] += self._prorate_target(t)
             if 'route__name' in t and not route_data[r_id]['name']:
                 route_data[r_id]['name'] = t.get('route__name') or ''
             

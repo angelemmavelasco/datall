@@ -1,0 +1,81 @@
+{% load humanize %}
+{% for customer in customers %}
+<tr class="hover:bg-hover transition-colors duration-300"
+    {% if forloop.last and page_obj.has_next %}
+    hx-get="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}"
+    hx-trigger="revealed"
+    hx-swap="afterend"
+    {% endif %}>
+
+    <td class="p-2 text-left text-title border-r border-border">
+        {{ customer.id|upper }} {{ customer.name|title }}
+    </td>
+
+    <td class="p-2 text-left text-title border-r border-border">
+        {{ customer.route.id|upper }}
+    </td>
+    <td class="p-2 text-left text-title border-r border-border">
+        {{ customer.route.warehouse.name|title }}
+    </td>
+
+    <td class="p-2 text-left text-title border-r border-border">
+        {{ customer.customer_type.name|title }}
+    </td>
+    <td class="p-2 text-left text-title border-r border-border">
+        {{ customer.category_last_moving_q.name|title }}
+    </td>
+    <td class="p-2 text-left text-title border-r border-border">
+        {{ customer.frequency|title }}
+    </td>
+    <td class="p-2 flex items-center justify-center text-title">
+        {% if customer.opinion_leader %}
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon text-green-500 lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+        {% else %}
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon text-red-500 lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+        {% endif %}
+    </td>
+
+    <td class="seccion-cobranza p-2 text-right text-title border-r border-l border-border" >
+        $ {{ customer.current_balance|floatformat:2|intcomma }}
+    </td>
+    <td class="seccion-cobranza p-2 text-right text-title border-r border-border" >
+        $ {{ customer.overdue_balance|floatformat:2|intcomma }}
+    </td>
+    <td class="seccion-cobranza p-2 text-right text-title border-r border-border" >
+        {{ customer.credit_usage|floatformat:2|intcomma }}%
+    </td>
+
+    <td class="seccion-metricas p-2 text-right text-title border-r border-border">
+        {{ customer.active_agreements|floatformat:0|intcomma }}
+    </td>
+    <td class="seccion-metricas p-2 text-right text-title border-r border-border">
+        {{ customer.product_classes_with_consumption|floatformat:0|intcomma }} / 7
+    </td>
+    <td class="seccion-metricas p-2 text-right text-title border-r border-border">
+        $ {{ customer.previous_year_average|floatformat:2|intcomma }}
+    </td>
+    <td class="seccion-metricas p-2 text-right text-title border-r border-border">
+        $ {{ customer.current_year_average|floatformat:2|intcomma }}
+    </td>
+    <td class="seccion-metricas p-2 text-right text-title border-r border-border">
+        $ {{ customer.previous_moving_quarter_average|floatformat:2|intcomma }}
+    </td>
+
+    {% for month in customer.monthly_consumption_qs %}
+        <td class="seccion-mensual p-2 text-right text-title border-r border-border">
+            $ {{ month.sale|floatformat:2|intcomma }}<br>
+            {% if month.growth_vs_previous_month >= 0 %}
+                <span class="text-green-500">+ {{ month.growth_vs_previous_month|floatformat:0|intcomma }} %</span>
+            {% else %}
+                <span class="text-red-500">- {{ month.growth_vs_previous_month|floatformat:0|intcomma }} %</span>
+            {% endif %}
+        </td>
+    {% endfor %}
+</tr>
+{% empty %}
+{% if not page_obj.has_previous %}
+<tr>
+    <td colspan="27" class="p-2 text-muted">No hay datos para mostrar</td>
+</tr>
+{% endif %}
+{% endfor %}

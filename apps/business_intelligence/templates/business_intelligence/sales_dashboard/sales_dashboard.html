@@ -7,7 +7,7 @@
 
 {% block module_actions %}
 
-<button class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button>
+<button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button>
 
 <button onclick="toggleFilters()"
     class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
@@ -32,66 +32,173 @@
 {% endblock %}
 
 {% block filters %}
-<form method="GET" class="flex flex-col gap-4 text-body">
-    <div class="flex flex-col gap-1">
+<form method="GET" action="">
+
+    <!-- Fecha Inicio -->
+    <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Fecha Inicio</label>
         <input type="date" name="date_start" value="{{ selected_date_start|default:'' }}" class="border border-border rounded p-1 bg-page text-sm">
     </div>
-    <div class="flex flex-col gap-1">
+    
+    <!-- Fecha Fin -->
+    <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Fecha Fin</label>
         <input type="date" name="date_end" value="{{ selected_date_end|default:'' }}" class="border border-border rounded p-1 bg-page text-sm">
     </div>
-    
-    <div class="flex flex-col gap-1">
+
+    <!-- Gerencia -->
+    <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Gerencia</label>
-        <select name="gerencia" multiple class="border border-border rounded p-1 bg-page text-sm h-24">
-            {% for w in filter_warehouses %}
-                <option value="{{ w.id }}" {% if w.id in selected_gerencias %}selected{% endif %}>{{ w.name|title }}</option>
-            {% endfor %}
-        </select>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar gerencia..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'gerencia-list')">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'gerencia-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="gerencia-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for w in filter_warehouses %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="gerencia" value="{{ w.id }}" {% if w.id in selected_gerencias %}checked{% endif %}>
+                    <span class="searchable-text">{{ w.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
     </div>
-
-    <div class="flex flex-col gap-1">
+    <!-- Región -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Región</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar región..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'region-list')">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'region-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="region-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for r in filter_regions %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="regions" value="{{ r.id }}" {% if r.id in selected_regions %}checked{% endif %}>
+                    <span class="searchable-text">{{ r.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <!-- Lugar de Venta -->
+    <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Lugar de Venta</label>
-        <select name="lugar_venta" multiple class="border border-border rounded p-1 bg-page text-sm h-24">
-            {% for w in filter_warehouses %}
-                <option value="{{ w.id }}" {% if w.id in selected_lugar_venta %}selected{% endif %}>{{ w.name|title }}</option>
-            {% endfor %}
-        </select>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar lugar..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'lugar-venta-list')">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'lugar-venta-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="lugar-venta-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for w in filter_warehouses %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="lugar_venta" value="{{ w.id }}" {% if w.id in selected_lugar_venta %}checked{% endif %}>
+                    <span class="searchable-text">{{ w.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 
-    <div class="flex flex-col gap-1">
+    <!-- Clase de Producto -->
+    <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Clase de Producto</label>
-        <select name="product_class" multiple class="border border-border rounded p-1 bg-page text-sm h-24">
-            {% for pc in filter_product_classes %}
-                <option value="{{ pc.id }}" {% if pc.id in selected_product_class %}selected{% endif %}>{{ pc.name|title }}</option>
-            {% endfor %}
-        </select>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar clase..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'product-class-list')">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'product-class-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="product-class-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for pc in filter_product_classes %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="product_class" value="{{ pc.id }}" {% if pc.id in selected_product_class %}checked{% endif %}>
+                    <span class="searchable-text">{{ pc.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 
-    <div class="flex flex-col gap-1">
+    <!-- Categoría de Producto -->
+    <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Categoría de Producto</label>
-        <select name="product_category" multiple class="border border-border rounded p-1 bg-page text-sm h-24">
-            {% for cat in filter_product_categories %}
-                <option value="{{ cat.id }}" {% if cat.id in selected_product_category %}selected{% endif %}>{{ cat.name|title }}</option>
-            {% endfor %}
-        </select>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar categoría..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'product-category-list')">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'product-category-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="product-category-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for cat in filter_product_categories %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="product_category" value="{{ cat.id }}" {% if cat.id in selected_product_category %}checked{% endif %}>
+                    <span class="searchable-text">{{ cat.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 
-    <div class="flex flex-col gap-1">
+    <!-- Rutas -->
+    <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Rutas</label>
-        <select name="routes" multiple class="border border-border rounded p-1 bg-page text-sm h-24">
-            {% for r in filter_routes %}
-                <option value="{{ r.id }}" {% if r.id in selected_routes %}selected{% endif %}>{{ r.id|title }}: {{ r.name|title }}</option>
-            {% endfor %}
-        </select>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar ruta..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'routes-list')">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'routes-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="routes-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for r in filter_routes %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="routes" value="{{ r.id }}" {% if r.id in selected_routes %}checked{% endif %}>
+                    <span class="searchable-text">{{ r.id|title }}: {{ r.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 
-    <div class="flex gap-2 mt-2">
-        <button type="submit" class="flex-1 bg-chart-blue text-white rounded p-2 text-center hover:opacity-90 transition-opacity">Aplicar</button>
-        <a href="?" class="flex-1 border border-border text-center rounded p-2 hover:bg-page transition-colors">Limpiar</a>
-    </div>
+    <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2 mb-2">Aplicar filtros</button>
+    <a href="?" class="block bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar filtros</a>
+
 </form>
+
+<script>
+function filterCheckboxes(inputElement, listId) {
+    const filter = inputElement.value.toLowerCase();
+    const list = document.getElementById(listId);
+    const labels = list.getElementsByTagName('label');
+
+    for (let i = 0; i < labels.length; i++) {
+        const span = labels[i].querySelector('.searchable-text');
+        if (span) {
+            const textValue = span.textContent || span.innerText;
+            if (textValue.toLowerCase().indexOf(filter) > -1) {
+                labels[i].style.display = "";
+            } else {
+                labels[i].style.display = "none";
+            }
+        }
+    }
+}
+
+function toggleAllCheckboxes(masterCheckbox, listId) {
+    const list = document.getElementById(listId);
+    const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        // Solo altera los checkboxes visibles (respeta el buscador)
+        if (cb.closest('label').style.display !== "none") {
+            cb.checked = masterCheckbox.checked;
+        }
+    });
+}
+</script>
 {% endblock %}
 
 {% block content %}
@@ -129,7 +236,7 @@
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Margen</p>
-            <p class="text-xl text-title">$ {{ kpis.margin|default:0.00|floatformat:2|intcomma }}</p>
+            <p class="text-xl text-title">{{ kpis.margin|default:0.00|floatformat:2|intcomma }} %</p>
         </div>
     </div>
 
@@ -245,11 +352,11 @@
                                 <td class="p-2 text-right">$ {{ product.total_gross_sale|floatformat:2|intcomma }}</td>
                                 <td class="p-2 flex justify-center items-center
                                 {% if product.total_margin >= 35 %}
-                                text-green-700
+                                text-green-500
                                 {% elif product.total_margin >= 25 %}
-                                text-yellow-700
+                                text-yellow-500
                                 {% else %}
-                                text-red-700
+                                text-red-500
                                 {% endif %}
                                 ">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -301,11 +408,11 @@
                                 <td class="p-2 text-right">{{ customer.total_units }}</td>
                                 <td class="p-2 flex justify-center items-center
                                 {% if customer.total_margin >= 35 %}
-                                text-green-700
+                                text-green-500
                                 {% elif customer.total_margin >= 25 %}
-                                text-yellow-700
+                                text-yellow-500
                                 {% else %}
-                                text-red-700
+                                text-red-500
                                 {% endif %}
                                 ">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"

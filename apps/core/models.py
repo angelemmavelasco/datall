@@ -5,6 +5,10 @@ from django.db import models
 from django.contrib.auth.models import Group, AbstractUser
 from decimal import Decimal
 
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django .conf import settings
+
 class User(AbstractUser):
     second_last_name = models.CharField(max_length=150, blank=True, null=True)
     birth_date = models.DateField(blank=True, null=True)
@@ -94,12 +98,85 @@ class SystemModule(models.Model):
         return f"{self.section.name} -> {self.name}"
 
 
+class DataHistory(models.Model):
+    class Action(models.TextChoices):
+        IMPORT = 'importación', 'importación'
+        EXPORT = 'exportación', 'exportación'
+        CREATE = 'creación', 'creación'
+        UPDATE = 'actualización', 'actualización'
+        DELETE = 'eliminación', 'eliminación'
+        READ = 'lectura', 'lectura'
+        LOGIN = 'inicio de sesión', 'inicio de sesión'
+        LOGOUT = 'cierre de sesión', 'cierre de sesión'
 
+    class Result(models.TextChoices):
+        SUCCESS = 'éxito', 'éxito'
+        PARTIAL = 'parcial', 'parcial'
+        ERROR = 'error', 'error'
 
+    module = models.ForeignKey(
+        SystemModule,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="history_logs",
+        help_text="Módulo del sistema donde se originó la acción."
+    )
 
+    content_type = models.ForeignKey(
+        ContentType, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        help_text="Tabla/Modelo afectado, e.g. auth_user, sales_route."
+    )
+    object_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="ID del registro afectado en esa tabla."
+    )
+    content_object = GenericForeignKey('content_type', 'object_id')
 
+    action = models.CharField(max_length=50, choices=Action.choices)
+    result = models.CharField(max_length=50, choices=Result.choices, default=Result.SUCCESS)
 
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="data_history"
+    )
 
+    description = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Descripción legible para humanos."
+    )
+
+    changes = models.JSONField(
+        null=True, 
+        blank=True, 
+        help_text="Payload JSON con el estado anterior y nuevo, o detalles del error."
+    )
+
+    class Meta:
+        db_table = 'data_history'
+        verbose_name = 'Data History'
+        verbose_name_plural = 'Data Histories'
+        indexes = [
+            models.Index(fields=["content_type", "object_id"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.action:
+            self.action = self.action.strip().lower()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.action} en {self.content_type} por {self.created_by}"
 
 
 
@@ -344,8 +421,8 @@ class Product(models.Model):
     barcode = models.CharField(blank=True, null=True, max_length=255)
     name = models.CharField(max_length=255, null=True, blank=True)
     product_class = models.ForeignKey(ProductClass, on_delete=models.PROTECT, related_name='products', null=True, blank=True)
-    cost = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    cost = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    price = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     unit_of_measure = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
@@ -356,8 +433,6 @@ class Product(models.Model):
     def __str__(self):
         name = (self.name or "").title()
         return f'{self.id.upper()} {name}'
-
-
 
 
 
@@ -562,7 +637,38 @@ class Customer(models.Model):
 
 
 
+class AccountsReceivable(models.Model):
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name='accounts_receivable'
+    )
 
+    route = models.ForeignKey(
+        'Route',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='accounts_receivables'
+    )
+
+    total_balance = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
+    current_balance = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
+    balance_15 = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
+    balance_30 = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
+    balance_60 = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
+    past_due = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
+
+    period = models.DateField()
+
+    class Meta:
+        db_table = 'accounts_receivables'
+        verbose_name = 'Accounts receivable'
+        verbose_name_plural = 'Accounts receivables'
+
+    def __str__(self):
+        return f'{self.customer_id}: $ {self.total_balance}, periodo: {self.period.month}-{self.period.year}'
+    
 
 
 
@@ -679,7 +785,6 @@ class SaleTarget(models.Model):
 
 
 
-
 class Reference(models.Model):
 
     #which is the module where this reference is gonna be used
@@ -696,6 +801,14 @@ class Reference(models.Model):
     #value which is gonna be stored and accepted by the database
     reference = models.CharField(max_length=255)
 
+    content_type = models.ForeignKey(
+        ContentType, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        help_text="Tabla/Modelo afectado, e.g. auth_user, sales_route."
+    )
+
 
     class Meta:
         db_table = 'references'
@@ -703,7 +816,7 @@ class Reference(models.Model):
         verbose_name_plural = 'References'
         constraints = [
             models.UniqueConstraint(
-                fields=['module', 'field_context', 'key'], 
+                fields=['module', 'field_context', 'key', 'content_type'], 
                 name='unique_module_context_key_mapping'
             )
         ]

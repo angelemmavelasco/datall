@@ -1,4 +1,12 @@
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect
+from django.conf import settings
+from django.contrib import messages
+from django.http import HttpResponse
 
-# Create your views here.
+def custom_csrf_failure(request, reason=""):
+    messages.warning(request, "Tu sesión expiró por inactividad. Por favor, vuelve a ingresar.")
+    if "HX-Request" in request.headers:
+        response = HttpResponse()
+        response['HX-Redirect'] = settings.LOGIN_URL
+        return response
+    return redirect(settings.LOGIN_URL)

@@ -1,27 +1,90 @@
 from django.contrib import messages
 from django.shortcuts import render, redirect
-from apps.sales.services.products.products_crud import ProductsCRUD
+from apps.sales.services.products.products_crud import ProductsCrud
 from django.contrib.auth.decorators import login_required
-from apps.core.models import Reference
-
+from apps.core.models import Reference, ProductClass, Warehouse, Route, ProductCategory
+from django.core.paginator import Paginator
+from django.http import HttpResponse
+import pandas as pd
+import io
+from apps.core.utils import get_allowed_routes_for_user
+from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
 
 @login_required
 def products(request):
-    TEMPLATE = 'sales/products/products.html'
-    products_service = ProductsCRUD()
-    products = products_service.get_products()
+    template = 'sales/products/products.html'
+
+    product_classes = request.GET.getlist('product_classes')
+    query_text = request.GET.get('query_text')
+
+    filters = {}
+    if product_classes: filters['product_classes'] = product_classes
+    if query_text: filters['query_text'] = query_text
+
+    products_service = ProductsCrud()
+    qs = products_service.read(**filters)
+
+    paginator = Paginator(qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
 
     context = {
-        'products': products
+        'products': page_obj.object_list,
+        'page_obj': page_obj,
+        'filter_product_classes': ProductClass.objects.all().order_by('name'),
+        'selected_product_classes': product_classes,
+        'query_text': query_text or '',
     }
 
-    return render(request, TEMPLATE, context)
+    if request.htmx:
+        template = 'sales/products/partials/product_rows.html'
+        
+    return render(request, template, context)
+
+@login_required
+def products_export(request):
+    product_classes = request.GET.getlist('product_classes')
+    query_text = request.GET.get('query_text')
+
+    filters = {}
+    if product_classes: filters['product_classes'] = product_classes
+    if query_text: filters['query_text'] = query_text
+
+    products_service = ProductsCrud()
+    qs = products_service.read(**filters)
+
+    data = []
+    for product in qs:
+        data.append({
+            'ID': product.id.upper() if product.id else '',
+            'Nombre': product.name.title() if product.name else '-',
+            'Código de barras': product.barcode if product.barcode else 'No asignado',
+            'Precio': product.price if product.price is not None else 0.0,
+            'Costo': product.cost if product.cost is not None else 0.0,
+            'Unidad de medida': product.unit_of_measure.title() if product.unit_of_measure else '-',
+            'Clase': product.product_class.name.title() if product.product_class and product.product_class.name else '-',
+            'Categoría': product.product_class.product_category.name.title() if product.product_class and product.product_class.product_category and product.product_class.product_category.name else '-',
+        })
+
+    df = pd.DataFrame(data)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Productos')
+
+    output.seek(0)
+    response = HttpResponse(
+        output,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=productos.xlsx'
+    return response
 
 @login_required
 def product(request, product_id: str):
     TEMPLATE = 'sales/products/product.html'
-    products_service = ProductsCRUD()
-    product = products_service.get_product(product_id=product_id)
+    products_service = ProductsCrud()
+    product = products_service.get_by_id(product_id=product_id)
 
     context = {
         'product': product
@@ -29,43 +92,128 @@ def product(request, product_id: str):
 
     return render(request, TEMPLATE, context)
 
+
+
+
 @login_required
-def product_import(request):
-    TEMPLATE_REDIRECT = 'sales:products'
+def sale_transactions(request):
+    template = 'sales/sale_transactions/sale_transactions.html'
+    allowed_routes = get_allowed_routes_for_user(request.user)
 
-    if request.method == 'POST':
-        file = request.FILES.get('file')
+    # get filters
+    doc_id = request.GET.get('doc_id')
+    sale_date_start = request.GET.get('sale_date_start')
+    sale_date_end = request.GET.get('sale_date_end')
+    
+    product_classes = request.GET.getlist('product_classes')
+    product_categories = request.GET.getlist('product_categories')
+    routes = request.GET.getlist('routes')
+    warehouses = request.GET.getlist('warehouses')
 
-        if not file:
-            messages.error(request, "No se adjuntó ningún archivo.")
-            return redirect(TEMPLATE_REDIRECT)
+    # customers and products as comma separated strings in simple input
+    customers_str = request.GET.get('customers')
+    products_str = request.GET.get('products')
 
-        if not (file.name.endswith('.csv') or file.name.endswith('.xlsx')):
-            messages.error(request, "El archivo debe ser un CSV o Excel (.xlsx).")
-            return redirect(TEMPLATE_REDIRECT)
+    filters = {}
+    if doc_id: filters['doc_id'] = doc_id
+    if sale_date_start: filters['sale_date_start'] = sale_date_start
+    if sale_date_end: filters['sale_date_end'] = sale_date_end
+    if product_classes: filters['product_classes'] = product_classes
+    if product_categories: filters['product_categories'] = product_categories
+    if routes: filters['routes'] = routes
+    if warehouses: filters['warehouses'] = warehouses
+    if customers_str: filters['customers'] = [c.strip() for c in customers_str.split(',') if c.strip()]
+    if products_str: filters['products'] = [p.strip() for p in products_str.split(',') if p.strip()]
 
-        column_ref = Reference.objects.filter(
-            model=Reference.Model.COLUMNS,
-            description='product_cleaning'
-        )
-        product_class_ref = Reference.objects.filter(
-            model=Reference.Model.PRODUCT_CLASS,
-            description='product_cleaning'
-        )
+    transactions_service = SaleTransactionCRUD()
+    qs = transactions_service.read(allowed_routes, **filters)
+    
+    # We order by sale_date DESC for recent ones first
+    qs = qs.order_by('-sale_date')
 
-        if not column_ref.exists():
-            messages.error(request, "No existen reglas de mapeo de configuradas para la importación de productos.")
-            return redirect(TEMPLATE_REDIRECT)
+    paginator = Paginator(qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
 
-        column_mappers = {ref.key: ref.reference for ref in column_ref}
-        products_service = ProductsCRUD()
-        success = products_service.products_create(file=file, column_mappers=column_mappers)
+    context = {
+        'transactions': page_obj.object_list,
+        'page_obj': page_obj,
+        'filter_product_classes': ProductClass.objects.all().order_by('name'),
+        'filter_product_categories': ProductCategory.objects.all().order_by('name'),
+        'filter_routes': Route.objects.filter(id__in=allowed_routes).order_by('id'),
+        'filter_warehouses': Warehouse.objects.all().order_by('name'),
+        
+        'selected_product_classes': product_classes,
+        'selected_product_categories': product_categories,
+        'selected_routes': routes,
+        'selected_warehouses': warehouses,
+        'doc_id': doc_id or '',
+        'sale_date_start': sale_date_start or '',
+        'sale_date_end': sale_date_end or '',
+        'customers': customers_str or '',
+        'products': products_str or '',
+        'allowed_routes': allowed_routes
+    }
 
-        if success:
-            messages.success(request, "El archivo se importó y procesó correctamente.")
-        else:
-            messages.error(request, "Ocurrió un error al procesar el archivo. Verifica el formato de los datos.")
+    if request.htmx:
+        template = 'sales/sale_transactions/partials/sale_transaction_rows.html'
 
-    return redirect(TEMPLATE_REDIRECT)
+    return render(request, template, context)
 
+@login_required
+def sale_transactions_export(request):
+    allowed_routes = get_allowed_routes_for_user(request.user)
 
+    doc_id = request.GET.get('doc_id')
+    sale_date_start = request.GET.get('sale_date_start')
+    sale_date_end = request.GET.get('sale_date_end')
+    
+    product_classes = request.GET.getlist('product_classes')
+    product_categories = request.GET.getlist('product_categories')
+    routes = request.GET.getlist('routes')
+    warehouses = request.GET.getlist('warehouses')
+
+    customers_str = request.GET.get('customers')
+    products_str = request.GET.get('products')
+
+    filters = {}
+    if doc_id: filters['doc_id'] = doc_id
+    if sale_date_start: filters['sale_date_start'] = sale_date_start
+    if sale_date_end: filters['sale_date_end'] = sale_date_end
+    if product_classes: filters['product_classes'] = product_classes
+    if product_categories: filters['product_categories'] = product_categories
+    if routes: filters['routes'] = routes
+    if warehouses: filters['warehouses'] = warehouses
+    if customers_str: filters['customers'] = [c.strip() for c in customers_str.split(',') if c.strip()]
+    if products_str: filters['products'] = [p.strip() for p in products_str.split(',') if p.strip()]
+
+    transactions_service = SaleTransactionCRUD()
+    qs = transactions_service.read(allowed_routes, **filters).order_by('-sale_date')
+
+    data = []
+    for txn in qs:
+        data.append({
+            'Documento': txn.doc_id.upper() if txn.doc_id else '',
+            'Fecha': txn.sale_date.strftime('%d/%m/%Y') if txn.sale_date else '',
+            'Lugar de venta': txn.warehouse_id.upper() if txn.warehouse_id else '',
+            'Cliente': txn.customer_id.upper() if txn.customer_id else '',
+            'Ruta': txn.route_id.upper() if txn.route_id else '',
+            'Monto neto': txn.net_amount if txn.net_amount is not None else 0.0,
+            'Monto bruto': txn.gross_amount if txn.gross_amount is not None else 0.0,
+            'Cantidad': txn.quantity if txn.quantity is not None else 0.0,
+            'Producto': txn.product_id.upper() if txn.product_id else '',
+        })
+
+    df = pd.DataFrame(data)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Transacciones')
+
+    output.seek(0)
+    response = HttpResponse(
+        output,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=transacciones.xlsx'
+    return response

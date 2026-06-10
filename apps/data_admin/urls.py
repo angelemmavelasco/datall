@@ -9,4 +9,9 @@ urlpatterns = [
     path('groups/', groups, name='groups'),
     path('groups/<int:group_id>/', group, name='group'),
     path('groups/create/', group_create, name='group_create'),
+    path('uploads/', uploads, name='uploads'),
+    path('uploads/create/', upload_create, name='upload_create'),
+
+
+    path('activity/', activity, name='activity'),
 ]

@@ -1,0 +1,230 @@
+{% load humanize %}
+
+<div class="overflow-x-auto">
+    <table class="w-full text-left border-collapse">
+        <thead class="bg-page border-b border-border">
+            <tr>
+                <th scope="col" class="p-2 text-title font-medium border-r border-border min-w-[250px]">Dimensión</th>
+                {% for year in years %}
+                    <th scope="col" class="p-2 text-title font-medium text-right border-l border-border">{{ year|default:"N/A" }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+
+            {% if dimension == 'customer_productclass_product' %}
+                {% for customer_name, customer_data in pivot_data.items %}
+                    {% with c_id=forloop.counter %}
+                    <tr class="border-b border-border cursor-pointer hover:bg-hover transition-colors"
+                        onclick="togglePivot('cust-{{ c_id }}', 'icon-cust-{{ c_id }}')">
+                        <td class="p-2 text-strong flex items-center gap-2">
+                            <svg id="icon-cust-{{ c_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right text-muted"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+                            <span class="truncate font-semibold" title="{{ customer_name|title }}">{{ customer_name|title }}</span>
+                        </td>
+                        {% for total in customer_data.totals %}
+                            <td class="p-2 text-right text-strong border-l border-border font-semibold">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% for linea_name, linea_data in customer_data.lines.items %}
+                        {% with l_id=forloop.counter %}
+                        <tr class="cust-{{ c_id }} hidden border-b border-border cursor-pointer hover:bg-hover transition-colors"
+                            onclick="togglePivot('line-cust-{{ c_id }}-{{ l_id }}', 'icon-line-cust-{{ c_id }}-{{ l_id }}')">
+                            <td class="p-2 pl-8 text-body flex items-center gap-2">
+                                <svg id="icon-line-cust-{{ c_id }}-{{ l_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right text-muted"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+                                <span class="truncate" title="{{ linea_name|title }}">{{ linea_name|title }}</span>
+                            </td>
+                            {% for total in linea_data.totals %}
+                                <td class="p-2 text-right border-l border-border text-body">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% for prod_name, prod_totals in linea_data.products.items %}
+                            <tr class="line-cust-{{ c_id }}-{{ l_id }} hidden border-b border-border bg-page hover:bg-hover transition-colors">
+                                <td class="p-2 pl-14 text-muted truncate text-sm" title="{{ prod_name|title }}">
+                                    - {{ prod_name|title }}
+                                </td>
+                                {% for total in prod_totals %}
+                                    <td class="p-2 text-right border-l border-border text-muted text-sm">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %} {% endwith %}
+                    {% endfor %} {% endwith %}
+                {% endfor %}
+
+            {% elif dimension == 'productclass_customer_product' %}
+                {% for linea_name, linea_data in pivot_data.items %}
+                    {% with l_id=forloop.counter %}
+                    <tr class="border-b border-border cursor-pointer hover:bg-hover transition-colors"
+                        onclick="togglePivot('lcp-line-{{ l_id }}', 'icon-lcp-line-{{ l_id }}')">
+                        <td class="p-2 text-strong flex items-center gap-2">
+                            <svg id="icon-lcp-line-{{ l_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right text-muted"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+                            <span class="truncate font-semibold" title="{{ linea_name|title }}">{{ linea_name|title }}</span>
+                        </td>
+                        {% for total in linea_data.totals %}
+                            <td class="p-2 text-right text-strong border-l border-border font-semibold">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% for cust_name, cust_data in linea_data.customers.items %}
+                        {% with c_id=forloop.counter %}
+                        <tr class="lcp-line-{{ l_id }} hidden border-b border-border cursor-pointer hover:bg-hover transition-colors"
+                            onclick="togglePivot('lcp-cust-{{ l_id }}-{{ c_id }}', 'icon-lcp-cust-{{ l_id }}-{{ c_id }}')">
+                            <td class="p-2 pl-8 text-body flex items-center gap-2">
+                                {% if cust_data.products %}
+                                <svg id="icon-lcp-cust-{{ l_id }}-{{ c_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right text-muted"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+                                {% else %}<span class="w-4"></span>{% endif %}
+                                <span class="truncate" title="{{ cust_name|title }}">{{ cust_name|title }}</span>
+                            </td>
+                            {% for total in cust_data.totals %}
+                                <td class="p-2 text-right border-l border-border text-body">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% for prod_name, prod_totals in cust_data.products.items %}
+                            <tr class="lcp-cust-{{ l_id }}-{{ c_id }} hidden border-b border-border bg-page hover:bg-hover transition-colors">
+                                <td class="p-2 pl-14 text-muted truncate text-sm" title="{{ prod_name|title }}">
+                                    - {{ prod_name|title }}
+                                </td>
+                                {% for total in prod_totals %}
+                                    <td class="p-2 text-right border-l border-border text-muted text-sm">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %} {% endwith %}
+                    {% endfor %} {% endwith %}
+                {% endfor %}
+
+            {% elif dimension == 'productclass_product' %}
+                {% for linea_name, linea_data in pivot_data.items %}
+                    {% with l_id=forloop.counter %}
+                    <tr class="border-b border-border cursor-pointer hover:bg-hover transition-colors"
+                        onclick="togglePivot('lp-line-{{ l_id }}', 'icon-lp-line-{{ l_id }}')">
+                        <td class="p-2 text-strong flex items-center gap-2">
+                            <svg id="icon-lp-line-{{ l_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right text-muted"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+                            <span class="truncate font-semibold" title="{{ linea_name|title }}">{{ linea_name|title }}</span>
+                        </td>
+                        {% for total in linea_data.totals %}
+                            <td class="p-2 text-right text-strong border-l border-border font-semibold">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% for prod_name, prod_totals in linea_data.products.items %}
+                        <tr class="lp-line-{{ l_id }} hidden border-b border-border bg-page hover:bg-hover transition-colors">
+                            <td class="p-2 pl-8 text-body truncate text-sm" title="{{ prod_name|title }}">
+                                - {{ prod_name|title }}
+                            </td>
+                            {% for total in prod_totals %}
+                                <td class="p-2 text-right border-l border-border text-body text-sm">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %} {% endwith %}
+                {% endfor %}
+
+            {% elif dimension == 'management_productclass_product' %}
+                {% for mgt_name, mgt_data in pivot_data.items %}
+                    {% with m_id=forloop.counter %}
+                    <tr class="border-b border-border cursor-pointer hover:bg-hover transition-colors"
+                        onclick="togglePivot('mpp-mgt-{{ m_id }}', 'icon-mpp-mgt-{{ m_id }}')">
+                        <td class="p-2 text-strong flex items-center gap-2">
+                            <svg id="icon-mpp-mgt-{{ m_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right text-muted"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+                            <span class="truncate font-semibold" title="{{ mgt_name|title }}">{{ mgt_name|title }}</span>
+                        </td>
+                        {% for total in mgt_data.totals %}
+                            <td class="p-2 text-right text-strong border-l border-border font-semibold">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% for linea_name, linea_data in mgt_data.lines.items %}
+                        {% with l_id=forloop.counter %}
+                        <tr class="mpp-mgt-{{ m_id }} hidden border-b border-border cursor-pointer hover:bg-hover transition-colors"
+                            onclick="togglePivot('mpp-line-{{ m_id }}-{{ l_id }}', 'icon-mpp-line-{{ m_id }}-{{ l_id }}')">
+                            <td class="p-2 pl-8 text-body flex items-center gap-2">
+                                {% if linea_data.products %}
+                                <svg id="icon-mpp-line-{{ m_id }}-{{ l_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right text-muted"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+                                {% else %}<span class="w-4"></span>{% endif %}
+                                <span class="truncate" title="{{ linea_name|title }}">{{ linea_name|title }}</span>
+                            </td>
+                            {% for total in linea_data.totals %}
+                                <td class="p-2 text-right border-l border-border text-body">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% for prod_name, prod_totals in linea_data.products.items %}
+                            <tr class="mpp-line-{{ m_id }}-{{ l_id }} hidden border-b border-border bg-page hover:bg-hover transition-colors">
+                                <td class="p-2 pl-14 text-muted truncate text-sm" title="{{ prod_name|title }}">
+                                    - {{ prod_name|title }}
+                                </td>
+                                {% for total in prod_totals %}
+                                    <td class="p-2 text-right border-l border-border text-muted text-sm">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %} {% endwith %}
+                    {% endfor %} {% endwith %}
+                {% endfor %}
+
+            {% elif dimension == 'product_customer' %}
+                {% for prod_name, prod_data in pivot_data.items %}
+                    {% with p_id=forloop.counter %}
+                    <tr class="border-b border-border cursor-pointer hover:bg-hover transition-colors"
+                        onclick="togglePivot('pc-prod-{{ p_id }}', 'icon-pc-prod-{{ p_id }}')">
+                        <td class="p-2 text-strong flex items-center gap-2">
+                            <svg id="icon-pc-prod-{{ p_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right text-muted"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+                            <span class="truncate font-semibold" title="{{ prod_name|title }}">{{ prod_name|title }}</span>
+                        </td>
+                        {% for total in prod_data.totals %}
+                            <td class="p-2 text-right text-strong border-l border-border font-semibold">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% for cust_name, cust_totals in prod_data.customers.items %}
+                        <tr class="pc-prod-{{ p_id }} hidden border-b border-border bg-page hover:bg-hover transition-colors">
+                            <td class="p-2 pl-8 text-body truncate text-sm" title="{{ cust_name|title }}">
+                                - {{ cust_name|title }}
+                            </td>
+                            {% for total in cust_totals %}
+                                <td class="p-2 text-right border-l border-border text-body text-sm">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %} {% endwith %}
+                {% endfor %}
+            {% endif %}
+
+            {% if not pivot_data %}
+            <tr>
+                <td colspan="{{ years|length|add:1 }}" class="p-4 text-center text-muted">No se encontraron registros de ventas para los filtros seleccionados.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{% if page_obj and page_obj.has_other_pages %}
+<div class="flex items-center justify-between border-t border-border bg-page p-2 rounded-b">
+    <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+        <div>
+            <p class="text-sm text-body">
+                Mostrando página <span class="font-medium text-strong">{{ page_obj.number }}</span> de
+                <span class="font-medium text-strong">{{ page_obj.paginator.num_pages }}</span>
+                (Total jerarquía principal: {{ page_obj.paginator.count }})
+            </p>
+        </div>
+        <div>
+            <nav class="isolate inline-flex -space-x-px rounded shadow-sm gap-1" aria-label="Pagination">
+                {% if page_obj.has_previous %}
+                    <button hx-get="{% url 'business_intelligence:sales_breakdown' %}" hx-include="#filters-form" hx-vals='{"page": {{ page_obj.previous_page_number }}}' hx-target="#report-container" class="relative inline-flex items-center rounded p-1 text-strong border border-border hover:bg-hover transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="M16 12H8"/><path d="m12 8-4 4 4 4"/></svg>
+                    </button>
+                {% else %}
+                    <span class="relative inline-flex items-center rounded p-1 text-muted border border-border cursor-not-allowed">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="M16 12H8"/><path d="m12 8-4 4 4 4"/></svg>
+                    </span>
+                {% endif %}
+                
+                <span class="relative inline-flex items-center bg-hover px-3 py-1 text-strong border border-border rounded">{{ page_obj.number }}</span>
+                
+                {% if page_obj.has_next %}
+                    <button hx-get="{% url 'business_intelligence:sales_breakdown' %}" hx-include="#filters-form" hx-vals='{"page": {{ page_obj.next_page_number }}}' hx-target="#report-container" class="relative inline-flex items-center rounded p-1 text-strong border border-border hover:bg-hover transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+                    </button>
+                {% else %}
+                    <span class="relative inline-flex items-center rounded p-1 text-muted border border-border cursor-not-allowed">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+                    </span>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+</div>
+{% endif %}

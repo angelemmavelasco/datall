@@ -61,13 +61,4 @@ def get_allowed_routes_for_user(user):
         employee_id__in=team_ids,
         end_date__isnull=True
     ).values_list('route_id', flat=True)
-
-    commercial_warehouses = Route.objects.filter(
-        id__in=assigned_routes,
-        warehouse__isnull=False 
-    ).values_list('warehouse_id', flat=True).distinct()
-
-    allowed_routes = Route.objects.filter(
-        Q(warehouse_id__in=commercial_warehouses) | Q(id__in=assigned_routes)
-    ).distinct()
-    return allowed_routes
+    return Route.objects.filter(id__in=assigned_routes).distinct()

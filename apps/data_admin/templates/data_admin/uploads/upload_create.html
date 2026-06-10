@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Nueva importación{% endblock %}
+
+{% block module_name %}Nueva importación{% endblock %}
+
+{% block module_actions %}
+    <button type="submit" form="upload-form" id="btn-save" class="hover:text-hover text-green-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+      <span>Importar</span>
+    </button>
+
+    <a href="{% url 'data_admin:uploads' %}" class="hover:text-hover text-red-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+      <span>Cancelar</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+  <form id="upload-form" method="POST" action="{% url 'data_admin:upload_create' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="flex flex-col gap-4">
+
+      <p class="text-title text-sm">Configuración de la importación</p>
+      <hr class="border-border border">
+
+      <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Modelo a afectar</span>
+        <div>
+          <select name="content_type_id" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
+            <option value="">Seleccione un modelo...</option>
+            {% for ct in content_types %}
+              <option value="{{ ct.id }}">{{ ct.model|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <span class="text-title">Archivo fuente (.csv, .xlsx)</span>
+        <div>
+          <input type="file" name="file" accept=".csv, .xlsx, .xls" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
+        </div>
+      </div>
+
+    </div>
+  </form>
+{% endblock %}

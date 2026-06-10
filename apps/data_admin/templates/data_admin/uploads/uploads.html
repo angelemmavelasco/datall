@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Importaciones{% endblock %}
+
+{% block module_name %}Importaciones{% endblock %}
+
+
+{% block module_actions %}
+
+    <a href="{% url 'data_admin:upload_create' %}" target="_blank" title="Nueva importación" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0">Nueva importación</a>
+
+    <button onclick="toggleFilters()"
+        class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+            <path d="M10 5H3" />
+            <path d="M12 19H3" />
+            <path d="M14 3v4" />
+            <path d="M16 17v4" />
+            <path d="M21 12h-9" />
+            <path d="M21 19h-5" />
+            <path d="M21 5h-7" />
+            <path d="M8 10v4" />
+            <path d="M8 12H3" />
+        </svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+
+{% endblock %}
+
+
+{% block content %}
+
+    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+        <table class="w-full table-fixed text-left border-collapse">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="w-32 p-1 text-center text-title">Usuario</th>
+                    <th class="w-40 p-1 text-center text-title">Fecha de Carga</th>
+                    <th class="w-40 p-1 text-center text-title">Modelo</th>
+                    <th class="w-64 p-1 text-center text-title">Archivo</th>
+                    <th class="w-24 p-1 text-center text-title">Detalles</th>
+                    <th class="w-20 p-1 text-center text-title">Estado</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for upload in uploads %}
+                    <tr class="hover:bg-hover transition-colors duration-300">
+                        <td class="p-2">
+                            <a href="{% url 'data_admin:upload' upload.id %}" target="_blank" class="flex items-center gap-2 underline text-strong">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
+                                <span>
+                                    {{ upload.filename|default:"-" }}
+                                </span>
+                            </a>
+                        </td>
+                        <td class="p-2 truncate">{{ user.first_name|title|default:"-" }}</td>
+                        <td class="p-2 truncate">{{ user.last_name|title|default:"-" }}</td>
+                        <td class="p-2 truncate">{% if user.second_last_name %}{{ user.second_last_name|title|default:"-" }}{% else %}-{% endif %}</td>
+                        <td class="p-2 truncate">{{ user.email|default:"-" }}</td>
+                        <td class="p-2 text-center">{% if user.is_active %}Activo{% else %}Inactivo{% endif %}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="p-2 text-center text-body">
+                                No hay datos para mostrar.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+{% endblock %}

@@ -195,6 +195,7 @@ def group(request, group_id: int = None):
 
 @login_required
 def group_create(request):
+
     groups_service = groups_crud.GroupsCRUD()
     TEMPLATE = 'data_admin/groups/group_create.html'
     
@@ -221,4 +222,135 @@ def group_create(request):
             context['group'] = raw_data
             return render(request, TEMPLATE, context)
 
+    return render(request, TEMPLATE, context)
+
+
+
+@login_required
+def uploads(request):
+    TEMPLATE = 'data_admin/uploads/uploads.html'
+    
+    
+    context = {}
+    
+    return render(request, TEMPLATE, context)
+
+
+from django.contrib.contenttypes.models import ContentType
+from apps.customers.services.customers_crud.customer_bulk import CustomersBulk
+
+@login_required
+def upload_create(request):
+    TEMPLATE = 'data_admin/uploads/upload_create.html'
+
+    if request.method == 'POST':
+        content_type_id = request.POST.get('content_type_id')
+        uploaded_file = request.FILES.get('file')
+
+        if not content_type_id or not uploaded_file:
+            messages.error(request, "Debe seleccionar un modelo y adjuntar un archivo válido.")
+            return redirect('data_admin:upload_create')
+
+        try:
+            content_type = ContentType.objects.get(id=content_type_id)
+        except ContentType.DoesNotExist:
+            messages.error(request, "El modelo seleccionado no existe.")
+            return redirect('data_admin:upload_create')
+
+        if content_type.model == 'customer':
+            bulk_service = CustomersBulk()
+            success, result = bulk_service.clean(uploaded_file)
+            
+            if not success:
+                messages.error(request, result)
+                return redirect('data_admin:upload_create')
+            
+            df_cleaned = result
+            success_create, msg = bulk_service.create(df_cleaned)
+            
+            if success_create:
+                messages.success(request, msg)
+                return redirect('data_admin:uploads')
+            else:
+                messages.error(request, msg)
+                return redirect('data_admin:upload_create')
+                
+        elif content_type.model == 'product':
+            from apps.sales.services.products.products_bulk import ProductsBulk
+            bulk_service = ProductsBulk()
+            success, result = bulk_service.clean(uploaded_file)
+            
+            if not success:
+                messages.error(request, result)
+                return redirect('data_admin:upload_create')
+            
+            df_cleaned = result
+            success_create, msg = bulk_service.create(df_cleaned)
+            
+            if success_create:
+                messages.success(request, msg)
+                return redirect('data_admin:uploads')
+            else:
+                messages.error(request, msg)
+                return redirect('data_admin:upload_create')
+                
+        elif content_type.model == 'saletransaction':
+            from apps.sales.services.sale_transactions.sales_transactions_bulk import SalesTransactionsBulk
+            bulk_service = SalesTransactionsBulk()
+            success, result = bulk_service.clean(uploaded_file)
+            
+            if not success:
+                messages.error(request, result)
+                return redirect('data_admin:upload_create')
+            
+            df_cleaned = result
+            success_create, msg = bulk_service.create(df_cleaned)
+            
+            if success_create:
+                messages.success(request, msg)
+                return redirect('data_admin:uploads')
+            else:
+                messages.error(request, msg)
+                return redirect('data_admin:upload_create')
+
+        elif content_type.model == 'saletarget':
+            from apps.sales.services.sale_targets.sale_targets_bulk import SaleTargetsBulk
+            bulk_service = SaleTargetsBulk()
+            success, result = bulk_service.clean(uploaded_file)
+            
+            if not success:
+                messages.error(request, result)
+                return redirect('data_admin:upload_create')
+            
+            df_cleaned = result
+            success_create, msg = bulk_service.create(df_cleaned)
+            
+            if success_create:
+                messages.success(request, msg)
+                return redirect('data_admin:uploads')
+            else:
+                messages.error(request, msg)
+                return redirect('data_admin:upload_create')
+        else:
+            messages.warning(request, f"Todavía no hay un servicio de importación masiva configurado para el modelo: {content_type.model.title()}.")
+            return redirect('data_admin:upload_create')
+
+    content_types = ContentType.objects.all().order_by('model')
+
+    context = {
+        'content_types': content_types,
+    }
+
+    return render(request, TEMPLATE, context)
+
+
+
+
+@login_required
+def activity(request):
+    TEMPLATE = 'data_admin/activity/activity.html'
+    
+    
+    context = {}
+    
     return render(request, TEMPLATE, context)

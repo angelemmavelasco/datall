@@ -1,0 +1,25 @@
+{% load humanize %}
+
+{% for txn in transactions %}
+    <tr class="hover:bg-hover transition-colors duration-300"
+        {% if forloop.last and page_obj.has_next %}
+            hx-get="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}"
+            hx-trigger="revealed"
+            hx-swap="afterend"
+        {% endif %}
+    >
+        <td class="p-2 text-center text-strong">{{ txn.doc_id|upper }}</td>
+        <td class="p-2 text-center">{{ txn.sale_date|date:"d/m/Y" }}</td>
+        <td class="p-2 text-center truncate" title="{{ txn.warehouse.name|default:'-' }}">{{ txn.warehouse_id|upper }}</td>
+        <td class="p-2 text-center truncate" title="{{ txn.customer.name|default:'-' }}">{{ txn.customer_id|upper }}</td>
+        <td class="p-2 text-center truncate" title="{{ txn.route.name|default:'-' }}">{{ txn.route_id|upper }}</td>
+        <td class="p-2 text-center">$ {{ txn.net_amount|default:0.0|floatformat:2|intcomma }}</td>
+        <td class="p-2 text-center">$ {{ txn.gross_amount|default:0.0|floatformat:2|intcomma }}</td>
+        <td class="p-2 text-center">{{ txn.quantity|default:0.0|floatformat:2|intcomma }}</td>
+        <td class="p-2 text-center truncate" title="{{ txn.product.name|default:'-' }}">{{ txn.product_id|upper }}</td>
+    </tr>
+{% empty %}
+    <tr>
+        <td colspan="9" class="text-center text-title p-2">No hay datos para mostrar.</td>
+    </tr>
+{% endfor %}

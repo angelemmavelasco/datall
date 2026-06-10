@@ -26,7 +26,7 @@
 
       <span class="text-title">Código de barras</span>
       <div>
-        <span class="view-el">{{ product.barcode|upper }}</span>
+        <span class="view-el">{{ product.barcode|default:'No asignado' }}</span>
       </div>
 
       <span class="text-title">Unidad de medida</span>
@@ -36,12 +36,12 @@
 
       <span class="text-title">Precio</span>
       <div>
-        <span class="view-el">{{ product.price|default:0.0|floatformat:2 }}</span>
+        <span class="view-el">$ {{ product.price|default:0.0|floatformat:2|intcomma }}</span>
       </div>
 
       <span class="text-title">Costo</span>
       <div>
-        <span class="view-el">{{ product.cost|default:0.0|floatformat:2 }}</span>
+        <span class="view-el">$ {{ product.cost|default:0.0|floatformat:2|intcomma }}</span>
       </div>
 
 

@@ -37,17 +37,20 @@ class SaleTargetCRUD:
             end_date = self._normalize_period(kwargs['period_end'])
             queryset = queryset.filter(period__lte=end_date)
             
+        if kwargs.get('period'):
+            exact_period = self._normalize_period(kwargs['period'])
+            queryset = queryset.filter(period=exact_period)
+            
         if kwargs.get('target_amount_min') is not None:
             queryset = queryset.filter(target_amount__gte=kwargs['target_amount_min'])
         if kwargs.get('target_amount_max') is not None:
             queryset = queryset.filter(target_amount__lte=kwargs['target_amount_max'])
-        if kwargs.get('is_valid_for_comission') is not None:
-            queryset = queryset.filter(is_valid_for_comission=kwargs['is_valid_for_comission'])
                 
         fk_fields = {
             'product_classes': 'product_class_id__in',
             'product_categories': 'product_class__product_category_id__in',
             'warehouses': 'warehouse_id__in',
+            'regions': 'route__warehouse__region_id__in',
             'routes': 'route_id__in',
             'route_warehouse_ids': 'route__warehouse_id__in'
         }

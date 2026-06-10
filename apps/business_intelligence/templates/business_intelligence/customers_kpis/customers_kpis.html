@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block title %}KPIs por clientes{% endblock %}
 
@@ -6,7 +7,22 @@
 
 {% block module_actions %}
 
-<button class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button>
+<div class="flex gap-4 border border-border rounded p-1">
+    <p class="text-body">Mostrar / ocultar:</p>
+
+    <button onclick="toggleSection('seccion-cobranza', this)" class="hover:text-hover text-strong transition-colors cursor-pointer" id="btnCobranza">Cobranza</button>
+
+    <button onclick="toggleSection('seccion-metricas', this)" class="hover:text-hover text-strong transition-colors cursor-pointer" id="btnMetricas">Métricas de consumo</button>
+    
+    <button onclick="toggleSection('seccion-mensual', this)" class="hover:text-hover text-strong transition-colors cursor-pointer" id="btnMensual">Desglose de consumos mensuales</button>
+</div>
+
+
+
+
+<button class="hover:text-hover text-strong transition-colors cursor-pointer" id="downloadReport">Descargar reporte</button>
+
+
 
 <button onclick="toggleFilters()"
     class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
@@ -28,6 +44,202 @@
     </span>
 </button>
 
+
+
+{% endblock %}
+
+
+{% block filters %}
+
+<form method="GET" action="">
+
+    <!-- Búsqueda General -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Búsqueda (ID o Nombre)</label>
+        <input type="text" name="query_text" value="{{ query_text|default:'' }}" class="border border-border rounded p-1 bg-page text-sm" placeholder="Buscar cliente...">
+    </div>
+
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Líder de opinión</label>
+        <select name="opinion_leader" class="border border-border rounded p-1 bg-page text-sm">
+            <option value="">Todos</option>
+            <option value="true" {% if selected_opinion_leader == 'true' %}selected{% endif %}>Sí</option>
+            <option value="false" {% if selected_opinion_leader == 'false' %}selected{% endif %}>No</option>
+        </select>
+    </div>
+
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Registro desde</label>
+        <input type="date" name="start_registration_date" value="{{ selected_start_registration_date|default:'' }}" class="border border-border rounded p-1 bg-page text-sm">
+    </div>
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Registro hasta</label>
+        <input type="date" name="end_registration_date" value="{{ selected_end_registration_date|default:'' }}" class="border border-border rounded p-1 bg-page text-sm">
+    </div>
+
+    <!-- Gerencia (Multi-select con búsqueda) -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Gerencia</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar gerencia..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'warehouses-list')">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'warehouses-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="warehouses-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for w in filter_warehouses %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="warehouses" value="{{ w.id }}" {% if w.id in selected_warehouses %}checked{% endif %}>
+                    <span class="searchable-text">{{ w.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Rutas (Multi-select con búsqueda) -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Rutas</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar ruta..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'routes-list')">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'routes-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="routes-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for r in filter_routes %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="routes" value="{{ r.id }}" {% if r.id in selected_routes %}checked{% endif %}>
+                    <span class="searchable-text">{{ r.id|title }}: {{ r.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tipos de Cliente (Multi-select con búsqueda) -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Tipo de cliente</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar tipo..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'customer-types-list')">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'customer-types-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="customer-types-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for ct in filter_customer_types %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="customer_types" value="{{ ct.id }}" {% if ct.id in selected_customer_types %}checked{% endif %}>
+                    <span class="searchable-text">{{ ct.id|title }}: {{ ct.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2">Aplicar filtros</button>
+</form>
+
+<script>
+function filterCheckboxes(inputElement, listId) {
+    const filter = inputElement.value.toLowerCase();
+    const list = document.getElementById(listId);
+    const labels = list.getElementsByTagName('label');
+
+    for (let i = 0; i < labels.length; i++) {
+        const span = labels[i].querySelector('.searchable-text');
+        if (span) {
+            const textValue = span.textContent || span.innerText;
+            if (textValue.toLowerCase().indexOf(filter) > -1) {
+                labels[i].style.display = "";
+            } else {
+                labels[i].style.display = "none";
+            }
+        }
+    }
+}
+
+function toggleAllCheckboxes(masterCheckbox, listId) {
+    const list = document.getElementById(listId);
+    const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        // Only toggle visible checkboxes to respect search filter
+        if (cb.closest('label').style.display !== "none") {
+            cb.checked = masterCheckbox.checked;
+        }
+    });
+}
+</script>
+
+
+{% endblock %}
+
+
+{% block content %}
+
+<div class="w-full overflow-x-auto border border-border rounded bg-container">
+    <table class="w-full text-left border-collapse">
+        <thead>
+            <tr class="border-b border-border">
+                <th colspan="3" class="p-2 text-center border-r border-border">Identificación</th>
+                <th colspan="4" class="p-2 text-center border-r border-border">Segmentación</th>
+                <th colspan="3" class="seccion-cobranza     p-2 text-center border-r border-border" >Cobranza</th>
+                <th colspan="5" class="seccion-metricas p-2 text-center border-r border-border" >Métricas de consumo</th>
+                <th colspan="12" class="seccion-mensual min-w-[500px] p-2 text-center  border-r border-border" >Desglose de consumos mensuales año
+                    actual</th>
+            </tr>
+
+            <tr class="border-b border-border text-xs">
+                <th class="min-w-[240px] p-2 text-center text-title border-r border-border">Cliente</th>
+                <th class="min-w-[120px] p-2 text-center text-title border-r border-border">Ruta</th>
+                <th class="min-w-[120px] p-2 text-center text-title border-r border-border">Gerencia</th>
+
+                <th class="min-w-[140px] p-2 text-center text-title border-r border-border">Tipo de cliente</th>
+                <th class="min-w-[120px] p-2 text-center text-title border-r border-border">Categoría</th>
+                <th class="min-w-[120px] p-2 text-center text-title border-r border-border">Frecuencia</th>
+                <th class="min-w-[140px] p-2 text-center text-title border-r border-border">Líder de opinión</th>
+
+                <th class="seccion-cobranza min-w-[160px] p-2 text-center text-title border-r border-border" >Saldo al corriente</th>
+                <th class="seccion-cobranza min-w-[160px] p-2 text-center text-title border-r border-border" >Saldo vencido</th>
+                <th class="seccion-cobranza min-w-[100px] p-2 text-center text-title border-r border-border" >Uso</th>
+
+                <th class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-border">Convenios activos</th>
+                <th class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-border">Clases de producto</th>
+                <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-border">Promedio año previo</th>
+                <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-border">Promedio año actual</th>
+                <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-border">Promedio trimestre</th>
+
+                {% for month in months_headers %}
+                    <th class="seccion-mensual min-w-[120px] p-2 text-center text-title border-r border-border">{{ month|date:"F"|slice:":3" }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+
+        <tbody>
+            {% include "business_intelligence/customers_kpis/partials/customer_kpis_rows.html" %}
+        </tbody>
+    </table>
+</div>
+
+
+{% endblock %}
+
+{% block extra_js %}
+
+
+<script>
+    function toggleSection(sectionClass, btnElement) {
+        const elements = document.querySelectorAll('.' + sectionClass);
+        
+
+        elements.forEach(element => {
+            element.classList.toggle('hidden');
+        });
+        btnElement.classList.toggle('opacity-50');
+        btnElement.classList.toggle('line-through');
+        btnElement.classList.toggle('text-muted');
+    }
+</script>
 
 
 {% endblock %}

@@ -1,11 +1,18 @@
 import json
+from django.core.paginator import Paginator
 from django.shortcuts import render
 from apps.core.utils import get_allowed_routes_for_user
 from django.contrib.auth.decorators import login_required
-from apps.core.models import Warehouse, ProductClass, ProductCategory
+from apps.core.models import Warehouse, ProductClass, ProductCategory, CustomerType, Region, Route
+from django.http import HttpResponse
+import openpyxl
 from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
 from apps.sales.services.sale_targets.sale_targets_crud import SaleTargetCRUD
 from apps.business_intelligence.services.sales_dashboard.dashboard_calculator import SalesDashboardCalculator
+from apps.business_intelligence.services.customers_kpis.customers_kpis import CustomersKpis
+from apps.business_intelligence.services.sales_breakdown.sales_breakdown import SalesBreakdownService
+from apps.customers.services.customers_crud.customers_crud import CustomerCrud
+
 
 @login_required
 def sales_dashboard(request):
@@ -18,6 +25,7 @@ def sales_dashboard(request):
     product_class = request.GET.getlist('product_class')
     product_category = request.GET.getlist('product_category')
     routes = request.GET.getlist('routes')
+    regions = request.GET.getlist('regions')
     date_start = request.GET.get('date_start')
     date_end = request.GET.get('date_end')
 
@@ -27,6 +35,7 @@ def sales_dashboard(request):
     if lugar_venta: filters['warehouses'] = lugar_venta
     if product_class: filters['product_classes'] = product_class
     if product_category: filters['product_categories'] = product_category
+    if regions: filters['regions'] = regions
 
     transaction_filters = filters.copy()
     if date_start: transaction_filters['sale_date_start'] = date_start
@@ -52,7 +61,7 @@ def sales_dashboard(request):
         'period', 'target_amount', 'route_id', 'route__name', 'warehouse_id', 'warehouse__name', 'product_class_id'
     ))
 
-    calculator = SalesDashboardCalculator(transactions_data, targets_data)
+    calculator = SalesDashboardCalculator(transactions_data, targets_data, date_start, date_end)
     
     kpis = calculator.calculate_kpis()
     timeline_data = calculator.calculate_timeline()
@@ -79,6 +88,7 @@ def sales_dashboard(request):
         'filter_warehouses': Warehouse.objects.all(),
         'filter_product_classes': ProductClass.objects.all(),
         'filter_product_categories': ProductCategory.objects.all(),
+        'filter_regions': Region.objects.all(),
 
 
         'selected_gerencias': gerencias,
@@ -86,6 +96,7 @@ def sales_dashboard(request):
         'selected_product_class': product_class,
         'selected_product_category': product_category,
         'selected_routes': routes,
+        'selected_regions': regions,
         'selected_date_start': date_start,
         'selected_date_end': date_end,
     }
@@ -93,10 +104,44 @@ def sales_dashboard(request):
     return render(request, template, context)
 
 
+from apps.business_intelligence.services.routes_kpis.routes_kpis import RoutesKpisService
+
 @login_required
 def routes_kpis(request):
-    context = {}
-    return render(request, 'business_intelligence/routes_kpis/routes_kpis.html', context)
+    template = 'business_intelligence/routes_kpis/routes_kpis.html'
+    
+    # Allowed routes based on Employee hierarchy
+    allowed_routes = get_allowed_routes_for_user(request.user)
+    
+    # Extract filters
+    date_start = request.GET.get('date_start')
+    date_end = request.GET.get('date_end')
+    selected_route_id = request.GET.get('route')
+    
+    # Default to the first allowed route if none selected
+    if not selected_route_id and allowed_routes.exists():
+        selected_route_id = allowed_routes.first().id
+
+    if selected_route_id:
+        target_route = allowed_routes.filter(id=selected_route_id)
+    else:
+        target_route = allowed_routes.none()
+    
+    service = RoutesKpisService(target_route, date_start, date_end)
+    routes_data, global_charts = service.get_data()
+    
+    route_data = routes_data[0] if routes_data else None
+
+    context = {
+        'route': route_data,
+        'global_charts': json.dumps(global_charts),
+        'filter_routes': allowed_routes,
+        'selected_date_start': date_start,
+        'selected_date_end': date_end,
+        'selected_route': str(selected_route_id) if selected_route_id else '',
+    }
+
+    return render(request, template, context)
 
 
 @login_required
@@ -114,5 +159,271 @@ def products_kpis(request):
 
 @login_required
 def customers_kpis(request):
-    context = {}
-    return render(request, 'business_intelligence/customers_kpis/customers_kpis.html', context)
+    template = 'business_intelligence/customers_kpis/customers_kpis.html'
+    allowed_routes = get_allowed_routes_for_user(request.user)
+    print(allowed_routes)
+
+    #get filters
+    warehouses = request.GET.getlist('warehouses')
+    routes = request.GET.getlist('routes')
+    customer_types = request.GET.getlist('customer_types')
+    opinion_leader = request.GET.get('opinion_leader')
+    start_registration_date = request.GET.get('start_registration_date')
+    end_registration_date = request.GET.get('end_registration_date')
+    query_text = request.GET.get('query_text')
+
+    #set filters dict
+    filters = {}
+    if routes: filters['routes'] = routes
+    if warehouses: filters['warehouses'] = warehouses
+    if customer_types: filters['customer_types'] = customer_types
+    if query_text: filters['query_text'] = query_text
+    if opinion_leader: filters['opinion_leader'] = opinion_leader
+    if start_registration_date: filters['start_registration_date'] = start_registration_date
+    if end_registration_date: filters['end_registration_date'] = end_registration_date
+
+    #apply filters and instance objs
+    customers_crud = CustomerCrud()
+    customers_qs = customers_crud.read(allowed_routes, **filters)
+
+    paginator = Paginator(customers_qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    #get metrics only for the paginated slice
+    customers_data = []
+    months_headers = []
+    if page_obj.object_list:
+        customers_kpis_service = CustomersKpis(page_obj.object_list)
+        customers_data, months_headers = customers_kpis_service.build_dashboard_data()
+
+    context = {
+        'customers': customers_data,
+        'page_obj': page_obj,
+        'months_headers': months_headers,
+        'filter_warehouses': Warehouse.objects.all(),
+        'filter_product_classes': ProductClass.objects.all(),
+        'filter_product_categories': ProductCategory.objects.all(),
+        'filter_customer_types': CustomerType.objects.all(),
+        'filter_routes': allowed_routes,
+        
+        'selected_start_registration_date': start_registration_date,
+        'selected_end_registration_date': end_registration_date,
+        'selected_warehouses': warehouses,
+        'selected_routes': routes,
+        'selected_customer_types': customer_types,
+        'selected_opinion_leader': opinion_leader,
+        'query_text': query_text,
+    }
+
+    if request.htmx:
+        return render(request, 'business_intelligence/customers_kpis/partials/customer_kpis_rows.html', context)
+
+    return render(request, template, context)
+
+
+@login_required
+def sales_breakdown(request):
+    template = 'business_intelligence/sales_breakdown/sales_breakdown.html'
+    
+    allowed_routes = get_allowed_routes_for_user(request.user)
+    
+    # Get filters
+    warehouses = request.GET.getlist('warehouses')
+    routes = request.GET.getlist('routes')
+    product_classes = request.GET.getlist('product_classes')
+    product_categories = request.GET.getlist('product_categories')
+    date_start = request.GET.get('date_start')
+    date_end = request.GET.get('date_end')
+    dimension = request.GET.get('dimension', 'customer_productclass_product')
+    page_number = request.GET.get('page', 1)
+    
+    filters = {}
+    if routes: filters['routes'] = routes
+    if warehouses: filters['warehouses'] = warehouses
+    if product_classes: filters['product_classes'] = product_classes
+    if product_categories: filters['product_categories'] = product_categories
+    if date_start: filters['sale_date_start'] = date_start
+    if date_end: filters['sale_date_end'] = date_end
+    
+    transaction_crud = SaleTransactionCRUD()
+    transactions_qs = transaction_crud.read(allowed_routes, **filters)
+    
+    if request.GET.get('export') == 'csv':
+        import csv
+        from django.http import HttpResponse
+        from django.db.models.functions import ExtractYear
+        from django.db.models import Sum
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="desglose_ventas.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['Gerencia', 'Ruta', 'Cliente', 'Línea', 'Producto', 'Año', 'Venta Neta'])
+
+        export_qs = transactions_qs.values(
+            'warehouse__name', 
+            'route__id', 'route__name', 
+            'customer__id', 'customer__name', 
+            'product_class__name', 
+            'product__id', 'product__name'
+        ).annotate(
+            year=ExtractYear('sale_date'), 
+            total=Sum('net_amount')
+        ).iterator(chunk_size=2000)
+
+        for row in export_qs:
+            route_str = f"{row.get('route__id', '')} - {row.get('route__name', '')}".strip(" -")
+            customer_str = f"{row.get('customer__id', '')} - {row.get('customer__name', '')}".strip(" -")
+            product_str = f"{row.get('product__id', '')} - {row.get('product__name', '')}".strip(" -")
+
+            writer.writerow([
+                row.get('warehouse__name') or 'Sin Gerencia',
+                route_str or 'Sin Ruta',
+                customer_str or 'Sin Cliente',
+                row.get('product_class__name') or 'Sin Línea',
+                product_str or 'Sin Producto',
+                row.get('year'),
+                round(row.get('total', 0), 2)
+            ])
+
+        return response
+
+    service = SalesBreakdownService(transactions_qs, dimension)
+    pivot_data, sorted_years, page_obj = service.get_data(page_number)
+    
+    context = {
+        'pivot_data': pivot_data,
+        'years': sorted_years,
+        'page_obj': page_obj,
+        'dimension': dimension,
+        
+        'filter_warehouses': Warehouse.objects.all(),
+        'filter_routes': allowed_routes,
+        'filter_product_classes': ProductClass.objects.all(),
+        'filter_product_categories': ProductCategory.objects.all(),
+        
+        'selected_warehouses': warehouses,
+        'selected_routes': routes,
+        'selected_product_classes': product_classes,
+        'selected_product_categories': product_categories,
+        'selected_date_start': date_start,
+        'selected_date_end': date_end,
+    }
+
+    if request.htmx:
+        return render(request, 'business_intelligence/sales_breakdown/partials/sales_breakdown_rows.html', context)
+        
+    return render(request, template, context)
+
+@login_required
+def sale_targets(request):
+    template = 'sales/sale_targets/sale_targets.html'
+    
+    # Allowed routes based on Employee hierarchy
+    allowed_routes = get_allowed_routes_for_user(request.user)
+    
+    # Extract filters
+    date_start = request.GET.get('date_start')
+    date_end = request.GET.get('date_end')
+    
+    product_classes = request.GET.getlist('product_classes')
+    product_categories = request.GET.getlist('product_categories')
+    routes = request.GET.getlist('routes')
+    warehouses = request.GET.getlist('warehouses')
+    
+    # We rename date_start/date_end to period_start/period_end for the CRUD
+    filters = {}
+    if date_start: filters['period_start'] = date_start
+    if date_end: filters['period_end'] = date_end
+    if product_classes: filters['product_classes'] = product_classes
+    if product_categories: filters['product_categories'] = product_categories
+    if routes: filters['routes'] = routes
+    if warehouses: filters['warehouses'] = warehouses
+
+    targets_crud = SaleTargetCRUD()
+    targets_qs = targets_crud.read(allowed_routes, **filters).order_by('-period', 'route_id')
+
+    paginator = Paginator(targets_qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'targets': page_obj.object_list,
+        'page_obj': page_obj,
+        
+        # Filter options
+        'filter_warehouses': Warehouse.objects.all(),
+        'filter_product_classes': ProductClass.objects.all(),
+        'filter_product_categories': ProductCategory.objects.all(),
+        'filter_routes': allowed_routes,
+        
+        # Selected states
+        'selected_date_start': date_start,
+        'selected_date_end': date_end,
+        'selected_product_classes': product_classes,
+        'selected_product_categories': product_categories,
+        'selected_routes': routes,
+        'selected_warehouses': warehouses,
+    }
+
+    if request.htmx:
+        return render(request, 'sales/sale_targets/partials/sale_targets_rows.html', context)
+
+    return render(request, template, context)
+
+@login_required
+def sale_targets_export(request):
+    # Allowed routes based on Employee hierarchy
+    employee = request.user.employee_profile
+    allowed_routes_qs = employee.get_reporting_tree_ids()
+    allowed_routes = Route.objects.filter(id__in=allowed_routes_qs)
+    
+    # Extract filters
+    date_start = request.GET.get('date_start')
+    date_end = request.GET.get('date_end')
+    
+    product_classes = request.GET.getlist('product_classes')
+    product_categories = request.GET.getlist('product_categories')
+    routes = request.GET.getlist('routes')
+    warehouses = request.GET.getlist('warehouses')
+    
+    filters = {}
+    if date_start: filters['period_start'] = date_start
+    if date_end: filters['period_end'] = date_end
+    if product_classes: filters['product_classes'] = product_classes
+    if product_categories: filters['product_categories'] = product_categories
+    if routes: filters['routes'] = routes
+    if warehouses: filters['warehouses'] = warehouses
+
+    targets_crud = SaleTargetCRUD()
+    targets_qs = targets_crud.read(allowed_routes, **filters).order_by('-period', 'route_id')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Objetivos de Venta"
+
+    # Headers based on HTML table
+    headers = [
+        "Periodo", 
+        "Ruta", 
+        "Gerencia", 
+        "Clase de producto", 
+        "Monto objetivo"
+    ]
+    ws.append(headers)
+
+    for t in targets_qs:
+        ws.append([
+            t.period.strftime('%b %Y') if t.period else '',
+            f"{t.route_id} - {t.route.name}" if t.route else '',
+            f"{t.warehouse_id} - {t.warehouse.name}" if t.warehouse else '',
+            f"{t.product_class_id} - {t.product_class.name}" if t.product_class else '',
+            float(t.target_amount) if t.target_amount else 0.0
+        ])
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=objetivos_venta.xlsx'
+    wb.save(response)
+    return response
+
