@@ -236,7 +236,13 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Margen</p>
-            <p class="text-xl text-title">{{ kpis.margin|default:0.00|floatformat:2|intcomma }} %</p>
+            {% if kpis.margin >= 35 %}
+            <p class="text-xl text-green-700">Óptimo</p>
+            {% elif kpis.margin >= 25 %}
+            <p class="text-xl text-yellow-700">Medio</p>
+            {% else %}
+            <p class="text-xl text-red-700">Bajo</p>
+            {% endif %}
         </div>
     </div>
 
