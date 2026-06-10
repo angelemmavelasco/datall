@@ -231,8 +231,8 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             <p class="text-xl text-title">$ {{ kpis.units|default:0.00|floatformat:2|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-muted text-sm text-strong">Utilidad</p>
-            <p class="text-xl text-title">$ {{ kpis.profit|default:0.00|floatformat:2|intcomma }}</p>
+            <p class="text-muted text-sm text-strong">Clientes con compras</p>
+            <p class="text-xl text-title">{{ kpis.customers_with_purchases|default:0|floatformat:0|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Margen</p>

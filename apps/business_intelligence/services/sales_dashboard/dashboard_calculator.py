@@ -70,12 +70,15 @@ class SalesDashboardCalculator:
         total_sale = Decimal('0.00')
         units = Decimal('0.00')
         profit = Decimal('0.00')
+        customer_ids = set()
 
         for t in self.transactions:
             net_sale += self._safe_decimal(t.get('net_amount', 0))
             total_sale += self._safe_decimal(t.get('gross_amount', 0))
             units += self._safe_decimal(t.get('quantity', 0))
             profit += self._safe_decimal(t.get('profit', 0))
+            if t.get('customer_id'):
+                customer_ids.add(t.get('customer_id'))
 
         target = Decimal('0.00')
         for t in self.targets:
@@ -94,6 +97,7 @@ class SalesDashboardCalculator:
             'units': units,
             'profit': profit,
             'margin': margin,
+            'customers_with_purchases': len(customer_ids),
         }
 
     def calculate_timeline(self):
