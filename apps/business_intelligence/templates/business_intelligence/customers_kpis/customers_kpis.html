@@ -239,6 +239,12 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         btnElement.classList.toggle('line-through');
         btnElement.classList.toggle('text-muted');
     }
+
+    document.getElementById('downloadReport').addEventListener('click', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('export', 'csv');
+        window.location.search = urlParams.toString();
+    });
 </script>
 
 

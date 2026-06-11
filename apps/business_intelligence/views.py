@@ -12,6 +12,9 @@ from apps.business_intelligence.services.sales_dashboard.dashboard_calculator im
 from apps.business_intelligence.services.customers_kpis.customers_kpis import CustomersKpis
 from apps.business_intelligence.services.sales_breakdown.sales_breakdown import SalesBreakdownService
 from apps.customers.services.customers_crud.customers_crud import CustomerCrud
+import csv
+from django.db.models.functions import ExtractYear
+from django.db.models import Sum
 
 
 @login_required
@@ -186,6 +189,46 @@ def customers_kpis(request):
     customers_crud = CustomerCrud()
     customers_qs = customers_crud.read(allowed_routes, **filters)
 
+    if request.GET.get('export') == 'csv':
+
+
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="customers_kpis.csv"'
+        response.write(b'\xef\xbb\xbf')
+        writer = csv.writer(response)
+
+        customers_kpis_service = CustomersKpis(customers_qs)
+        all_customers_data, months_headers = customers_kpis_service.build_dashboard_data()
+
+        header_row = [
+            'ID', 'Nombre', 'Clasificación', 'Frecuencia de compra',
+            'Saldo Actual', 'Saldo Vencido', 'Límite de crédito', '% Uso de crédito',
+            'Categorías de productos', 'Promedio mensual año pasado', 'Promedio mensual año actual'
+        ]
+        for h in months_headers:
+            header_row.append(h.strftime('%b %Y'))
+            
+        writer.writerow(header_row)
+
+        for c in all_customers_data:
+            row = [
+                c.id, c.name, getattr(c.category_last_moving_q, 'name', ''),
+                getattr(c, 'frequency', ''),
+                round(getattr(c, 'current_balance', 0), 2),
+                round(getattr(c, 'overdue_balance', 0), 2),
+                round(getattr(c, 'credit_limit', 0), 2),
+                round(getattr(c, 'credit_usage', 0), 2),
+                getattr(c, 'product_classes_with_consumption', 0),
+                round(getattr(c, 'previous_year_average', 0), 2),
+                round(getattr(c, 'current_year_average', 0), 2)
+            ]
+            for m in getattr(c, 'monthly_consumption_qs', []):
+                row.append(round(m.get('sale', 0), 2))
+                
+            writer.writerow(row)
+
+        return response
+
     paginator = Paginator(customers_qs, 100)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
@@ -250,42 +293,73 @@ def sales_breakdown(request):
     transactions_qs = transaction_crud.read(allowed_routes, **filters)
     
     if request.GET.get('export') == 'csv':
-        import csv
-        from django.http import HttpResponse
-        from django.db.models.functions import ExtractYear
-        from django.db.models import Sum
 
-        response = HttpResponse(content_type='text/csv')
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = 'attachment; filename="desglose_ventas.csv"'
+        response.write(b'\xef\xbb\xbf')
+
+        dimension_config = {
+            'customer_productclass_product': {
+                'fields': ['customer__id', 'customer__name', 'product_class__name', 'product__id', 'product__name'],
+                'headers': ['Cliente', 'Línea', 'Producto']
+            },
+            'productclass_customer_product': {
+                'fields': ['product_class__name', 'customer__id', 'customer__name', 'product__id', 'product__name'],
+                'headers': ['Línea', 'Cliente', 'Producto']
+            },
+            'productclass_product': {
+                'fields': ['product_class__name', 'product__id', 'product__name'],
+                'headers': ['Línea', 'Producto']
+            },
+            'management_productclass_product': {
+                'fields': ['warehouse__name', 'product_class__name', 'product__id', 'product__name'],
+                'headers': ['Gerencia', 'Línea', 'Producto']
+            },
+            'product_customer': {
+                'fields': ['product__id', 'product__name', 'customer__id', 'customer__name'],
+                'headers': ['Producto', 'Cliente']
+            }
+        }
+        
+        config = dimension_config.get(dimension, dimension_config['customer_productclass_product'])
 
         writer = csv.writer(response)
-        writer.writerow(['Gerencia', 'Ruta', 'Cliente', 'Línea', 'Producto', 'Año', 'Venta Neta'])
+        writer.writerow(config['headers'] + ['Año', 'Venta Neta'])
 
-        export_qs = transactions_qs.values(
-            'warehouse__name', 
-            'route__id', 'route__name', 
-            'customer__id', 'customer__name', 
-            'product_class__name', 
-            'product__id', 'product__name'
-        ).annotate(
+        export_qs = transactions_qs.values(*config['fields']).annotate(
             year=ExtractYear('sale_date'), 
             total=Sum('net_amount')
         ).iterator(chunk_size=2000)
 
         for row in export_qs:
-            route_str = f"{row.get('route__id', '')} - {row.get('route__name', '')}".strip(" -")
-            customer_str = f"{row.get('customer__id', '')} - {row.get('customer__name', '')}".strip(" -")
-            product_str = f"{row.get('product__id', '')} - {row.get('product__name', '')}".strip(" -")
+            out_row = []
+            
+            c_id = row.get('customer__id')
+            c_name = row.get('customer__name')
+            c = f"{c_id} - {c_name}".strip(" -") if c_id or c_name else 'Sin Cliente'
+            
+            p_id = row.get('product__id')
+            p_name = row.get('product__name')
+            p = f"{p_id} - {p_name}".strip(" -") if p_id or p_name else 'Sin Producto'
+            
+            l = row.get('product_class__name') or 'Sin Línea'
+            w = row.get('warehouse__name') or 'Sin Gerencia'
+            
+            if dimension == 'customer_productclass_product':
+                out_row.extend([c, l, p])
+            elif dimension == 'productclass_customer_product':
+                out_row.extend([l, c, p])
+            elif dimension == 'productclass_product':
+                out_row.extend([l, p])
+            elif dimension == 'management_productclass_product':
+                out_row.extend([w, l, p])
+            elif dimension == 'product_customer':
+                out_row.extend([p, c])
+            else:
+                out_row.extend([c, l, p])
 
-            writer.writerow([
-                row.get('warehouse__name') or 'Sin Gerencia',
-                route_str or 'Sin Ruta',
-                customer_str or 'Sin Cliente',
-                row.get('product_class__name') or 'Sin Línea',
-                product_str or 'Sin Producto',
-                row.get('year'),
-                round(row.get('total', 0), 2)
-            ])
+            out_row.extend([row.get('year'), round(row.get('total') or 0, 2)])
+            writer.writerow(out_row)
 
         return response
 
