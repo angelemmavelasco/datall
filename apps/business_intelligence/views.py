@@ -29,8 +29,15 @@ def sales_dashboard(request):
     product_category = request.GET.getlist('product_category')
     routes = request.GET.getlist('routes')
     regions = request.GET.getlist('regions')
+    from datetime import date
+    today = date.today()
     date_start = request.GET.get('date_start')
     date_end = request.GET.get('date_end')
+    
+    if not date_start:
+        date_start = date(today.year, 1, 1).strftime('%Y-%m-%d')
+    if not date_end:
+        date_end = today.strftime('%Y-%m-%d')
 
     filters = {}
     if routes: filters['routes'] = routes
@@ -53,7 +60,8 @@ def sales_dashboard(request):
 
     transactions_data = list(transactions_qs.values(
         'sale_date', 'net_amount', 'gross_amount', 'quantity', 'profit', 
-        'route_id', 'route__name', 'warehouse_id', 'warehouse__name', 
+        'route_id', 'route__name', 'route__warehouse_id', 'route__warehouse__name',
+        'warehouse_id', 'warehouse__name', 
         'product_class_id', 'product_class__name', 'product_class__product_category__name',
         'product_id', 'product__name', 'customer_id', 'customer__name'
     ))
@@ -61,7 +69,7 @@ def sales_dashboard(request):
     targets_crud = SaleTargetCRUD()
     targets_qs = targets_crud.read(allowed_routes, **target_filters)
     targets_data = list(targets_qs.values(
-        'period', 'target_amount', 'route_id', 'route__name', 'warehouse_id', 'warehouse__name', 'product_class_id'
+        'period', 'target_amount', 'route_id', 'route__name', 'route__warehouse_id', 'route__warehouse__name', 'warehouse_id', 'warehouse__name', 'product_class_id'
     ))
 
     calculator = SalesDashboardCalculator(transactions_data, targets_data, date_start, date_end)

@@ -103,9 +103,24 @@ class SalesDashboardCalculator:
     def calculate_timeline(self):
         daily_data = defaultdict(lambda: {'net_sale': Decimal('0.00'), 'units': Decimal('0.00')})
         
+        if self.date_start and self.date_end:
+            current_date = self.date_start.replace(day=1)
+            while current_date <= self.date_end or (current_date.year == self.date_end.year and current_date.month == self.date_end.month):
+                date_str = current_date.strftime('%Y-%m')
+                daily_data[date_str] # Initialize
+                if current_date.month == 12:
+                    current_date = current_date.replace(year=current_date.year + 1, month=1)
+                else:
+                    current_date = current_date.replace(month=current_date.month + 1)
+                    
         for t in self.transactions:
-            date_str = str(t.get('sale_date')) if t.get('sale_date') else 'N/A'
+            if t.get('sale_date'):
+                date_str = t['sale_date'].strftime('%Y-%m')
+            else:
+                date_str = 'N/A'
             if date_str != 'N/A':
+                # Only add if we didn't filter it out, or if it's within the range. 
+                # Since transactions are already filtered by date_start/date_end in views, we can just add it.
                 daily_data[date_str]['net_sale'] += self._safe_decimal(t.get('net_amount', 0))
                 daily_data[date_str]['units'] += self._safe_decimal(t.get('quantity', 0))
             
@@ -121,11 +136,11 @@ class SalesDashboardCalculator:
         wh_data = defaultdict(lambda: {'sale': Decimal('0.00'), 'target': Decimal('0.00')})
         
         for t in self.transactions:
-            wh_id = t.get('warehouse_id') or 'N/A'
+            wh_id = t.get('route__warehouse_id') or 'N/A'
             wh_data[wh_id]['sale'] += self._safe_decimal(t.get('net_amount', 0))
             
         for t in self.targets:
-            wh_id = t.get('warehouse_id') or 'N/A'
+            wh_id = t.get('route__warehouse_id') or 'N/A'
             wh_data[wh_id]['target'] += self._prorate_target(t)
             
         categories = sorted(wh_data.keys())
