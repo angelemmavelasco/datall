@@ -1,15 +1,21 @@
 from decimal import Decimal
 from collections import defaultdict
+from datetime import datetime, date
+import calendar
 
-class SalesDashboardCalculator:
-    def __init__(self, transactions, targets, date_start=None, date_end=None):
+class SalesDashboard:
+    def __init__(self, transactions: list[dict], targets, date_start=None, date_end=None):
         """
-        Receives two lists of dictionaries (from .values() execution) to avoid N+1 queries.
-        transactions: list of dicts with sale_date, net_amount, gross_amount, quantity, profit, 
-                      route_id, route__name, warehouse_id, warehouse__name, 
-                      product_class_id, product_class__name, product_class__product_category__name,
-                      product_id, product__name, customer_id, customer__name
-        targets: list of dicts with period, target_amount, route_id, route__name, warehouse_id, warehouse__name, product_class_id
+        params:
+        -------
+        transactions:
+            list of dicts
+        targets:
+            list of dicts
+        date_start: date
+            Start date of the period
+        date_end: date
+            End date of the period
         """
         self.transactions = transactions
         self.targets = targets
@@ -17,7 +23,6 @@ class SalesDashboardCalculator:
         self.date_end = self._parse_date(date_end)
 
     def _parse_date(self, date_val):
-        from datetime import datetime
         if isinstance(date_val, str) and date_val:
             try:
                 return datetime.strptime(date_val, '%Y-%m-%d').date()
@@ -30,8 +35,7 @@ class SalesDashboardCalculator:
         if not self.date_start and not self.date_end:
             return target_amount
 
-        from datetime import date
-        import calendar
+
 
         period = t.get('period')
         if not period:
@@ -39,7 +43,6 @@ class SalesDashboardCalculator:
 
         if isinstance(period, str):
             try:
-                from datetime import datetime
                 period = datetime.strptime(period, '%Y-%m-%d').date()
             except ValueError:
                 return target_amount
@@ -119,8 +122,6 @@ class SalesDashboardCalculator:
             else:
                 date_str = 'N/A'
             if date_str != 'N/A':
-                # Only add if we didn't filter it out, or if it's within the range. 
-                # Since transactions are already filtered by date_start/date_end in views, we can just add it.
                 daily_data[date_str]['net_sale'] += self._safe_decimal(t.get('net_amount', 0))
                 daily_data[date_str]['units'] += self._safe_decimal(t.get('quantity', 0))
             

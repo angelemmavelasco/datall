@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load has_group %}
 
 {% block title %}Dashboard de ventas{% endblock %}
 
@@ -7,7 +8,8 @@
 
 {% block module_actions %}
 
-<button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button>
+<button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar
+    reporte</button>
 
 <button onclick="toggleFilters()"
     class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
@@ -37,28 +39,34 @@
     <!-- Fecha Inicio -->
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Fecha Inicio</label>
-        <input type="date" name="date_start" value="{{ selected_date_start|default:'' }}" class="border border-border rounded p-1 bg-page text-sm">
+        <input type="date" name="date_start" value="{{ selected_date_start|default:'' }}"
+            class="border border-border rounded p-1 bg-page text-sm">
     </div>
-    
+
     <!-- Fecha Fin -->
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Fecha Fin</label>
-        <input type="date" name="date_end" value="{{ selected_date_end|default:'' }}" class="border border-border rounded p-1 bg-page text-sm">
+        <input type="date" name="date_end" value="{{ selected_date_end|default:'' }}"
+            class="border border-border rounded p-1 bg-page text-sm">
     </div>
 
     <!-- Gerencia -->
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Gerencia</label>
         <div class="border border-border rounded bg-page flex flex-col">
-            <input type="text" placeholder="Buscar gerencia..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'gerencia-list')">
-            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+            <input type="text" placeholder="Buscar gerencia..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'gerencia-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
                 <input type="checkbox" onchange="toggleAllCheckboxes(this, 'gerencia-list')">
                 <span class="text-strong">Seleccionar todo</span>
             </label>
             <div id="gerencia-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
                 {% for w in filter_warehouses %}
-                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
-                    <input type="checkbox" name="gerencia" value="{{ w.id }}" {% if w.id in selected_gerencias %}checked{% endif %}>
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="warehouses" value="{{ w.id }}" {% if w.id in selected_warehouses %}checked{% endif %}>
                     <span class="searchable-text">{{ w.name|title }}</span>
                 </label>
                 {% endfor %}
@@ -69,14 +77,18 @@
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Región</label>
         <div class="border border-border rounded bg-page flex flex-col">
-            <input type="text" placeholder="Buscar región..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'region-list')">
-            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+            <input type="text" placeholder="Buscar región..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'region-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
                 <input type="checkbox" onchange="toggleAllCheckboxes(this, 'region-list')">
                 <span class="text-strong">Seleccionar todo</span>
             </label>
             <div id="region-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
                 {% for r in filter_regions %}
-                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                     <input type="checkbox" name="regions" value="{{ r.id }}" {% if r.id in selected_regions %}checked{% endif %}>
                     <span class="searchable-text">{{ r.name|title }}</span>
                 </label>
@@ -88,15 +100,19 @@
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Lugar de Venta</label>
         <div class="border border-border rounded bg-page flex flex-col">
-            <input type="text" placeholder="Buscar lugar..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'lugar-venta-list')">
-            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+            <input type="text" placeholder="Buscar lugar..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'lugar-venta-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
                 <input type="checkbox" onchange="toggleAllCheckboxes(this, 'lugar-venta-list')">
                 <span class="text-strong">Seleccionar todo</span>
             </label>
             <div id="lugar-venta-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
                 {% for w in filter_warehouses %}
-                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
-                    <input type="checkbox" name="lugar_venta" value="{{ w.id }}" {% if w.id in selected_lugar_venta %}checked{% endif %}>
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="sale_warehouses" value="{{ w.id }}" {% if w.id in selected_sale_warehouses %}checked{% endif %}>
                     <span class="searchable-text">{{ w.name|title }}</span>
                 </label>
                 {% endfor %}
@@ -108,14 +124,18 @@
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Clase de Producto</label>
         <div class="border border-border rounded bg-page flex flex-col">
-            <input type="text" placeholder="Buscar clase..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'product-class-list')">
-            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+            <input type="text" placeholder="Buscar clase..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'product-class-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
                 <input type="checkbox" onchange="toggleAllCheckboxes(this, 'product-class-list')">
                 <span class="text-strong">Seleccionar todo</span>
             </label>
             <div id="product-class-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
                 {% for pc in filter_product_classes %}
-                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                     <input type="checkbox" name="product_class" value="{{ pc.id }}" {% if pc.id in selected_product_class %}checked{% endif %}>
                     <span class="searchable-text">{{ pc.name|title }}</span>
                 </label>
@@ -128,14 +148,18 @@
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Categoría de Producto</label>
         <div class="border border-border rounded bg-page flex flex-col">
-            <input type="text" placeholder="Buscar categoría..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'product-category-list')">
-            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+            <input type="text" placeholder="Buscar categoría..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'product-category-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
                 <input type="checkbox" onchange="toggleAllCheckboxes(this, 'product-category-list')">
                 <span class="text-strong">Seleccionar todo</span>
             </label>
             <div id="product-category-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
                 {% for cat in filter_product_categories %}
-                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                     <input type="checkbox" name="product_category" value="{{ cat.id }}" {% if cat.id in selected_product_category %}checked{% endif %}>
                     <span class="searchable-text">{{ cat.name|title }}</span>
                 </label>
@@ -148,14 +172,18 @@
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Rutas</label>
         <div class="border border-border rounded bg-page flex flex-col">
-            <input type="text" placeholder="Buscar ruta..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'routes-list')">
-            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+            <input type="text" placeholder="Buscar ruta..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'routes-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
                 <input type="checkbox" onchange="toggleAllCheckboxes(this, 'routes-list')">
                 <span class="text-strong">Seleccionar todo</span>
             </label>
             <div id="routes-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
                 {% for r in filter_routes %}
-                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                     <input type="checkbox" name="routes" value="{{ r.id }}" {% if r.id in selected_routes %}checked{% endif %}>
                     <span class="searchable-text">{{ r.id|title }}: {{ r.name|title }}</span>
                 </label>
@@ -164,40 +192,44 @@
         </div>
     </div>
 
-    <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2 mb-2">Aplicar filtros</button>
-    <a href="?" class="block bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar filtros</a>
+    <button type="submit"
+        class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2 mb-2">Aplicar
+        filtros</button>
+    <a href="?"
+        class="block bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+        filtros</a>
 
 </form>
 
 <script>
-function filterCheckboxes(inputElement, listId) {
-    const filter = inputElement.value.toLowerCase();
-    const list = document.getElementById(listId);
-    const labels = list.getElementsByTagName('label');
+    function filterCheckboxes(inputElement, listId) {
+        const filter = inputElement.value.toLowerCase();
+        const list = document.getElementById(listId);
+        const labels = list.getElementsByTagName('label');
 
-    for (let i = 0; i < labels.length; i++) {
-        const span = labels[i].querySelector('.searchable-text');
-        if (span) {
-            const textValue = span.textContent || span.innerText;
-            if (textValue.toLowerCase().indexOf(filter) > -1) {
-                labels[i].style.display = "";
-            } else {
-                labels[i].style.display = "none";
+        for (let i = 0; i < labels.length; i++) {
+            const span = labels[i].querySelector('.searchable-text');
+            if (span) {
+                const textValue = span.textContent || span.innerText;
+                if (textValue.toLowerCase().indexOf(filter) > -1) {
+                    labels[i].style.display = "";
+                } else {
+                    labels[i].style.display = "none";
+                }
             }
         }
     }
-}
 
-function toggleAllCheckboxes(masterCheckbox, listId) {
-    const list = document.getElementById(listId);
-    const checkboxes = list.querySelectorAll('input[type="checkbox"]');
-    checkboxes.forEach(cb => {
-        // Solo altera los checkboxes visibles (respeta el buscador)
-        if (cb.closest('label').style.display !== "none") {
-            cb.checked = masterCheckbox.checked;
-        }
-    });
-}
+    function toggleAllCheckboxes(masterCheckbox, listId) {
+        const list = document.getElementById(listId);
+        const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            // Solo altera los checkboxes visibles (respeta el buscador)
+            if (cb.closest('label').style.display !== "none") {
+                cb.checked = masterCheckbox.checked;
+            }
+        });
+    }
 </script>
 {% endblock %}
 
@@ -208,20 +240,28 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Venta neta</p>
-            <p class="text-xl text-title">$ {{ kpis.net_sale|default:0.00|floatformat:2|intcomma }}</p>
+            <p class="text-xl text-green-500">$ {{ kpis.net_sale|default:0.00|floatformat:2|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Objetivo</p>
-            <p class="text-xl text-title">$ {{ kpis.target|default:0.00|floatformat:2|intcomma }}</p>
+            <p class="text-xl text-blue-500">$ {{ kpis.target|default:0.00|floatformat:2|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Alcance</p>
-            <p class="text-xl text-title">{{ kpis.scope|default:0.00|floatformat:2|intcomma }} %</p>
+            <p class="text-xl text-violet-500">{{ kpis.scope|default:0.00|floatformat:2|intcomma }} %</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col  bg-container">
             <p class="text-muted text-sm text-strong">Diferencia</p>
-            <p class="text-xl text-title">$ {{ kpis.difference|default:0.00|floatformat:2|intcomma }}</p>
+            <p class="text-xl
+            {% if kpis.difference >= 0 %}
+            text-blue-500
+            {% elif kpis.difference < 0 %}
+            text-red-500
+            {% else %}
+            text-title
+            {% endif %}">$ {{ kpis.difference|default:0.00|floatformat:2|intcomma }}</p>
         </div>
+
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Venta total</p>
             <p class="text-xl text-title">$ {{ kpis.total_sale|default:0.00|floatformat:2|intcomma }}</p>
@@ -236,12 +276,17 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Margen</p>
+
+            {% if request.user|has_group:"vendedor" %}
             {% if kpis.margin >= 35 %}
-            <p class="text-xl text-green-700">Óptimo</p>
+            <p class="text-xl text-green-700 font-semibold">Óptimo</p>
             {% elif kpis.margin >= 25 %}
-            <p class="text-xl text-yellow-700">Medio</p>
+            <p class="text-xl text-yellow-700 font-semibold">Medio</p>
             {% else %}
-            <p class="text-xl text-red-700">Bajo</p>
+            <p class="text-xl text-red-700 font-semibold">Bajo</p>
+            {% endif %}
+            {% else %}
+            <p class="text-xl text-strong">{{ kpis.margin|floatformat:2|intcomma }}%</p>
             {% endif %}
         </div>
     </div>
@@ -278,13 +323,13 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
                     <tbody>
                         {% for route in route_table %}
-                            <tr>
-                                <td class="p-2 text-left">{{ route.id }} {{ route.name|title }}</td>
-                                <td class="p-2 text-right">$ {{ route.total_net_sale|floatformat:2|intcomma }}</td>
-                                <td class="p-2 text-right">$ {{ route.total_target|floatformat:2|intcomma }}</td>
-                                <td class="p-2 text-right">$ {{ route.total_difference|floatformat:2|intcomma }}</td>
-                                <td class="p-2 text-right">{{ route.total_scope|floatformat:2|intcomma }} %</td>
-                                <td class="p-2 text-center flex justify-center items-center
+                        <tr>
+                            <td class="p-2 text-left">{{ route.id }} {{ route.name|title }}</td>
+                            <td class="p-2 text-right">$ {{ route.total_net_sale|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.total_target|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ route.total_difference|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ route.total_scope|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-center flex justify-center items-center
                                 {% if route.total_margin >= 35 %}
                                 text-green-700
                                 {% elif route.total_margin >= 25 %}
@@ -293,18 +338,18 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                                 text-red-700
                                 {% endif %}
                                 ">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
-                                        <circle cx="12" cy="12" r="10" />
-                                    </svg>
-                                </td>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
+                                    <circle cx="12" cy="12" r="10" />
+                                </svg>
+                            </td>
 
-                            </tr>
+                        </tr>
                         {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center py-4 text-gray-500">No hay datos para mostrar</td>
-                            </tr>
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-gray-500">No hay datos para mostrar</td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -350,13 +395,13 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                     <tbody>
                     <tbody>
                         {% for product in product_table %}
-                            <tr>
-                                <td class="p-2">{{ product.id }}</td>
-                                <td class="p-2 text-right">{{ product.name|title }}</td>
-                                <td class="p-2 text-right">{{ product.total_units|floatformat:0|intcomma }}</td>
-                                <td class="p-2 text-right">$ {{ product.total_net_sale|floatformat:2|intcomma }}</td>
-                                <td class="p-2 text-right">$ {{ product.total_gross_sale|floatformat:2|intcomma }}</td>
-                                <td class="p-2 flex justify-center items-center
+                        <tr>
+                            <td class="p-2">{{ product.id }}</td>
+                            <td class="p-2 text-right">{{ product.name|title }}</td>
+                            <td class="p-2 text-right">{{ product.total_units|floatformat:0|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ product.total_net_sale|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ product.total_gross_sale|floatformat:2|intcomma }}</td>
+                            <td class="p-2 flex justify-center items-center
                                 {% if product.total_margin >= 35 %}
                                 text-green-500
                                 {% elif product.total_margin >= 25 %}
@@ -365,18 +410,18 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                                 text-red-500
                                 {% endif %}
                                 ">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
-                                        <circle cx="12" cy="12" r="10" />
-                                    </svg>
-                                </td>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
+                                    <circle cx="12" cy="12" r="10" />
+                                </svg>
+                            </td>
 
-                            </tr>
+                        </tr>
                         {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center py-4 text-gray-500">No hay datos para mostrar</td>
-                            </tr>
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-gray-500">No hay datos para mostrar</td>
+                        </tr>
                         {% endfor %}
 
 
@@ -406,13 +451,13 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
                     <tbody>
                         {% for customer in customer_table %}
-                            <tr>
-                                <td class="p-2">{{ customer.id }}</td>
-                                <td class="p-2 text-right">{{ customer.name }}</td>
-                                <td class="p-2 text-right">{{ customer.total_net_sale }}</td>
-                                <td class="p-2 text-right">{{ customer.total_gross_sale }}</td>
-                                <td class="p-2 text-right">{{ customer.total_units }}</td>
-                                <td class="p-2 flex justify-center items-center
+                        <tr>
+                            <td class="p-2">{{ customer.id }}</td>
+                            <td class="p-2 text-right">{{ customer.name|title }}</td>
+                            <td class="p-2 text-right">$ {{ customer.total_net_sale|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">$ {{ customer.total_gross_sale|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right">{{ customer.total_units|floatformat:0|intcomma }}</td>
+                            <td class="p-2 flex justify-center items-center
                                 {% if customer.total_margin >= 35 %}
                                 text-green-500
                                 {% elif customer.total_margin >= 25 %}
@@ -421,18 +466,18 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                                 text-red-500
                                 {% endif %}
                                 ">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
-                                        <circle cx="12" cy="12" r="10" />
-                                    </svg>
-                                </td>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
+                                    <circle cx="12" cy="12" r="10" />
+                                </svg>
+                            </td>
 
-                            </tr>
+                        </tr>
                         {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center py-4 text-gray-500">No hay datos para mostrar</td>
-                            </tr>
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-gray-500">No hay datos para mostrar</td>
+                        </tr>
                         {% endfor %}
 
                     </tbody>
@@ -473,72 +518,72 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         const timelineChart = echarts.init(document.getElementById('timelineChart'),);
 
         const timelineOptions = {
-            color: [greenColor, blueColor],
-            title: {
-                text: 'Evolución de Venta neta y unidades',
-                textStyle: {
-                    fontWeight: 'normal',
-                    fontSize: 14,
-                    color: titleColor
-                },
+        color: [greenColor, blueColor],
+        title: {
+            text: 'Evolución de Venta neta y unidades',
+            textStyle: {
+                fontWeight: 'normal',
+                fontSize: 14,
+                color: titleColor
+            },
 
-            },
-            tooltip: {
-                trigger: 'axis'
-            },
-            legend: {
-                data: ['Venta neta', 'Unidades'],
-                top: 0,
-                left: 0,
-            },
-            grid: {
-                left: '3%',
-                right: '4%',
-                bottom: '3%',
-                containLabel: true,
+        },
+        tooltip: {
+            trigger: 'axis'
+        },
+        legend: {
+            data: ['Venta neta', 'Unidades'],
+            top: 0,
+            left: 0,
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true,
 
-            },
-            toolbox: {
-                feature: {
-                    saveAsImage: {}
-                }
-            },
-            xAxis: {
-                type: 'category',
-                boundaryGap: false,
-                data: timelineData.categories,
-                splitLine: {
-                    show: false
-                }
-            },
-            yAxis: {
-                type: 'value',
-                splitLine: {
-                    lineStyle: {
-                        opacity: 0.10,
-                    },
-                    show: true
-                }
-            },
-            series: [
-                {
-                    name: 'Venta neta',
-                    type: 'line',
-                    data: timelineData.sales,
-                    smooth: true
+        },
+        toolbox: {
+            feature: {
+                saveAsImage: {}
+            }
+        },
+        xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: timelineData.categories,
+            splitLine: {
+                show: false
+            }
+        },
+        yAxis: {
+            type: 'value',
+            splitLine: {
+                lineStyle: {
+                    opacity: 0.10,
                 },
-                {
-                    name: 'Unidades',
-                    type: 'line',
-                    data: timelineData.units,
-                    smooth: true
-                }
-            ]
-        };
+                show: true
+            }
+        },
+        series: [
+            {
+                name: 'Venta neta',
+                type: 'line',
+                data: timelineData.sales,
+                smooth: true
+            },
+            {
+                name: 'Unidades',
+                type: 'line',
+                data: timelineData.units,
+                smooth: true
+            }
+        ]
+    };
 
         timelineChart.setOption(timelineOptions);
 
-        // Warehouse BarChart
+    // Warehouse BarChart
 
         const warehouseData = {{ warehouse_chart_data|safe }};
 
@@ -600,7 +645,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         warehouseBarChart.setOption(WarehouseBarOption);
 
 
-        // Product class bar chart
+    // Product class bar chart
 
         const productClassData = {{ product_class_chart_data|safe }};
 
@@ -608,42 +653,42 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             title: {
                 text: 'Venta neta por clase de producto',
                 textStyle: {
-                    fontWeight: 'normal',
-                    fontSize: 14,
-                    color: titleColor
-                }
-            },
-            toolbox: {
-                feature: {
-                    saveAsImage: {}
-                }
-            },
-            xAxis: {
-                type: 'category',
-                data: productClassData.categories,
+                fontWeight: 'normal',
+                fontSize: 14,
+                color: titleColor
+            }
+        },
+        toolbox: {
+            feature: {
+                saveAsImage: {}
+            }
+        },
+        xAxis: {
+            type: 'category',
+            data: productClassData.categories,
 
-            },
-            yAxis: {
-                type: 'value',
-                splitLine: {
-                    lineStyle: {
-                        opacity: 0.1
-                    },
-                    show: true
-                }
-            },
-            series: [
-                {
-                    data: productClassData.sales,
-                    type: 'bar',
-                }
-            ]
-        };
+        },
+        yAxis: {
+            type: 'value',
+            splitLine: {
+                lineStyle: {
+                    opacity: 0.1
+                },
+                show: true
+            }
+        },
+        series: [
+            {
+                data: productClassData.sales,
+                type: 'bar',
+            }
+        ]
+    };
 
         const productClassBarChart = echarts.init(document.getElementById('productClassBarChart'),);
         productClassBarChart.setOption(ProductClassBarOption);
 
-        // product cattegory pie chart
+    // product cattegory pie chart
 
         const productCategoryData = {{ product_category_chart_data|safe }};
 
@@ -700,7 +745,15 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
         const productCategoryChart = echarts.init(document.getElementById('productCategoryChart'),);
         productCategoryChart.setOption(productCategoryOption);
-    })
+
+        const charts = [
+            timelineChart, 
+            warehouseBarChart, 
+            productClassBarChart, 
+            productCategoryChart
+        ];
+
+        });
 
 
 </script>

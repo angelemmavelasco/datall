@@ -8,13 +8,14 @@ from django.http import HttpResponse
 import openpyxl
 from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
 from apps.sales.services.sale_targets.sale_targets_crud import SaleTargetCRUD
-from apps.business_intelligence.services.sales_dashboard.dashboard_calculator import SalesDashboardCalculator
+from apps.business_intelligence.services.sales_dashboard.sales_dashboard import SalesDashboard
 from apps.business_intelligence.services.customers_kpis.customers_kpis import CustomersKpis
 from apps.business_intelligence.services.sales_breakdown.sales_breakdown import SalesBreakdownService
 from apps.customers.services.customers_crud.customers_crud import CustomerCrud
 import csv
 from django.db.models.functions import ExtractYear
 from django.db.models import Sum
+from datetime import datetime, date
 
 
 @login_required
@@ -23,13 +24,12 @@ def sales_dashboard(request):
 
     allowed_routes = get_allowed_routes_for_user(request.user)
 
-    gerencias = request.GET.getlist('gerencia')
-    lugar_venta = request.GET.getlist('lugar_venta')
+    warehouses = request.GET.getlist('warehouses')
+    sale_warehouses = request.GET.getlist('sale_warehouses')
     product_class = request.GET.getlist('product_class')
     product_category = request.GET.getlist('product_category')
     routes = request.GET.getlist('routes')
     regions = request.GET.getlist('regions')
-    from datetime import date
     today = date.today()
     date_start = request.GET.get('date_start')
     date_end = request.GET.get('date_end')
@@ -41,8 +41,8 @@ def sales_dashboard(request):
 
     filters = {}
     if routes: filters['routes'] = routes
-    if gerencias: filters['route_warehouse_ids'] = gerencias
-    if lugar_venta: filters['warehouses'] = lugar_venta
+    if warehouses: filters['route_warehouse_ids'] = warehouses
+    if sale_warehouses: filters['warehouses'] = sale_warehouses
     if product_class: filters['product_classes'] = product_class
     if product_category: filters['product_categories'] = product_category
     if regions: filters['regions'] = regions
@@ -72,7 +72,7 @@ def sales_dashboard(request):
         'period', 'target_amount', 'route_id', 'route__name', 'route__warehouse_id', 'route__warehouse__name', 'warehouse_id', 'warehouse__name', 'product_class_id'
     ))
 
-    calculator = SalesDashboardCalculator(transactions_data, targets_data, date_start, date_end)
+    calculator = SalesDashboard(transactions_data, targets_data, date_start, date_end)
     
     kpis = calculator.calculate_kpis()
     timeline_data = calculator.calculate_timeline()
@@ -102,8 +102,8 @@ def sales_dashboard(request):
         'filter_regions': Region.objects.all(),
 
 
-        'selected_gerencias': gerencias,
-        'selected_lugar_venta': lugar_venta,
+        'selected_warehouses': warehouses,
+        'selected_sale_warehouses': sale_warehouses,
         'selected_product_class': product_class,
         'selected_product_category': product_category,
         'selected_routes': routes,
@@ -121,15 +121,12 @@ from apps.business_intelligence.services.routes_kpis.routes_kpis import RoutesKp
 def routes_kpis(request):
     template = 'business_intelligence/routes_kpis/routes_kpis.html'
     
-    # Allowed routes based on Employee hierarchy
     allowed_routes = get_allowed_routes_for_user(request.user)
     
-    # Extract filters
     date_start = request.GET.get('date_start')
     date_end = request.GET.get('date_end')
     selected_route_id = request.GET.get('route')
     
-    # Default to the first allowed route if none selected
     if not selected_route_id and allowed_routes.exists():
         selected_route_id = allowed_routes.first().id
 
