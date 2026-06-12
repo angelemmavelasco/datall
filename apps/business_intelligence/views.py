@@ -16,6 +16,7 @@ import csv
 from django.db.models.functions import ExtractYear
 from django.db.models import Sum
 from datetime import datetime, date
+from apps.business_intelligence.services.commercial_risk.commercial_risk import CommercialRisk
 
 
 @login_required
@@ -268,6 +269,67 @@ def customers_kpis(request):
         return render(request, 'business_intelligence/customers_kpis/partials/customer_kpis_rows.html', context)
 
     return render(request, template, context)
+
+
+
+
+
+
+
+
+@login_required
+def commercial_risk(request):
+    template = 'business_intelligence/commercial_risk/commercial_risk.html'
+    allowed_routes = get_allowed_routes_for_user(request.user)
+
+    today = date.today()
+    date_start = request.GET.get('date_start')
+    date_end = request.GET.get('date_end')
+    selected_route_id = request.GET.get('route')
+
+    if not date_start:
+        date_start = date(today.year, 1, 1).strftime('%Y-%m-%d')
+    if not date_end:
+        date_end = today.strftime('%Y-%m-%d')
+    if not selected_route_id and allowed_routes.exists():
+        selected_route_id = allowed_routes.first().id
+
+    print('params:', date_start, date_end, selected_route_id)
+
+    date_start_obj = datetime.strptime(date_start, '%Y-%m-%d').date()
+    date_end_obj = datetime.strptime(date_end, '%Y-%m-%d').date()
+
+    risk_engine = CommercialRisk(
+        date_start=date_start_obj, 
+        date_end=date_end_obj, 
+        route_id=selected_route_id
+    )
+
+    data = risk_engine.get_data()
+    global_kpis = risk_engine.get_global_kpis()
+
+    print(global_kpis)
+
+    context = {
+        'data': data,
+        **global_kpis,
+
+        'filter_routes': allowed_routes,
+        'selected_date_start': date_start,
+        'selected_date_end': date_end,
+        'selected_route': str(selected_route_id) if selected_route_id else '',
+        
+    }
+
+
+    return render(request, template, context)
+
+
+
+
+
+
+
 
 
 @login_required

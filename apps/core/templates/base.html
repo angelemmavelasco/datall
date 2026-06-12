@@ -9,6 +9,11 @@
     <title>{% block title %}{% endblock %}</title>
 
     <script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts-stat/dist/ecStat.min.js"></script>
+
+    <script>
+        echarts.registerTransform(ecStat.transform.clustering);
+    </script>
 
     <style type="text/tailwindcss">
         @media print {
@@ -326,7 +331,7 @@
         <footer
             class="bottom-0 left-0 w-full z-40 border-t border-border bg-page flex items-center justify-center min-h-40 max-h-40 md:min-h-15 md:max-h-15 text-title">
             <ul class="flex gap-2 md:gap-4 flex-col md:flex-row">
-                <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
+                <!-- <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info-icon lucide-info"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                     Soporte
                 </li>
@@ -341,7 +346,7 @@
                 <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-text-icon lucide-book-text"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/><path d="M8 11h8"/><path d="M8 7h6"/></svg>
                     Terminos y condiciones
-                </li>
+                </li> -->
                 <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copyright-icon lucide-copyright"><circle cx="12" cy="12" r="10"/><path d="M14.83 14.83a4 4 0 1 1 0-5.66"/></svg>
                     Datall 2026. Todos los derechos reservados.

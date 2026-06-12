@@ -1,0 +1,970 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load has_group %}
+
+{% block title %}Riesgo comercial{% endblock %}
+
+{% block module_name %}Riesgo comercial{% endblock %}
+
+
+
+{% block module_actions %}
+
+<button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button>
+
+<button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar datos</button>
+
+<button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center justify-center gap-1">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-astroid-icon lucide-astroid"><path d="M12.983 21.186a1 1 0 0 1-1.966 0 10 10 0 0 0-8.203-8.203 1 1 0 0 1 0-1.966 10 10 0 0 0 8.203-8.203 1 1 0 0 1 1.966 0 10 10 0 0 0 8.203 8.203 1 1 0 0 1 0 1.966 10 10 0 0 0-8.203 8.203"/></svg>
+    <span>
+        Asistente de datos
+    </span>
+</button>
+
+<button onclick="toggleFilters()"
+    class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+        <path d="M10 5H3" />
+        <path d="M12 19H3" />
+        <path d="M14 3v4" />
+        <path d="M16 17v4" />
+        <path d="M21 12h-9" />
+        <path d="M21 19h-5" />
+        <path d="M21 5h-7" />
+        <path d="M8 10v4" />
+        <path d="M8 12H3" />
+    </svg>
+    <span>
+        Filtrar
+    </span>
+</button>
+
+
+
+
+
+
+{% endblock %}
+
+
+
+{% block filters %}
+<form method="GET" action="{% url 'business_intelligence:commercial_risk' %}" class="flex flex-col gap-4 text-strong">
+    
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Periodo Inicio</label>
+        <input type="date" name="date_start" value="{{ selected_date_start }}" class="p-1 border border-border bg-page rounded text-sm outline-none text-strong placeholder:text-muted focus:border-strong transition-colors w-full">
+    </div>
+
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Periodo Fin</label>
+        <input type="date" name="date_end" value="{{ selected_date_end }}" class="p-1 border border-border bg-page rounded text-sm outline-none text-strong placeholder:text-muted focus:border-strong transition-colors w-full">
+    </div>
+
+    <!-- Rutas -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Ruta</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar ruta..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'routes-list')">
+            <div id="routes-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for r in filter_routes %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="radio" name="route" value="{{ r.id }}" {% if r.id|stringformat:"s" == selected_route %}checked{% endif %}>
+                    <span class="searchable-text">{{ r.id|upper }} - {{ r.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2">Aplicar filtros</button>
+</form>
+
+<script>
+function filterCheckboxes(inputElement, listId) {
+    const filter = inputElement.value.toLowerCase();
+    const list = document.getElementById(listId);
+    const labels = list.getElementsByTagName('label');
+
+    for (let i = 0; i < labels.length; i++) {
+        const span = labels[i].querySelector('.searchable-text');
+        if (span) {
+            const textValue = span.textContent || span.innerText;
+            if (textValue.toLowerCase().indexOf(filter) > -1) {
+                labels[i].style.display = "";
+            } else {
+                labels[i].style.display = "none";
+            }
+        }
+    }
+}
+
+function toggleAllCheckboxes(masterCheckbox, listId) {
+    const list = document.getElementById(listId);
+    const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        if (cb.closest('label').style.display !== "none") {
+            cb.checked = masterCheckbox.checked;
+        }
+    });
+}
+</script>
+{% endblock %}
+
+
+
+{% block content %}
+
+<div class="flex flex-col w-full gap-4">
+    <!-- Ban de resultados -->
+    <div class="">
+        <p class="text-title text-sm mb-2">Métricas de riesgo comercial del , ruta {{ selected_route|default:"Sin seleccionar" }}</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Índice de Gini</p>
+            <p class="text-xl text-violet-500">{{ gini_index|default:0.00|floatformat:2|intcomma }} %</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Alcance de cartera</p>
+            <p class="text-xl text-blue-500">{{ portafolio_scope|default:0.00|floatformat:2|intcomma }} %</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Factor de crecimiento</p>
+            <p class="text-xl text-violet-500">{{ momentum|default:0.00|floatformat:2|intcomma }} %</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col  bg-container">
+            <p class="text-muted text-sm text-strong">Índice de riesgo comercial</p>
+            <p class="text-xl
+            {% if commercial_risk_index < 40 %}
+            text-green-500
+            {% else %}
+            text-red-500
+            {% endif %}">{{ commercial_risk_index|default:0.00|floatformat:2|intcomma }} %</p>
+        </div>
+    </div>
+
+
+
+
+
+    
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Evolución y cobertura de clientes</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Clientes ganados y perdidos -->
+        <div class="border border-border rounded flex flex-col bg-container h-120">
+            <div id="lostAndWonBarChart" class="w-full h-full min-h-[300px]"></div>
+        </div>
+
+
+        <!-- Distribución de ventas -->
+        <div class="border border-border rounded flex flex-col bg-container h-120">
+            <div id="newCtmActiveCtmChart" class="w-full h-full min-h-[300px]"></div>
+        </div>
+    </div>
+
+
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Distribución de cartera</p>
+        <hr class="border-border">
+    </div>
+
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- volatilidad y volumen de ventas -->
+        <div class="border border-border rounded flex flex-col bg-container h-120">
+            <div id="volatilitySaleVolumeChart" class="w-full h-full min-h-[300px]"></div>
+        </div>
+
+
+        <!-- sesgo y facor de crecimiento -->
+        <div class="border border-border rounded flex flex-col bg-container h-120">
+            <div id="growthBiasChart" class="w-full h-full min-h-[300px]"></div>
+        </div>
+    </div>
+
+
+    <div class="hidden">
+
+        <div class="">
+            <p class="text-title text-sm mb-2">Riesgo comercial</p>
+            <hr class="border-border">
+        </div>
+    
+    
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- evolucion del índice de riesgo comercial -->
+            <div class="border border-border rounded flex flex-col bg-container h-120 col-span-1 md:col-span-2">
+                <div id="commercialRiskEvolutionChart" class="w-full h-full min-h-[300px]"></div>
+            </div>
+            
+        </div>
+    
+    
+    
+        <div class="">
+            <p class="text-title text-sm mb-2">Categoría de cliente</p>
+            <hr class="border-border">
+        </div>
+    
+    
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- contribución monetaria por categoría -->
+            <div class="border border-border rounded flex flex-col bg-container h-120">
+                <div id="customerCategoryContribChart" class="w-full h-full min-h-[300px]"></div>
+            </div>
+    
+    
+            <!-- composicion de la cartera de clientes por csategoria-->
+            <div class="border border-border rounded flex flex-col bg-container h-120">
+                <div id="customerCategoryTimelineChart" class="w-full h-full min-h-[300px]"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+    
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<script>
+    const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim();
+    const chartData = {{ data|safe }};
+
+
+    const lostAndWonBarChart = echarts.init(document.getElementById("lostAndWonBarChart"))
+    const lostAndWonBarChartOption = {
+        title: {
+            text: 'Clientes Ganados y Perdidos',
+            top: '5%',
+            left: 'center',
+            textStyle: { fontWeight: 'normal', fontSize: 14, color: titleColor },
+        },
+        toolbox: {
+            feature: {
+                saveAsImage: { 
+                    title: 'Guardar imagen',  
+                }
+            }
+        },
+        tooltip: { trigger: 'axis' },
+        legend: {
+            data: ['Clientes Ganados', 'Clientes Perdidos'],
+            top: '15%',
+            left: 'center',
+            textStyle: { color: titleColor }
+        },
+        grid: {
+            top: '30%', left: '3%', right: '4%', bottom: '3%', containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            data: chartData.timeline_months, // poner la info aqui de los meses
+            axisLabel: { color: titleColor },
+            splitLine: { lineStyle: { opacity: 0.1 } }
+        },
+        yAxis: {
+            type: 'value',
+            axisLabel: { color: titleColor },
+            splitLine: { lineStyle: { opacity: 0.1 } }
+        },
+        series: [
+            {
+                name: 'Clientes Ganados',
+                type: 'line',
+                data: chartData.won_customers, // poner la info aqui de los meses
+                itemStyle: { color: '#34d399' },
+                areaStyle: { opacity: 0.1 }
+            },
+            {
+                name: 'Clientes Perdidos',
+                type: 'line',
+                data: chartData.lost_customers, // poner la info aqui de los meses
+                itemStyle: { color: '#ef4444' },
+                areaStyle: { opacity: 0.1 }
+            },
+        ]
+    };
+    lostAndWonBarChart.setOption(lostAndWonBarChartOption);
+
+    const newCtmActiveCtmChart = echarts.init(document.getElementById("newCtmActiveCtmChart"))
+    const newCtmActiveCtmChartOption = {
+        title: {
+            text: 'Nuevos Clientes y Clientes Activos',
+            top: '5%',
+            left: 'center',
+            textStyle: { fontWeight: 'normal', fontSize: 14, color: titleColor },
+        },
+        toolbox: {
+            feature: {
+                saveAsImage: { 
+                    title: 'Guardar imagen',  
+                }
+            }
+        },
+        tooltip: { 
+            trigger: 'axis',
+            // Opcional: Formateador para que el tooltip muestre el símbolo de % en los activos
+            valueFormatter: (value, dataIndex) => {
+                // Si el valor es mayor a 0 y tiene decimales, asumimos que es el porcentaje
+                return value + (value % 1 !== 0 || value > 50 ? '%' : ''); 
+            }
+        },
+        legend: {
+            data: ['Nuevos Clientes', 'Clientes Activos'],
+            top: '15%',
+            left: 'center',
+            textStyle: { color: titleColor }
+        },
+        grid: {
+            top: '30%', left: '3%', right: '4%', bottom: '3%', containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            data: chartData.timeline_months, // poner la info aqui de los meses
+            axisLabel: { color: titleColor },
+            splitLine: { lineStyle: { opacity: 0.1 } }
+        },
+        yAxis: [
+            {
+                type: 'value',
+                name: 'Nuevos',
+                axisLabel: { color: titleColor },
+                splitLine: { 
+                    show: true,
+                    lineStyle: { opacity: 0.1 } 
+                }
+            },
+            {
+                type: 'value',
+                name: 'Alcance',
+                axisLabel: { 
+                    color: titleColor,
+                    formatter: '{value}%' // Agrega el símbolo de porcentaje al eje derecho
+                },
+                splitLine: { 
+                    show: false // Apagamos la cuadrícula secundaria para no hacer ruido visual
+                }
+            }
+        ],
+        series: [
+            {
+                name: 'Nuevos Clientes',
+                type: 'bar',
+                yAxisIndex: 0, // 2. Apunta al eje Y izquierdo
+                data: chartData.new_customers,
+                itemStyle: { color: '#34d399' }
+            },
+            {
+                name: 'Clientes Activos',
+                type: 'line',
+                yAxisIndex: 1, // 2. Apunta al eje Y derecho
+                data: chartData.portfolio_scope,
+                itemStyle: { color: '#27ADF5' },
+                areaStyle: { opacity: 0.1 }
+            }
+        ]
+    };
+    newCtmActiveCtmChart.setOption(newCtmActiveCtmChartOption);
+
+
+
+
+    const volatilitySaleVolumeChart = echarts.init(document.getElementById("volatilitySaleVolumeChart"));
+    const volatilityScatterData = chartData.volatility_scatter; 
+    const volatilityThresholds = chartData.volatility_thresholds;
+    //     pieces.push({
+    //         value: i,
+    //         label: 'Cluster ' + i,
+    //         color: COLOR_ALL[i]
+    //     });
+    // }
+
+    const volatilitySaleVolumeChartOption = {
+        title: {
+            text: 'Volatilidad y volumen de ventas',
+            textStyle: {
+                fontWeight: 'normal',
+                fontSize: 14,
+                color: titleColor
+            },
+
+        },
+        toolbox: {
+            feature: {
+                saveAsImage: { 
+                    title: 'Guardar imagen',  
+                }
+            }
+        },
+        tooltip: {
+            formatter: function (params) {
+                const vol = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value[0]);
+                const status = params.value[2] >= 1 ? 'Creciendo' : 'Frenando';
+                return `<b>Cliente:</b> ${params.value[3]}<br/>
+                        <b>Venta Promedio:</b> ${vol}<br/>
+                        <b>Fluctuación (CV):</b> ${params.value[1]}<br/>
+                        <b>Estatus:</b> ${status} (Momento: ${params.value[2]})`;
+            }
+        },
+
+        grid: {
+            left: '10%', right: '5%', bottom: '10%', containLabel: true
+        },
+        xAxis: {
+            type: 'value',
+            name: 'Venta Promedio Mensual ($)',
+            nameLocation: 'middle',
+            nameGap: 30,
+            splitLine: { lineStyle: { type: 'dashed', opacity: 0.1 } }
+        },
+        yAxis: {
+            type: 'value',
+            name: 'Volatilidad (Fluctuación CV)',
+            nameLocation: 'middle',
+            nameGap: 35,
+            splitLine: { lineStyle: { type: 'dashed', opacity: 0.1 } }
+        },
+        series: [{
+            type: 'scatter',
+            data: volatilityScatterData,
+            symbolSize: 12, // Tamaño fijo como pediste
+            itemStyle: {
+                color: function(params) {
+                    return params.value[2] >= 1 ? '#00c950' : '#fb2c36';
+                },
+                borderColor: '#fff',
+                borderWidth: 1,
+                opacity: 0.8
+            },
+            markLine: {
+                silent: true,
+                lineStyle: { type: 'solid', color: '#999', width: 1 },
+                label: { show: false },
+                data: [
+                    { xAxis: volatilityThresholds.volume },
+                    { yAxis: volatilityThresholds.volatility }
+                ]
+            }
+        }]
+    };
+
+    volatilitySaleVolumeChart.setOption(volatilitySaleVolumeChartOption);
+
+
+
+    // const growthBiasChart = echarts.init(document.getElementById("growthBiasChart"));
+    // const growthBiasData = {{ growth_bias_data|safe }}; // Espera un arreglo tipo [[x1, y1], [x2, y2], ...]
+
+    // const CLUSTER_COUNT_BIAS = 4;
+
+    // const growthBiasChartOption = {
+    //     title: {
+    //         text: 'Matríz de sesgo y factor de crecimiento',
+    //         textStyle: {
+    //             fontWeight: 'normal',
+    //             fontSize: 14,
+    //             color: titleColor
+    //         },
+
+    //     },
+    //     dataset: [
+    //         {
+    //             // Datos originales
+    //             source: growthBiasData
+    //         },
+    //         {
+    //             // El plugin ecStat hace la magia aquí
+    //             transform: {
+    //                 type: 'ecStat:clustering',
+    //                 config: {
+    //                     clusterCount: CLUSTER_COUNT_BIAS,
+    //                     outputType: 'single',
+    //                     outputClusterIndexDimension: 2 // Asigna el # de clúster en la posición 2 del arreglo
+    //                 }
+    //             }
+    //         }
+    //     ],
+    //     toolbox: {
+    //         feature: {
+    //             saveAsImage: { 
+    //                 title: 'Guardar imagen',  
+    //             }
+    //         }
+    //     },
+    //     tooltip: {
+    //         position: 'top',
+    //         formatter: function (params) {
+    //             return `Momentum: ${params.value[0]}<br>Sesgo: ${params.value[1]}<br>Grupo AI: ${params.value[2]}`;
+    //         }
+    //     },
+    //     visualMap: {
+    //         type: 'piecewise',
+    //         top: 'middle',
+    //         min: 0,
+    //         max: CLUSTER_COUNT_BIAS - 1, // Del 0 al 3
+    //         left: 10,
+    //         splitNumber: CLUSTER_COUNT_BIAS,
+    //         dimension: 2, // Le dice que pinte basado en el índice de clúster que calculó ecStat
+    //         pieces: [
+    //             { value: 0, label: 'Clúster 0', color: '#37A2DA' }, // Azul
+    //             { value: 1, label: 'Clúster 1', color: '#e06343' }, // Naranja
+    //             { value: 2, label: 'Clúster 2', color: '#37a354' }, // Verde
+    //             { value: 3, label: 'Clúster 3', color: '#b55dba' }  // Morado
+    //         ]
+    //     },
+    //     grid: {
+    //         left: 120
+    //     },
+    //     xAxis: {
+    //         type: 'value',
+    //         name: 'Momentum',
+    //         nameLocation: 'middle',
+    //         nameGap: 30
+    //     },
+    //     yAxis: {
+    //         type: 'value',
+    //         name: 'Índice de Sesgo'
+    //     },
+    //     series: {
+    //         type: 'scatter',
+    //         encode: { x: 0, y: 1 },
+    //         symbolSize: 12,
+    //         itemStyle: {
+    //             borderColor: '#fff',
+    //             borderWidth: 1
+    //         },
+    //         datasetIndex: 1
+    //     }
+    // };
+
+    // growthBiasChart.setOption(growthBiasChartOption);
+
+
+    const growthBiasChart = echarts.init(document.getElementById("growthBiasChart"));
+    
+    const biasScatterData = chartData.growth_bias_scatter; 
+    const biasThresholds = chartData.growth_bias_thresholds;
+
+    const growthBiasChartOption = {
+        title: {
+            text: 'Estatus Actual (Momentum vs Índice de Sesgo)',
+            textStyle: { fontWeight: 'normal', fontSize: 14, color: titleColor }
+        },
+        toolbox: {
+            feature: { saveAsImage: { title: 'Guardar imagen' } }
+        },
+        tooltip: {
+            formatter: function (params) {
+                const vol = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.value[2]);
+                
+                let estatusTexto = "";
+                if (params.value[0] >= 1 && params.value[1] <= 0) estatusTexto = "Estable y Creciendo";
+                else if (params.value[0] < 1 && params.value[1] > 0) estatusTexto = "Errático y Decreciendo";
+                else if (params.value[0] >= 1 && params.value[1] > 0) estatusTexto = "Crecimiento y Errático";
+                else estatusTexto = "Estable y Decreciendo";
+
+                return `<b>Cliente:</b> ${params.value[3]}<br/>
+                        <b>Estatus:</b> ${estatusTexto}<br/>
+                        <b>Momentum:</b> ${params.value[0]}<br/>
+                        <b>Índice de Sesgo:</b> ${params.value[1]}<br/>
+                        <b>Venta Promedio:</b> ${vol}`;
+            }
+        },
+        grid: {
+            left: '10%', right: '5%', bottom: '10%', containLabel: true
+        },
+        xAxis: {
+            type: 'value',
+            name: 'Momentum (1.0 = Promedio Histórico)',
+            nameLocation: 'middle',
+            nameGap: 30,
+            splitLine: { lineStyle: { type: 'dashed', opacity: 0.3 } }
+        },
+        yAxis: {
+            type: 'value',
+            name: 'Índice de Sesgo (> 0 = Compras erráticas)',
+            nameLocation: 'middle',
+            nameGap: 35,
+            splitLine: { lineStyle: { type: 'dashed', opacity: 0.3 } }
+        },
+        series: [{
+            type: 'scatter',
+            data: biasScatterData,
+            symbolSize: 12, 
+            itemStyle: {
+                // Color semaforizado por cuadrantes
+                color: function(params) {
+                    const momentum = params.value[0];
+                    const bias = params.value[1];
+                    
+                    if (momentum >= 1 && bias <= 0) return '#00c950'; // Verde (Estrellas)
+                    if (momentum < 1 && bias > 0) return '#fb2c36';   // Rojo (Riesgo)
+                    if (momentum >= 1 && bias > 0) return '#f39c12';  // Naranja (Falso Grande)
+                    return '#9b59b6';                                 // Morado (Estable cayendo)
+                },
+                borderColor: '#fff',
+                borderWidth: 1,
+                opacity: 0.8
+            },
+            // Las líneas divisorias fijas por negocio (1.0 y 0.0)
+            markLine: {
+                silent: true,
+                lineStyle: { type: 'solid', color: '#ff4d4f', width: 1.5 },
+                label: { show: false },
+                data: [
+                    { xAxis: biasThresholds.momentum }, // Línea vertical en 1.0
+                    { yAxis: biasThresholds.bias }      // Línea horizontal en 0.0
+                ]
+            }
+        }]
+    };
+
+    growthBiasChart.setOption(growthBiasChartOption);
+
+
+
+
+    // const customerCategoryTimelineChart = echarts.init(document.getElementById("customerCategoryTimelineChart"));
+
+    // const rawData = [
+    // [100, 302, 301, 334, 390, 330, 320], // C
+    // [320, 132, 101, 134, 90, 230, 210],  // A
+    // [220, 182, 191, 234, 290, 330, 310], // AA
+    // [150, 212, 201, 154, 190, 330, 410], // Oro
+    // [820, 832, 901, 934, 1290, 1330, 1320] // Diamante
+    // ];
+
+    // const totalData = [];
+    // for (let i = 0; i < rawData[0].length; ++i) {
+    // let sum = 0;
+    // for (let j = 0; j < rawData.length; ++j) {
+    //     sum += rawData[j][i];
+    // }
+    // totalData.push(sum);
+    // }
+
+    // const grid = {
+    // left: 50,
+    // right: 50,
+    // top: 50,
+    // bottom: 50
+    // };
+
+    // const gridWidth = customerCategoryTimelineChart.getWidth() - grid.left - grid.right;
+    // const gridHeight = customerCategoryTimelineChart.getHeight() - grid.top - grid.bottom;
+    // const categoryWidth = gridWidth / rawData[0].length;
+    // const barWidth = categoryWidth * 0.6;
+    // const barPadding = (categoryWidth - barWidth) / 2;
+
+    // const categories = ['C', 'A', 'AA', 'Oro', 'Diamante'];
+    // const color = ['#d4d4d4', '#3b70fa', '#009688', '#facc15', '#311b5e'];
+
+    // const series = categories.map((name, sid) => {
+    // return {
+    //     name,
+    //     type: 'bar',
+    //     stack: 'total',
+    //     barWidth: '60%',
+    //     label: {
+    //     show: true,
+    //     formatter: (params) => Math.round(params.value * 1000) / 10 + '%'
+    //     },
+    //     itemStyle: {
+    //         color: color[sid]
+    //     },
+    //     data: rawData[sid].map((d, did) =>
+    //     totalData[did] <= 0 ? 0 : d / totalData[did]
+    //     )
+    // };
+    // });
+
+    // const elements = [];
+    // for (let j = 1, jlen = rawData[0].length; j < jlen; ++j) {
+    // const leftX = grid.left + categoryWidth * j - barPadding;
+    // const rightX = leftX + barPadding * 2;
+    // let leftY = grid.top + gridHeight;
+    // let rightY = leftY;
+    
+    // for (let i = 0, len = series.length; i < len; ++i) {
+    //     const points = [];
+    //     const leftBarHeight = (rawData[i][j - 1] / totalData[j - 1]) * gridHeight;
+    //     points.push([leftX, leftY]);
+    //     points.push([leftX, leftY - leftBarHeight]);
+    //     const rightBarHeight = (rawData[i][j] / totalData[j]) * gridHeight;
+    //     points.push([rightX, rightY - rightBarHeight]);
+    //     points.push([rightX, rightY]);
+    //     points.push([leftX, leftY]);
+    //     leftY -= leftBarHeight;
+    //     rightY -= rightBarHeight;
+        
+    //     elements.push({
+    //     type: 'polygon',
+    //     shape: {
+    //         points
+    //     },
+    //     style: {
+    //         fill: color[i],
+    //         opacity: 0.25 // Transparencia para las conexiones
+    //     }
+    //     });
+    // }
+    // }
+
+    // const customerCategoryTimelineChartOption = {
+    //     title: {
+    //         text: 'Composición de la cartera de clientes por categoría',
+    //         textStyle: {
+    //             fontWeight: 'normal',
+    //             fontSize: 14,
+    //             color: titleColor
+    //         },
+
+    //     },
+    //     toolbox: {
+    //         feature: {
+    //             saveAsImage: { 
+    //                 title: 'Guardar imagen',  
+    //             }
+    //         }
+    //     },
+    //     legend: {
+    //         selectedMode: false,
+    //         data: categories,
+    //         bottom: 0
+    //     },
+    //     grid,
+    //     yAxis: {
+    //         type: 'value',
+    //         axisLabel: {
+    //             formatter: (value) => (value * 100) + '%' // Formato 0% a 100%
+    //         }
+    //     },
+    //     xAxis: {
+    //         type: 'category',
+    //         data: ['2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06', '2025-07']
+    //     },
+    //     series,
+    //     graphic: {
+    //         elements
+    //     }
+    // };
+
+    // customerCategoryTimelineChart.setOption(customerCategoryTimelineChartOption);
+
+
+
+
+    // const productCategoryData = [
+    //     { value: 1540300, name: 'A' },
+    //     { value: 980500, name: 'AA' },
+    //     { value: 750200, name: 'Diamante' },
+    //     { value: 420100, name: 'C' },
+    //     { value: 180000, name: 'Oro' }
+    // ];
+
+
+    // const categoryColors = ['#9b59b6', '#f39c12', '#00b894', '#0984e3', '#b2bec3'];
+
+    // const customerCategoryContribChartOption = {
+    //     color: categoryColors,
+    //     title: {
+    //         text: 'Contribución monetaria por categoría de cliente',
+    //         textStyle: {
+    //             fontWeight: 'normal',
+    //             fontSize: 14,
+    //             color: titleColor
+    //         },
+
+    //     },
+    //     toolbox: {
+    //         feature: {
+    //             saveAsImage: { 
+    //                 title: 'Guardar imagen',  
+    //             }
+    //         }
+    //     },
+    //     toolbox: {
+    //         feature: {
+    //             saveAsImage: {}
+    //         }
+    //     },
+    //     tooltip: {
+    //         trigger: 'item',
+    //         formatter: function (params) {
+    //             const formattedMoney = new Intl.NumberFormat('es-MX', {
+    //                 style: 'currency',
+    //                 currency: 'MXN'
+    //             }).format(params.value);
+                
+    //             return `${params.seriesName}<br/>${params.marker} ${params.name}: <b>${formattedMoney}</b> (${params.percent}%)`;
+    //         }
+    //     },
+    //     legend: {
+    //         top: '10%',
+    //         left: 'center'
+    //     },
+    //     series: [
+    //         {
+    //             name: 'Contribución',
+    //             type: 'pie',
+    //             radius: ['45%', '70%'],
+    //             center: ['50%', '60%'],
+    //             avoidLabelOverlap: false,
+    //             padAngle: 5,
+    //             itemStyle: {
+    //                 borderRadius: 10
+    //             },
+    //             label: {
+    //                 show: false,
+    //                 position: 'center'
+    //             },
+    //             emphasis: {
+    //                 label: {
+    //                     show: true,
+    //                     fontSize: 22,
+    //                     fontWeight: 'bold',
+    //                     formatter: '{b}\n{d}%'
+    //                 }
+    //             },
+    //             labelLine: {
+    //                 show: false
+    //             },
+    //             data: productCategoryData
+    //         }
+    //     ]
+    // };
+
+    // const customerCategoryContribChart = echarts.init(document.getElementById('customerCategoryContribChart'));
+    // customerCategoryContribChart.setOption(customerCategoryContribChartOption);
+
+
+    // const commercialRiskEvolutionChart = echarts.init(document.getElementById('commercialRiskEvolutionChart'));
+
+
+    // const months = ['2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06', 
+    //                 '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12', 
+    //                 '2026-01', '2026-02', '2026-03', '2026-04', '2026-05'];
+
+
+    // const dataGini = [0.57, 0.60, 0.58, 0.60, 0.58, 0.59, 0.55, 0.60, 0.57, 0.59, 0.61, 0.62, 0.56, 0.61, 0.60, 0.61, 0.61];
+    // const dataAlcance = [0.13, 0.25, 0.21, 0.25, 0.22, 0.21, 0.23, 0.26, 0.25, 0.31, 0.29, 0.29, 0.35, 0.33, 0.30, 0.32, 0.36];
+    // const dataRiesgo = [0.35, 0.43, 0.40, 0.43, 0.40, 0.40, 0.39, 0.43, 0.41, 0.45, 0.45, 0.45, 0.46, 0.47, 0.45, 0.46, 0.48];
+
+    // const commercialRiskOptions = {
+    //     title: {
+    //         text: 'Índice de riesgo comercial a lo largo del tiempo',
+    //         left: 'center',
+    //         textStyle: {
+    //             fontWeight: 'normal',
+    //             fontSize: 16,
+    //             color: titleColor
+    //         }
+    //     },
+    //     tooltip: {
+    //         trigger: 'axis'
+    //     },
+    //     legend: {
+    //         bottom: 0,
+    //         center: 0,
+    //         data: ['Índice de riesgo comercial', 'Índice de Gini (concentración)', 'Clientes desatendidos'],
+    //     },
+    //     grid: {
+    //         left: '5%',
+    //         right: '5%',
+    //         bottom: '15%', // Espacio extra para las etiquetas rotadas
+    //         containLabel: true
+    //     },
+    //     xAxis: {
+    //         type: 'category',
+    //         boundaryGap: false,
+    //         data: months,
+    //         axisLabel: {
+    //             rotate: 45, // Rota el texto a 45 grados
+    //             color: '#555'
+    //         },
+    //         splitLine: {
+    //             show: true,
+    //             lineStyle: {
+    //                 type: 'dashed',
+    //                 opacity: 0.3
+    //             }
+    //         }
+    //     },
+    //     yAxis: {
+    //         type: 'value',
+    //         name: 'Index Score (0 to 1)',
+    //         nameLocation: 'middle',
+    //         nameGap: 35,
+    //         min: 0,
+    //         max: 1.0,
+    //         splitLine: {
+    //             lineStyle: {
+    //                 type: 'dashed',
+    //                 opacity: 0.5
+    //             }
+    //         }
+    //     },
+    //     series: [
+    //         {
+    //             name: 'Índice de riesgo comercial',
+    //             type: 'line',
+    //             data: dataRiesgo,
+    //             symbol: 'circle', // Símbolo circular
+    //             symbolSize: 8,
+    //             itemStyle: { color: '#800080' }, // Morado oscuro
+    //             lineStyle: {
+    //                 width: 3 // Línea principal más gruesa
+    //             }
+    //         },
+    //         {
+    //             name: 'Índice de Gini (concentración)',
+    //             type: 'line',
+    //             data: dataGini,
+    //             symbol: 'rect', // Símbolo cuadrado
+    //             symbolSize: 8,
+    //             itemStyle: { color: '#ff6b6b' }, // Rojo coral
+    //             lineStyle: {
+    //                 type: 'dashed', // Línea punteada
+    //                 width: 2
+    //             }
+    //         },
+    //         {
+    //             name: 'Clientes desatendidos',
+    //             type: 'line',
+    //             data: dataAlcance,
+    //             symbol: 'triangle', // Símbolo triangular
+    //             symbolSize: 8,
+    //             itemStyle: { color: '#a9a9a9' }, // Gris
+    //             lineStyle: {
+    //                 type: 'dashed', // Línea punteada
+    //                 width: 2
+    //             }
+    //         }
+    //     ]
+    // };
+
+    // commercialRiskEvolutionChart.setOption(commercialRiskOptions);
+
+
+    // window.addEventListener('resize', function() {
+    //     commercialRiskEvolutionChart.resize();
+    // });
+
+</script>
+
+
+{% endblock %}

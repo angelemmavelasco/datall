@@ -8,8 +8,7 @@
 
 {% block module_actions %}
 
-<button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar
-    reporte</button>
+<button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button>
 
 <button onclick="toggleFilters()"
     class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
@@ -237,6 +236,11 @@
 
 <div class="flex flex-col w-full gap-4">
     <!-- Ban de resultados -->
+    <div class="">
+        <p class="text-title text-sm mb-2">Reporte general de ventas {{ selected_date_start|default:'' }} al {{ selected_date_end|default:'' }}</p>
+        <hr class="border-border">
+    </div>
+
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Venta neta</p>
@@ -520,7 +524,7 @@
         const timelineOptions = {
         color: [greenColor, blueColor],
         title: {
-            text: 'Evolución de Venta neta y unidades',
+            text: 'Evolución de venta neta y unidades',
             textStyle: {
                 fontWeight: 'normal',
                 fontSize: 14,
@@ -556,27 +560,44 @@
                 show: false
             }
         },
-        yAxis: {
-            type: 'value',
-            splitLine: {
-                lineStyle: {
-                    opacity: 0.10,
+        yAxis: [
+            {
+                type: 'value',
+                name: 'Venta neta',
+                splitLine: {
+                    lineStyle: {
+                        opacity: 0.10,
+                    },
+                    show: true
+                },
+                show: true
+            },
+            {
+                type: 'value',
+                name: 'Unidades',
+                splitLine: {
+                    lineStyle: {
+                        opacity: 0.1,
+                    },
+                    show: false
                 },
                 show: true
             }
-        },
+        ],
         series: [
             {
                 name: 'Venta neta',
                 type: 'line',
                 data: timelineData.sales,
-                smooth: true
+                smooth: true,
+                yAxisIndex: 0
             },
             {
                 name: 'Unidades',
                 type: 'line',
                 data: timelineData.units,
-                smooth: true
+                smooth: true,
+                yAxisIndex: 1
             }
         ]
     };
