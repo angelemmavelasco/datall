@@ -308,26 +308,19 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                 </svg>
 
                 <div class="absolute text-page right-0 top-full mt-1 w-72 p-4 bg-strong border border-border rounded opacity-0 invisible group-focus:opacity-100 group-focus:visible transition-all duration-200 z-50">
-                    <h4 class="font-semibold mb-2">¿Cómo leer estas gráficas?</h4>
+                    <h4 class="font-semibold mb-2">¿Cómo leer esta gráfica?</h4>
                     <p class="mb-2">
                         <strong>Periodo:</strong> Los datos cubren desde el {{ selected_date_start }} hasta el {{ selected_date_end }}.
                     </p>
-                    <ul class="list-disc pl-6 space-y-4 border-l-4 border-violet-500">
-                        <li><strong>Volatilidad y volumen:</strong> Cruza el tamaño del cliente (Eje X) contra su constancia (Eje Y).
-                            Las líneas divisorias marcan la <strong>mediana (50%)</strong>; esto separa automáticamente a los clientes en cuadrantes 
-                            de Alto/Bajo volumen de compra y Alta/Baja volatilidad para identificar las cuentas importantes de la cartera.</li>
-                        
-                        <li><strong>Factor de crecimiento y sesgo:</strong> Evalúa salud y predictibilidad. <br>
-                            <br><strong>Eje X (Factor de crecimiento):</strong> >1.0 indica incremento reciente.
-                            <br><strong>Eje Y (Índice de sesgo):</strong> Valores <strong>negativos</strong> indican clientes
-                            sólidos/recurrentes; valores <strong>positivos</strong> señalan compras erráticas (picos aislados).
-                            <br><strong>Clasificación:</strong> <br>
-                            <ul class="list-disc pl-6 space-y-4">
-                                <li><span class="text-green-500 font-semibold">Verde:</span> Estable/Creciendo</li>
-                                <li><span class="text-yellow-500 font-semibold">Naranja:</span> Inestable/Creciendo</li>
-                                <li><span class="text-purple-500 font-semibold">Morado:</span> Estable/Decreciendo</li>
-                                <li><span class="text-red-500 font-semibold">Rojo:</span> Inestable/Decreciendo</li>
-                            </ul>
+                    <ul class="text-xs space-y-2 pl-2 border-l-2 border-primary mb-3">
+                        <li>
+                            <strong>Concentración (Gini):</strong> Evalúa si las ventas dependen de unos pocos clientes selectos o si están repartidas equitativamente.
+                        </li>
+                        <li>
+                            <strong>Clientes desatendidos:</strong> Mide el porcentaje de la cartera registrada en ese momento que dejó de comprar.
+                        </li>
+                        <li>
+                            <strong>IRC (Índice de Riesgo Comercial):</strong> Es el indicador definitivo de la ruta. Combina la concentración y la inactividad; si cualquiera de las dos sube, el riesgo también lo hará.
                         </li>
                     </ul>
                 </div>
