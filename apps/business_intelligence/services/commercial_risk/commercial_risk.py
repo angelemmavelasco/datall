@@ -176,21 +176,31 @@ class CommercialRisk:
             variance = sum((s - mean_sales)**2 for s in sales_data) / n_months
             std_dev = math.sqrt(variance)
             cv = std_dev / mean_sales if mean_sales > 0 else 0
-            recent_months = valid_months[-3:] if n_months >= 3 else valid_months
-            recent_sales = [float(customer_sales[cid].get(m, 0)) for m in recent_months]
-            recent_mean = sum(recent_sales) / len(recent_months)
+
+            #get only 3 months ago of valid months (skip current month)
+            if n_months >= 4:
+                recent_months = valid_months[-4:-1]
+            else:
+                recent_months = valid_months[:-1]
+
+            if recent_months:
+                recent_sales = [float(customer_sales[cid].get(m, 0)) for m in recent_months]
+                recent_mean = sum(recent_sales) / len(recent_months)
+            else:
+                recent_mean = mean_sales
             
             momentum = recent_mean / mean_sales if mean_sales > 0 else 0
 
             scatter_data.append([round(mean_sales, 2), round(cv, 4), round(momentum, 4), cid])
             vol_list.append(mean_sales)
             cv_list.append(cv)
+
         vol_threshold = 0
         cv_threshold = 0
         if vol_list:
             vol_list.sort()
             cv_list.sort()
-            vol_threshold = vol_list[int(len(vol_list) * 0.75)]
+            vol_threshold = vol_list[int(len(vol_list) * 0.5)]
             cv_threshold = cv_list[int(len(cv_list) * 0.50)]
 
         return {
@@ -200,6 +210,7 @@ class CommercialRisk:
                 'volatility': round(cv_threshold, 4)
             }
         }
+
 
     def _growth_and_bias(self) -> Dict[str, Any]:
         scatter_data = []
@@ -245,6 +256,70 @@ class CommercialRisk:
                 'bias': 0.0      # Umbral universal de estabilidad
             }
         }
+
+
+    def _get_gini_portafolio_scope_complement(self) -> Dict[str, Any]:
+        """
+        Calculates the gini index for a provided list of sales from each customer month by month.
+        """
+        gini_list = []
+        portfolio_scope_complement = []
+
+        alpha, beta = 0.5, 0.5
+        commercial_risk_index_list = []
+
+        
+
+        for month_str in self.months_timeline:
+            portfolio_customers = [
+                cid for cid, reg_date in self.customers_reg_dates.items()
+                if reg_date.strftime('%Y-%m') <= month_str
+            ]
+            
+            total_portfolio_size = len(portfolio_customers)
+            
+            if total_portfolio_size == 0:
+                gini_list.append(0.0)
+                portfolio_scope_complement.append(1.0)
+                continue
+                
+            month_sales = []
+            active_count = 0
+            
+            for cid in portfolio_customers:
+                amount = float(self.monthly_sales[month_str].get(cid, 0))
+                month_sales.append(amount)
+                if amount > 0:
+                    active_count += 1
+                    
+            scope_ratio = active_count / total_portfolio_size
+            complement = round(1.0 - scope_ratio, 4)
+            portfolio_scope_complement.append(complement)
+            
+            month_sales.sort()
+            n = total_portfolio_size
+            total_sales = sum(month_sales)
+            
+            if total_sales == 0:
+                gini_list.append(0.0)
+            else:
+                sum_ix = sum((i + 1) * amount for i, amount in enumerate(month_sales))
+                gini = (2.0 * sum_ix) / (n * total_sales) - (n + 1.0) / n
+                gini_list.append(round(gini, 4))
+
+            commercial_risk_index = (alpha * gini) + (beta * complement)
+            commercial_risk_index_list.append(round(commercial_risk_index, 4))
+
+        return {
+            'gini': gini_list,
+            'portfolio_scope_complement': portfolio_scope_complement,
+            'commercial_risk_index': commercial_risk_index_list
+        }
+            
+
+        
+
+
 
     def get_global_kpis(self) -> Dict[str, Any]:
         """
@@ -330,9 +405,10 @@ class CommercialRisk:
             'gini_index': round(gini_index * 100, 2),
             'portafolio_scope': round(portfolio_scope * 100, 2),
             'momentum': round(momentum * 100, 2),
-            'commercial_risk_index': round(commercial_risk * 100, 2)
+            'commercial_risk_index': round(commercial_risk * 100, 2),
+            'start_q_date': start_q_date.strftime('%Y-%m-%d'),
+            'end_q_date': end_q_date.strftime('%Y-%m-%d'),
         }
-
 
     def get_data(self) -> Dict[str, Any]:
         """
@@ -353,6 +429,7 @@ class CommercialRisk:
         active_data = self._new_and_active_customers()
         volatility_data = self._volatility_and_volume()
         growth_bias_data = self._growth_and_bias()
+        gini_portafolio_scope_data = self._get_gini_portafolio_scope_complement()
 
         return {
             'timeline_months': self.months_timeline,
@@ -364,6 +441,9 @@ class CommercialRisk:
             'volatility_thresholds': volatility_data['thresholds'],
             'growth_bias_scatter': growth_bias_data['scatter_data'],
             'growth_bias_thresholds': growth_bias_data['thresholds'],
+            'gini': gini_portafolio_scope_data['gini'],
+            'portfolio_scope_complement': gini_portafolio_scope_data['portfolio_scope_complement'],
+            'commercial_risk_index': gini_portafolio_scope_data['commercial_risk_index'],
         }
 
     def get_data_report(self):
