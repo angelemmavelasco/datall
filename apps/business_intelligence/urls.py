@@ -4,7 +4,6 @@ from .views import *
 app_name = 'business_intelligence'
 
 urlpatterns = [
-    path('data_assistant/', data_assistant, name='data_assistant'),
     path('sales_dashboard/', sales_dashboard, name='sales_dashboard'),  
     path('routes_kpis/', routes_kpis, name='routes_kpis'),
     path('warehouses_kpis/', warehouses_kpis, name='warehouses_kpis'),

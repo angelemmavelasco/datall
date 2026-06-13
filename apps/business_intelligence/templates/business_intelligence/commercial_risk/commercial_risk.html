@@ -46,7 +46,7 @@
 
 
 {% block ai_insights_url %}
-    {% url 'business_intelligence:data_assistant' %}?report_type=commercial_risk&route={{ selected_route }}&date_start={{ selected_date_start }}&date_end={{ selected_date_end }}
+    {% url 'data_assistant:data_assistant' %}?report_type=commercial_risk&route={{ selected_route }}&date_start={{ selected_date_start }}&date_end={{ selected_date_end }}
 {% endblock %}
 
 
@@ -122,7 +122,12 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
     <!-- Ban de resultados -->
     <div class="">
         <div class="flex items-center justify-between text-title">
-            <p class="text-title text-sm mb-2">Métricas de riesgo comercial ruta {{ selected_route|default:"Sin seleccionar" }}</p>
+            <p class="text-title text-sm mb-2">
+                Métricas de riesgo comercial ruta {{ selected_route|default:"Sin seleccionar" }} <br>
+                <span class="text-[12px] text-hover italic">
+                    ({{ start_q_date }} - {{ end_q_date }})
+                </span>
+            </p>
             
             <div class="group relative flex items-center outline-none pb-2" tabindex="0">
 
@@ -140,7 +145,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                     <p class="mb-2">
                         <strong>Periodo:</strong> Los datos cubren exclusivamente desde el {{ start_q_date }} hasta el {{ end_q_date }}, es decir, el último trimestre completado.
                     </p>
-                    <ul class="list-disc pl-6 space-y-1 border-l-4 border-violet-500 ">
+                    <ul class="list-disc pl-6 space-y-1 border-l-4 border-primary ">
                         <li><strong>Índice de Gini:</strong> Indica que tan dependiente es una ruta de pocos clientes. Un Gini alto implica una dependencia muy alta de pocos clientes.</li>
                         <li><strong>Alcance de cartera:</strong> Porcentaje de clientes con consumos contra el número total de clientes registrados asignados a la ruta.</li>
                         <li><strong>Factor de crecimiento:</strong> Indica la tendencia de crecimiento de la ruta comparando el último trimestre completado contra el histórico completo de toda la ruta.</li>
@@ -166,7 +171,12 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Factor de crecimiento</p>
-            <p class="text-xl text-violet-500">{{ momentum|default:0.00|floatformat:2|intcomma }} %</p>
+            <p class="text-xl 
+            {% if momentum >= 100 %}
+            text-violet-500
+            {% elif momentum < 100 %}
+            text-red-500
+            {% endif %}">{{ momentum|default:0.00|floatformat:2|intcomma }} %</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col  bg-container">
             <p class="text-muted text-sm text-strong">Índice de riesgo comercial</p>
@@ -187,7 +197,12 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
     <div class="">
         <div class="flex items-center justify-between text-title">
-            <p class="text-title text-sm mb-2">Evolución y cobertura de cartera</p>
+            <p class="text-title text-sm mb-2">Evolución y cobertura de cartera <br>
+                <span class="text-[12px] text-hover italic">
+                    ({{ selected_date_start }} - {{ selected_date_end }})
+                </span>
+
+            </p>
             
             <div class="group relative flex items-center outline-none pb-2" tabindex="0">
                 <svg xmlns="http://www.w3.org/2000/svg"
@@ -203,7 +218,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                     <p class="mb-2">
                         <strong>Periodo:</strong> Los datos cubren desde el {{ selected_date_start }} hasta el {{ selected_date_end }}.
                     </p>
-                    <ul class="list-disc pl-6 space-y-1 border-l-4 border-violet-500 ">
+                    <ul class="list-disc pl-6 space-y-1 border-l-4 border-primary ">
                         <li><strong>Clientes ganados y perdidos:</strong>
                             Muestra mensualmente, dentro del rango de fechas seleccionado, el volumen de clientes ganados y perdidos en la ruta. <br>
                             Un <strong>cliente ganado</strong> es aquel que no registró compras en el periodo anterior, pero realizó al menos una compra en el mes actual. <br>
@@ -240,7 +255,10 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
     <div class="">
         <div class="flex items-center justify-between text-title">
-            <p class="text-title text-sm mb-2">Distribución de cartera</p>
+            <p class="text-title text-sm mb-2">Distribución de cartera <br>
+                <span class="text-[12px] text-hover italic">
+                    ({{ selected_date_start }} - {{ selected_date_end }})
+                </span></p>
             
             <div class="group relative flex items-center outline-none pb-2" tabindex="0">
                 <svg xmlns="http://www.w3.org/2000/svg"
@@ -256,7 +274,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                     <p class="mb-2">
                         <strong>Periodo:</strong> Los datos cubren desde el {{ selected_date_start }} hasta el {{ selected_date_end }}.
                     </p>
-                    <ul class="list-disc pl-6 space-y-4 border-l-4 border-violet-500">
+                    <ul class="list-disc pl-6 space-y-4 border-l-4 border-primary">
                         <li><strong>Volatilidad y volumen:</strong> Cruza el tamaño del cliente (Eje X) contra su constancia (Eje Y).
                             Las líneas divisorias marcan la <strong>mediana (50%)</strong>; esto separa automáticamente a los clientes en cuadrantes 
                             de Alto/Bajo volumen de compra y Alta/Baja volatilidad para identificar las cuentas importantes de la cartera.</li>
@@ -297,7 +315,10 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
     <div class="">
         <div class="flex items-center justify-between text-title">
-            <p class="text-title text-sm mb-2">Riesgo comercial</p>
+            <p class="text-title text-sm mb-2">Riesgo comercial <br>
+                <span class="text-[12px] text-hover italic">
+                    ({{ selected_date_start }} - {{ selected_date_end }})
+                </span></p>
             
             <div class="group relative flex items-center outline-none pb-2" tabindex="0">
                 <svg xmlns="http://www.w3.org/2000/svg"
