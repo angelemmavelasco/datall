@@ -365,4 +365,20 @@ class CommercialRisk:
             'growth_bias_scatter': growth_bias_data['scatter_data'],
             'growth_bias_thresholds': growth_bias_data['thresholds'],
         }
+
+    def get_data_report(self):
+        """
+        Get the data for the commercial risk report and returns an Excel file.
+
+        returns:
+        --------
+        Binary file
+            An Excel file with the following sheets:
+            - clientes_ganados_perdidos
+            - clientes_nuevos_alcance_de_cartera
+            - distribucion_y_riesgo_comercial
+        """
+
+        pass
+        
         
