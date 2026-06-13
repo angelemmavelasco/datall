@@ -67,7 +67,8 @@ INSTALLED_APPS = [
     'apps.customers',
     'apps.marketing',
     'apps.human_resources',
-    'apps.data_admin'
+    'apps.data_admin',
+    'apps.data_assistant'
 ]
 
 MIDDLEWARE = [
