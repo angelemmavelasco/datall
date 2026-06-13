@@ -14,7 +14,7 @@
 
 <button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar datos</button>
 
-<button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center justify-center gap-1">
+<button onclick="toggleAssistant()" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center justify-center gap-1">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-astroid-icon lucide-astroid"><path d="M12.983 21.186a1 1 0 0 1-1.966 0 10 10 0 0 0-8.203-8.203 1 1 0 0 1 0-1.966 10 10 0 0 0 8.203-8.203 1 1 0 0 1 1.966 0 10 10 0 0 0 8.203 8.203 1 1 0 0 1 0 1.966 10 10 0 0 0-8.203 8.203"/></svg>
     <span>
         Asistente de datos
@@ -42,10 +42,11 @@
 </button>
 
 
+{% endblock %}
 
 
-
-
+{% block ai_insights_url %}
+    {% url 'business_intelligence:data_assistant' %}?report_type=commercial_risk&route={{ selected_route }}&date_start={{ selected_date_start }}&date_end={{ selected_date_end }}
 {% endblock %}
 
 

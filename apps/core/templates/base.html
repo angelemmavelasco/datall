@@ -11,11 +11,22 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts-stat/dist/ecStat.min.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
     <script>
         echarts.registerTransform(ecStat.transform.clustering);
     </script>
 
     <style type="text/tailwindcss">
+        .htmx-indicator {
+            display: none;
+        }
+        .htmx-request .htmx-indicator {
+            display: flex;
+        }
+        .htmx-request.htmx-indicator {
+            display: flex;
+        }
         @media print {
             @page {
                 margin: 0;
@@ -167,6 +178,9 @@
     <!--  overlay for filters-->
     <div id="filter-overlay" class="fixed inset-0 z-40 hidden bg-black opacity-60" onclick="closeFilters()"></div>
 
+
+    <!-- overlay for data asisstnat -->
+    <div id="assistant-overlay" class="fixed inset-0 z-40 hidden bg-black opacity-60" onclick="closeAssistant()"></div>
     <!-- right sidebar for filters-->
 
     <aside id="filter-sidebar"
@@ -187,6 +201,50 @@
 
         <div class="flex-1">
             {% block filters %}{% endblock %}
+        </div>
+    </aside>
+
+    <!-- side bar for data assistant -->
+    <aside id="assistant-sidebar"
+        class="fixed inset-y-0 right-0 z-50 flex w-80 md:w-96 translate-x-full flex-col overflow-y-auto border-l border-border bg-container p-4 transition-transform duration-300">
+        
+        <div class="flex items-center justify-between border-b border-border pb-2 mb-4 shrink-0">
+            <div class="flex items-center gap-2 text-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-astroid-icon lucide-astroid"><path d="M12.983 21.186a1 1 0 0 1-1.966 0 10 10 0 0 0-8.203-8.203 1 1 0 0 1 0-1.966 10 10 0 0 0 8.203-8.203 1 1 0 0 1 1.966 0 10 10 0 0 0 8.203 8.203 1 1 0 0 1 0 1.966 10 10 0 0 0-8.203 8.203"/></svg>
+                <h3 class="tracking-wider font-medium">Asistente de Datos</h3>
+            </div>
+            <button type="button" onclick="closeAssistant()" class="text-muted hover:text-hover cursor-pointer transition-colors" title="Cerrar asistente">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m15 9-6 6" />
+                    <path d="m9 9 6 6" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto relative" id="assistant-content">
+            
+            <div class="flex flex-col items-center justify-center h-full text-center opacity-70">
+                <p class="text-sm mb-4">Obtén una descripción detallada de esta vista con un análisis rápido y completo de los datos que contiene.</p>
+                
+                <button 
+                    hx-get="{% block ai_insights_url %}{% endblock %}" 
+                    hx-target="#assistant-content" 
+                    hx-swap="innerHTML"
+                    hx-indicator="#ai-spinner"
+                    class="flex items-center gap-2 p-1 px-3 bg-container text-title rounded hover:bg-hover transition-colors cursor-pointer border border-border">
+                    Analizar vista
+                </button>
+            </div>
+
+            <div id="ai-spinner" class="htmx-indicator absolute inset-0 flex flex-col items-center justify-center bg-container z-10">
+                <svg class="animate-spin h-8 w-8 text-title mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-sm text-title animate-pulse">Analizando datos...</p>
+            </div>
+            
         </div>
     </aside>
 
@@ -388,6 +446,22 @@
             overlay.classList.add('hidden');
         }
 
+        function toggleAssistant() {
+            const sidebar = document.getElementById('assistant-sidebar');
+            const overlay = document.getElementById('assistant-overlay');
+
+            sidebar.classList.toggle('translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        function closeAssistant() {
+            const sidebar = document.getElementById('assistant-sidebar');
+            const overlay = document.getElementById('assistant-overlay');
+
+            sidebar.classList.add('translate-x-full');
+            overlay.classList.add('hidden');
+        }
+
         function toggleDarkMode() {
             const htmlElement = document.documentElement;
 
@@ -415,6 +489,7 @@
                 closeMobileMenu();
             }
         });
+            
     </script>
     {% block extra_js %}{% endblock %}
 </body>

@@ -4,7 +4,8 @@ from django.shortcuts import render
 from apps.core.utils import get_allowed_routes_for_user
 from django.contrib.auth.decorators import login_required
 from apps.core.models import Warehouse, ProductClass, ProductCategory, CustomerType, Region, Route
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse,StreamingHttpResponse
+import asyncio
 import openpyxl
 from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
 from apps.sales.services.sale_targets.sale_targets_crud import SaleTargetCRUD
@@ -17,6 +18,9 @@ from django.db.models.functions import ExtractYear
 from django.db.models import Sum
 from datetime import datetime, date
 from apps.business_intelligence.services.commercial_risk.commercial_risk import CommercialRisk
+from apps.business_intelligence.services.data_assistant.data_assistant import DataAssistant
+import markdown
+from asgiref.sync import sync_to_async
 
 
 @login_required
@@ -310,6 +314,7 @@ def commercial_risk(request):
 
     print(global_kpis)
 
+
     context = {
         'data': data,
         **global_kpis,
@@ -321,8 +326,77 @@ def commercial_risk(request):
         
     }
 
-
     return render(request, template, context)
+
+
+async def data_assistant(request):
+    report_type = request.GET.get('report_type')
+
+    view_rules = """
+    Eres un Analista de Datos Comerciales experto. Tu objetivo es explicar el estado de una ruta comercial basándote en los datos proporcionados.
+    Tu respuesta DEBE estar formateada en Markdown y dividida ESTRICTAMENTE en estas 3 secciones:
+
+    ### Perspectiva General
+    Explica brevemente y directo al grano de qué va esta vista y por qué es vital para el negocio monitorear el Riesgo Comercial (sin sonar exagerado ni comercial).
+
+    ### Glosario de Métricas
+    Define los datos que se están analizando de forma clara:
+    * **Índice de Riesgo Comercial (IRC):** Qué es y qué valores son preocupantes (picos altos = riesgo).
+    * **Concentración (Gini):** Qué significa un Gini cercano a 1 (dependencia de pocos clientes) vs cercano a 0.
+    * **Inactividad (Complemento de alcance):** Qué indica sobre el abandono de la cartera.
+
+    ### Hallazgos
+    Proporciona exactamente 5 viñetas con los hallazgos más críticos o accionables basados EXCLUSIVAMENTE en los datos actuales de la ruta. Sé analítico, no repitas obviedades.
+    """
+    
+    data = {}
+
+    
+    if report_type == 'commercial_risk':
+        route_id = request.GET.get('route')
+        date_start_str = request.GET.get('date_start')
+        date_end_str = request.GET.get('date_end')
+
+        date_start_obj = datetime.strptime(date_start_str, '%Y-%m-%d').date()
+        date_end_obj = datetime.strptime(date_end_str, '%Y-%m-%d').date()
+
+        @sync_to_async
+        def get_risk_data():
+            risk_engine = CommercialRisk(
+                date_start=date_start_obj, 
+                date_end=date_end_obj, 
+                route_id=route_id
+            )
+            summary = risk_engine.summary_for_assistant()
+            
+            return summary
+
+        data = await get_risk_data()
+        
+    elif report_type == 'otra_vista':
+        pass
+
+    ia = DataAssistant(system_context=view_rules)
+    insights_markdown = await ia.analyze_view_data(data)
+    
+    raw_html = markdown.markdown(insights_markdown)
+    
+    styled_html = f"""
+    <div class="flex flex-col gap-4 text-sm text-body text-left">
+        <style>
+            .ai-response h3 {{ font-weight: 600; color: var(--text-title); margin-bottom: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }}
+            .ai-response p {{ margin-bottom: 0.75rem; line-height: 1.5; }}
+            .ai-response ul {{ list-style-type: disc; padding-left: 1.25rem; margin-bottom: 1rem; }}
+            .ai-response li {{ margin-bottom: 0.25rem; }}
+            .ai-response strong {{ color: var(--text-strong); font-weight: 600; }}
+        </style>
+        <div class="ai-response">
+            {raw_html}
+        </div>
+    </div>
+    """
+    
+    return HttpResponse(styled_html)
 
 
 

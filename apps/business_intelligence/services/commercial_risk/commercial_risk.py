@@ -315,10 +315,6 @@ class CommercialRisk:
             'portfolio_scope_complement': portfolio_scope_complement,
             'commercial_risk_index': commercial_risk_index_list
         }
-            
-
-        
-
 
 
     def get_global_kpis(self) -> Dict[str, Any]:
@@ -461,4 +457,52 @@ class CommercialRisk:
 
         pass
         
+    def summary_for_assistant(self) -> Dict[str, Any]: 
+        """
+        Generates a summary of the data for the commercial risk report used by the data assistant
+        """
+        raw_data = self.get_data()
+        global_kpis = self.get_global_kpis()
         
+        commercial_risk_list = raw_data['commercial_risk_index']
+        tendencia_irc = {
+            'irc_inicio_periodo': commercial_risk_list[0] if commercial_risk_list else 0,
+            'irc_actual': commercial_risk_list[-1] if commercial_risk_list else 0,
+            'irc_maximo_historico': max(commercial_risk_list) if commercial_risk_list else 0,
+        }
+        
+        if commercial_risk_list:
+            max_index = commercial_risk_list.index(tendencia_irc['irc_maximo_historico'])
+            tendencia_irc['mes_con_mas_riesgo'] = raw_data['timeline_months'][max_index]
+        else:
+            tendencia_irc['mes_con_mas_riesgo'] = "N/A"
+            
+        resumen_clientes = {
+            'total_ganados_en_periodo': sum(raw_data['won_customers']),
+            'total_perdidos_en_periodo': sum(raw_data['lost_customers']),
+            'clientes_inactivos_actualmente_pct': round(raw_data['portfolio_scope_complement'][-1] * 100, 2) if raw_data['portfolio_scope_complement'] else 0
+        }
+
+        vol_threshold = raw_data['volatility_thresholds']['volume']
+        cv_threshold = raw_data['volatility_thresholds']['volatility']
+        
+        clientes_riesgo_volatilidad = sum(
+            1 for item in raw_data['volatility_scatter'] 
+            if item[0] < vol_threshold and item[1] > cv_threshold
+        )
+
+        
+
+        summary = {
+            "periodo_analizado": f"De {global_kpis['start_q_date']} a {global_kpis['end_q_date']}",
+            "kpis_trimestre_actual": global_kpis,
+            "evolucion_riesgo": tendencia_irc,
+            "movimiento_cartera": resumen_clientes,
+            "alertas_dispersion": {
+                "total_clientes_graficados": len(raw_data['volatility_scatter']),
+                "clientes_alta_volatilidad_y_bajo_volumen": clientes_riesgo_volatilidad
+            }
+        }
+        print(summary)
+
+        return summary
