@@ -1,6 +1,7 @@
 import json
 from openai import AsyncOpenAI
 from config.settings import DEEPSEEK_API_KEY
+from apps.data_assistant.prompts.system_prompts import SYSTEM_PROMPTS
 
 class DataAssistant:
     def __init__(self, system_context: str = None):
@@ -16,7 +17,8 @@ class DataAssistant:
     async def analyze_view_data(self, template_data: dict) -> str:
 
         data_str = json.dumps(template_data, default=str)
-        prompt = f"Analiza los siguientes datos que está viendo el usuario y dame 3 insights clave directos al grano:\n{data_str}"
+        system_prompt = SYSTEM_PROMPTS.get('data_assistant')
+        prompt = system_prompt + data_str
         
 
         response = await self.client.chat.completions.create(

@@ -4,6 +4,7 @@ import asyncio
 import markdown
 from asgiref.sync import sync_to_async
 from datetime import datetime, date
+import time
 
 #main service
 from .prompts.view_rules import PROMPTS_REGISTRY
@@ -15,6 +16,7 @@ from apps.business_intelligence.services.commercial_risk.commercial_risk import 
 
 # Create your views here.
 async def data_assistant(request):
+    start_time = time.perf_counter()
     report_type = request.GET.get('report_type')
     registry_entry = PROMPTS_REGISTRY.get(report_type)
     
@@ -46,8 +48,11 @@ async def data_assistant(request):
             return summary
 
         data = await get_risk_data()
+        user = await request.auser()
+        data['route'] = route_id
+        data['user_name'] = user.first_name.title()
         
-    elif report_type == 'otra_vista':
+    elif report_type == 'sales_dashboard':
         pass
 
     ia = DataAssistant(system_context=view_rules)
@@ -69,5 +74,9 @@ async def data_assistant(request):
         </div>
     </div>
     """
+    end_time = time.perf_counter()
+    execution_time = end_time - start_time
+
+    print(f"exe time: {execution_time}")
     
     return HttpResponse(styled_html)

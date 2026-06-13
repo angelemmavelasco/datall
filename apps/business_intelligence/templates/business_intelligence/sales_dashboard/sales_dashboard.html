@@ -10,6 +10,13 @@
 
 <button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button>
 
+<button onclick="toggleAssistant()" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center justify-center gap-1">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-astroid-icon lucide-astroid"><path d="M12.983 21.186a1 1 0 0 1-1.966 0 10 10 0 0 0-8.203-8.203 1 1 0 0 1 0-1.966 10 10 0 0 0 8.203-8.203 1 1 0 0 1 1.966 0 10 10 0 0 0 8.203 8.203 1 1 0 0 1 0 1.966 10 10 0 0 0-8.203 8.203"/></svg>
+    <span>
+        Asistente de datos
+    </span>
+</button>
+
 <button onclick="toggleFilters()"
     class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -32,8 +39,13 @@
 
 {% endblock %}
 
+{% block ai_insights_url %}
+    {% url 'data_assistant:data_assistant' %}?report_type=sales_dashboard
+{% endblock %}
+
+
 {% block filters %}
-<form method="GET" action="">
+<form method="GET" action="" id="params_filters">
 
     <!-- Fecha Inicio -->
     <div class="flex flex-col gap-1 mb-4">

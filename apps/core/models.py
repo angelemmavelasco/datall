@@ -671,10 +671,6 @@ class AccountsReceivable(models.Model):
     
 
 
-
-
-
-
 # transactions and targets
 
 class SaleTransaction(models.Model):

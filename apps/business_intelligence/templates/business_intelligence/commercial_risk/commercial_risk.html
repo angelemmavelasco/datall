@@ -46,13 +46,13 @@
 
 
 {% block ai_insights_url %}
-    {% url 'data_assistant:data_assistant' %}?report_type=commercial_risk&route={{ selected_route }}&date_start={{ selected_date_start }}&date_end={{ selected_date_end }}
+    {% url 'data_assistant:data_assistant' %}?report_type=commercial_risk
 {% endblock %}
 
 
 
 {% block filters %}
-<form method="GET" action="{% url 'business_intelligence:commercial_risk' %}" class="flex flex-col gap-4 text-strong">
+<form method="GET" action="{% url 'business_intelligence:commercial_risk' %}" class="flex flex-col gap-4 text-strong" id="params_filters">
     
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Periodo Inicio</label>

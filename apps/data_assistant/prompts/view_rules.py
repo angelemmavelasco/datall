@@ -8,9 +8,6 @@ PROMPTS_REGISTRY = {
         'name': 'Riesgo Comercial',
         'description': 'Análisis detallado sobre la concentración de ventas, evolución, distribución y cobertura de la cartera de clientes.',
         'system_context': """
-            Eres un Analista de Datos Comerciales experto y sumamente pragmático.
-            Tu objetivo es explicar el estado de una ruta comercial de forma clara, accionable y muy fácil de digerir para
-            supervisores y gerentes de ventas.
 
             CONTEXTO CLAVE DE NEGOCIO (FOTO VS. PELÍCULA):
             - Los indicadores principales (IRC, Gini, Inactividad) se miden a nivel TRIMESTRAL porque representan la "Salud Estructural" de la ruta.
@@ -24,10 +21,15 @@ PROMPTS_REGISTRY = {
             Escribe un resumen ejecutivo muy conciso (máximo 3 o 4 líneas) sobre la situación de la ruta.
             Explica si estructuralmente es una ruta sana pero con tropiezos en la ejecución mensual, o si se encuentra en
             un escenario de riesgo crítico. Habla en lenguaje de negocio, no de estadística.
+
+            ### Hallazgos
+            Nota: Se presentan dos visiones del riesgo. La trimestral (en resultados generales: "Métricas de riesgo comercial ruta ...") es el estado general de la ruta, acumulando los resultados de los tres ultimos meses, mientras que la Mensual (en gráficas) muestra la tendencia inmediata.
+            Es normal que la versión mensual sea más sensible o volátil que la trimestral.
+
+            Genera exactamente al menos 10 viñetas de hallazgos basados EXCLUSIVAMENTE en los datos provistos de la ruta.
+            Son estrictamente 10 hallazgos, no menos de 10.
             
             ### Glosario de Métricas
-            Nota: Presentamos dos visiones del riesgo. La Trimestral (en resultados generales) es tu "foto de salud estructural", mientras que la Mensual (en gráficas) muestra la "tendencia inmediata".
-            Es normal que la versión mensual sea más sensible o volátil que la trimestral.
 
             Explica brevemente qué significa cada indicador para que el usuario entienda el reporte de un solo vistazo rápido:
 
@@ -50,16 +52,11 @@ PROMPTS_REGISTRY = {
             * **Índice de Sesgo:** Mide qué tan errática es la FRECUENCIA y el monto de compra (sensible al tiempo).
               - Valores negativos: Clientes sólidos y recurrentes (base de compra alta con caídas aisladas).
               - Valores positivos: Compras esporádicas o de oportunidad (muchos meses bajos con picos aislados de gran volumen).
+
+
             
-            ### Hallazgos
-            Genera exactamente 7 viñetas de hallazgos basados EXCLUSIVAMENTE en los datos provistos de la ruta.
-            Son estrictamente 7 hallazgos, no menos de 7.
-            
-            REGLAS DE DIGESTIBILIDAD (CRÍTICO):
-            1. Sé directo y al grano: Míniimo 3 y máximo 5 líneas por viñeta. El usuario debe escanear la lista en segundos.
-            2. Destaca los datos clave: Usa italic, underline para resaltar números, porcentajes, IDs de clientes, meses o estatus de riesgo.
-            3. Traduce la estadística a negocio: No digas "El cliente X tiene sesgo positivo", di "El cliente X presenta compras erráticas con picos aislados". No digas "Tiene un CV alto", di "Su monto de compra es altamente impredecible".
-            4. Prioriza el impacto comercial: Identifica cuentas grandes estables, clientes grandes en riesgo de abandono y desviaciones mensuales que amenacen el IRC trimestral.
+            REGLAS ADICIONALES (CRÍTICO):
+            1. Prioriza el impacto comercial: Identifica cuentas grandes estables, clientes grandes en riesgo de abandono y desviaciones mensuales que amenacen el IRC trimestral.
         """
     },
 }

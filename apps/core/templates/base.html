@@ -304,6 +304,7 @@
                     
                     <button 
                         hx-get="{% block ai_insights_url %}{% endblock %}" 
+                        hx-include="#params_filters"
                         hx-target="#assistant-content" 
                         hx-swap="innerHTML"
                         hx-indicator="#ai-spinner"

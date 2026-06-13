@@ -327,6 +327,9 @@ class CommercialRisk:
         end_q_date = today.replace(day=1) - relativedelta(days=1)
         start_q_date = (end_q_date.replace(day=1) - relativedelta(months=2))
 
+        self.start_date_kpis = start_q_date.strftime('%Y-%m-%d')
+        self.end_date_kpis = end_q_date.strftime('%Y-%m-%d')
+
         #alcance y gini
         quarter_customer_sales = SaleTransaction.objects.filter(
             sale_date__gte=start_q_date,
@@ -486,21 +489,63 @@ class CommercialRisk:
         vol_threshold = raw_data['volatility_thresholds']['volume']
         cv_threshold = raw_data['volatility_thresholds']['volatility']
         
-        clientes_riesgo_volatilidad = sum(
+        customers_high_volatility_low_volume = sum(
             1 for item in raw_data['volatility_scatter'] 
             if item[0] < vol_threshold and item[1] > cv_threshold
         )
+        customers_high_volume_low_volatility = sum(
+            1 for item in raw_data['volatility_scatter']
+            if item[0] > vol_threshold and item[1] > cv_threshold
+        )
+        customers_low_volume_low_volatility = sum(
+            1 for item in raw_data['volatility_scatter']
+            if item[0] < vol_threshold and item[1] < cv_threshold
+        )
+        customers_high_volume_high_volatility = sum(
+            1 for item in raw_data['volatility_scatter']
+            if item[0] > vol_threshold and item[1] < cv_threshold
+        )
+
+        new_customers = sum(raw_data['new_customers'])
+        
 
         
 
         summary = {
-            "periodo_analizado": f"De {global_kpis['start_q_date']} a {global_kpis['end_q_date']}",
-            "kpis_trimestre_actual": global_kpis,
-            "evolucion_riesgo": tendencia_irc,
-            "movimiento_cartera": resumen_clientes,
+            "kpis_trimestre_actual": {
+                'métricas': global_kpis,
+                'descripción': f'Estas métricas estan evaluando el trimestre inmediato anterior cerrado {self.start_date_kpis} - {self.end_date_kpis}. Se toma esta ventana fija porque suaviza y generaliza bien el comportamiento de la ruta.'
+                },
+            "evolucion_riesgo": {
+                'tendencia_irc': tendencia_irc,
+                'descripción': f'La evolución muestra el comportamiento del IRC mes a mes a lo largo del periodo de estudio {self.date_start} - {self.date_end}. Es normal que estos números sean más altos de lo que muestra el trimestre, esto es porque aqui se muestra la tendencia inmediata mensual, sin embargo, aqui lo que se evalúa no es tanto el número, sino la tendencia'
+                },
+            "movimiento_cartera": {
+                'resumen_clientes': resumen_clientes,
+                'descripción': f'Muestra la actividad general de la cartera. Una valoración más detallada se muestra en el gráfico, ya que se ve mes tras mes el comportamiento, sin embargo, los números del resumen general muestran el consolidado de lo que pasó en el periodo completo filtrado {self.date_start} - {self.date_end}.'
+                },
             "alertas_dispersion": {
                 "total_clientes_graficados": len(raw_data['volatility_scatter']),
-                "clientes_alta_volatilidad_y_bajo_volumen": clientes_riesgo_volatilidad
+                "clientes_alta_volatilidad_y_bajo_volumen": {
+                    'count': customers_high_volatility_low_volume,
+                    'description': f'Clientes que solo generan ruido comercial, consumen muy poco y lo hacen de forma volatil. No son clientes estrategicos, solo generan trabajo. periodo  {self.date_start} - {self.date_end}'
+                    },
+                "clientes_alta_volatilidad_y_alto_volumen": {
+                    'count': customers_high_volume_low_volatility,
+                    'description': f'Clientes que si bien generan buen volumen, necesitan una estrategia de estabilización en su consumo. Una buena idea es a través de convenios comerciales. periodo  {self.date_start} - {self.date_end}'
+                    },
+                "clientes_baja_volatilidad_y_bajo_volumen": {
+                    'count': customers_low_volume_low_volatility,
+                    'description': f'Si bien pueden ser clientes estables en su consumo, no representa un volumen significativo para la ruta. Se recomienda un acercamiento comercial para incrementar su ticket promedio de compra. periodo  {self.date_start} - {self.date_end}'
+                    },
+                "clientes_baja_volatilidad_y_alto_volumen": {
+                    'count': customers_high_volume_high_volatility,
+                    'description': f'Son la base de la ruta. Consumen de forma estable y en volumen. La labor del ejecutivo es mantener la relación y evitar que se vayan a la competencia. Esos clientes se deben conveniar si o si. periodo  {self.date_start} - {self.date_end}'
+                    }
+            },
+            'clientes_nuevos': {
+                'count': new_customers,
+                'description': f'Se refiere a los clientes dados de alta por las rutas durante el periodo evaluado {self.date_start} - {self.date_end}. Esto afecta directamente a la cartera de la ruta, la agranda. Es importante considerar el rango evaluado, para decidir si el numero de clinetes dados de alta son muy pocos. Considera un promedio de 2 clientes nuevos trimestrales como bueno.'
             }
         }
         print(summary)
