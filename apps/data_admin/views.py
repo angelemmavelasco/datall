@@ -8,6 +8,9 @@ from apps.data_admin.services.groups import groups_crud
 from apps.core.models import SystemModule
 from django.contrib.auth.models import Group
 
+from django.contrib.contenttypes.models import ContentType
+from apps.customers.services.customers_crud.customer_bulk import CustomersBulk
+
 
 @login_required
 def users(request):
@@ -230,18 +233,63 @@ def group_create(request):
 def uploads(request):
     TEMPLATE = 'data_admin/uploads/uploads.html'
     
+    from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
+    from apps.core.models import DataHistory
+    from django.core.paginator import Paginator
+
+    # Filters
+    query_text = request.GET.get('query_text')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    selected_results = request.GET.getlist('results')
+    selected_actions = request.GET.getlist('actions')
+
+    filters = {}
+    if query_text: filters['search_query'] = query_text
+    if start_date: filters['start_date'] = start_date
+    if end_date: filters['end_date'] = end_date
+    if selected_results: filters['results'] = selected_results
+
+    # If no specific action is selected, default to import and export
+    if selected_actions:
+        filters['actions'] = selected_actions
+    else:
+        filters['actions'] = [DataHistory.Action.IMPORT, DataHistory.Action.EXPORT]
+
+    crud = DataHistoryCrud()
+    qs = crud.get_histories(**filters)
+
+    paginator = Paginator(qs, 50)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'uploads': page_obj.object_list,
+        'page_obj': page_obj,
+
+        'query_text': query_text,
+        'start_date': start_date,
+        'end_date': end_date,
+        'selected_results': selected_results,
+        'selected_actions': selected_actions,
+
+        'filter_results': [{'id': r[0], 'name': r[1]} for r in DataHistory.Result.choices],
+        'filter_actions': [{'id': a[0], 'name': a[1]} for a in DataHistory.Action.choices if a[0] in [DataHistory.Action.IMPORT, DataHistory.Action.EXPORT]],
+    }
     
-    context = {}
+    if request.htmx:
+        return render(request, 'data_admin/uploads/partials/uploads_rows.html', context)
     
     return render(request, TEMPLATE, context)
 
 
-from django.contrib.contenttypes.models import ContentType
-from apps.customers.services.customers_crud.customer_bulk import CustomersBulk
 
 @login_required
 def upload_create(request):
     TEMPLATE = 'data_admin/uploads/upload_create.html'
+    
+    from apps.core.models import DataHistory
+    from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
 
     if request.method == 'POST':
         content_type_id = request.POST.get('content_type_id')
@@ -256,12 +304,24 @@ def upload_create(request):
         except ContentType.DoesNotExist:
             messages.error(request, "El modelo seleccionado no existe.")
             return redirect('data_admin:upload_create')
+            
+        def audit_upload(status, message):
+            crud = DataHistoryCrud()
+            crud.process_history_create({
+                'action': DataHistory.Action.IMPORT,
+                'result': status,
+                'content_type': content_type,
+                'created_by': request.user,
+                'description': message,
+                'changes': {"filename": uploaded_file.name}
+            })
 
         if content_type.model == 'customer':
             bulk_service = CustomersBulk()
             success, result = bulk_service.clean(uploaded_file)
             
             if not success:
+                audit_upload(DataHistory.Result.ERROR, result)
                 messages.error(request, result)
                 return redirect('data_admin:upload_create')
             
@@ -269,9 +329,11 @@ def upload_create(request):
             success_create, msg = bulk_service.create(df_cleaned)
             
             if success_create:
+                audit_upload(DataHistory.Result.SUCCESS, msg)
                 messages.success(request, msg)
                 return redirect('data_admin:uploads')
             else:
+                audit_upload(DataHistory.Result.ERROR, msg)
                 messages.error(request, msg)
                 return redirect('data_admin:upload_create')
                 
@@ -281,6 +343,7 @@ def upload_create(request):
             success, result = bulk_service.clean(uploaded_file)
             
             if not success:
+                audit_upload(DataHistory.Result.ERROR, result)
                 messages.error(request, result)
                 return redirect('data_admin:upload_create')
             
@@ -288,9 +351,11 @@ def upload_create(request):
             success_create, msg = bulk_service.create(df_cleaned)
             
             if success_create:
+                audit_upload(DataHistory.Result.SUCCESS, msg)
                 messages.success(request, msg)
                 return redirect('data_admin:uploads')
             else:
+                audit_upload(DataHistory.Result.ERROR, msg)
                 messages.error(request, msg)
                 return redirect('data_admin:upload_create')
                 
@@ -300,6 +365,7 @@ def upload_create(request):
             success, result = bulk_service.clean(uploaded_file)
             
             if not success:
+                audit_upload(DataHistory.Result.ERROR, result)
                 messages.error(request, result)
                 return redirect('data_admin:upload_create')
             
@@ -307,9 +373,11 @@ def upload_create(request):
             success_create, msg = bulk_service.create(df_cleaned)
             
             if success_create:
+                audit_upload(DataHistory.Result.SUCCESS, msg)
                 messages.success(request, msg)
                 return redirect('data_admin:uploads')
             else:
+                audit_upload(DataHistory.Result.ERROR, msg)
                 messages.error(request, msg)
                 return redirect('data_admin:upload_create')
 
@@ -319,6 +387,7 @@ def upload_create(request):
             success, result = bulk_service.clean(uploaded_file)
             
             if not success:
+                audit_upload(DataHistory.Result.ERROR, result)
                 messages.error(request, result)
                 return redirect('data_admin:upload_create')
             
@@ -326,13 +395,17 @@ def upload_create(request):
             success_create, msg = bulk_service.create(df_cleaned)
             
             if success_create:
+                audit_upload(DataHistory.Result.SUCCESS, msg)
                 messages.success(request, msg)
                 return redirect('data_admin:uploads')
             else:
+                audit_upload(DataHistory.Result.ERROR, msg)
                 messages.error(request, msg)
                 return redirect('data_admin:upload_create')
         else:
-            messages.warning(request, f"Todavía no hay un servicio de importación masiva configurado para el modelo: {content_type.model.title()}.")
+            msg = f"Todavía no hay un servicio de importación masiva configurado para el modelo: {content_type.model.title()}."
+            audit_upload(DataHistory.Result.ERROR, msg)
+            messages.warning(request, msg)
             return redirect('data_admin:upload_create')
 
     content_types = ContentType.objects.all().order_by('model')
