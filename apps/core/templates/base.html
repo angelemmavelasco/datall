@@ -232,14 +232,21 @@
             page-break-inside: avoid !important;
             break-inside: avoid !important;
             margin-bottom: 10px !important;
-            border: none !important; 
             box-shadow: none !important;
         }
 
         .page-break {
             break-before: page !important;
             page-break-before: always !important;
-            padding-top: 10px !important; /* Un pequeño respiro visual arriba */
+            padding-top: 10px !important;
+        }
+
+        md\:col-span-2 {
+            grid-column: span 2 / span 2 !important;
+        }
+        
+        canvas {
+            max-width: 100% !important;
         }
     }
     </style>

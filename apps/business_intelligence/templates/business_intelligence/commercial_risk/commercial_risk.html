@@ -164,6 +164,19 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         <hr class="border-border">
     </div>
 
+    <div class="show-for-report hidden">
+        <h4 class="font-semibold mb-2">¿Cómo leer estas métricas?</h4>
+        <p class="mb-2">
+            <strong>Periodo:</strong> Los datos <strong>solamente de esta sección</strong> cubren exclusivamente desde el {{ start_q_date }} hasta el {{ end_q_date }}, es decir, el último trimestre completado.
+        </p>
+        <ul class="list-disc pl-6 space-y-1 border-l-4 border-primary ">
+            <li><strong>Índice de Gini:</strong> Indica que tan dependiente es una ruta de pocos clientes. Un Gini alto implica una dependencia muy alta de pocos clientes.</li>
+            <li><strong>Alcance de cartera:</strong> Porcentaje de clientes con consumos contra el número total de clientes registrados asignados a la ruta.</li>
+            <li><strong>Factor de crecimiento:</strong> Indica la tendencia de crecimiento de la ruta comparando el último trimestre completado contra el histórico completo de toda la ruta.</li>
+            <li><strong>Índice de riesgo comercial:</strong> Es un indicador que resume el riesgo comercial de una ruta. Se calcula como la suma de Gini y el porcentaje de clientes sin compras, de esta forma se penaliza a las rutas que dependen de pocos clientes y que tienen clientes inactivos.</li>
+        </ul>
+    </div>
+
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Índice de Gini</p>
@@ -194,14 +207,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
     </div>
 
 
-
-
-
-    
-
-
-
-    <div class="">
+    <div class="page-break">
         <div class="flex items-center justify-between text-title">
             <p class="text-title text-sm mb-2">Riesgo comercial <br>
                 <span class="text-[12px] text-hover italic">
@@ -237,6 +243,21 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             </div>
         </div>
         <hr class="border-border">
+    </div>
+
+    <div class="show-for-report hidden">
+        <h4 class="font-semibold mb-2">¿Cómo leer esta gráfica?</h4>
+        <ul class="text-xs space-y-2 pl-2 border-l-2 border-primary mb-3">
+            <li>
+                <strong>Concentración (Gini):</strong> Evalúa si las ventas dependen de unos pocos clientes selectos o si están repartidas equitativamente.
+            </li>
+            <li>
+                <strong>Clientes desatendidos:</strong> Mide el porcentaje de la cartera registrada en ese momento que dejó de comprar.
+            </li>
+            <li>
+                <strong>IRC (Índice de Riesgo Comercial):</strong> Es el indicador definitivo de la ruta. Combina la concentración y la inactividad; si cualquiera de las dos sube, el riesgo también lo hará.
+            </li>
+        </ul>
     </div>
 
 
@@ -289,6 +310,24 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             </div>
         </div>
         <hr class="border-border">
+    </div>
+
+    <div class="show-for-report hidden">
+        <h4 class="font-semibold mb-2">¿Cómo leer estas gráficas?</h4>
+        <ul class="list-disc pl-6 space-y-1 border-l-4 border-primary ">
+            <li><strong>Clientes ganados y perdidos:</strong>
+                Muestra mensualmente, dentro del rango de fechas seleccionado, el volumen de clientes ganados y perdidos en la ruta. <br>
+                Un <strong>cliente ganado</strong> es aquel que no registró compras en el periodo anterior, pero realizó al menos una compra en el mes actual. <br>
+                Un <strong>cliente perdido</strong> es aquel que venía comprando en periodos anteriores, pero no registró ninguna compra durante el mes actual. <br>
+            </li>
+            <li><strong>Nuevos clientes y alcance de cartera:</strong>
+                Porcentaje de clientes con consumos respecto al total de clientes asignados a la ruta (alcance de cartera) y el número total de clientes dados de alta. Todo esto de forma mensual. <br><br>
+                <strong>*Nota:</strong> El alcance de cartera mes a mes contempla solamente a los clientes asignados
+                    a la ruta hasta ese momento. Es decir, para mantener una métrica realista y justa, el porcentaje de cada 
+                    mes se calcula con base en la cartera que existía en esa fecha, sin incluir las altas o asignaciones de 
+                    meses posteriores.
+            </li>
+        </ul>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -351,6 +390,28 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         <hr class="border-border">
     </div>
 
+    <div class="show-for-report hidden">
+        <h4 class="font-semibold mb-2">¿Cómo leer estas gráficas?</h4>
+        <ul class="list-disc pl-6 space-y-4 border-l-4 border-primary">
+            <li><strong>Volatilidad y volumen:</strong> Cruza el tamaño del cliente (Eje X) contra su constancia (Eje Y).
+                Las líneas divisorias marcan la <strong>mediana (50%)</strong>; esto separa automáticamente a los clientes en cuadrantes 
+                de Alto/Bajo volumen de compra y Alta/Baja volatilidad para identificar las cuentas importantes de la cartera.</li>
+            
+            <li><strong>Factor de crecimiento y sesgo:</strong> Evalúa salud y predictibilidad. <br>
+                <br><strong>Eje X (Factor de crecimiento):</strong> >1.0 indica incremento reciente.
+                <br><strong>Eje Y (Índice de sesgo):</strong> Valores <strong>negativos</strong> indican clientes
+                sólidos/recurrentes; valores <strong>positivos</strong> señalan compras erráticas (picos aislados).
+                <br><strong>Clasificación:</strong> <br>
+                <ul class="list-disc pl-6 flex items-center justify-between">
+                    <li><span class="text-green-500 font-semibold">Verde:</span> Estable/Creciendo</li>
+                    <li><span class="text-yellow-500 font-semibold">Naranja:</span> Inestable/Creciendo</li>
+                    <li><span class="text-purple-500 font-semibold">Morado:</span> Estable/Decreciendo</li>
+                    <li><span class="text-red-500 font-semibold">Rojo:</span> Inestable/Decreciendo</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- volatilidad y volumen de ventas -->
@@ -371,13 +432,32 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
 
     <div class="page-break">
-        <p class="text-title text-sm mb-2">Categoría de cliente <br>
+        <p class="text-title text-sm mb-2">Composición de la cartera<br>
                 <span class="text-[12px] text-hover italic">
                     ({{ selected_date_start }} - {{ selected_date_end }})
                 </span>
         </p>
 
         <hr class="border-border">
+    </div>
+
+    <div class="show-for-report hidden">
+        <h4 class="font-semibold mb-2">¿Cómo leer estas gráficas?</h4>
+        <ul class="list-disc pl-6 space-y-4 border-l-4 border-primary">
+            <li><strong>Composición de la cartera por categoría:</strong> Analiza cómo se distribuyen tus clientes físicamente.
+                <br>Al ser un gráfico de barras al 100%, no evalúa dinero, sino <strong>conteo de clientes</strong>. Te permite ver visualmente si la cartera de la ruta depende de muchos clientes pequeños o si tiene una base sólida de clientes grandes.
+                Las sombras conectadas muestran la evolución o contracción de cada grupo a lo largo del tiempo.
+
+                <br><br><strong>Sobre las categorías:</strong> Se calculan evaluando el consumo promedio de los últimos 3 meses activos del cliente.<br>
+                <ul class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-2">
+                    <li><span style="color: #d4d4d4" class="font-bold bg-gray-800 px-1 rounded">C:</span> Consumo menor</li>
+                    <li><span style="color: #3b70fa" class="font-bold">A</span></li>
+                    <li><span style="color: #009688" class="font-bold">AA</span></li>
+                    <li><span style="color: #facc15" class="font-bold drop-shadow-sm">ORO</span></li>
+                    <li><span style="color: #27EBF5" class="font-bold bg-gray-800 px-1 rounded drop-shadow-sm">DIAMANTE:</span> Mayor volumen</li>
+                </ul>
+            </li>
+        </ul>
     </div>
 
 
@@ -388,13 +468,41 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             <div id="customerCategoryTimelineChart" class="w-full h-full min-h-[300px]"></div>
         </div>
 
+    </div>
+
+    <div class="page-break">
+        <p class="text-title text-sm mb-2">Contribución monetaria<br>
+                <span class="text-[12px] text-hover italic">
+                    ({{ selected_date_start }} - {{ selected_date_end }})
+                </span>
+        </p>
+
+        <hr class="border-border">
+    </div>
+
+    <div class="show-for-report hidden">
+        <h4 class="font-semibold mb-2">¿Cómo leer estas gráficas?</h4>
+        <ul class="list-disc pl-6 space-y-4 border-l-4 border-primary">
+            <li><strong>Contribución monetaria (%):</strong> Evalúa el peso económico real de cada categoría. 
+                <br>Mientras el gráfico anterior cuenta "personas", este cuenta <strong>dinero</strong>. Las líneas muestran qué porcentaje de la venta total del mes proviene de cada segmento. Es común (y deseable) que categorías como Diamante u Oro, aunque tengan pocos clientes físicos, mantengan las líneas de aportación monetaria más altas.
+                <br><br><strong>Sobre las categorías:</strong> Se calculan evaluando el consumo promedio de los últimos 3 meses activos del cliente.<br>
+                <ul class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-2">
+                    <li><span style="color: #d4d4d4" class="font-bold bg-gray-800 px-1 rounded">C:</span> Consumo menor</li>
+                    <li><span style="color: #3b70fa" class="font-bold">A</span></li>
+                    <li><span style="color: #009688" class="font-bold">AA</span></li>
+                    <li><span style="color: #facc15" class="font-bold drop-shadow-sm">ORO</span></li>
+                    <li><span style="color: #27EBF5" class="font-bold bg-gray-800 px-1 rounded drop-shadow-sm">DIAMANTE:</span> Mayor volumen</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
         <!-- contribución monetaria por categoría -->
         <div class="border border-border rounded flex flex-col bg-container h-120 col-span-2">
             <div id="customerCategoryContribChart" class="w-full h-full min-h-[300px]"></div>
         </div>
-
-
-
     </div>
 
 </div>
@@ -1037,36 +1145,54 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
     commercialRiskEvolutionChart.setOption(commercialRiskOptions);
 
 
-    function preparePDF() {
-        const allCharts = [
-            lostAndWonBarChart, newCtmActiveCtmChart, volatilitySaleVolumeChart,
-            growthBiasChart, customerCategoryTimelineChart, monetaryContributionChart,
-            commercialRiskEvolutionChart
-        ];
+function preparePDF() {
 
-        allCharts.forEach(chart => {
-            chart.setOption({ animation: false }); 
-            chart.resize({ width: 'auto', height: 400 }); 
-        });
-
-        setTimeout(() => {
-            window.print();
-        }, 500);
-    }
-
-    window.addEventListener('afterprint', () => {
-        const allCharts = [
-            lostAndWonBarChart, newCtmActiveCtmChart, volatilitySaleVolumeChart,
-            growthBiasChart, customerCategoryTimelineChart, monetaryContributionChart,
-            commercialRiskEvolutionChart
-        ];
-        
-        allCharts.forEach(chart => {
-            chart.setOption({ animation: true });
-            // Regresamos al comportamiento normal responsivo
-            chart.resize({ width: 'auto', height: 'auto' });
-        });
+    const show_for_report = document.querySelectorAll(".show-for-report");
+    show_for_report.forEach(el => {
+        el.classList.remove("hidden");
     });
+
+    const halfCharts = [
+        lostAndWonBarChart, 
+        newCtmActiveCtmChart, 
+        volatilitySaleVolumeChart,
+        growthBiasChart
+    ];
+
+    const fullCharts = [
+        commercialRiskEvolutionChart,
+        customerCategoryTimelineChart, 
+        monetaryContributionChart
+    ];
+
+    halfCharts.forEach(chart => {
+        chart.setOption({ animation: false }); 
+        chart.resize({ width: 500, height: 400 }); 
+    });
+
+    fullCharts.forEach(chart => {
+        chart.setOption({ animation: false }); 
+        chart.resize({ width: 1040, height: 400 }); 
+    });
+
+    setTimeout(() => {
+        window.print();
+    }, 800);
+}
+
+window.addEventListener('afterprint', () => {
+    const allCharts = [
+        lostAndWonBarChart, newCtmActiveCtmChart, volatilitySaleVolumeChart,
+        growthBiasChart, customerCategoryTimelineChart, monetaryContributionChart,
+        commercialRiskEvolutionChart
+    ];
+    
+    // Regresamos la responsividad natural al cerrar el PDF
+    allCharts.forEach(chart => {
+        chart.setOption({ animation: true });
+        chart.resize({ width: 'auto', height: 'auto' });
+    });
+});
 </script>
 
 
