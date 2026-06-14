@@ -122,8 +122,6 @@ class SalesTransactionsBulk:
             min_date = df['sale_date'].min()
             max_date = df['sale_date'].max()
 
-            print(min_date, max_date)
-
 
 
             model_fields = [f.name for f in SaleTransaction._meta.get_fields() if not f.is_relation]
@@ -131,7 +129,27 @@ class SalesTransactionsBulk:
             
             valid_columns = [col for col in df.columns if col in model_fields]
 
-            print(df['sale_date'].min(), df['sale_date'].max())
+
+            #fks validation exists
+            fk_fields = [f for f in SaleTransaction._meta.get_fields() if f.is_relation and hasattr(f, 'attname')]
+            for fk in fk_fields:
+                column_name = fk.attname         
+                related_model = fk.related_model 
+
+                if column_name in df.columns:
+                    df_ids = set(df[column_name].dropna().unique())
+                    
+                    if not df_ids:
+                        continue
+
+                    db_ids = set(related_model.objects.filter(pk__in=df_ids).values_list('pk', flat=True))
+
+                    missing_ids = df_ids - db_ids
+
+                    if missing_ids:
+                        missing_list = list(missing_ids)
+                        sample_missing = missing_list[:10] 
+                        return False, f"Error de Foreign Key: En la columna '{column_name}', los siguientes IDs no existen en el sistema: {sample_missing}{'...' if len(missing_list) > 10 else ''}. Registra estos datos primero e intenta de nuevo."
             
 
             transactions_to_create = []
