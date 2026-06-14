@@ -170,6 +170,12 @@ class DataHistory(models.Model):
             models.Index(fields=["content_type", "object_id"]),
         ]
 
+    @property
+    def filename(self):
+        if isinstance(self.changes, dict):
+            return self.changes.get('filename')
+        return None
+
     def save(self, *args, **kwargs):
         if self.action:
             self.action = self.action.strip().lower()
