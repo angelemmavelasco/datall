@@ -10,10 +10,6 @@ import time
 from .prompts.view_rules import PROMPTS_REGISTRY
 from .services.data_assistant.data_assistant import DataAssistant
 
-
-#services from other apps
-from apps.business_intelligence.services.commercial_risk.commercial_risk import CommercialRisk
-
 # Create your views here.
 async def data_assistant(request):
     start_time = time.perf_counter()
@@ -24,36 +20,17 @@ async def data_assistant(request):
         return HttpResponse("<p>Reporte no soportado por el asistente de datos.</p>")
     
     view_rules = registry_entry['system_context']
+    builder_function = registry_entry['data_builder']
     data = {}
 
-    
-    if report_type == 'commercial_risk':
-        route_id = request.GET.get('route')
-        
-        date_start_str = request.GET.get('date_start')
-        date_start_obj = datetime.strptime(date_start_str, '%Y-%m-%d').date()
 
-        date_end_str = request.GET.get('date_end')
-        date_end_obj = datetime.strptime(date_end_str, '%Y-%m-%d').date()
+    @sync_to_async
+    def fetch_report_data():
+        return builder_function(request.GET)
 
-        @sync_to_async
-        def get_risk_data():
-            risk_engine = CommercialRisk(
-                date_start=date_start_obj, 
-                date_end=date_end_obj, 
-                route_id=route_id
-            )
-            summary = risk_engine.summary_for_assistant()
-            
-            return summary
-
-        data = await get_risk_data()
-        user = await request.auser()
-        data['route'] = route_id
-        data['user_name'] = user.first_name.title()
-        
-    elif report_type == 'sales_dashboard':
-        pass
+    data = await fetch_report_data()
+    user = await request.auser()
+    data['user_name'] = user.first_name.title()
 
     ia = DataAssistant(system_context=view_rules)
     insights_markdown = await ia.analyze_view_data(data)

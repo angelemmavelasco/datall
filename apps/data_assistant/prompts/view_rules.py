@@ -1,3 +1,5 @@
+from apps.data_assistant.services.data_assistant.data_builders import build_commercial_risk_data, build_sales_dashboard_data
+
 """
 This dict is used to be mapped by the assistant when retrieving report type through the request params.
 
@@ -7,6 +9,7 @@ PROMPTS_REGISTRY = {
     'commercial_risk': {
         'name': 'Riesgo Comercial',
         'description': 'Análisis detallado sobre la concentración de ventas, evolución, distribución y cobertura de la cartera de clientes.',
+        'data_builder': build_commercial_risk_data,
         'system_context': """
 
             CONTEXTO CLAVE DE NEGOCIO (FOTO VS. PELÍCULA):

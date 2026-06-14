@@ -297,8 +297,6 @@ def commercial_risk(request):
     if not selected_route_id and allowed_routes.exists():
         selected_route_id = allowed_routes.first().id
 
-    print('params:', date_start, date_end, selected_route_id)
-
     date_start_obj = datetime.strptime(date_start, '%Y-%m-%d').date()
     date_end_obj = datetime.strptime(date_end, '%Y-%m-%d').date()
 
@@ -310,8 +308,6 @@ def commercial_risk(request):
 
     data = risk_engine.get_data()
     global_kpis = risk_engine.get_global_kpis()
-
-    print(global_kpis)
 
 
     context = {
