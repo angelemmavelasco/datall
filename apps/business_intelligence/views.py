@@ -12,6 +12,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
+from asgiref.sync import sync_to_async
 
 
 from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
@@ -120,9 +121,6 @@ def sales_dashboard(request):
     }
 
     return render(request, template, context)
-
-
-
 
 @login_required
 def routes_kpis(request):
@@ -322,6 +320,41 @@ def commercial_risk(request):
     }
 
     return render(request, template, context)
+
+@login_required
+async def export_commercial_risk_data(request):
+
+    today = date.today()
+    date_start = request.GET.get('date_start')
+    date_end = request.GET.get('date_end')
+    selected_route_id = request.GET.get('route')
+
+    if not date_start:
+        date_start = date(today.year-1, 1, 1).strftime('%Y-%m-%d')
+    if not date_end:
+        date_end = (date(today.year, today.month, 1) - timedelta(days=1)).strftime('%Y-%m-%d')
+
+    date_start_obj = datetime.strptime(date_start, '%Y-%m-%d').date()
+    date_end_obj = datetime.strptime(date_end, '%Y-%m-%d').date()
+
+    @sync_to_async
+    def generate_file():
+        risk_engine = CommercialRisk(
+            date_start=date_start_obj, 
+            date_end=date_end_obj, 
+            route_id=selected_route_id
+        )
+        return risk_engine.get_data_report()
+
+    excel_file = await generate_file()
+
+    response = HttpResponse(
+        excel_file, 
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="reporte_riesgo_comercial_ruta_{selected_route_id}.xlsx"'
+    
+    return response
 
 
 @login_required

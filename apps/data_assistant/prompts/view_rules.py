@@ -41,6 +41,7 @@ PROMPTS_REGISTRY = {
               - <= 0.35: Bajo riesgo (Ruta saludable. Cartera activa y compras bien distribuidas).
               - 0.36 a 0.45: Riesgo medio (Ruta estable o en zona operativa normal; requiere monitoreo).
               - > 0.45: Riesgo alto (Alerta crítica. Alta inactividad o dependencia extrema de poquísimos clientes).
+              Nota importante, refierete al IRC como "índice de riesgo comercial" para que el usuario sepa de que se está hablando.
 
             * **Gini:** Nivel de concentración de la venta. Valores altos indican una ruta "dependiente", donde gran parte de tu facturación recae en unos pocos clientes grandes. El umbral para decir que empieza a ser peligroso
             es del 55 pct en adelante (para el trimestral), ya que, es normal que haya clientes mas fuertes que otros.

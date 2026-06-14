@@ -3,6 +3,8 @@ from collections import defaultdict
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from typing import List, Dict, Any
+import io
+import openpyxl
 import math
 import statistics
 from dateutil.relativedelta import relativedelta
@@ -556,8 +558,188 @@ class CommercialRisk:
             - clientes_nuevos_alcance_de_cartera
             - distribucion_y_riesgo_comercial
         """
+        wb = openpyxl.Workbook()
 
-        pass
+        cat_rank = {'DIAMANTE': 5, 'ORO': 4, 'AA': 3, 'A': 2, 'C': 1}
+
+
+
+        #ws 1
+        ws1 = wb.active
+        ws1.title = 'metricas_clientes'
+
+        #header plus evaluated months
+        headers1 = [
+            'cliente', 'fecha_registro', 'mediana_historica', 'promedio_historico', 'promedio_ultimo_trimestre', 'factor_crecimiento', 'indice_sesgo', 'volatilidad'
+        ]+self.months_timeline
+
+        ws1.append(headers1)
+
+
+        #initialize dict
+        customer_sales = defaultdict(dict)
+
+        #get organized sales data by customer
+        for month, c_data in self.monthly_sales.items():
+            for cid, amount in c_data.items():
+                customer_sales[cid][month] = amount
+
+        for cid, reg_date in self.customers_reg_dates.items():
+            #get the registration period by ctm
+            reg_month = reg_date.strftime('%Y-%m')
+            #get the number of months in the timeline since the registration month
+            valid_months = [m for m in self.months_timeline if m >= reg_month]
+
+
+            #validate the number of periods to calculate a fair mean
+            n_months = len(valid_months)
+            if n_months == 0:
+                continue
+            sales_data = [float(customer_sales[cid].get(m, 0)) for m in valid_months]
+            total_sales = sum(sales_data)
+
+            mean_sales = total_sales / n_months
+            median_sales = statistics.median(sales_data)
+
+            #volatility metrics
+            variance = sum((s - mean_sales)**2 for s in sales_data) / n_months
+            std_dev = math.sqrt(variance)
+            cv = std_dev / mean_sales if mean_sales > 0 else 0
+
+            #bias metrics
+            bias = (mean_sales - median_sales) / abs(mean_sales) if mean_sales > 0 else 0
+
+
+            #last closed q to calculate momentum
+            recent_months = valid_months[-3:] if n_months >= 3 else valid_months
+            recent_mean = sum(float(customer_sales[cid].get(m, 0)) for m in recent_months) / len(recent_months)
+            momentum = recent_mean / mean_sales if mean_sales > 0 else 0
+
+            #monthly sales for dinymic cols
+            monthly_row_data = [float(customer_sales[cid].get(m, 0)) for m in self.months_timeline]
+
+
+            #pass data to ws
+            row1 = [
+                cid, 
+                reg_date.strftime('%Y-%m-%d'), 
+                round(median_sales, 2), 
+                round(mean_sales, 2), 
+                round(recent_mean, 2), 
+                round(momentum, 4), 
+                round(bias, 4), 
+                round(cv, 4)
+            ] + monthly_row_data
+            
+            ws1.append(row1)
+
+        #ws 2
+        ws2 = wb.create_sheet("ganados_perdidos")
+        ws2.append(['periodo', 'cliente', 'ganado', 'perdido'])
+
+        #current month is the evaluated period in that moment
+        for i, current_month in enumerate(self.months_timeline):
+            if i == 0:
+                continue
+
+            prev_month = self.months_timeline[i - 1]
+            #if sale was greater than 0, customer was active
+            prev_active = set(cid for cid, amount in self.monthly_sales[prev_month].items() if amount > 0)
+            #if sale was greater than 0, customer was active also
+            curr_active = set(cid for cid, amount in self.monthly_sales[current_month].items() if amount > 0)
+
+            #substract sets to find diffs
+            won_cids = curr_active - prev_active
+            lost_cids = prev_active - curr_active
+
+            #append to ws2
+            for cid in won_cids:
+                ws2.append([current_month, cid, '✓', ''])
+            for cid in lost_cids:
+                ws2.append([current_month, cid, '', '✓'])
+
+
+        #ws 3
+        ws3 = wb.create_sheet("baja_de_categoria")
+        ws3.append(['periodo', 'cliente', 'categoria_previa', 'monto_evaluado_previo', 'categoria_periodo', 'monto_evaluado_periodo'])
+
+        for i, current_month in enumerate(self.months_timeline):
+            if i == 0:
+                continue
+            
+            #get previous month
+            prev_month = self.months_timeline[i - 1]
+
+            #this method gives the 3 previous months to evaluate
+            eval_months_curr = self._get_evaluation_months(current_month)
+            eval_months_prev = self._get_evaluation_months(prev_month)
+
+            #get the portafolio in that moment to avoid unfair eval
+            portfolio = [cid for cid, r_date in self.customers_reg_dates.items() if r_date.strftime('%Y-%m') <= current_month]
+
+            #evaluate the current port to get cats
+            for cid in portfolio:
+                reg_month = self.customers_reg_dates[cid].strftime('%Y-%m')
+
+                #evaluate the prev periodo and know if the reg date was before of that period or during it, to 
+                #fair evaluation of the mean
+                #get active months
+                active_prev = sum(1 for m in eval_months_prev if m >= reg_month)
+                #prevoius mean (t-5, t-2)
+                avg_prev = sum(float(self.monthly_sales[m].get(cid, 0)) for m in eval_months_prev) / active_prev if active_prev > 0 else 0
+                #previous category
+                cat_prev = get_category(avg_prev)
+
+                #evaluate the current period and the active periods
+                active_curr = sum(1 for m in eval_months_curr if m >= reg_month)
+                #get current mean (t-4, t-1)
+                avg_curr = sum(float(self.monthly_sales[m].get(cid, 0)) for m in eval_months_curr) / active_curr if active_curr > 0 else 0
+                #curr category
+                cat_curr = get_category(avg_curr)
+
+                #if current cat rank is lower than prev, is a downgrade
+                if cat_rank.get(cat_curr, 1) < cat_rank.get(cat_prev, 1):
+                    ws3.append([
+                        current_month, 
+                        cid, 
+                        cat_prev, 
+                        round(avg_prev, 2), 
+                        cat_curr, 
+                        round(avg_curr, 2)
+                    ])
+
+
+        #ws 4
+        ws4 = wb.create_sheet('contribucion_categorias')
+        ws4.append(['periodo', 'categoria', 'contribucion_pct_cartera', 'contribucion_pct_monetaria'])
+
+        #get dicts from internal method already existing
+        cat_timeline = self._customer_category_timeline_counting()
+        monetary_contrib = self._category_monetary_contribution_timeline()['percentages']
+
+        for i, month in enumerate(self.months_timeline):
+            #in order to get the pct in portafolio, make sum of total port
+            total_customers_month = sum(cat_timeline[cat][i] for cat, _ in CATEGORIZATIONS)
+
+            for cat, _ in CATEGORIZATIONS:
+                count = cat_timeline[cat][i]
+                pct_portafolio = (count / total_customers_month * 100) if total_customers_month > 0 else 0.0
+                pct_amount = monetary_contrib[cat][i]
+                
+                ws4.append([
+                    month, 
+                    cat, 
+                    round(pct_portafolio, 2), 
+                    round(pct_amount, 2)
+                ])
+        
+        
+            
+
+
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        return buffer.getvalue()
         
     def summary_for_assistant(self) -> Dict[str, Any]: 
         """

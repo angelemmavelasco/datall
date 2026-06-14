@@ -285,13 +285,21 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-astroid-icon lucide-astroid"><path d="M12.983 21.186a1 1 0 0 1-1.966 0 10 10 0 0 0-8.203-8.203 1 1 0 0 1 0-1.966 10 10 0 0 0 8.203-8.203 1 1 0 0 1 1.966 0 10 10 0 0 0 8.203 8.203 1 1 0 0 1 0 1.966 10 10 0 0 0-8.203 8.203"/></svg>
                 <h3 class="tracking-wider font-medium">Asistente de Datos</h3>
             </div>
-            <button type="button" onclick="closeAssistant()" class="text-muted hover:text-hover cursor-pointer transition-colors" title="Cerrar asistente">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="m15 9-6 6" />
-                    <path d="m9 9 6 6" />
-                </svg>
-            </button>
+
+            <div class="flex items-center gap-3">
+                <button type="button" id="btn-tts-assistant" onclick="toggleSpeech()" class="hidden text-muted hover:text-hover cursor-pointer transition-colors" title="Escuchar análisis">
+                    <svg id="tts-play-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-play-icon lucide-circle-play"><path d="M9 9.003a1 1 0 0 1 1.517-.859l4.997 2.997a1 1 0 0 1 0 1.718l-4.997 2.997A1 1 0 0 1 9 14.996z"/><circle cx="12" cy="12" r="10"/></svg>
+                    <svg id="tts-stop-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden lucide lucide-circle-pause-icon lucide-circle-pause"><circle cx="12" cy="12" r="10"/><line x1="10" x2="10" y1="15" y2="9"/><line x1="14" x2="14" y1="15" y2="9"/></svg>
+                </button>
+
+                <button type="button" onclick="closeAssistant()" class="text-muted hover:text-hover cursor-pointer transition-colors" title="Cerrar asistente">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="m15 9-6 6" />
+                        <path d="m9 9 6 6" />
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <div class="flex-1 overflow-y-auto relative z-10" id="assistant-content">
@@ -565,7 +573,106 @@
                 closeMobileMenu();
             }
         });
-            
+
+        // LECTURA DE HALLAZGOS DE IA
+        function getFemaleSpanishVoice() {
+            const voices = window.speechSynthesis.getVoices();
+            const spanishVoices = voices.filter(voice => voice.lang.startsWith('es'));
+
+            const femaleSpanishNames = ['paulina', 'sabina', 'helena', 'monica', 'marisol', 'angelica', 'google español'];
+
+            for (let name of femaleSpanishNames) {
+                const voiceFound = spanishVoices.find(v => v.name.toLowerCase().includes(name));
+                if (voiceFound) return voiceFound;
+            }
+
+            return spanishVoices[0] || null;
+        }
+
+        let currentUtterance = null;
+
+        function toggleSpeech() {
+            const contentEl = document.getElementById('assistant-content');
+
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+                setSpeechStatus(false);
+                return;
+            }
+
+
+            const textToRead = contentEl.innerText.trim();
+            if (!textToRead) return;
+
+
+            currentUtterance = new SpeechSynthesisUtterance(textToRead);
+            currentUtterance.lang = 'es-MX'; // El idioma base
+            currentUtterance.rate = 1.3;     // Velocidad normal
+
+
+            const femaleVoice = getFemaleSpanishVoice();
+            if (femaleVoice) {
+                currentUtterance.voice = femaleVoice;
+            }
+
+            // 5. Eventos para restaurar el icono cuando termine de hablar de forma natural o falle
+            currentUtterance.onend = () => setSpeechStatus(false);
+            currentUtterance.onerror = () => setSpeechStatus(false);
+
+            // 6. Encender audio y cambiar interfaz
+            setSpeechStatus(true);
+            window.speechSynthesis.speak(currentUtterance);
+        }
+
+        function setSpeechStatus(isSpeaking) {
+            const playIcon = document.getElementById('tts-play-icon');
+            const stopIcon = document.getElementById('tts-stop-icon');
+            const btn = document.getElementById('btn-tts-assistant');
+
+            if (isSpeaking) {
+                playIcon.classList.add('hidden');
+                stopIcon.classList.remove('hidden');
+                btn.classList.add('text-violet-500');
+            } else {
+                playIcon.classList.remove('hidden');
+                stopIcon.classList.add('hidden');
+                btn.classList.remove('text-violet-500');
+            }
+        }
+
+        // Interceptores de eventos HTMX para controlar el comportamiento del flujo
+        document.addEventListener('DOMContentLoaded', () => {
+            const ttsBtn = document.getElementById('btn-tts-assistant');
+
+            // REGLA 1: Cuando empiece una nueva petición de HTMX, silenciamos el audio actual
+            document.addEventListener('htmx:beforeRequest', (evt) => {
+                if (evt.detail.target.id === 'assistant-content') {
+                    window.speechSynthesis.cancel();
+                    setSpeechStatus(false);
+                    ttsBtn.classList.add('hidden'); // Ocultamos el botón mientras carga
+                }
+            });
+
+            // REGLA 2: Cuando termine el Swap y ya tengamos datos reales en pantalla, mostramos el botón
+            document.addEventListener('htmx:afterSwap', (evt) => {
+                if (evt.detail.target.id === 'assistant-content') {
+                    // Validamos que no sea la pantalla inicial del botón
+                    if (!evt.detail.target.innerText.includes("Analizar vista")) {
+                        ttsBtn.classList.remove('hidden');
+                    }
+                }
+            });
+        });
+
+        // Modificamos ligeramente la función de cierre que ya tienes para que también mate el audio si se cierra el panel
+        const originalCloseAssistant = window.closeAssistant;
+        window.closeAssistant = function() {
+            window.speechSynthesis.cancel();
+            setSpeechStatus(false);
+            if (typeof originalCloseAssistant === 'function') {
+                originalCloseAssistant();
+            }
+        };
     </script>
     {% block extra_js %}{% endblock %}
 </body>

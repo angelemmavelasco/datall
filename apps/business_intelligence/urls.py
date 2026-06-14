@@ -13,6 +13,7 @@ urlpatterns = [
 
 
     path('commercial_risk/', commercial_risk, name='commercial_risk'),
+    path('export_risk/', export_commercial_risk_data, name='export_commercial_risk_data'),
 
 
 

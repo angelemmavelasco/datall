@@ -12,7 +12,9 @@
 
 <button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button>
 
-<button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar datos</button>
+<a href="#" onclick="getDataReport(event)" class="hover:text-hover text-strong transition-colors cursor-pointer">
+    Descargar datos
+</a>
 
 <button onclick="toggleAssistant()" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center justify-center gap-1">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-astroid-icon lucide-astroid"><path d="M12.983 21.186a1 1 0 0 1-1.966 0 10 10 0 0 0-8.203-8.203 1 1 0 0 1 0-1.966 10 10 0 0 0 8.203-8.203 1 1 0 0 1 1.966 0 10 10 0 0 0 8.203 8.203 1 1 0 0 1 0 1.966 10 10 0 0 0-8.203 8.203"/></svg>
@@ -402,6 +404,14 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 {% block extra_js %}
 
 <script>
+    function getDataReport(event) {
+        event.preventDefault();
+        const urlParams = window.location.search;
+        window.location.href = `/business_intelligence/export_risk/${urlParams}`;
+    }
+
+
+
     const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim();
     const chartData = {{ data|safe }};
 
@@ -785,7 +795,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
     const customerCategoryTimelineChartOption = {
         title: {
             text: 'Composición de la cartera por categoría',
-            textStyle: { fontWeight: 'normal', fontSize: 14 }
+            textStyle: { fontWeight: 'normal', fontSize: 14, color: titleColor }
         },
         tooltip: {
             trigger: 'axis',
@@ -831,7 +841,6 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
     const monetaryContributionChart = echarts.init(document.getElementById("customerCategoryContribChart"));
 
-    // Separamos los datos de porcentajes y montos reales
     const backendPctData = chartData.monetary_contribution_category.percentages;
     const backendAmountData = chartData.monetary_contribution_category.amounts;
 
@@ -860,7 +869,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
     const monetaryChartOption = {
         title: {
             text: 'Contribución Monetaria por Categoría (%)',
-            textStyle: { fontWeight: 'normal', fontSize: 14 }
+            textStyle: { fontWeight: 'normal', fontSize: 14, color: titleColor }
         },
         tooltip: {
             trigger: 'axis',
@@ -872,14 +881,12 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                 let tooltipText = `<b>${params[0].name}</b><br/>`;
                 let totalAmountMonth = 0;
                 
-                // Ordenamos los parámetros de mayor a menor porcentaje para que el tooltip sea más fácil de leer
                 let sortedParams = [...params].sort((a, b) => b.value - a.value);
 
                 sortedParams.forEach(param => {
                     let monthIndex = param.dataIndex;
                     let catName = param.seriesName;
                     
-                    // Extraemos el dinero real del segundo diccionario usando el índice del mes
                     let moneyVal = backendAmountData[catName][monthIndex];
                     let formattedMoney = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(moneyVal);
                     let formattedPct = param.value.toFixed(1) + '%';
@@ -919,7 +926,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             {
                 type: 'value',
                 axisLabel: {
-                    formatter: '{value} %' // Eje Y ahora muestra explícitamente porcentajes
+                    formatter: '{value} %'
                 },
                 splitLine: { lineStyle: { type: 'dashed', opacity: 0.3 } }
             }
