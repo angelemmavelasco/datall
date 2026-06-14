@@ -1145,54 +1145,63 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
     commercialRiskEvolutionChart.setOption(commercialRiskOptions);
 
 
-function preparePDF() {
+    function preparePDF() {
 
-    const show_for_report = document.querySelectorAll(".show-for-report");
-    show_for_report.forEach(el => {
-        el.classList.remove("hidden");
+        const show_for_report = document.querySelectorAll(".show-for-report");
+        show_for_report.forEach(el => {
+            el.classList.remove("hidden");
+        });
+
+        const halfCharts = [
+            lostAndWonBarChart, 
+            newCtmActiveCtmChart, 
+            volatilitySaleVolumeChart,
+            growthBiasChart
+        ];
+
+        const fullCharts = [
+            commercialRiskEvolutionChart,
+            customerCategoryTimelineChart, 
+            monetaryContributionChart
+        ];
+
+        halfCharts.forEach(chart => {
+            chart.setOption({ animation: false }); 
+            chart.resize({ width: 500, height: 400 }); 
+        });
+
+        fullCharts.forEach(chart => {
+            chart.setOption({ animation: false }); 
+            chart.resize({ width: 1040, height: 400 }); 
+        });
+
+        setTimeout(() => {
+            window.print();
+        }, 800);
+
+    }
+
+    const mediaQueryList = window.matchMedia('print');
+
+    mediaQueryList.addEventListener('change', (mql) => {
+        if (!mql.matches) {
+            const show_for_report = document.querySelectorAll(".show-for-report");
+            show_for_report.forEach(el => {
+                el.classList.add("hidden");
+            });
+
+            const allCharts = [
+                lostAndWonBarChart, newCtmActiveCtmChart, volatilitySaleVolumeChart,
+                growthBiasChart, customerCategoryTimelineChart, monetaryContributionChart,
+                commercialRiskEvolutionChart
+            ];
+            
+            allCharts.forEach(chart => {
+                chart.setOption({ animation: true });
+                chart.resize({ width: 'auto', height: 'auto' });
+            });
+        }
     });
-
-    const halfCharts = [
-        lostAndWonBarChart, 
-        newCtmActiveCtmChart, 
-        volatilitySaleVolumeChart,
-        growthBiasChart
-    ];
-
-    const fullCharts = [
-        commercialRiskEvolutionChart,
-        customerCategoryTimelineChart, 
-        monetaryContributionChart
-    ];
-
-    halfCharts.forEach(chart => {
-        chart.setOption({ animation: false }); 
-        chart.resize({ width: 500, height: 400 }); 
-    });
-
-    fullCharts.forEach(chart => {
-        chart.setOption({ animation: false }); 
-        chart.resize({ width: 1040, height: 400 }); 
-    });
-
-    setTimeout(() => {
-        window.print();
-    }, 800);
-}
-
-window.addEventListener('afterprint', () => {
-    const allCharts = [
-        lostAndWonBarChart, newCtmActiveCtmChart, volatilitySaleVolumeChart,
-        growthBiasChart, customerCategoryTimelineChart, monetaryContributionChart,
-        commercialRiskEvolutionChart
-    ];
-    
-    // Regresamos la responsividad natural al cerrar el PDF
-    allCharts.forEach(chart => {
-        chart.setOption({ animation: true });
-        chart.resize({ width: 'auto', height: 'auto' });
-    });
-});
 </script>
 
 
