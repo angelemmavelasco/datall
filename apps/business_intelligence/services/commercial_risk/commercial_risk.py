@@ -9,6 +9,7 @@ from dateutil.relativedelta import relativedelta
 from django.db.models import Sum
 
 from apps.core.models import SaleTransaction, Customer
+from apps.business_intelligence.services.customers_kpis.customers_kpis import MockCategory, CATEGORIZATIONS, get_category
 
 class CommercialRisk:
     def __init__(self, date_start: str = None, date_end: str = None, route_id: str = None):
@@ -33,9 +34,12 @@ class CommercialRisk:
         customers_qs = Customer.objects.filter(route_id=route_id).values('id', 'registration_date')
         self.customers_reg_dates = {c['id']: c['registration_date'] for c in customers_qs}
 
+
+        #extended date for metrics calculations
+        extended_date_start = self.date_start.replace(day=1) - relativedelta(months=3)
         #get trasnsactions, no matter who made it, just making sure is currently in the route
         self.transactions = SaleTransaction.objects.filter(
-            sale_date__gte=date_start,
+            sale_date__gte=extended_date_start,
             sale_date__lte=date_end,
             customer__route_id=route_id
         ).values('sale_date', 'customer_id', 'net_amount')
@@ -63,6 +67,13 @@ class CommercialRisk:
             months.append(current.strftime('%Y-%m'))
             current += relativedelta(months=1)
         return months
+
+    def _get_evaluation_months(self, target_month: str) -> List[str]:
+        """
+        Get the 3 months immediately before a target month.
+        """
+        target_date = datetime.strptime(target_month, '%Y-%m').date()
+        return [(target_date - relativedelta(months=i)).strftime('%Y-%m') for i in (3, 2, 1)]
 
 
     def _customers_churn(self) -> Dict[str, List[int | str]]:
@@ -144,6 +155,46 @@ class CommercialRisk:
             'portfolio_scope': portfolio_scope_list
         }
 
+
+    def _customer_category_timeline_counting(self) -> Dict[str, List[int]]:
+        """
+        Calculate customer category timeline counting. The counting is fair, so it only considers the active months of the client in the evaluation period.
+
+        """
+        category_counts = {label: [] for label, _ in CATEGORIZATIONS}
+        
+        for current_month in self.months_timeline:
+            eval_months = self._get_evaluation_months(current_month)
+            
+            #calculation only considers customers whcih were active inthat period
+            portfolio = [
+                cid for cid, reg_date in self.customers_reg_dates.items()
+                if reg_date.strftime('%Y-%m') <= current_month
+            ]
+            
+            # temp counters
+            month_counts = {label: 0 for label, _ in CATEGORIZATIONS}
+            
+            for cid in portfolio:
+                reg_month = self.customers_reg_dates[cid].strftime('%Y-%m')
+                
+                # evaluate if customer was active the 3 month of evaluation
+                active_eval_months = sum(1 for m in eval_months if m >= reg_month)
+                
+                if active_eval_months == 0:
+                    #if registration date was in the current month, there no previous months to evaluate
+                    avg_sales = 0
+                else:
+                    total_sales = sum(self.monthly_sales[m].get(cid, 0) for m in eval_months)
+                    avg_sales = float(total_sales) / active_eval_months
+                    
+                cat = get_category(avg_sales)
+                month_counts[cat] += 1
+                
+            for label in category_counts:
+                category_counts[label].append(month_counts[label])
+                
+        return category_counts
 
 
     def _volatility_and_volume(self) -> Dict[str, Any]:
@@ -316,6 +367,50 @@ class CommercialRisk:
             'commercial_risk_index': commercial_risk_index_list
         }
 
+    def _category_monetary_contribution_timeline(self) -> Dict[str, Dict[str, List[float]]]:
+
+        category_amounts = {label: [] for label, _ in CATEGORIZATIONS}
+        category_percentages = {label: [] for label, _ in CATEGORIZATIONS}
+        
+        for current_month in self.months_timeline:
+            eval_months = self._get_evaluation_months(current_month)
+            
+            portfolio = [
+                cid for cid, reg_date in self.customers_reg_dates.items()
+                if reg_date.strftime('%Y-%m') <= current_month
+            ]
+            
+            month_sales_by_cat = {label: 0.0 for label, _ in CATEGORIZATIONS}
+            total_month_sales = 0.0
+            
+            for cid in portfolio:
+
+                reg_month = self.customers_reg_dates[cid].strftime('%Y-%m')
+                active_eval_months = sum(1 for m in eval_months if m >= reg_month)
+                
+                if active_eval_months == 0:
+                    avg_sales = 0
+                else:
+                    total_eval_sales = sum(self.monthly_sales[m].get(cid, 0) for m in eval_months)
+                    avg_sales = float(total_eval_sales) / active_eval_months
+                    
+                cat = get_category(avg_sales)
+                
+                actual_month_sale = float(self.monthly_sales[current_month].get(cid, 0))
+                month_sales_by_cat[cat] += actual_month_sale
+                total_month_sales += actual_month_sale
+                
+            for label, _ in CATEGORIZATIONS:
+                amount = month_sales_by_cat[label]
+                pct = (amount / total_month_sales * 100) if total_month_sales > 0 else 0.0
+                
+                category_amounts[label].append(round(amount, 2))
+                category_percentages[label].append(round(pct, 2))
+                
+        return {
+            'amounts': category_amounts,
+            'percentages': category_percentages
+        }
 
     def get_global_kpis(self) -> Dict[str, Any]:
         """
@@ -429,6 +524,8 @@ class CommercialRisk:
         volatility_data = self._volatility_and_volume()
         growth_bias_data = self._growth_and_bias()
         gini_portafolio_scope_data = self._get_gini_portafolio_scope_complement()
+        categories_timeline_data = self._customer_category_timeline_counting()
+        monetary_contribution_category = self._category_monetary_contribution_timeline()
 
         return {
             'timeline_months': self.months_timeline,
@@ -443,6 +540,8 @@ class CommercialRisk:
             'gini': gini_portafolio_scope_data['gini'],
             'portfolio_scope_complement': gini_portafolio_scope_data['portfolio_scope_complement'],
             'commercial_risk_index': gini_portafolio_scope_data['commercial_risk_index'],
+            'categories_timeline': categories_timeline_data,
+            'monetary_contribution_category': monetary_contribution_category
         }
 
     def get_data_report(self):
@@ -507,6 +606,8 @@ class CommercialRisk:
         )
 
         new_customers = sum(raw_data['new_customers'])
+
+        monetary_contrib_category = raw_data['monetary_contribution_category']
         
 
         
@@ -546,6 +647,37 @@ class CommercialRisk:
             'clientes_nuevos': {
                 'count': new_customers,
                 'description': f'Se refiere a los clientes dados de alta por las rutas durante el periodo evaluado {self.date_start} - {self.date_end}. Esto afecta directamente a la cartera de la ruta, la agranda. Es importante considerar el rango evaluado, para decidir si el numero de clinetes dados de alta son muy pocos. Considera un promedio de 2 clientes nuevos trimestrales como bueno.'
+            },
+            'contribucion_monetaria_categorias': {
+                'categorias_umbrales': CATEGORIZATIONS,
+                'periodo_evaluado': f'{self.date_start} - {self.date_end}',
+                'descripción': '''Las categorías se alcanzan con un monto trimestral promedio de consumo mínimo,
+                donde diamante es la que mas pide y la c es la que menos pide. No todas las rutas tienen Clientes diamante u oro, por lo que es normal ver ceros en estas categorias.
+                Lo alarmante sería haberlo tenido y que ya no lo tengas, porque indicaría una baja en el consumo radical.
+                Los datos se desglosan de forma mensual en el periodo evaluado.
+                La idea es ver la tendencia de cada categoría y dar hallazgos.''',
+                'datos': {
+                    'Diamante': {
+                        'montos': monetary_contrib_category['amounts']['DIAMANTE'],
+                        'contribucion_porcentual': monetary_contrib_category['percentages']['DIAMANTE']
+                    },
+                    'Oro': {
+                        'montos': monetary_contrib_category['amounts']['ORO'],
+                        'contribucion_porcentual': monetary_contrib_category['percentages']['ORO']
+                    },
+                    'AA': {
+                        'montos': monetary_contrib_category['amounts']['AA'],
+                        'contribucion_porcentual': monetary_contrib_category['percentages']['AA']
+                    },
+                    'A': {
+                        'montos': monetary_contrib_category['amounts']['A'],
+                        'contribucion_porcentual': monetary_contrib_category['percentages']['A']
+                    },
+                    'C': {
+                        'montos': monetary_contrib_category['amounts']['C'],
+                        'contribucion_porcentual': monetary_contrib_category['percentages']['C']
+                    }
+                }
             }
         }
         print(summary)

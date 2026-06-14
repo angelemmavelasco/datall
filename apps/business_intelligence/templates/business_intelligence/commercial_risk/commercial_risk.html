@@ -195,6 +195,55 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
     
 
+
+
+    <div class="">
+        <div class="flex items-center justify-between text-title">
+            <p class="text-title text-sm mb-2">Riesgo comercial <br>
+                <span class="text-[12px] text-hover italic">
+                    ({{ selected_date_start }} - {{ selected_date_end }})
+                </span></p>
+            
+            <div class="group relative flex items-center outline-none pb-2" tabindex="0">
+                <svg xmlns="http://www.w3.org/2000/svg"
+                    width="16" height="16" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-info-icon lucide-info hover:text-hover cursor-pointer transition-colors">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+                </svg>
+
+                <div class="absolute text-page right-0 top-full mt-1 w-72 p-4 bg-strong border border-border rounded opacity-0 invisible group-focus:opacity-100 group-focus:visible transition-all duration-200 z-50">
+                    <h4 class="font-semibold mb-2">¿Cómo leer esta gráfica?</h4>
+                    <p class="mb-2">
+                        <strong>Periodo:</strong> Los datos cubren desde el {{ selected_date_start }} hasta el {{ selected_date_end }}.
+                    </p>
+                    <ul class="text-xs space-y-2 pl-2 border-l-2 border-primary mb-3">
+                        <li>
+                            <strong>Concentración (Gini):</strong> Evalúa si las ventas dependen de unos pocos clientes selectos o si están repartidas equitativamente.
+                        </li>
+                        <li>
+                            <strong>Clientes desatendidos:</strong> Mide el porcentaje de la cartera registrada en ese momento que dejó de comprar.
+                        </li>
+                        <li>
+                            <strong>IRC (Índice de Riesgo Comercial):</strong> Es el indicador definitivo de la ruta. Combina la concentración y la inactividad; si cualquiera de las dos sube, el riesgo también lo hará.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <hr class="border-border">
+    </div>
+
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- evolucion del índice de riesgo comercial -->
+        <div class="border border-border rounded flex flex-col bg-container h-120 col-span-1 md:col-span-2">
+            <div id="commercialRiskEvolutionChart" class="w-full h-full min-h-[300px]"></div>
+        </div>
+        
+    </div>
+
     <div class="">
         <div class="flex items-center justify-between text-title">
             <p class="text-title text-sm mb-2">Evolución y cobertura de cartera <br>
@@ -313,72 +362,35 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
     </div>
 
 
+
+
+
+
     <div class="">
-        <div class="flex items-center justify-between text-title">
-            <p class="text-title text-sm mb-2">Riesgo comercial <br>
+        <p class="text-title text-sm mb-2">Categoría de cliente <br>
                 <span class="text-[12px] text-hover italic">
                     ({{ selected_date_start }} - {{ selected_date_end }})
-                </span></p>
-            
-            <div class="group relative flex items-center outline-none pb-2" tabindex="0">
-                <svg xmlns="http://www.w3.org/2000/svg"
-                    width="16" height="16" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round"
-                    class="lucide lucide-info-icon lucide-info hover:text-hover cursor-pointer transition-colors">
-                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
-                </svg>
+                </span>
+        </p>
 
-                <div class="absolute text-page right-0 top-full mt-1 w-72 p-4 bg-strong border border-border rounded opacity-0 invisible group-focus:opacity-100 group-focus:visible transition-all duration-200 z-50">
-                    <h4 class="font-semibold mb-2">¿Cómo leer esta gráfica?</h4>
-                    <p class="mb-2">
-                        <strong>Periodo:</strong> Los datos cubren desde el {{ selected_date_start }} hasta el {{ selected_date_end }}.
-                    </p>
-                    <ul class="text-xs space-y-2 pl-2 border-l-2 border-primary mb-3">
-                        <li>
-                            <strong>Concentración (Gini):</strong> Evalúa si las ventas dependen de unos pocos clientes selectos o si están repartidas equitativamente.
-                        </li>
-                        <li>
-                            <strong>Clientes desatendidos:</strong> Mide el porcentaje de la cartera registrada en ese momento que dejó de comprar.
-                        </li>
-                        <li>
-                            <strong>IRC (Índice de Riesgo Comercial):</strong> Es el indicador definitivo de la ruta. Combina la concentración y la inactividad; si cualquiera de las dos sube, el riesgo también lo hará.
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
         <hr class="border-border">
     </div>
 
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- evolucion del índice de riesgo comercial -->
-        <div class="border border-border rounded flex flex-col bg-container h-120 col-span-1 md:col-span-2">
-            <div id="commercialRiskEvolutionChart" class="w-full h-full min-h-[300px]"></div>
+
+        <!-- composicion de la cartera de clientes por csategoria-->
+        <div class="border border-border rounded flex flex-col bg-container h-120 col-span-2">
+            <div id="customerCategoryTimelineChart" class="w-full h-full min-h-[300px]"></div>
         </div>
-        
-    </div>
 
-
-
-    <div class="">
-        <p class="text-title text-sm mb-2">Categoría de cliente</p>
-        <hr class="border-border">
-    </div>
-
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- contribución monetaria por categoría -->
-        <div class="border border-border rounded flex flex-col bg-container h-120">
+        <div class="border border-border rounded flex flex-col bg-container h-120 col-span-2">
             <div id="customerCategoryContribChart" class="w-full h-full min-h-[300px]"></div>
         </div>
 
 
-        <!-- composicion de la cartera de clientes por csategoria-->
-        <div class="border border-border rounded flex flex-col bg-container h-120">
-            <div id="customerCategoryTimelineChart" class="w-full h-full min-h-[300px]"></div>
-        </div>
+
     </div>
 
 </div>
@@ -532,7 +544,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
 
 
-
+    // volatilidad y volumen de ventas
     const volatilitySaleVolumeChart = echarts.init(document.getElementById("volatilitySaleVolumeChart"));
     const volatilityScatterData = chartData.volatility_scatter; 
     const volatilityThresholds = chartData.volatility_thresholds;
@@ -610,6 +622,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
 
 
+    // sesgo y crecimiento
 
     const growthBiasChart = echarts.init(document.getElementById("growthBiasChart"));
     
@@ -694,221 +707,230 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
 
 
+    // composicion porcentual de la categoria por categoria
+    const customerCategoryTimelineChart = echarts.init(document.getElementById("customerCategoryTimelineChart"));
 
-    // const customerCategoryTimelineChart = echarts.init(document.getElementById("customerCategoryTimelineChart"));
+    const backendCategories = {{ data.categories_timeline|safe }};
+    const timelineMonths = {{ data.timeline_months|safe }};
 
-    // const rawData = [
-    // [100, 302, 301, 334, 390, 330, 320], // C
-    // [320, 132, 101, 134, 90, 230, 210],  // A
-    // [220, 182, 191, 234, 290, 330, 310], // AA
-    // [150, 212, 201, 154, 190, 330, 410], // Oro
-    // [820, 832, 901, 934, 1290, 1330, 1320] // Diamante
-    // ];
+    const categories = ['C', 'A', 'AA', 'ORO', 'DIAMANTE'];
+    const color = ['#d4d4d4', '#3b70fa', '#009688', '#facc15', '#27EBF5'];
 
-    // const totalData = [];
-    // for (let i = 0; i < rawData[0].length; ++i) {
-    // let sum = 0;
-    // for (let j = 0; j < rawData.length; ++j) {
-    //     sum += rawData[j][i];
-    // }
-    // totalData.push(sum);
-    // }
+    const rawData = categories.map(cat => backendCategories[cat]);
 
-    // const grid = {
-    // left: 50,
-    // right: 50,
-    // top: 50,
-    // bottom: 50
-    // };
+    const totalData = [];
+    for (let i = 0; i < rawData[0].length; ++i) {
+        let sum = 0;
+        for (let j = 0; j < rawData.length; ++j) {
+            sum += rawData[j][i];
+        }
+        totalData.push(sum);
+    }
 
-    // const gridWidth = customerCategoryTimelineChart.getWidth() - grid.left - grid.right;
-    // const gridHeight = customerCategoryTimelineChart.getHeight() - grid.top - grid.bottom;
-    // const categoryWidth = gridWidth / rawData[0].length;
-    // const barWidth = categoryWidth * 0.6;
-    // const barPadding = (categoryWidth - barWidth) / 2;
+    const grid = { left: 50, right: 50, top: 50, bottom: 50 };
+    const gridWidth = customerCategoryTimelineChart.getWidth() - grid.left - grid.right;
+    const gridHeight = customerCategoryTimelineChart.getHeight() - grid.top - grid.bottom;
+    const categoryWidth = gridWidth / rawData[0].length;
+    const barWidth = categoryWidth * 0.6;
+    const barPadding = (categoryWidth - barWidth) / 2;
 
-    // const categories = ['C', 'A', 'AA', 'Oro', 'Diamante'];
+    const series = categories.map((name, sid) => {
+        return {
+            name,
+            type: 'bar',
+            stack: 'total',
+            barWidth: '60%',
+            label: {
+                show: true,
+                formatter: (params) => {
+                    const percent = Math.round(params.value * 1000) / 10;
+                    return percent > 0 ? percent + '%' : ''; // Ocultar etiquetas si es 0% para limpieza visual
+                }
+            },
+            itemStyle: { color: color[sid] },
+            data: rawData[sid].map((d, did) => totalData[did] <= 0 ? 0 : d / totalData[did])
+        };
+    });
+
+    const elements = [];
+    for (let j = 1, jlen = rawData[0].length; j < jlen; ++j) {
+        const leftX = grid.left + categoryWidth * j - barPadding;
+        const rightX = leftX + barPadding * 2;
+        let leftY = grid.top + gridHeight;
+        let rightY = leftY;
+        
+        for (let i = 0, len = series.length; i < len; ++i) {
+            const points = [];
+            const leftBarHeight = (rawData[i][j - 1] / totalData[j - 1]) * gridHeight;
+            points.push([leftX, leftY]);
+            points.push([leftX, leftY - leftBarHeight]);
+            const rightBarHeight = (rawData[i][j] / totalData[j]) * gridHeight;
+            points.push([rightX, rightY - rightBarHeight]);
+            points.push([rightX, rightY]);
+            points.push([leftX, leftY]);
+            leftY -= leftBarHeight;
+            rightY -= rightBarHeight;
+            
+            elements.push({
+                type: 'polygon',
+                shape: { points },
+                style: {
+                    fill: color[i],
+                    opacity: 0.25
+                }
+            });
+        }
+    }
+
+    const customerCategoryTimelineChartOption = {
+        title: {
+            text: 'Composición de la cartera por categoría',
+            textStyle: { fontWeight: 'normal', fontSize: 14 }
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'shadow' },
+            formatter: function (params) {
+                // Tooltip personalizado para mostrar conteo real y porcentaje
+                let tooltipText = `<b>${params[0].name}</b><br/>`;
+                let monthIndex = params[0].dataIndex;
+                params.forEach(param => {
+                    let realValue = rawData[param.seriesIndex][monthIndex];
+                    let percent = Math.round(param.value * 1000) / 10;
+                    tooltipText += `${param.marker} ${param.seriesName}: <b>${realValue}</b> clientes (${percent}%)<br/>`;
+                });
+                return tooltipText;
+            }
+        },
+        toolbox: {
+            feature: { saveAsImage: { title: 'Guardar imagen' } }
+        },
+        legend: {
+            selectedMode: false,
+            data: categories,
+            bottom: 0
+        },
+        grid,
+        yAxis: {
+            type: 'value',
+            axisLabel: { formatter: (value) => (value * 100) + '%' },
+            splitLine: { lineStyle: { type: 'dashed', opacity: 0.3 } }
+        },
+        xAxis: {
+            type: 'category',
+            data: timelineMonths,
+            splitLine: { lineStyle: { type: 'dashed', opacity: 0.3 } }
+        },
+        series,
+        graphic: { elements }
+    };
+
+    customerCategoryTimelineChart.setOption(customerCategoryTimelineChartOption);
+
+
+
+    const monetaryContributionChart = echarts.init(document.getElementById("customerCategoryContribChart"));
+
+    // Separamos los datos de porcentajes y montos reales
+    const backendPctData = chartData.monetary_contribution_category.percentages;
+    const backendAmountData = chartData.monetary_contribution_category.amounts;
+
+    const contribution_categories = ['C', 'A', 'AA', 'ORO', 'DIAMANTE'];
+    // Asegúrate de tener tu array 'color' y 'timelineMonths' definidos previamente
     // const color = ['#d4d4d4', '#3b70fa', '#009688', '#facc15', '#311b5e'];
 
-    // const series = categories.map((name, sid) => {
-    // return {
-    //     name,
-    //     type: 'bar',
-    //     stack: 'total',
-    //     barWidth: '60%',
-    //     label: {
-    //     show: true,
-    //     formatter: (params) => Math.round(params.value * 1000) / 10 + '%'
-    //     },
-    //     itemStyle: {
-    //         color: color[sid]
-    //     },
-    //     data: rawData[sid].map((d, did) =>
-    //     totalData[did] <= 0 ? 0 : d / totalData[did]
-    //     )
-    // };
-    // });
+    const lineSeries = contribution_categories.map((name, sid) => {
+        return {
+            name: name,
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 6,
+            showSymbol: false, // Muestra el puntito solo al hacer hover
+            lineStyle: {
+                width: 3
+            },
+            itemStyle: {
+                color: color[sid]
+            },
+            data: backendPctData[name]
+        };
+    });
 
-    // const elements = [];
-    // for (let j = 1, jlen = rawData[0].length; j < jlen; ++j) {
-    // const leftX = grid.left + categoryWidth * j - barPadding;
-    // const rightX = leftX + barPadding * 2;
-    // let leftY = grid.top + gridHeight;
-    // let rightY = leftY;
-    
-    // for (let i = 0, len = series.length; i < len; ++i) {
-    //     const points = [];
-    //     const leftBarHeight = (rawData[i][j - 1] / totalData[j - 1]) * gridHeight;
-    //     points.push([leftX, leftY]);
-    //     points.push([leftX, leftY - leftBarHeight]);
-    //     const rightBarHeight = (rawData[i][j] / totalData[j]) * gridHeight;
-    //     points.push([rightX, rightY - rightBarHeight]);
-    //     points.push([rightX, rightY]);
-    //     points.push([leftX, leftY]);
-    //     leftY -= leftBarHeight;
-    //     rightY -= rightBarHeight;
-        
-    //     elements.push({
-    //     type: 'polygon',
-    //     shape: {
-    //         points
-    //     },
-    //     style: {
-    //         fill: color[i],
-    //         opacity: 0.25 // Transparencia para las conexiones
-    //     }
-    //     });
-    // }
-    // }
-
-    // const customerCategoryTimelineChartOption = {
-    //     title: {
-    //         text: 'Composición de la cartera de clientes por categoría',
-    //         textStyle: {
-    //             fontWeight: 'normal',
-    //             fontSize: 14,
-    //             color: titleColor
-    //         },
-
-    //     },
-    //     toolbox: {
-    //         feature: {
-    //             saveAsImage: { 
-    //                 title: 'Guardar imagen',  
-    //             }
-    //         }
-    //     },
-    //     legend: {
-    //         selectedMode: false,
-    //         data: categories,
-    //         bottom: 0
-    //     },
-    //     grid,
-    //     yAxis: {
-    //         type: 'value',
-    //         axisLabel: {
-    //             formatter: (value) => (value * 100) + '%' // Formato 0% a 100%
-    //         }
-    //     },
-    //     xAxis: {
-    //         type: 'category',
-    //         data: ['2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06', '2025-07']
-    //     },
-    //     series,
-    //     graphic: {
-    //         elements
-    //     }
-    // };
-
-    // customerCategoryTimelineChart.setOption(customerCategoryTimelineChartOption);
-
-
-
-
-    // const productCategoryData = [
-    //     { value: 1540300, name: 'A' },
-    //     { value: 980500, name: 'AA' },
-    //     { value: 750200, name: 'Diamante' },
-    //     { value: 420100, name: 'C' },
-    //     { value: 180000, name: 'Oro' }
-    // ];
-
-
-    // const categoryColors = ['#9b59b6', '#f39c12', '#00b894', '#0984e3', '#b2bec3'];
-
-    // const customerCategoryContribChartOption = {
-    //     color: categoryColors,
-    //     title: {
-    //         text: 'Contribución monetaria por categoría de cliente',
-    //         textStyle: {
-    //             fontWeight: 'normal',
-    //             fontSize: 14,
-    //             color: titleColor
-    //         },
-
-    //     },
-    //     toolbox: {
-    //         feature: {
-    //             saveAsImage: { 
-    //                 title: 'Guardar imagen',  
-    //             }
-    //         }
-    //     },
-    //     toolbox: {
-    //         feature: {
-    //             saveAsImage: {}
-    //         }
-    //     },
-    //     tooltip: {
-    //         trigger: 'item',
-    //         formatter: function (params) {
-    //             const formattedMoney = new Intl.NumberFormat('es-MX', {
-    //                 style: 'currency',
-    //                 currency: 'MXN'
-    //             }).format(params.value);
+    const monetaryChartOption = {
+        title: {
+            text: 'Contribución Monetaria por Categoría (%)',
+            textStyle: { fontWeight: 'normal', fontSize: 14 }
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'line', 
+                lineStyle: { color: '#cbd5e1', type: 'dashed' }
+            },
+            formatter: function (params) {
+                let tooltipText = `<b>${params[0].name}</b><br/>`;
+                let totalAmountMonth = 0;
                 
-    //             return `${params.seriesName}<br/>${params.marker} ${params.name}: <b>${formattedMoney}</b> (${params.percent}%)`;
-    //         }
-    //     },
-    //     legend: {
-    //         top: '10%',
-    //         left: 'center'
-    //     },
-    //     series: [
-    //         {
-    //             name: 'Contribución',
-    //             type: 'pie',
-    //             radius: ['45%', '70%'],
-    //             center: ['50%', '60%'],
-    //             avoidLabelOverlap: false,
-    //             padAngle: 5,
-    //             itemStyle: {
-    //                 borderRadius: 10
-    //             },
-    //             label: {
-    //                 show: false,
-    //                 position: 'center'
-    //             },
-    //             emphasis: {
-    //                 label: {
-    //                     show: true,
-    //                     fontSize: 22,
-    //                     fontWeight: 'bold',
-    //                     formatter: '{b}\n{d}%'
-    //                 }
-    //             },
-    //             labelLine: {
-    //                 show: false
-    //             },
-    //             data: productCategoryData
-    //         }
-    //     ]
-    // };
+                // Ordenamos los parámetros de mayor a menor porcentaje para que el tooltip sea más fácil de leer
+                let sortedParams = [...params].sort((a, b) => b.value - a.value);
 
-    // const customerCategoryContribChart = echarts.init(document.getElementById('customerCategoryContribChart'));
-    // customerCategoryContribChart.setOption(customerCategoryContribChartOption);
+                sortedParams.forEach(param => {
+                    let monthIndex = param.dataIndex;
+                    let catName = param.seriesName;
+                    
+                    // Extraemos el dinero real del segundo diccionario usando el índice del mes
+                    let moneyVal = backendAmountData[catName][monthIndex];
+                    let formattedMoney = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(moneyVal);
+                    let formattedPct = param.value.toFixed(1) + '%';
+                    
+                    tooltipText += `${param.marker} ${catName}: <b>${formattedPct}</b> <span style="color:#888; font-size:11px; margin-left:4px;">(${formattedMoney})</span><br/>`;
+                    totalAmountMonth += moneyVal;
+                });
+                
+                let totalFormatted = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalAmountMonth);
+                tooltipText += `<hr style="margin: 4px 0; border-color: rgba(150,150,150,0.2)"/>`;
+                tooltipText += `<span style="font-size:11px">Venta total del mes:</span> <b>${totalFormatted}</b>`;
+                
+                return tooltipText;
+            }
+        },
+        legend: {
+            data: contribution_categories,
+            bottom: 0,
+            icon: 'circle'
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '10%',
+            top: '15%',
+            containLabel: true
+        },
+        xAxis: [
+            {
+                type: 'category',
+                boundaryGap: false,
+                data: timelineMonths,
+                splitLine: { lineStyle: { type: 'dashed', opacity: 0.3 } }
+            }
+        ],
+        yAxis: [
+            {
+                type: 'value',
+                axisLabel: {
+                    formatter: '{value} %' // Eje Y ahora muestra explícitamente porcentajes
+                },
+                splitLine: { lineStyle: { type: 'dashed', opacity: 0.3 } }
+            }
+        ],
+        series: lineSeries
+    };
+
+    monetaryContributionChart.setOption(monetaryChartOption);
 
 
+    // evolucion del rieso comercial por mes
     const commercialRiskEvolutionChart = echarts.init(document.getElementById('commercialRiskEvolutionChart'));
     const commercialRiskOptions = {
         title: {

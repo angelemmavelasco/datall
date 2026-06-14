@@ -7,7 +7,7 @@ import json
 import csv
 import asyncio
 import openpyxl
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from django.core.paginator import Paginator
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
@@ -289,9 +289,11 @@ def commercial_risk(request):
     selected_route_id = request.GET.get('route')
 
     if not date_start:
-        date_start = date(today.year, 1, 1).strftime('%Y-%m-%d')
+        date_start = date(today.year-1, 1, 1).strftime('%Y-%m-%d')
     if not date_end:
-        date_end = today.strftime('%Y-%m-%d')
+        #the last day of the previous month
+        date_end = date(today.year, today.month, 1).replace(day=1) - timedelta(days=1)
+        date_end = date_end.strftime('%Y-%m-%d')
     if not selected_route_id and allowed_routes.exists():
         selected_route_id = allowed_routes.first().id
 

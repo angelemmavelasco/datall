@@ -32,14 +32,14 @@
         .dust-cloud {
             position: absolute;
             border-radius: 50%;
-            filter: blur(160px);
-            opacity: 0.6;
+            filter: blur(80px);
             z-index: 0;
             pointer-events: none;
         }
 
         :root.dark .dust-cloud {
             opacity: 0.6;
+            filter: blur(160px);
         }
 
         .dust-1 {
@@ -48,7 +48,7 @@
             background: var(--chart-purple);
             top: -50px;
             left: -100px;
-            animation: float-1 15s infinite ease-in-out alternate;
+            animation: float-1 10s infinite ease-in-out alternate;
         }
 
         .dust-2 {
@@ -57,7 +57,7 @@
             background: var(--chart-blue);
             bottom: -50px;
             right: -100px;
-            animation: float-2 20s infinite ease-in-out alternate;
+            animation: float-2 10s infinite ease-in-out alternate;
         }
 
         .dust-3 {
@@ -66,7 +66,7 @@
             background: var(--chart-green);
             top: 40%;
             left: 20%;
-            animation: float-3 25s infinite ease-in-out alternate;
+            animation: float-3 5s infinite ease-in-out alternate;
         }
 
         @keyframes float-1 {
