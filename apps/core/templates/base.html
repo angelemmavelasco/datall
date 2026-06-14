@@ -92,26 +92,6 @@
           opacity: 1;
           transition: opacity 300ms ease-in-out; 
         }
-        @media print {
-            @page {
-                margin: 0;
-            }
-
-            body {
-                margin: 2cm;
-            }
-
-            header,
-            aside,
-            button,
-            footer {
-                display: none !important;
-            }
-
-            main {
-                width: 100%;
-            }
-        }
 
         @theme {
             --color-page: var(--bg-page);
@@ -213,6 +193,55 @@
         }
 
 
+    </style>
+
+    <!-- print base -->
+    <style>
+    @media print {
+        @page {
+            size: A4 landscape;
+            margin: 10mm;
+        }
+
+        body {
+            background-color: white !important;
+            color: black !important;
+        }
+
+        header, aside, button, footer, form, #params_filters, .lucide {
+            display: none !important;
+        }
+
+        .grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 15px !important;
+        }
+
+
+        .col-span-1.md\:col-span-2,
+        .col-span-2 {
+            grid-column: span 2 / span 2 !important;
+        }
+
+        .h-120 {
+            height: auto !important;
+        }
+
+        .bg-container {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            margin-bottom: 10px !important;
+            border: none !important; 
+            box-shadow: none !important;
+        }
+
+        .page-break {
+            break-before: page !important;
+            page-break-before: always !important;
+            padding-top: 10px !important; /* Un pequeño respiro visual arriba */
+        }
+    }
     </style>
 
     <script>
@@ -606,8 +635,8 @@
 
 
             currentUtterance = new SpeechSynthesisUtterance(textToRead);
-            currentUtterance.lang = 'es-MX'; // El idioma base
-            currentUtterance.rate = 1.3;     // Velocidad normal
+            currentUtterance.lang = 'es-MX';
+            currentUtterance.rate = 1.3;
 
 
             const femaleVoice = getFemaleSpanishVoice();
@@ -615,11 +644,9 @@
                 currentUtterance.voice = femaleVoice;
             }
 
-            // 5. Eventos para restaurar el icono cuando termine de hablar de forma natural o falle
             currentUtterance.onend = () => setSpeechStatus(false);
             currentUtterance.onerror = () => setSpeechStatus(false);
 
-            // 6. Encender audio y cambiar interfaz
             setSpeechStatus(true);
             window.speechSynthesis.speak(currentUtterance);
         }
@@ -640,23 +667,19 @@
             }
         }
 
-        // Interceptores de eventos HTMX para controlar el comportamiento del flujo
         document.addEventListener('DOMContentLoaded', () => {
             const ttsBtn = document.getElementById('btn-tts-assistant');
 
-            // REGLA 1: Cuando empiece una nueva petición de HTMX, silenciamos el audio actual
             document.addEventListener('htmx:beforeRequest', (evt) => {
                 if (evt.detail.target.id === 'assistant-content') {
                     window.speechSynthesis.cancel();
                     setSpeechStatus(false);
-                    ttsBtn.classList.add('hidden'); // Ocultamos el botón mientras carga
+                    ttsBtn.classList.add('hidden');
                 }
             });
 
-            // REGLA 2: Cuando termine el Swap y ya tengamos datos reales en pantalla, mostramos el botón
             document.addEventListener('htmx:afterSwap', (evt) => {
                 if (evt.detail.target.id === 'assistant-content') {
-                    // Validamos que no sea la pantalla inicial del botón
                     if (!evt.detail.target.innerText.includes("Analizar vista")) {
                         ttsBtn.classList.remove('hidden');
                     }
@@ -664,7 +687,6 @@
             });
         });
 
-        // Modificamos ligeramente la función de cierre que ya tienes para que también mate el audio si se cierra el panel
         const originalCloseAssistant = window.closeAssistant;
         window.closeAssistant = function() {
             window.speechSynthesis.cancel();

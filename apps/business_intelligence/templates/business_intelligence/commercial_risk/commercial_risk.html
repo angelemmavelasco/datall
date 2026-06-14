@@ -10,7 +10,9 @@
 
 {% block module_actions %}
 
-<button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button>
+<button onclick="preparePDF()" class="hover:text-hover text-strong transition-colors cursor-pointer">
+    Descargar reporte
+</button>
 
 <a href="#" onclick="getDataReport(event)" class="hover:text-hover text-strong transition-colors cursor-pointer">
     Descargar datos
@@ -246,7 +248,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         
     </div>
 
-    <div class="">
+    <div class="page-break">
         <div class="flex items-center justify-between text-title">
             <p class="text-title text-sm mb-2">Evolución y cobertura de cartera <br>
                 <span class="text-[12px] text-hover italic">
@@ -304,7 +306,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
 
 
-    <div class="">
+    <div class="page-break">
         <div class="flex items-center justify-between text-title">
             <p class="text-title text-sm mb-2">Distribución de cartera <br>
                 <span class="text-[12px] text-hover italic">
@@ -368,7 +370,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
 
 
-    <div class="">
+    <div class="page-break">
         <p class="text-title text-sm mb-2">Categoría de cliente <br>
                 <span class="text-[12px] text-hover italic">
                     ({{ selected_date_start }} - {{ selected_date_end }})
@@ -1035,6 +1037,36 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
     commercialRiskEvolutionChart.setOption(commercialRiskOptions);
 
 
+    function preparePDF() {
+        const allCharts = [
+            lostAndWonBarChart, newCtmActiveCtmChart, volatilitySaleVolumeChart,
+            growthBiasChart, customerCategoryTimelineChart, monetaryContributionChart,
+            commercialRiskEvolutionChart
+        ];
+
+        allCharts.forEach(chart => {
+            chart.setOption({ animation: false }); 
+            chart.resize({ width: 'auto', height: 400 }); 
+        });
+
+        setTimeout(() => {
+            window.print();
+        }, 500);
+    }
+
+    window.addEventListener('afterprint', () => {
+        const allCharts = [
+            lostAndWonBarChart, newCtmActiveCtmChart, volatilitySaleVolumeChart,
+            growthBiasChart, customerCategoryTimelineChart, monetaryContributionChart,
+            commercialRiskEvolutionChart
+        ];
+        
+        allCharts.forEach(chart => {
+            chart.setOption({ animation: true });
+            // Regresamos al comportamiento normal responsivo
+            chart.resize({ width: 'auto', height: 'auto' });
+        });
+    });
 </script>
 
 
