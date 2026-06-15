@@ -659,12 +659,42 @@ def sale_targets_export(request):
 
 
 summary = {
-    'gerencia': 'warehouse.name',
-    'metricas': {
-        'venta_mensual_promedio': 0,
+    # solo se muestra la info de la gerenci qeu se selecciono
+    'gerencia': 'warehouse.name (de la cual se tiene el filtro activo)',
+    'metricas_promedio_mensuales': {
+        'venta_promedio': 0,
         'alcance_promedio': 0,
         'margen_promedio': 0,
-        'clientes_nuevos': 0,
-        
-    }
+        'clientes_nuevos_promedio': 0,
+        'cuentas_por_cobrar_promedio': 0,
+        'convenios_promedio': 0,
+
+    },
+   'metricas_mensuales': {
+        'route.id - route.name': {
+            'enero': {
+                'alcance': 0,
+                'margen': 0,
+                'cuentas_por_cobrar': 0,
+                'convenios': 0,
+                'venta': 0,
+                'desempeño_por_clase': {
+                    'diamond': {
+                        'objetivo': 0,
+                        'venta': 0,
+                        'alcance': 0,
+                    },
+                    'diamond naturals': {
+                        'objetivo': 0,
+                        'venta': 0,
+                        'alcance': 0,
+                    }, 
+                    # ... y asi con todas las clase de productos. Ojo, se deben mostrar todas las clases auqnue tengan objetivo o venta 0
+                }
+                # ... y asi con todos los meses (hasta la fecha, es decir, a menos que el usuario seleccione años previos, solo se muestran los datos hasta el mes en curso)
+
+            }
+        }
+   } 
+
 }

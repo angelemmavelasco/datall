@@ -1,5 +1,7 @@
-from datetime import datetime
+from datetime import datetime, date
 from apps.business_intelligence.services.commercial_risk.commercial_risk import CommercialRisk
+from apps.business_intelligence.services.monthly_breakdown_by_warehouse.monthly_breakdown_by_warehouse import MonthlyBreakdownByWarehouse
+from apps.core.utils import get_allowed_routes_for_user
 
 def build_commercial_risk_data(params):
     """
@@ -23,7 +25,25 @@ def build_commercial_risk_data(params):
     summary['route'] = route_id
     return summary
 
-def build_sales_dashboard_data(params):
-    """Extrae los datos específicos para el Dashboard de Ventas"""
-    
-    pass
+def build_monthly_breakdown_by_warehouse(params):
+    """
+    Extracts the params for monthly breakdown by warehouse view
+    """
+    year_str = params.get('year', str(date.today().year))
+    year = int(year_str)
+    warehouse_id = params.get('warehouse')
+
+    user = params.get('user')
+    allowed_routes = get_allowed_routes_for_user(user)
+
+    service = MonthlyBreakdownByWarehouse(
+        year=year, 
+        allowed_routes_qs=allowed_routes, 
+        warehouse_id=warehouse_id
+    )
+
+    summary = service.summary_for_assistant()
+    summary['warehouse'] = warehouse_id
+    summary['year'] = year
+
+    return summary

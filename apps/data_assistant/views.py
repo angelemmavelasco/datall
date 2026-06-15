@@ -23,13 +23,16 @@ async def data_assistant(request):
     builder_function = registry_entry['data_builder']
     data = {}
 
+    user = await request.auser()
+
 
     @sync_to_async
     def fetch_report_data():
-        return builder_function(request.GET)
+        params = request.GET.dict()
+        params['user'] = user
+        return builder_function(params)
 
-    data = await fetch_report_data()
-    user = await request.auser()
+    data = data = await fetch_report_data()
     data['user_name'] = user.first_name.title()
 
     ia = DataAssistant(system_context=view_rules)

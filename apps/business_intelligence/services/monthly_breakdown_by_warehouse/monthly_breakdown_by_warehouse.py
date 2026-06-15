@@ -3,6 +3,7 @@ from collections import defaultdict
 import openpyxl
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+from datetime import date
 
 
 from django.db.models import Sum, Count, F
@@ -394,76 +395,110 @@ class MonthlyBreakdownByWarehouse:
 
     def summary_for_assistant(self) -> dict:
         """
-        Generates a structured, token-optimized summary for the LLM assistant.
-        Filters out product classes with zero activity to save context window 
-        and formats Decimals to native floats for JSON serialization.
+        Generates a dictionary for llm to analyze
         """
+
         raw_data = self.get_data()
-        
-        # Si no hay datos, retornamos un dict vacío
         if not raw_data:
             return {}
 
         warehouse_info = raw_data[0]
         
-        summary = {
-            "contexto_general": {
-                "año_evaluado": self.year,
-                "gerencia": f"{warehouse_info['warehouse_id']} - {warehouse_info['warehouse_name']}",
-                "descripción": "Reporte de ejecución de cuotas, rentabilidad (margen) y salud financiera mensual por ruta."
-            },
-            "rutas": []
+        #cut on the current month if necesary to avoid sending future months with no data
+        current_date = date.today()
+        if self.year < current_date.year:
+            max_month = 12
+        elif self.year == current_date.year:
+            max_month = current_date.month -1
+        else:
+            max_month = 0
+            
+        month_names = {
+            1: 'enero', 2: 'febrero', 3: 'marzo', 4: 'abril', 
+            5: 'mayo', 6: 'junio', 7: 'julio', 8: 'agosto', 
+            9: 'septiembre', 10: 'octubre', 11: 'noviembre', 12: 'diciembre'
         }
 
+        #means by warehouse
+        sum_venta = 0.0
+        sum_objetivo = 0.0
+        sum_margen_pct = 0.0
+        sum_clientes = 0
+        sum_cxc = 0.0
+        sum_convenios = 0
+        rutas_meses_count = 0
+
+        metricas_mensuales = {}
+
         for route in warehouse_info['routes']:
-            route_summary = {
-                "ruta": f"{route['route_id']} - {route['route_name']}",
-                "totales_mensuales_ruta": [],
-                "clases_con_actividad_comercial": [],
-                "salud_financiera_e_indicadores": {}
-            }
-
-            # 1. Totales Generales de la Ruta
-            for month_idx, m_data in enumerate(route['total']['monthly_data'], start=1):
-                route_summary["totales_mensuales_ruta"].append({
-                    "mes": month_idx,
-                    "objetivo": float(m_data['target']),
-                    "venta": float(m_data['net_sale']),
-                    "alcance_pct": float(m_data['scope']),
-                    "diferencia": float(m_data['diff'])
-                })
-
-            # 2. Clases de Producto (Filtro Inteligente)
-            for pc in route['product_classes']:
-                total_target = sum(m['target'] for m in pc['monthly_data'])
-                total_sale = sum(m['net_sale'] for m in pc['monthly_data'])
+            route_key = f"{route['route_id']} - {route['route_name']}"
+            metricas_mensuales[route_key] = {}
+            res_lookup = {r['name']: r['monthly_data'] for r in route['results']}
+            
+            for m in range(max_month):
+                m_num = m + 1
+                m_name = month_names[m_num]
                 
-                # TRUCO DE TOKENS: Solo enviamos al LLM las clases que tenían cuota 
-                # o que registraron al menos una venta en el año.
-                if total_target > 0 or total_sale > 0:
-                    clase_limpia = {
-                        "clase": pc['name'],
-                        "mensual": [
-                            {
-                                "mes": idx + 1,
-                                "objetivo": float(m['target']),
-                                "venta": float(m['net_sale']),
-                                "alcance_pct": float(m['scope'])
-                            }
-                            for idx, m in enumerate(pc['monthly_data'])
-                        ]
+                total_data = route['total']['monthly_data'][m]
+                venta = float(total_data['net_sale'])
+                objetivo = float(total_data['target'])
+                alcance = float(total_data['scope'])
+                
+
+
+
+                #clean formqts
+                def parse_val(v):
+                    if isinstance(v, str):
+                        v = v.replace('$', '').replace('%', '').replace(',', '').strip()
+                        return float(v) if v else 0.0
+                    return float(v)
+                
+                margen = parse_val(res_lookup.get('margen', [{'value': 0}])[m]['value'])
+                cxc = parse_val(res_lookup.get('cuentas por cobrar $', [{'value': 0}])[m]['value'])
+                convenios = parse_val(res_lookup.get('convenios', [{'value': 0}])[m]['value'])
+                clientes_nuevos = parse_val(res_lookup.get('clientes nuevos', [{'value': 0}])[m]['value'])
+                
+                sum_venta += venta
+                sum_objetivo += objetivo
+                sum_margen_pct += margen
+                sum_cxc += cxc
+                sum_convenios += convenios
+                sum_clientes += clientes_nuevos
+                rutas_meses_count += 1
+                
+                desempeño_por_clase = {}
+                for pc in route['product_classes']:
+                    pc_data = pc['monthly_data'][m]
+                    desempeño_por_clase[pc['name'].lower()] = {
+                        'objetivo': float(pc_data['target']),
+                        'venta': float(pc_data['net_sale']),
+                        'alcance': float(pc_data['scope'])
                     }
-                    route_summary["clases_con_actividad_comercial"].append(clase_limpia)
+                
+                metricas_mensuales[route_key][m_name] = {
+                    'alcance': alcance,
+                    'margen': margen,
+                    'cuentas_por_cobrar': cxc,
+                    'convenios': convenios,
+                    'venta': venta,
+                    'desempeño_por_clase': desempeño_por_clase
+                }
 
-            # 3. Aplanado de Indicadores Financieros (Cobranza, Margen, Clientes)
-            for res in route['results']:
-                # Convertimos la lista de diccionarios en un arreglo simple de 12 posiciones
-                route_summary["salud_financiera_e_indicadores"][res['name']] = [
-                    m['value'] for m in res['monthly_data']
-                ]
+        valid_months = max_month if max_month > 0 else 1
+        alcance_promedio_global = (sum_venta / sum_objetivo * 100) if sum_objetivo > 0 else (100.0 if sum_venta > 0 else 0.0)
 
-            summary["rutas"].append(route_summary)
-
-            print(summary)
+        summary = {
+            'gerencia': f"{warehouse_info['warehouse_id']} - {warehouse_info['warehouse_name']}",
+            'metricas_promedio_mensuales': {
+                'venta_promedio': round(sum_venta / valid_months, 2),
+                'alcance_promedio': round(alcance_promedio_global, 2),
+                'margen_promedio': round(sum_margen_pct / rutas_meses_count, 2) if rutas_meses_count else 0.0,
+                'clientes_nuevos_promedio': round(sum_clientes / valid_months, 2),
+                'cuentas_por_cobrar_promedio': round(sum_cxc / valid_months, 2),
+                'convenios_promedio': round(sum_convenios / valid_months, 2),
+            },
+            'metricas_mensuales': metricas_mensuales
+        }
 
         return summary
