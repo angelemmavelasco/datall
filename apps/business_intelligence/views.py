@@ -1,4 +1,4 @@
-from apps.core.models import Warehouse, ProductClass, ProductCategory, CustomerType, Region, Route, Employee, SaleTransaction
+from apps.core.models import Warehouse, ProductClass, ProductCategory, CustomerType, Region, Route, Employee, SaleTransaction, Customer
 from apps.core.utils import get_allowed_routes_for_user
 from django.db.models import Sum, Q
 from django.db.models.functions import ExtractYear
@@ -13,13 +13,13 @@ from asgiref.sync import sync_to_async
 
 
 from django.core.paginator import Paginator
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 
 
 from apps.business_intelligence.services.sales_dashboard.sales_dashboard import SalesDashboard
-from apps.business_intelligence.services.customers_kpis.customers_kpis import CustomersKpis
+from apps.business_intelligence.services.customers_kpis.customers_kpis import CustomersKpis, CustomerProfileBuilder
 from apps.business_intelligence.services.routes_kpis.routes_kpis import RoutesKpisService
 from apps.business_intelligence.services.commercial_risk.commercial_risk import CommercialRisk
 from apps.business_intelligence.services.sales_breakdown.sales_breakdown import SalesBreakdownService
@@ -291,7 +291,18 @@ def customers_kpis(request):
 def customer_kpis(request, customer_id):
     template = 'business_intelligence/customers_kpis/customer_kpis.html'
 
-    context = {}
+    customer_base = get_object_or_404(
+        Customer.objects.select_related('customer_type', 'route'), 
+        pk=customer_id
+    )
+
+
+    builder = CustomerProfileBuilder(customer_base)
+    customer_with_kpis = builder.build()
+
+    context = {
+        'customer': customer_with_kpis
+    }
 
     return render(request, template, context)
 

@@ -196,3 +196,167 @@ class CustomersKpis:
         dashboard_customers.sort(key=lambda x: getattr(x, 'previous_moving_quarter_average', Decimal('0.00')), reverse=True)
 
         return dashboard_customers, months_headers
+
+
+
+
+class MockClass:
+    """Clase auxiliar para enviar atributos como objetos al template (.name)"""
+    def __init__(self, name):
+        self.name = name
+
+
+class CustomerProfileBuilder:
+    def __init__(self, customer):
+        self.customer = customer
+        self.today = date.today()
+
+        # 1. Periodo Mensual (Mes inmediato anterior entero)
+        self.first_day_curr_month = self.today.replace(day=1)
+        self.last_day_prev_month = self.first_day_curr_month - relativedelta(days=1)
+        self.first_day_prev_month = self.last_day_prev_month.replace(day=1)
+
+        # 2. Periodo Trimestral (3 meses enteros previos al mes actual)
+        self.first_day_last_q = self.first_day_prev_month - relativedelta(months=2)
+
+        # 3. Periodo Anual (Año inmediato anterior entero: Ene-Dic)
+        self.prev_year = self.today.year - 1
+        self.first_day_prev_year = date(self.prev_year, 1, 1)
+        self.last_day_prev_year = date(self.prev_year, 12, 31)
+
+    def build(self):
+        """Ejecuta todos los cálculos y retorna el cliente enriquecido."""
+        self._set_monthly_category()
+        self._set_quarterly_category()
+        self._set_annual_category()
+        self._set_purchase_frequency()
+        self._set_classes_kpis()
+        self._set_accounts_receivable()
+        return self.customer
+
+    def _set_monthly_category(self):
+        sales = SaleTransaction.objects.filter(
+            customer=self.customer,
+            sale_date__gte=self.first_day_prev_month,
+            sale_date__lte=self.last_day_prev_month
+        ).aggregate(total=Sum('net_amount'))['total'] or Decimal('0.00')
+
+        self.customer.monthly_consumption_category = get_category(sales)
+
+    def _set_quarterly_category(self):
+        sales = SaleTransaction.objects.filter(
+            customer=self.customer,
+            sale_date__gte=self.first_day_last_q,
+            sale_date__lte=self.last_day_prev_month
+        ).aggregate(total=Sum('net_amount'))['total'] or Decimal('0.00')
+
+        reg_date = self.customer.registration_date
+
+        if reg_date and self.first_day_last_q <= reg_date <= self.last_day_prev_month:
+            # Meses activos desde su registro en el trimestre
+            active_months = (self.last_day_prev_month.year - reg_date.year) * 12 + (self.last_day_prev_month.month - reg_date.month) + 1
+        else:
+            active_months = 3
+
+        avg_q = (sales / Decimal(active_months)) if active_months > 0 else Decimal('0.00')
+        self.customer.q_consumption_category = get_category(avg_q)
+
+    def _set_annual_category(self):
+        sales = SaleTransaction.objects.filter(
+            customer=self.customer,
+            sale_date__gte=self.first_day_prev_year,
+            sale_date__lte=self.last_day_prev_year
+        ).aggregate(total=Sum('net_amount'))['total'] or Decimal('0.00')
+
+        reg_date = self.customer.registration_date
+        months_divisor = 0
+
+        if reg_date:
+            if reg_date.year < self.prev_year:
+                months_divisor = 12
+            elif reg_date.year == self.prev_year:
+                months_divisor = 12 - reg_date.month + 1
+        else:
+            months_divisor = 12
+
+        avg_yearly = (sales / Decimal(months_divisor)) if months_divisor > 0 else Decimal('0.00')
+        self.customer.annual_consumption_category = get_category(avg_yearly)
+
+    def _set_purchase_frequency(self):
+        # distinct() en sale_date agrupa múltiples doc_id del mismo día en un solo registro
+        dates = SaleTransaction.objects.filter(
+            customer=self.customer,
+            net_amount__gt=0
+        ).values_list('sale_date', flat=True).distinct().order_by('sale_date')
+
+        dates_list = list(dates)
+
+        if len(dates_list) < 2:
+            self.customer.purchase_frequency_category = 'Nula'
+            self.customer.purchase_frequency_days = ""
+            return
+
+        intervals = [(dates_list[i] - dates_list[i-1]).days for i in range(1, len(dates_list))]
+        avg_interval = sum(intervals) / len(intervals)
+
+        if avg_interval <= 30:
+            self.customer.purchase_frequency_category = 'Regular'
+        elif avg_interval <= 60:
+            self.customer.purchase_frequency_category = 'Irregular'
+        else:
+            self.customer.purchase_frequency_category = 'Atípico'
+
+        self.customer.purchase_frequency_days = f"cada {int(avg_interval)} días"
+
+    def _set_classes_kpis(self):
+        # Histórico de clases consumidas
+        classes_count = SaleTransaction.objects.filter(
+            customer=self.customer,
+            net_amount__gt=0
+        ).values('product_class_id').distinct().count()
+
+        self.customer.consumed_classes = classes_count
+
+        # Clase más consumida en el trimestre anterior
+        top_class = SaleTransaction.objects.filter(
+            customer=self.customer,
+            sale_date__gte=self.first_day_last_q,
+            sale_date__lte=self.last_day_prev_month,
+            net_amount__gt=0
+        ).values(
+            class_name=F('product_class__name') # O ajusta a 'product_class__name' si ese es tu campo
+        ).annotate(
+            total_net=Sum('net_amount')
+        ).order_by('-total_net').first()
+
+        if top_class and top_class['class_name']:
+            self.customer.most_consumed_class_last_q = MockClass(top_class['class_name'])
+        else:
+            self.customer.most_consumed_class_last_q = MockClass('Sin consumo reciente')
+
+    def _set_accounts_receivable(self):
+        # Toma el registro más reciente de la tabla histórica de cobranza
+        latest_ar = AccountsReceivable.objects.filter(
+            customer=self.customer
+        ).order_by('-period', '-id').first()
+
+        if latest_ar:
+            self.customer.total_balance = latest_ar.total_balance or Decimal('0.00')
+            self.customer.overdue_balance = latest_ar.past_due or Decimal('0.00')
+            self.customer.balance_15 = latest_ar.balance_15 or Decimal('0.00')
+            self.customer.balance_30 = latest_ar.balance_30 or Decimal('0.00')
+            self.customer.balance_60 = latest_ar.balance_60 or Decimal('0.00')
+            self.customer.past_due = latest_ar.past_due or Decimal('0.00')
+        else:
+            self.customer.total_balance = Decimal('0.00')
+            self.customer.overdue_balance = Decimal('0.00')
+            self.customer.balance_15 = Decimal('0.00')
+            self.customer.balance_30 = Decimal('0.00')
+            self.customer.balance_60 = Decimal('0.00')
+            self.customer.past_due = Decimal('0.00')
+
+        credit_limit = self.customer.credit_limit or Decimal('0.00')
+        if credit_limit > 0:
+            self.customer.credit_usage = (self.customer.total_balance / credit_limit) * 100
+        else:
+            self.customer.credit_usage = Decimal('0.00')

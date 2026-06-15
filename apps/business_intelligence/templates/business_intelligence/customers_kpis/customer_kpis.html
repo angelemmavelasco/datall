@@ -35,16 +35,6 @@
         <span class="view-el">{{ customer.registration_date|default:'-' }}</span>
       </div>
 
-      <span class="text-title">Límite de crédito</span>
-      <div>
-        <span class="view-el">$ {{ customer.credit_limit|default:0.0|floatformat:2|intcomma }}</span>
-      </div>
-
-      <span class="text-title">Días de crédito</span>
-      <div>
-        <span class="view-el">{{ customer.credit_days|default:0|floatformat:2|intcomma }}</span>
-      </div>
-
 
         <span class="text-title">Líder de opinión</span>
       <div>
@@ -61,39 +51,55 @@
     <hr class="border-border border">
 
     <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
-      <span class="text-title">Categoría por consumo mensual</span>
+        <span class="text-title col-span-2 border border-border p-2 text-center">Categorización</span>
+      <span class="text-title">Consumo mensual</span>
       <div>
         <span class="view-el">{{ customer.monthly_consumption_category|default:'-' }}</span>
       </div>
 
-      <span class="text-title">Categoría por consumo trimestral</span>
+      <span class="text-title">Consumo trimestral</span>
       <div>
         <span class="view-el">{{ customer.q_consumption_category|default:'-' }}</span>
       </div>
 
-      <span class="text-title">Categoría por consumo anual</span>
+      <span class="text-title">Consumo anual</span>
       <div>
         <span class="view-el">{{ customer.annual_consumption_category|default:'-' }}</span>
       </div>
+
+      <span class="text-title col-span-2 border border-border p-2 text-center">Comportamiento</span>
 
       <span class="text-title">Frecuencia de compra</span>
       <div>
         <span class="view-el">{{ customer.purchase_frequency_category|default:'-' }} {{customer.purchase_frequency_days|title}} </span>
       </div>
 
-      <span class="text-title">Ticket promedio</span>
+      <span class="text-title">Clases consumidas</span>
       <div>
-        <span class="view-el">$ {{ customer.credit_limit|default:0.0|floatformat:2|intcomma }}</span>
+        <span class="view-el">{{ customer.consumed_classes|title }}</span>
+      </div>
+
+      <span class="text-title">Clase más consumida en el último trimestre</span>
+      <div>
+        <span class="view-el">{{ customer.most_consumed_class_last_q.name|title }}</span>
       </div>
     </div>
 
     <p class="text-title text-sm">Detalles de cobranza</p>
     <hr class="border-border border">
 
+    
     <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+      <span class="text-title col-span-2 border border-border p-2 text-center">Total general</span>
+
       <span class="text-title">Límite de crédito</span>
       <div>
-        <span class="view-el">{{ customer.credit_limit|default:'-'|floatformat:2|intcomma }}</span>
+        <span class="view-el">$ {{ customer.credit_limit|default:'-'|floatformat:2|intcomma }}</span>
+      </div>
+
+      <span class="text-title">Uso</span>
+      <div>
+        <span class="view-el">{{ customer.credit_usage|default:'-'|floatformat:2|intcomma }} %</span>
       </div>
 
       <span class="text-title">Días de crédito</span>
@@ -103,16 +109,31 @@
 
       <span class="text-title">Saldo total</span>
       <div>
-        <span class="view-el">{{ customer.total_balance|default:'-'|floatformat:2|intcomma }}</span>
+        <span class="view-el">$ {{ customer.total_balance|default:'-'|floatformat:2|intcomma }}</span>
       </div>
 
-      <span class="text-title col-span-2 border border-border p-2">Antigüedad de saldos</span>
+      <span class="text-title">Saldo vencido</span>
       <div>
-        
+        <span class="view-el">$ {{ customer.overdue_balance|default:'-'|floatformat:2|intcomma }}</span>
       </div>
 
-      <span class="text-title">Ticket promedio</span>
+      <span class="text-title col-span-2 border border-border p-2 text-center">Antigüedad de saldos</span>
+      
+      <span class="text-title">1 a 15 días</span>
       <div>
+        <span class="view-el">$ {{ customer.balance_15|default:0.00|floatformat:2|intcomma }}</span>
+      </div>
+      <span class="text-title">16 a 30 días</span>
+      <div>
+        <span class="view-el">$ {{ customer.balance_30|default:0.00|floatformat:2|intcomma }}</span>
+      </div>
+      <span class="text-title">31 a 60 días</span>
+      <div>
+        <span class="view-el">$ {{ customer.balance_60|default:0.00|floatformat:2|intcomma }}</span>
+      </div>
+      <span class="text-title">60+ días</span>
+      <div>
+        <span class="view-el">$ {{ customer.past_due|default:0.00|floatformat:2|intcomma }}</span>
       </div>
     </div>
 
