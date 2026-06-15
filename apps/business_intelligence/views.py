@@ -1,28 +1,34 @@
-from apps.core.models import Warehouse, ProductClass, ProductCategory, CustomerType, Region, Route
+from apps.core.models import Warehouse, ProductClass, ProductCategory, CustomerType, Region, Route, Employee, SaleTransaction
 from apps.core.utils import get_allowed_routes_for_user
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.db.models.functions import ExtractYear
 
 import json
 import csv
 import asyncio
 import openpyxl
+from collections import defaultdict
 from datetime import datetime, date, timedelta
+from asgiref.sync import sync_to_async
+
+
 from django.core.paginator import Paginator
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from asgiref.sync import sync_to_async
 
+
+from apps.business_intelligence.services.sales_dashboard.sales_dashboard import SalesDashboard
+from apps.business_intelligence.services.customers_kpis.customers_kpis import CustomersKpis
+from apps.business_intelligence.services.routes_kpis.routes_kpis import RoutesKpisService
+from apps.business_intelligence.services.commercial_risk.commercial_risk import CommercialRisk
+from apps.business_intelligence.services.sales_breakdown.sales_breakdown import SalesBreakdownService
+from apps.business_intelligence.services.monthly_breakdown_by_warehouse.monthly_breakdown_by_warehouse import MonthlyBreakdownByWarehouse  
 
 from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
 from apps.sales.services.sale_targets.sale_targets_crud import SaleTargetCRUD
-from apps.business_intelligence.services.sales_dashboard.sales_dashboard import SalesDashboard
-from apps.business_intelligence.services.customers_kpis.customers_kpis import CustomersKpis
+
 from apps.customers.services.customers_crud.customers_crud import CustomerCrud
-from apps.business_intelligence.services.sales_breakdown.sales_breakdown import SalesBreakdownService
-from apps.business_intelligence.services.commercial_risk.commercial_risk import CommercialRisk
-from apps.business_intelligence.services.routes_kpis.routes_kpis import RoutesKpisService
 
 
 
@@ -155,7 +161,6 @@ def routes_kpis(request):
     }
 
     return render(request, template, context)
-
 
 @login_required
 def warehouses_kpis(request):
@@ -358,6 +363,66 @@ async def export_commercial_risk_data(request):
 
 
 @login_required
+def monthly_breakdown_by_warehouse(request):
+    template = 'business_intelligence/monthly_breakdown_by_warehouse/monthly_breakdown_by_warehouse.html'
+    user = request.user
+    context = {}
+    allowed_routes = get_allowed_routes_for_user(user)
+
+    #valiodate which warehouses the user has access to
+    if not user.groups.filter(name='acceso global').exists() or not user.is_superuser:
+        employee = Employee.objects.filter(user=user).first()
+        allowed_warehouses = Warehouse.objects.filter(
+            Q(manager=employee) | Q(region__manager=employee)
+        ).values('id', 'name').order_by('id')
+    else:
+        allowed_warehouses = Warehouse.objects.all().values('id', 'name').order_by('id')
+
+    #catch filters
+    today = date.today()
+    try:
+        year = int(request.POST.get('year', today.year))
+    except ValueError:
+        year = today.year
+    warehouse_id_str = request.POST.get('warehouse')
+    if not warehouse_id_str and allowed_warehouses.exists():
+        warehouse = allowed_warehouses.first()['id']
+    else:
+        warehouse = warehouse_id_str
+
+    #get dynamic years available from SaleTransaction
+    years_qs = SaleTransaction.objects.dates('sale_date', 'year')
+    filter_years = sorted([dt.year for dt in years_qs], reverse=True)
+    if not filter_years:
+        filter_years = [today.year]
+
+    service = MonthlyBreakdownByWarehouse(year, allowed_routes, warehouse)
+    warehouse_data = service.get_data()
+    print(service.summary_for_assistant())
+
+    context['filter_warehouses'] = allowed_warehouses
+    context['filter_years'] = filter_years
+    context['selected_warehouse'] = str(warehouse)
+    context['selected_year'] = str(year)
+    context['warehouse_data'] = warehouse_data
+
+    return render(request, template, context)
+
+@login_required
+def export_monthly_breakdown_data(request):
+    allowed_routes = get_allowed_routes_for_user(request.user)
+    
+    year = int(request.GET.get('year', date.today().year))
+    warehouse = request.GET.get('warehouse')
+    
+    if not warehouse:
+        return HttpResponse("No se seleccionó ninguna gerencia.", status=400)
+    service = MonthlyBreakdownByWarehouse(year, allowed_routes, warehouse)
+    
+    return service.get_data_report()
+
+
+@login_required
 def sales_breakdown(request):
     template = 'business_intelligence/sales_breakdown/sales_breakdown.html'
     
@@ -485,8 +550,6 @@ def sales_breakdown(request):
 @login_required
 def sale_targets(request):
     template = 'sales/sale_targets/sale_targets.html'
-    
-    # Allowed routes based on Employee hierarchy
     allowed_routes = get_allowed_routes_for_user(request.user)
     
     # Extract filters
@@ -593,3 +656,15 @@ def sale_targets_export(request):
     wb.save(response)
     return response
 
+
+
+summary = {
+    'gerencia': 'warehouse.name',
+    'metricas': {
+        'venta_mensual_promedio': 0,
+        'alcance_promedio': 0,
+        'margen_promedio': 0,
+        'clientes_nuevos': 0,
+        
+    }
+}

@@ -15,6 +15,8 @@ urlpatterns = [
     path('commercial_risk/', commercial_risk, name='commercial_risk'),
     path('export_risk/', export_commercial_risk_data, name='export_commercial_risk_data'),
 
+    path('monthly_breakdown_by_warehouse/', monthly_breakdown_by_warehouse, name='monthly_breakdown_by_warehouse'),
+    path('export_monthly_breakdown_data/', export_monthly_breakdown_data, name='export_monthly_breakdown_data'),
 
 
 
