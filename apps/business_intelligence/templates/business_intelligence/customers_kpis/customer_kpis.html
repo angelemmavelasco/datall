@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Detalles de cliente{% endblock %}
+
+{% block module_name %}Detalles de cliente{% endblock %}
+
+
+{% block content %}
+
+
+<div class="flex flex-col gap-4">
+
+    <p class="text-title text-sm">Atributos</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+      <span class="text-title">ID</span>
+      <div>
+        <span class="view-el">{{ customer.id|upper }}</span>
+      </div>
+
+      <span class="text-title">Nombre</span>
+      <div>
+        <span class="view-el">{{ customer.name|title }}</span>
+      </div>
+
+      <span class="text-title">Tipo de cliente</span>
+      <div>
+        <span class="view-el">{{ customer.customer_type.name|default:'No asignado' }}</span>
+      </div>
+
+      <span class="text-title">Fecha de registro</span>
+      <div>
+        <span class="view-el">{{ customer.registration_date|default:'-' }}</span>
+      </div>
+
+      <span class="text-title">Límite de crédito</span>
+      <div>
+        <span class="view-el">$ {{ customer.credit_limit|default:0.0|floatformat:2|intcomma }}</span>
+      </div>
+
+      <span class="text-title">Días de crédito</span>
+      <div>
+        <span class="view-el">{{ customer.credit_days|default:0|floatformat:2|intcomma }}</span>
+      </div>
+
+
+        <span class="text-title">Líder de opinión</span>
+      <div>
+        <span class="view-el">{{ customer.opinion_leader|default:'No' }}</span>
+      </div>
+
+        <span class="text-title">Ruta asignada</span>
+      <div>
+        <span class="view-el">{{ customer.route.id|default:'-'|upper }} {{ customer.route.name|default:'-'|title }}</span>
+      </div>
+    </div>
+
+    <p class="text-title text-sm">Métricas de consumo</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+      <span class="text-title">Categoría por consumo mensual</span>
+      <div>
+        <span class="view-el">{{ customer.monthly_consumption_category|default:'-' }}</span>
+      </div>
+
+      <span class="text-title">Categoría por consumo trimestral</span>
+      <div>
+        <span class="view-el">{{ customer.q_consumption_category|default:'-' }}</span>
+      </div>
+
+      <span class="text-title">Categoría por consumo anual</span>
+      <div>
+        <span class="view-el">{{ customer.annual_consumption_category|default:'-' }}</span>
+      </div>
+
+      <span class="text-title">Frecuencia de compra</span>
+      <div>
+        <span class="view-el">{{ customer.purchase_frequency_category|default:'-' }} {{customer.purchase_frequency_days|title}} </span>
+      </div>
+
+      <span class="text-title">Ticket promedio</span>
+      <div>
+        <span class="view-el">$ {{ customer.credit_limit|default:0.0|floatformat:2|intcomma }}</span>
+      </div>
+    </div>
+
+    <p class="text-title text-sm">Detalles de cobranza</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+      <span class="text-title">Límite de crédito</span>
+      <div>
+        <span class="view-el">{{ customer.credit_limit|default:'-'|floatformat:2|intcomma }}</span>
+      </div>
+
+      <span class="text-title">Días de crédito</span>
+      <div>
+        <span class="view-el">{{ customer.credit_days|default:'-' }}</span>
+      </div>
+
+      <span class="text-title">Saldo total</span>
+      <div>
+        <span class="view-el">{{ customer.total_balance|default:'-'|floatformat:2|intcomma }}</span>
+      </div>
+
+      <span class="text-title col-span-2 border border-border p-2">Antigüedad de saldos</span>
+      <div>
+        
+      </div>
+
+      <span class="text-title">Ticket promedio</span>
+      <div>
+      </div>
+    </div>
+
+
+    
+
+
+  </div>
+
+
+
+{% endblock %}

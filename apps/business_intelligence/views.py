@@ -287,7 +287,13 @@ def customers_kpis(request):
 
     return render(request, template, context)
 
+@login_required
+def customer_kpis(request, customer_id):
+    template = 'business_intelligence/customers_kpis/customer_kpis.html'
 
+    context = {}
+
+    return render(request, template, context)
 
 @login_required
 def commercial_risk(request):

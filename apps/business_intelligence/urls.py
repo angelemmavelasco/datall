@@ -8,7 +8,11 @@ urlpatterns = [
     path('routes_kpis/', routes_kpis, name='routes_kpis'),
     path('warehouses_kpis/', warehouses_kpis, name='warehouses_kpis'),
     path('products_kpis/', products_kpis, name='products_kpis'),
+
+
+
     path('customers_kpis/', customers_kpis, name='customers_kpis'),
+    path('customer_kpis/<int:customer_id>/', customer_kpis, name='customer_kpis'),
 
 
 
