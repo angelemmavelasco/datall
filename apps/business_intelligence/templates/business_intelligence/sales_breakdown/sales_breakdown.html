@@ -179,9 +179,14 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 {% endblock %}
 
 {% block content %}
+<div class="flex flex-col gap-4">
 
-<div id="report-container" class="w-full overflow-hidden border border-border rounded bg-container">
-    {% include "business_intelligence/sales_breakdown/partials/sales_breakdown_rows.html" %}
+    <p class="text-title text-sm">{{ selected_dimension|title }}</p>
+    <hr class="border-border border">
+    <div id="report-container" class="w-full overflow-hidden border border-border rounded bg-container">
+        {% include "business_intelligence/sales_breakdown/partials/sales_breakdown_rows.html" %}
+    </div>
+
 </div>
 
 <script>

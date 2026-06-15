@@ -143,7 +143,7 @@ class SalesBreakdownService:
                         self._add_annual_totals(o_t_p, op_data['totals'])
                     final_pivot[c]['lines'][l]['products']['OTROS PRODUCTOS'] = self._flatten_annual_totals(o_t_p)
                     
-        return final_pivot, self.sorted_years, page_obj, 'cliente -> línea -> producto'
+        return final_pivot, self.sorted_years, page_obj, 'cliente -> clase de producto -> producto'
 
 
     def _get_productclass_customer_product(self, page_number):
@@ -208,7 +208,7 @@ class SalesBreakdownService:
                 for _, oc_data in otros_c: self._add_annual_totals(o_t_c, oc_data['totals'])
                 final_pivot[l]['customers']['OTROS CLIENTES'] = {'totals': self._flatten_annual_totals(o_t_c), 'products': {}}
                 
-        return final_pivot, self.sorted_years, page_obj, 'linea -> cliente -> producto'
+        return final_pivot, self.sorted_years, page_obj, 'clase de producto -> cliente -> producto'
 
     def _get_productclass_product(self, page_number):
         qs_with_year = self.queryset.annotate(year=ExtractYear('sale_date'))
@@ -254,7 +254,7 @@ class SalesBreakdownService:
                 for _, op_data in otros_p: self._add_annual_totals(o_t_p, op_data['totals'])
                 final_pivot[l]['products']['OTROS PRODUCTOS'] = self._flatten_annual_totals(o_t_p)
                 
-        return final_pivot, self.sorted_years, page_obj, 'linea -> producto'
+        return final_pivot, self.sorted_years, page_obj, 'clase de producto -> producto'
 
     def _get_management_productclass_product(self, page_number):
         qs_with_year = self.queryset.annotate(year=ExtractYear('sale_date'))
@@ -308,7 +308,7 @@ class SalesBreakdownService:
                     o_t_p = self._init_annual_totals()
                     for _, op_data in otros_p: self._add_annual_totals(o_t_p, op_data['totals'])
                     final_pivot[mgt]['lines'][l]['products']['OTROS PRODUCTOS'] = self._flatten_annual_totals(o_t_p)
-        return final_pivot, self.sorted_years, page_obj, 'gerencia -> línea -> producto'
+        return final_pivot, self.sorted_years, page_obj, 'gerencia -> clase de producto -> producto'
 
 
     def _get_product_customer(self, page_number):

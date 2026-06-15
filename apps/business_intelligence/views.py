@@ -23,6 +23,7 @@ from apps.business_intelligence.services.customers_kpis.customers_kpis import Cu
 from apps.business_intelligence.services.routes_kpis.routes_kpis import RoutesKpisService
 from apps.business_intelligence.services.commercial_risk.commercial_risk import CommercialRisk
 from apps.business_intelligence.services.sales_breakdown.sales_breakdown import SalesBreakdownService
+from apps.business_intelligence.services.unique_customers.unique_customers import UniqueCustomersService
 from apps.business_intelligence.services.monthly_breakdown_by_warehouse.monthly_breakdown_by_warehouse import MonthlyBreakdownByWarehouse  
 
 from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
@@ -529,7 +530,6 @@ def sales_breakdown(request):
         
     return render(request, template, context)
 
-
 @login_required
 async def export_sales_breakdown_data(request):
     user = await request.auser()
@@ -567,6 +567,68 @@ async def export_sales_breakdown_data(request):
     response.write(csv_string)
     
     return response
+
+
+
+
+
+
+@login_required
+def unique_customers(request):
+    template = 'business_intelligence/unique_customers/unique_customers.html'
+    allowed_routes = get_allowed_routes_for_user(request.user)
+    
+    date_start = request.GET.get('date_start')
+    date_end = request.GET.get('date_end')
+    
+    product_classes = request.GET.getlist('product_class')
+    product_categories = request.GET.getlist('product_category')
+    routes = request.GET.getlist('routes')
+    warehouses = request.GET.getlist('warehouses')
+    regions = request.GET.getlist('regions')
+    
+    filters = {}
+    if date_start: filters['sale_date_start'] = date_start
+    if date_end: filters['sale_date_end'] = date_end
+    if product_classes: filters['product_classes'] = product_classes
+    if product_categories: filters['product_categories'] = product_categories
+    if routes: filters['routes'] = routes
+    if warehouses: filters['route_warehouse_ids'] = warehouses
+    if regions: filters['regions'] = regions
+
+    transaction_crud = SaleTransactionCRUD()
+    transactions_qs = transaction_crud.read(allowed_routes, **filters)
+    
+    service = UniqueCustomersService(transactions_qs)
+    warehouses_data, product_classes_data = service.get_pivot_data()
+    
+    context = {
+        'warehouses_data': warehouses_data,
+        'product_classes_data': product_classes_data,
+        
+        # Filter options
+        'filter_warehouses': Warehouse.objects.all(),
+        'filter_product_classes': ProductClass.objects.all(),
+        'filter_product_categories': ProductCategory.objects.all(),
+        'filter_regions': Region.objects.all(),
+        'filter_routes': allowed_routes,
+        
+        # Selected states
+        'selected_date_start': date_start,
+        'selected_date_end': date_end,
+        'selected_product_class': product_classes,
+        'selected_product_category': product_categories,
+        'selected_routes': routes,
+        'selected_warehouses': warehouses,
+        'selected_regions': regions,
+    }
+
+    return render(request, template, context)
+
+
+
+
+
 
 
 
