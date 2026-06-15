@@ -94,27 +94,27 @@
 
       <span class="text-title">Límite de crédito</span>
       <div>
-        <span class="view-el">$ {{ customer.credit_limit|default:'-'|floatformat:2|intcomma }}</span>
+        <span class="view-el">$ {{ customer.credit_limit|default:0|floatformat:2|intcomma }}</span>
       </div>
 
       <span class="text-title">Uso</span>
       <div>
-        <span class="view-el">{{ customer.credit_usage|default:'-'|floatformat:2|intcomma }} %</span>
+        <span class="view-el">{{ customer.credit_usage|default:0|floatformat:2|intcomma }} %</span>
       </div>
 
       <span class="text-title">Días de crédito</span>
       <div>
-        <span class="view-el">{{ customer.credit_days|default:'-' }}</span>
+        <span class="view-el">{{ customer.credit_days|default:0 }}</span>
       </div>
 
       <span class="text-title">Saldo total</span>
       <div>
-        <span class="view-el">$ {{ customer.total_balance|default:'-'|floatformat:2|intcomma }}</span>
+        <span class="view-el">$ {{ customer.total_balance|default:0|floatformat:2|intcomma }}</span>
       </div>
 
       <span class="text-title">Saldo vencido</span>
       <div>
-        <span class="view-el">$ {{ customer.overdue_balance|default:'-'|floatformat:2|intcomma }}</span>
+        <span class="view-el">$ {{ customer.overdue_balance|default:0|floatformat:2|intcomma }}</span>
       </div>
 
       <span class="text-title col-span-2 border border-border p-2 text-center">Antigüedad de saldos</span>
