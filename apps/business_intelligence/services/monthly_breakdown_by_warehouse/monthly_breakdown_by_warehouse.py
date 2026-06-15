@@ -97,18 +97,20 @@ class MonthlyBreakdownByWarehouse:
     def _get_monthly_accounts_receivable(self):
         ar_qs = AccountsReceivable.objects.filter(
             period__year=self.year,
-            route_id__in=self.route_ids
+            customer_id__route_id__in=self.route_ids
         ).annotate(
-            month=ExtractMonth('period')
-        ).values('route_id', 'month').annotate(
+            month=ExtractMonth('period'),
+            current_route=F('customer__route_id')
+        ).values('current_route', 'month').annotate(
             total_amount=Sum('total_balance'),
             total_count=Count('id')
         )
         amount_data = defaultdict(Decimal)
         count_data = defaultdict(int)
         for row in ar_qs:
-            amount_data[(row['route_id'], row['month'])] = row['total_amount'] or Decimal('0.00')
-            count_data[(row['route_id'], row['month'])] = row['total_count'] or 0
+            route_id = row['current_route']
+            amount_data[(route_id, row['month'])] = row['total_amount'] or Decimal('0.00')
+            count_data[(route_id, row['month'])] = row['total_count'] or 0
         return count_data, amount_data
 
     def _get_monthly_promotions(self):

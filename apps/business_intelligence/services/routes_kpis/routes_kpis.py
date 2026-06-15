@@ -5,7 +5,7 @@ from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTra
 from apps.sales.services.sale_targets.sale_targets_crud import SaleTargetCRUD
 from apps.core.models import Customer, AccountsReceivable
 import calendar
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef, Subquery, Sum, Count, Q
 
 class RoutesKpisService:
     def __init__(self, routes_qs, date_start=None, date_end=None):
@@ -136,14 +136,19 @@ class RoutesKpisService:
 
             customers_with_purchases[r_id].add(t.get('customer_id'))
 
-            # Chart data: customer categories
+
+
+
+
             c_type = t.get('customer__customer_type__name') or 'Desconocido'
             customer_types_sales[c_type] += net
 
         for r_id, cust_set in customers_with_purchases.items():
             self.routes_data[r_id]['clients_with_purchases'] = len(cust_set)
 
-        # Process Targets
+
+
+
         for t in targets:
             r_id = t.get('route_id')
             if not r_id or r_id not in self.routes_data:
@@ -159,7 +164,9 @@ class RoutesKpisService:
             self.routes_data[r_id]['product_class_performance'][p_class]['target'] += target_amt
             self.routes_data[r_id]['product_class_performance']['total']['target'] += target_amt
 
-        # Process Customers for limit credit
+
+
+
         route_ids = [r.id for r in self.routes_qs]
         customers = Customer.objects.filter(route_id__in=route_ids).values('route_id', 'credit_limit', 'id', 'registration_date')
         
@@ -174,49 +181,65 @@ class RoutesKpisService:
                 if reg_date and self.date_start and self.date_end:
                     if self.date_start <= reg_date <= self.date_end:
                         self.routes_data[r_id]['new_clients'] += 1
+        
+        #accs recaivale
+        ar_filters = {
+            'customer__route_id__in': route_ids,
 
-        # Process Accounts Receivable
-        ar_filters = {'customer__route_id__in': route_ids}
-        # Assuming we fetch the most recent AR period for each customer, or within date range? 
-        # By default, AR is usually a snapshot. If period_end is provided, we filter up to date_end.
+        }
+
+        today = datetime.date.today()
         if self.date_end:
-            ar_filters['period__lte'] = self.date_end
-        elif self.date_start:
-            ar_filters['period__gte'] = self.date_start
+            cutoff_month = self.date_end.replace(day=1)
+            ar_filters['period'] = cutoff_month
+        # elif self.date_start:
+        #     cutoff_month = self.date_start.replace(day=1, month=today.month, year=today.year)
+        #     ar_filters['period'] = cutoff_month
 
-        latest_ar_id = AccountsReceivable.objects.filter(
-            customer_id=OuterRef('customer_id'),
-            **ar_filters
-        ).order_by('-period', '-id').values('id')[:1]
-
-        # 2. Consulta principal: Filtramos para quedarnos únicamente con esos IDs más recientes
         ars = AccountsReceivable.objects.filter(
-            **ar_filters,
-            id=Subquery(latest_ar_id)
+            **ar_filters
         ).values(
-            'customer__route_id', 'total_balance', 'current_balance', 
-            'balance_15', 'balance_30', 'balance_60', 'past_due'
+            'customer__route_id'
+        ).annotate(
+            total_balance_sum=Sum('total_balance'),
+            current_balance_sum=Sum('current_balance'),
+            balance_15_sum=Sum('balance_15'),
+            balance_30_sum=Sum('balance_30'),
+            balance_60_sum=Sum('balance_60'),
+            past_due_sum=Sum('past_due'),
+            
+            accounts_with_debt=Count(
+                'customer_id', 
+                filter=Q(total_balance__gt=0), 
+                distinct=True
+            )
         )
         
+
         for ar in ars:
             r_id = ar['customer__route_id']
+            
             if r_id in self.routes_data:
-                total_bal = self._safe_decimal(ar.get('total_balance'))
+                total_bal = self._safe_decimal(ar.get('total_balance_sum'))
                 
                 self.routes_data[r_id]['collections']['total_balance'] += total_bal
-                self.routes_data[r_id]['collections']['current_balance'] += self._safe_decimal(ar.get('current_balance'))
-                self.routes_data[r_id]['collections']['days_1_15'] += self._safe_decimal(ar.get('balance_15'))
-                self.routes_data[r_id]['collections']['days_16_30'] += self._safe_decimal(ar.get('balance_30'))
-                self.routes_data[r_id]['collections']['days_31_60'] += self._safe_decimal(ar.get('balance_60'))
-                self.routes_data[r_id]['collections']['days_60_over'] += self._safe_decimal(ar.get('past_due'))
+                self.routes_data[r_id]['collections']['current_balance'] += self._safe_decimal(ar.get('current_balance_sum'))
+                self.routes_data[r_id]['collections']['days_1_15'] += self._safe_decimal(ar.get('balance_15_sum'))
+                self.routes_data[r_id]['collections']['days_16_30'] += self._safe_decimal(ar.get('balance_30_sum'))
+                self.routes_data[r_id]['collections']['days_31_60'] += self._safe_decimal(ar.get('balance_60_sum'))
+                self.routes_data[r_id]['collections']['days_60_over'] += self._safe_decimal(ar.get('past_due_sum'))
                 
-                overdue = self._safe_decimal(ar.get('balance_15')) + self._safe_decimal(ar.get('balance_30')) + self._safe_decimal(ar.get('balance_60')) + self._safe_decimal(ar.get('past_due'))
+                overdue = (
+                    self._safe_decimal(ar.get('balance_15_sum')) + 
+                    self._safe_decimal(ar.get('balance_30_sum')) + 
+                    self._safe_decimal(ar.get('balance_60_sum')) + 
+                    self._safe_decimal(ar.get('past_due_sum'))
+                )
                 self.routes_data[r_id]['collections']['overdue_balance'] += overdue
 
-                if total_bal > 0:
-                    self.routes_data[r_id]['collections']['overdue_count'] += 1
+                self.routes_data[r_id]['collections']['overdue_count'] += ar.get('accounts_with_debt', 0)
 
-        # Post-Process Calculations per Route
+
         for r_id, data in self.routes_data.items():
             net = data['net_sale']
             tgt = data['sale_target']
@@ -237,11 +260,9 @@ class RoutesKpisService:
                 p_data['difference'] = p_net - p_tgt
                 p_data['scope'] = (p_net / p_tgt * 100) if p_tgt > 0 else Decimal('0.00')
 
-        # Build Charts Data
         self._build_charts(transactions, targets, customer_types_sales)
 
     def _build_charts(self, transactions, targets, customer_types_sales):
-        # targetBarChart
         monthly_sales = defaultdict(Decimal)
         for t in transactions:
             period_str = t['sale_date'].strftime('%Y-%m')
@@ -265,7 +286,6 @@ class RoutesKpisService:
             ]
         }
         
-        # clientCategoryChart
         total_cat_sales = sum(customer_types_sales.values())
         client_category_data = []
         for cat, val in customer_types_sales.items():
@@ -275,8 +295,6 @@ class RoutesKpisService:
                 'percent': float((val / total_cat_sales * 100)) if total_cat_sales > 0 else 0.0
             })
 
-        # lostAndWonBarChart (Comparing strictly previous month and current month within range or overall history)
-        # We group customer purchases by month
         cust_by_month = defaultdict(set)
         for t in transactions:
             m_str = t['sale_date'].strftime('%Y-%m')
@@ -308,7 +326,6 @@ class RoutesKpisService:
         }
 
     def get_data(self):
-        # Retorna la lista de rutas procesadas en el mismo orden que routes_qs
         result_routes = []
         for r in self.routes_qs:
             if r.id in self.routes_data:

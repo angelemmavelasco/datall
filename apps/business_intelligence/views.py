@@ -134,9 +134,15 @@ def routes_kpis(request):
     
     allowed_routes = get_allowed_routes_for_user(request.user)
     
+    today = date.today()
     date_start = request.GET.get('date_start')
     date_end = request.GET.get('date_end')
     selected_route_id = request.GET.get('route')
+
+    if not date_start:
+        date_start = date(today.year, 1, 1).strftime('%Y-%m-%d')
+    if not date_end:
+        date_end = (date(today.year, today.month, 1) - timedelta(days=1)).strftime('%Y-%m-%d')
     
     if not selected_route_id and allowed_routes.exists():
         selected_route_id = allowed_routes.first().id
@@ -150,6 +156,8 @@ def routes_kpis(request):
     routes_data, global_charts = service.get_data()
     
     route_data = routes_data[0] if routes_data else None
+    print(route_data)
+    print(global_charts)
 
     context = {
         'route': route_data,

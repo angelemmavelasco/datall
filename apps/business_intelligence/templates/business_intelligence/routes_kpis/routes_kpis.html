@@ -112,7 +112,8 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
         <div class="p-2 flex flex-col col-span-2 md:col-span-1 items-center justify-center">
             <p class="text-muted text-sm text-strong">Ruta</p>
-            <p class="text-xl text-title">{{ route.id|upper }} {{ route.name|title }}</p>
+            <p class="text-xl text-title">{{ route.id|upper }} {{ route.name|title }}</p><br>
+            <p class="text-title italic">({{ selected_date_start }} - {{ selected_date_end }})</p>
         </div>
 
         <div class="border border-border rounded p-2 flex flex-col bg-container md:col-start-3">
