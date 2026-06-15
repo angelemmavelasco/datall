@@ -61,4 +61,5 @@ def get_allowed_routes_for_user(user):
         employee_id__in=team_ids,
         end_date__isnull=True
     ).values_list('route_id', flat=True)
+    
     return Route.objects.filter(id__in=assigned_routes).distinct()

@@ -6,7 +6,7 @@
 {% block module_name %}Desglose de ventas{% endblock %}
 
 {% block module_actions %}
-<button class="hover:text-hover text-strong transition-colors cursor-pointer" id="downloadReport">Descargar reporte</button>
+<button class="hover:text-hover text-strong transition-colors cursor-pointer" id="downloadReport">Descargar datos</button>
 
 <button onclick="toggleFilters()"
     class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
@@ -33,15 +33,24 @@
 
 {% block filters %}
 <form method="GET" action="" id="filters-form" hx-get="{% url 'business_intelligence:sales_breakdown' %}" hx-target="#report-container" hx-trigger="change">
-    
-    <!-- Fechas -->
+
+    <!-- mes -->
     <div class="flex flex-col gap-1 mb-4">
-        <label class="text-strong text-sm">Ventas desde</label>
-        <input type="date" name="date_start" value="{{ selected_date_start|default:'' }}" class="border border-border rounded p-1 bg-page text-sm outline-none w-full">
-    </div>
-    <div class="flex flex-col gap-1 mb-4">
-        <label class="text-strong text-sm">Ventas hasta</label>
-        <input type="date" name="date_end" value="{{ selected_date_end|default:'' }}" class="border border-border rounded p-1 bg-page text-sm outline-none w-full">
+        <label class="text-strong text-sm">Meses a comparar</label>
+        <select name="months" multiple class="border border-border rounded p-1 bg-page text-sm outline-none w-full h-32">
+            <option value="1" {% if '1' in selected_months %}selected{% endif %}>Enero</option>
+            <option value="2" {% if '2' in selected_months %}selected{% endif %}>Febrero</option>
+            <option value="3" {% if '3' in selected_months %}selected{% endif %}>Marzo</option>
+            <option value="4" {% if '4' in selected_months %}selected{% endif %}>Abril</option>
+            <option value="5" {% if '5' in selected_months %}selected{% endif %}>Mayo</option>
+            <option value="6" {% if '6' in selected_months %}selected{% endif %}>Junio</option>
+            <option value="7" {% if '7' in selected_months %}selected{% endif %}>Julio</option>
+            <option value="8" {% if '8' in selected_months %}selected{% endif %}>Agosto</option>
+            <option value="9" {% if '9' in selected_months %}selected{% endif %}>Septiembre</option>
+            <option value="10" {% if '10' in selected_months %}selected{% endif %}>Octubre</option>
+            <option value="11" {% if '11' in selected_months %}selected{% endif %}>Noviembre</option>
+            <option value="12" {% if '12' in selected_months %}selected{% endif %}>Diciembre</option>
+        </select>
     </div>
 
     <!-- Dimensión de visualización -->
@@ -136,7 +145,6 @@
         </div>
     </div>
 
-    <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2">Aplicar filtros</button>
 </form>
 
 <script>
@@ -263,9 +271,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         e.preventDefault();
         const form = document.getElementById('filters-form');
         const urlParams = new URLSearchParams(new FormData(form));
-        urlParams.set('export', 'csv');
-        // Usar hx-get o fallback al window.location si no esta definido
-        const baseUrl = form.getAttribute('hx-get') || form.getAttribute('action') || window.location.pathname;
+        const baseUrl = "{% url 'business_intelligence:export_sales_breakdown_data' %}";
         window.location.href = baseUrl + '?' + urlParams.toString();
     });
 </script>

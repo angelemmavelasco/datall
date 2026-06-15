@@ -4,7 +4,9 @@
     <table class="w-full text-left border-collapse">
         <thead class="bg-page border-b border-border">
             <tr>
-                <th scope="col" class="p-2 text-title font-medium border-r border-border min-w-[250px]">Dimensión</th>
+                <th scope="col" class="p-2 text-title  border-r border-border min-w-[250px]">
+                    {{ selected_dimension|title }}
+                </th>
                 {% for year in years %}
                     <th scope="col" class="p-2 text-title font-medium text-right border-l border-border">{{ year|default:"N/A" }}</th>
                 {% endfor %}
@@ -22,9 +24,31 @@
                             <span class="truncate font-semibold" title="{{ customer_name|title }}">{{ customer_name|title }}</span>
                         </td>
                         {% for total in customer_data.totals %}
-                            <td class="p-2 text-right text-strong border-l border-border font-semibold">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right text-strong border-l border-border">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="rounded text-[10px] p-[2px] whitespace-nowrap
+                                    {% if total.growth > 0 %}
+                                        bg-green-700
+                                    {% elif total.growth < 0 %}
+                                        bg-red-700
+                                    {% else %}
+                                        bg-gray-500
+                                    {% endif %}
+                                    text-white">
+                                        {{ total.growth|default:0.00|floatformat:2|intcomma }} %
+                                    </span>
+                                    
+                                    <p class="text-right">
+                                        ${{ total.net|default:0.00|floatformat:2|intcomma }} <br>
+                                        <span class="text-primary italic text-[10px]">
+                                            Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                        </span>
+                                    </p>
+                                </div>
+                            </td>
                         {% endfor %}
                     </tr>
+
                     {% for linea_name, linea_data in customer_data.lines.items %}
                         {% with l_id=forloop.counter %}
                         <tr class="cust-{{ c_id }} hidden border-b border-border cursor-pointer hover:bg-hover transition-colors"
@@ -34,16 +58,21 @@
                                 <span class="truncate" title="{{ linea_name|title }}">{{ linea_name|title }}</span>
                             </td>
                             {% for total in linea_data.totals %}
-                                <td class="p-2 text-right border-l border-border text-body">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                                <td class="p-2 text-right border-l border-border text-body">
+                                    ${{ total.net|default:0.00|floatformat:2|intcomma }}
+                                </td>
                             {% endfor %}
                         </tr>
+
                         {% for prod_name, prod_totals in linea_data.products.items %}
                             <tr class="line-cust-{{ c_id }}-{{ l_id }} hidden border-b border-border bg-page hover:bg-hover transition-colors">
                                 <td class="p-2 pl-14 text-muted truncate text-sm" title="{{ prod_name|title }}">
                                     - {{ prod_name|title }}
                                 </td>
                                 {% for total in prod_totals %}
-                                    <td class="p-2 text-right border-l border-border text-muted text-sm">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                                    <td class="p-2 text-right border-l border-border text-muted text-sm">
+                                        ${{ total.net|default:0.00|floatformat:2|intcomma }}
+                                    </td>
                                 {% endfor %}
                             </tr>
                         {% endfor %} {% endwith %}
@@ -60,7 +89,28 @@
                             <span class="truncate font-semibold" title="{{ linea_name|title }}">{{ linea_name|title }}</span>
                         </td>
                         {% for total in linea_data.totals %}
-                            <td class="p-2 text-right text-strong border-l border-border font-semibold">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right text-strong border-l border-border font-semibold">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="rounded text-[10px] p-[2px] whitespace-nowrap
+                                    {% if total.growth > 0 %}
+                                        bg-green-700
+                                    {% elif total.growth < 0 %}
+                                        bg-red-700
+                                    {% else %}
+                                        bg-gray-500
+                                    {% endif %}
+                                    text-white">
+                                        {{ total.growth|default:0.00|floatformat:2|intcomma }} %
+                                    </span>
+                                    
+                                    <p class="text-right">
+                                        ${{ total.net|default:0.00|floatformat:2|intcomma }} <br>
+                                        <span class="text-primary italic text-[10px]">
+                                            Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                        </span>
+                                    </p>
+                                </div>
+                            </td>
                         {% endfor %}
                     </tr>
                     {% for cust_name, cust_data in linea_data.customers.items %}
@@ -74,7 +124,7 @@
                                 <span class="truncate" title="{{ cust_name|title }}">{{ cust_name|title }}</span>
                             </td>
                             {% for total in cust_data.totals %}
-                                <td class="p-2 text-right border-l border-border text-body">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                                <td class="p-2 text-right border-l border-border text-body">${{ total.net|default:0.00|floatformat:2|intcomma }}</td>
                             {% endfor %}
                         </tr>
                         {% for prod_name, prod_totals in cust_data.products.items %}
@@ -83,7 +133,7 @@
                                     - {{ prod_name|title }}
                                 </td>
                                 {% for total in prod_totals %}
-                                    <td class="p-2 text-right border-l border-border text-muted text-sm">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                                    <td class="p-2 text-right border-l border-border text-muted text-sm">${{ total.net|default:0.00|floatformat:2|intcomma }}</td>
                                 {% endfor %}
                             </tr>
                         {% endfor %} {% endwith %}
@@ -100,7 +150,28 @@
                             <span class="truncate font-semibold" title="{{ linea_name|title }}">{{ linea_name|title }}</span>
                         </td>
                         {% for total in linea_data.totals %}
-                            <td class="p-2 text-right text-strong border-l border-border font-semibold">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right text-strong border-l border-border font-semibold">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="rounded text-[10px] p-[2px] whitespace-nowrap
+                                    {% if total.growth > 0 %}
+                                        bg-green-700
+                                    {% elif total.growth < 0 %}
+                                        bg-red-700
+                                    {% else %}
+                                        bg-gray-500
+                                    {% endif %}
+                                    text-white">
+                                        {{ total.growth|default:0.00|floatformat:2|intcomma }} %
+                                    </span>
+                                    
+                                    <p class="text-right">
+                                        ${{ total.net|default:0.00|floatformat:2|intcomma }} <br>
+                                        <span class="text-primary italic text-[10px]">
+                                            Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                        </span>
+                                    </p>
+                                </div>
+                            </td>
                         {% endfor %}
                     </tr>
                     {% for prod_name, prod_totals in linea_data.products.items %}
@@ -109,7 +180,7 @@
                                 - {{ prod_name|title }}
                             </td>
                             {% for total in prod_totals %}
-                                <td class="p-2 text-right border-l border-border text-body text-sm">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                                <td class="p-2 text-right border-l border-border text-body text-sm">${{ total.net|default:0.00|floatformat:2|intcomma }}</td>
                             {% endfor %}
                         </tr>
                     {% endfor %} {% endwith %}
@@ -125,7 +196,28 @@
                             <span class="truncate font-semibold" title="{{ mgt_name|title }}">{{ mgt_name|title }}</span>
                         </td>
                         {% for total in mgt_data.totals %}
-                            <td class="p-2 text-right text-strong border-l border-border font-semibold">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right text-strong border-l border-border font-semibold">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="rounded text-[10px] p-[2px] whitespace-nowrap
+                                    {% if total.growth > 0 %}
+                                        bg-green-700
+                                    {% elif total.growth < 0 %}
+                                        bg-red-700
+                                    {% else %}
+                                        bg-gray-500
+                                    {% endif %}
+                                    text-white">
+                                        {{ total.growth|default:0.00|floatformat:2|intcomma }} %
+                                    </span>
+                                    
+                                    <p class="text-right">
+                                        ${{ total.net|default:0.00|floatformat:2|intcomma }} <br>
+                                        <span class="text-primary italic text-[10px]">
+                                            Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                        </span>
+                                    </p>
+                                </div>
+                            </td>
                         {% endfor %}
                     </tr>
                     {% for linea_name, linea_data in mgt_data.lines.items %}
@@ -139,7 +231,7 @@
                                 <span class="truncate" title="{{ linea_name|title }}">{{ linea_name|title }}</span>
                             </td>
                             {% for total in linea_data.totals %}
-                                <td class="p-2 text-right border-l border-border text-body">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                                <td class="p-2 text-right border-l border-border text-body">${{ total.net|default:0.00|floatformat:2|intcomma }}</td>
                             {% endfor %}
                         </tr>
                         {% for prod_name, prod_totals in linea_data.products.items %}
@@ -148,7 +240,7 @@
                                     - {{ prod_name|title }}
                                 </td>
                                 {% for total in prod_totals %}
-                                    <td class="p-2 text-right border-l border-border text-muted text-sm">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                                    <td class="p-2 text-right border-l border-border text-muted text-sm">${{ total.net|default:0.00|floatformat:2|intcomma }}</td>
                                 {% endfor %}
                             </tr>
                         {% endfor %} {% endwith %}
@@ -165,7 +257,28 @@
                             <span class="truncate font-semibold" title="{{ prod_name|title }}">{{ prod_name|title }}</span>
                         </td>
                         {% for total in prod_data.totals %}
-                            <td class="p-2 text-right text-strong border-l border-border font-semibold">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-right text-strong border-l border-border font-semibold">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="rounded text-[10px] p-[2px] whitespace-nowrap
+                                    {% if total.growth > 0 %}
+                                        bg-green-700
+                                    {% elif total.growth < 0 %}
+                                        bg-red-700
+                                    {% else %}
+                                        bg-gray-500
+                                    {% endif %}
+                                    text-white">
+                                        {{ total.growth|default:0.00|floatformat:2|intcomma }} %
+                                    </span>
+                                    
+                                    <p class="text-right">
+                                        ${{ total.net|default:0.00|floatformat:2|intcomma }} <br>
+                                        <span class="text-primary italic text-[10px]">
+                                            Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                        </span>
+                                    </p>
+                                </div>
+                            </td>
                         {% endfor %}
                     </tr>
                     {% for cust_name, cust_totals in prod_data.customers.items %}
@@ -174,7 +287,7 @@
                                 - {{ cust_name|title }}
                             </td>
                             {% for total in cust_totals %}
-                                <td class="p-2 text-right border-l border-border text-body text-sm">${{ total|default:0.00|floatformat:2|intcomma }}</td>
+                                <td class="p-2 text-right border-l border-border text-body text-sm">${{ total.net|default:0.00|floatformat:2|intcomma }}</td>
                             {% endfor %}
                         </tr>
                     {% endfor %} {% endwith %}

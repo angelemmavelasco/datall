@@ -183,6 +183,10 @@ def products_kpis(request):
     return render(request, 'business_intelligence/products_kpis/products_kpis.html', context)
 
 
+
+
+
+
 @login_required
 def customers_kpis(request):
     template = 'business_intelligence/customers_kpis/customers_kpis.html'
@@ -306,6 +310,12 @@ def customer_kpis(request, customer_id):
 
     return render(request, template, context)
 
+
+
+
+
+
+
 @login_required
 def commercial_risk(request):
     template = 'business_intelligence/commercial_risk/commercial_risk.html'
@@ -387,6 +397,12 @@ async def export_commercial_risk_data(request):
     return response
 
 
+
+
+
+
+
+
 @login_required
 def monthly_breakdown_by_warehouse(request):
     template = 'business_intelligence/monthly_breakdown_by_warehouse/monthly_breakdown_by_warehouse.html'
@@ -395,7 +411,7 @@ def monthly_breakdown_by_warehouse(request):
     allowed_routes = get_allowed_routes_for_user(user)
 
     #valiodate which warehouses the user has access to
-    if not user.groups.filter(name='acceso global').exists() or not user.is_superuser:
+    if not user.groups.filter(name='acceso global').exists() and not user.is_superuser:
         employee = Employee.objects.filter(user=user).first()
         allowed_warehouses = Warehouse.objects.filter(
             Q(manager=employee) | Q(region__manager=employee)
@@ -447,9 +463,23 @@ def export_monthly_breakdown_data(request):
     return service.get_data_report()
 
 
+
+
+
+
+
+
 @login_required
 def sales_breakdown(request):
     template = 'business_intelligence/sales_breakdown/sales_breakdown.html'
+
+    dimension_dict = {
+        'customer_productclass_product': 'Cliente - Línea - Producto',
+        'productclass_customer_product': 'Línea - Cliente - Producto',
+        'productclass_product': 'Línea - Producto',
+        'management_productclass_product': 'Gerencia - Línea - Producto',
+        'product_customer': 'Producto - Cliente',
+    } 
     
     allowed_routes = get_allowed_routes_for_user(request.user)
     
@@ -458,8 +488,7 @@ def sales_breakdown(request):
     routes = request.GET.getlist('routes')
     product_classes = request.GET.getlist('product_classes')
     product_categories = request.GET.getlist('product_categories')
-    date_start = request.GET.get('date_start')
-    date_end = request.GET.get('date_end')
+    months = request.GET.getlist('months')
     dimension = request.GET.get('dimension', 'customer_productclass_product')
     page_number = request.GET.get('page', 1)
     
@@ -468,85 +497,13 @@ def sales_breakdown(request):
     if warehouses: filters['warehouses'] = warehouses
     if product_classes: filters['product_classes'] = product_classes
     if product_categories: filters['product_categories'] = product_categories
-    if date_start: filters['sale_date_start'] = date_start
-    if date_end: filters['sale_date_end'] = date_end
+    if months: filters['months'] = months
     
     transaction_crud = SaleTransactionCRUD()
     transactions_qs = transaction_crud.read(allowed_routes, **filters)
-    
-    if request.GET.get('export') == 'csv':
-
-        response = HttpResponse(content_type='text/csv; charset=utf-8')
-        response['Content-Disposition'] = 'attachment; filename="desglose_ventas.csv"'
-        response.write(b'\xef\xbb\xbf')
-
-        dimension_config = {
-            'customer_productclass_product': {
-                'fields': ['customer__id', 'customer__name', 'product_class__name', 'product__id', 'product__name'],
-                'headers': ['Cliente', 'Línea', 'Producto']
-            },
-            'productclass_customer_product': {
-                'fields': ['product_class__name', 'customer__id', 'customer__name', 'product__id', 'product__name'],
-                'headers': ['Línea', 'Cliente', 'Producto']
-            },
-            'productclass_product': {
-                'fields': ['product_class__name', 'product__id', 'product__name'],
-                'headers': ['Línea', 'Producto']
-            },
-            'management_productclass_product': {
-                'fields': ['warehouse__name', 'product_class__name', 'product__id', 'product__name'],
-                'headers': ['Gerencia', 'Línea', 'Producto']
-            },
-            'product_customer': {
-                'fields': ['product__id', 'product__name', 'customer__id', 'customer__name'],
-                'headers': ['Producto', 'Cliente']
-            }
-        }
-        
-        config = dimension_config.get(dimension, dimension_config['customer_productclass_product'])
-
-        writer = csv.writer(response)
-        writer.writerow(config['headers'] + ['Año', 'Venta Neta'])
-
-        export_qs = transactions_qs.values(*config['fields']).annotate(
-            year=ExtractYear('sale_date'), 
-            total=Sum('net_amount')
-        ).iterator(chunk_size=2000)
-
-        for row in export_qs:
-            out_row = []
-            
-            c_id = row.get('customer__id')
-            c_name = row.get('customer__name')
-            c = f"{c_id} - {c_name}".strip(" -") if c_id or c_name else 'Sin Cliente'
-            
-            p_id = row.get('product__id')
-            p_name = row.get('product__name')
-            p = f"{p_id} - {p_name}".strip(" -") if p_id or p_name else 'Sin Producto'
-            
-            l = row.get('product_class__name') or 'Sin Línea'
-            w = row.get('warehouse__name') or 'Sin Gerencia'
-            
-            if dimension == 'customer_productclass_product':
-                out_row.extend([c, l, p])
-            elif dimension == 'productclass_customer_product':
-                out_row.extend([l, c, p])
-            elif dimension == 'productclass_product':
-                out_row.extend([l, p])
-            elif dimension == 'management_productclass_product':
-                out_row.extend([w, l, p])
-            elif dimension == 'product_customer':
-                out_row.extend([p, c])
-            else:
-                out_row.extend([c, l, p])
-
-            out_row.extend([row.get('year'), round(row.get('total') or 0, 2)])
-            writer.writerow(out_row)
-
-        return response
 
     service = SalesBreakdownService(transactions_qs, dimension)
-    pivot_data, sorted_years, page_obj = service.get_data(page_number)
+    pivot_data, sorted_years, page_obj, selected_dimension = service.get_data(page_number)
     
     context = {
         'pivot_data': pivot_data,
@@ -563,14 +520,55 @@ def sales_breakdown(request):
         'selected_routes': routes,
         'selected_product_classes': product_classes,
         'selected_product_categories': product_categories,
-        'selected_date_start': date_start,
-        'selected_date_end': date_end,
+        'selected_months': months,
+        'selected_dimension': selected_dimension,
     }
 
     if request.htmx:
         return render(request, 'business_intelligence/sales_breakdown/partials/sales_breakdown_rows.html', context)
         
     return render(request, template, context)
+
+
+@login_required
+async def export_sales_breakdown_data(request):
+    user = await request.auser()
+    
+    @sync_to_async
+    def generate_csv_sync():
+        allowed_routes = get_allowed_routes_for_user(user)
+        
+        warehouses = request.GET.getlist('warehouses')
+        routes = request.GET.getlist('routes')
+        product_classes = request.GET.getlist('product_classes')
+        product_categories = request.GET.getlist('product_categories')
+        months = request.GET.getlist('months')
+        dimension = request.GET.get('dimension', 'customer_productclass_product')
+        
+        filters = {}
+        if routes: filters['routes'] = routes
+        if warehouses: filters['warehouses'] = warehouses
+        if product_classes: filters['product_classes'] = product_classes
+        if product_categories: filters['product_categories'] = product_categories
+        if months: filters['months'] = months
+        
+        transaction_crud = SaleTransactionCRUD()
+        transactions_qs = transaction_crud.read(allowed_routes, **filters)
+
+        service = SalesBreakdownService(transactions_qs, dimension)
+        
+        return service.get_report_data()
+
+    csv_string = await generate_csv_sync()
+    
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="desglose_ventas.csv"'
+    response.write(b'\xef\xbb\xbf')
+    response.write(csv_string)
+    
+    return response
+
+
 
 @login_required
 def sale_targets(request):
@@ -625,6 +623,8 @@ def sale_targets(request):
         return render(request, 'sales/sale_targets/partials/sale_targets_rows.html', context)
 
     return render(request, template, context)
+
+
 
 @login_required
 def sale_targets_export(request):

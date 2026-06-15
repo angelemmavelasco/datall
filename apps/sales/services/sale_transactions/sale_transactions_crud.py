@@ -25,6 +25,11 @@ class SaleTransactionCRUD:
             queryset = queryset.filter(sale_date__gte=kwargs['sale_date_start'])
         if kwargs.get('sale_date_end'):
             queryset = queryset.filter(sale_date__lte=kwargs['sale_date_end'])
+
+        if kwargs.get('months'):
+            months = [int(m) for m in kwargs['months'] if m.isdigit()]
+            if months:
+                queryset = queryset.filter(sale_date__month__in=months)
             
         numeric_fields = ['cost', 'net_amount', 'gross_amount', 'profit', 'quantity']
         for field in numeric_fields:
