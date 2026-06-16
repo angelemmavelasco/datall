@@ -5,9 +5,159 @@
 
 {% block module_name %}Detalles de cliente{% endblock %}
 
+{% block module_actions %}
+
+<button onclick="toggleFilters()"
+    class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+        <path d="M10 5H3" />
+        <path d="M12 19H3" />
+        <path d="M14 3v4" />
+        <path d="M16 17v4" />
+        <path d="M21 12h-9" />
+        <path d="M21 19h-5" />
+        <path d="M21 5h-7" />
+        <path d="M8 10v4" />
+        <path d="M8 12H3" />
+    </svg>
+    <span>
+        Filtrar
+    </span>
+</button>
+
+{% endblock %}
+
+{% block filters %}
+
+<form method="GET" action="" id="params_filters">
+
+    <!-- Fecha Inicio -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Fecha Inicio</label>
+        <input type="date" name="date_start" value="{{ selected_date_start|default:'' }}"
+            class="border border-border rounded p-1 bg-page text-sm">
+    </div>
+
+    <!-- Fecha Fin -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Fecha Fin</label>
+        <input type="date" name="date_end" value="{{ selected_date_end|default:'' }}"
+            class="border border-border rounded p-1 bg-page text-sm">
+    </div>
+
+    <!-- Gerencia -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Gerencia</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar gerencia..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'gerencia-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'gerencia-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="gerencia-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for w in filter_warehouses %}
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="warehouses" value="{{ w.id }}" {% if w.id in selected_warehouses %}checked{% endif %}>
+                    <span class="searchable-text">{{ w.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Región -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Región</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar región..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'region-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'region-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="region-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for r in filter_regions %}
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="regions" value="{{ r.id }}" {% if r.id in selected_regions %}checked{% endif %}>
+                    <span class="searchable-text">{{ r.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Clase de Producto -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Clase de Producto</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar clase..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'product-class-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'product-class-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="product-class-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for pc in filter_product_classes %}
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="product_class" value="{{ pc.id }}" {% if pc.id in selected_product_class %}checked{% endif %}>
+                    <span class="searchable-text">{{ pc.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Categoría de Producto -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Categoría de Producto</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar categoría..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'product-category-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'product-category-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="product-category-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for cat in filter_product_categories %}
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="product_category" value="{{ cat.id }}" {% if cat.id in selected_product_category %}checked{% endif %}>
+                    <span class="searchable-text">{{ cat.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <button type="submit"
+        class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2 mb-2">Aplicar
+        filtros</button>
+    <a href="?"
+        class="block bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+        filtros</a>
+
+</form>
+
+
+{% endblock %}
 
 {% block content %}
-
 
 <div class="flex flex-col gap-4">
 
@@ -137,8 +287,51 @@
       </div>
     </div>
 
+    <p class="text-title text-sm">Consumos mensuales</p>
+    <hr class="border-border border">
 
-    
+
+    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+          <table class="w-full text-left border-spacing-0 border-separate">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="p-2 min-w-25 text-left bg-container border-r border-border sticky left-0 z-10 font-medium text-title">Clase de producto</th>
+                    {% for m in customer.consumption_months %}
+                        <th class="p-2 min-w-[120px] text-center border-r border-border font-medium text-title bg-page">{{ m|date:"M Y"|title }}</th>
+                    {% endfor %}
+                    <th class="p-2 min-w-[120px] text-center font-medium text-title bg-page">Total</th>
+                </tr>
+            </thead>
+
+            <tbody>
+              {% for cc in customer.monthly_consumption_by_class %}
+                <tr class="hover:bg-hover transition-colors">
+                  <td class="p-2 text-left bg-container border-r border-t border-border sticky left-0 text-strong font-medium">{{ cc.product_class.name|title }}</td>
+                  {% for amt in cc.monthly_amounts %}
+                      <td class="p-2 text-center border-r border-t border-border text-strong">$ {{ amt|floatformat:2|intcomma }}</td>
+                  {% endfor %}
+                  <td class="p-2 text-center border-t border-border text-strong font-bold">$ {{ cc.total|floatformat:2|intcomma }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="100%" class="p-4 text-center border-t border-border text-strong">No hay datos para mostrar.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+            
+            {% if customer.monthly_consumption_by_class %}
+            <tfoot>
+                <tr class="bg-page">
+                    <td class="p-2 text-left bg-page border-r border-t border-border sticky left-0 font-bold text-title z-10">Total</td>
+                    {% for amt in customer.consumption_totals.monthly_amounts %}
+                        <td class="p-2 text-center border-r border-t border-border font-bold text-title">$ {{ amt|floatformat:2|intcomma }}</td>
+                    {% endfor %}
+                    <td class="p-2 text-center border-t border-border font-bold text-title">$ {{ customer.consumption_totals.grand_total|floatformat:2|intcomma }}</td>
+                </tr>
+            </tfoot>
+            {% endif %}
+          </table>
+      </div>
 
 
   </div>

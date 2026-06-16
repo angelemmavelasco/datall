@@ -301,12 +301,45 @@ def customer_kpis(request, customer_id):
         pk=customer_id
     )
 
+    today = date.today()
+    date_start = request.GET.get('date_start')
+    date_end = request.GET.get('date_end')
 
-    builder = CustomerProfileBuilder(customer_base)
+    if not date_start:
+        date_start = date(today.year, 1, 1).strftime('%Y-%m-%d')
+    if not date_end:
+        date_end = (date(today.year, today.month, 1) - timedelta(days=1)).strftime('%Y-%m-%d')
+    
+    product_classes = request.GET.getlist('product_class')
+    product_categories = request.GET.getlist('product_category')
+    regions = request.GET.getlist('regions')
+    warehouses = request.GET.getlist('warehouses')
+
+    filters = {
+        'date_start': date_start,
+        'date_end': date_end,
+        'product_classes': product_classes,
+        'product_categories': product_categories,
+        'regions': regions,
+        'warehouses': warehouses
+    }
+
+    builder = CustomerProfileBuilder(customer_base, filters=filters)
     customer_with_kpis = builder.build()
 
     context = {
-        'customer': customer_with_kpis
+        'customer': customer_with_kpis,
+        'filter_warehouses': Warehouse.objects.all(),
+        'filter_regions': Region.objects.all(),
+        'filter_product_classes': ProductClass.objects.all(),
+        'filter_product_categories': ProductCategory.objects.all(),
+        
+        'selected_date_start': date_start,
+        'selected_date_end': date_end,
+        'selected_warehouses': warehouses,
+        'selected_regions': regions,
+        'selected_product_class': product_classes,
+        'selected_product_category': product_categories,
     }
 
     return render(request, template, context)
@@ -399,6 +432,20 @@ async def export_commercial_risk_data(request):
 
 
 
+
+
+
+
+@login_required
+def target_scope(request):
+    template = 'business_intelligence/target_scope/target_scope.html'
+    allowed_routes = get_allowed_routes_for_user(request.user)
+    
+    
+    context = {
+        'allowed_routes': allowed_routes,
+    }
+    return render(request, template, context)
 
 
 

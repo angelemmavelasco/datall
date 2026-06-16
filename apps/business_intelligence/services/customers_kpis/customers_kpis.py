@@ -207,9 +207,10 @@ class MockClass:
 
 
 class CustomerProfileBuilder:
-    def __init__(self, customer):
+    def __init__(self, customer, filters=None):
         self.customer = customer
         self.today = date.today()
+        self.filters = filters or {}
 
         # 1. Periodo Mensual (Mes inmediato anterior entero)
         self.first_day_curr_month = self.today.replace(day=1)
@@ -232,6 +233,7 @@ class CustomerProfileBuilder:
         self._set_purchase_frequency()
         self._set_classes_kpis()
         self._set_accounts_receivable()
+        self._set_monthly_consumption()
         return self.customer
 
     def _set_monthly_category(self):
@@ -360,3 +362,97 @@ class CustomerProfileBuilder:
             self.customer.credit_usage = (self.customer.total_balance / credit_limit) * 100
         else:
             self.customer.credit_usage = Decimal('0.00')
+
+    def _set_monthly_consumption(self):
+        from django.db.models import Min, Max, Sum
+        from django.db.models.functions import TruncMonth
+
+        qs = SaleTransaction.objects.filter(customer=self.customer)
+        
+        date_start = self.filters.get('date_start')
+        date_end = self.filters.get('date_end')
+        
+        if date_start:
+            qs = qs.filter(sale_date__gte=date_start)
+        if date_end:
+            qs = qs.filter(sale_date__lte=date_end)
+            
+        warehouses = self.filters.get('warehouses')
+        if warehouses:
+            qs = qs.filter(route__warehouse_id__in=warehouses)
+            
+        regions = self.filters.get('regions')
+        if regions:
+            qs = qs.filter(route__warehouse__region_id__in=regions)
+            
+        product_classes = self.filters.get('product_classes')
+        if product_classes:
+            qs = qs.filter(product_class_id__in=product_classes)
+            
+        product_categories = self.filters.get('product_categories')
+        if product_categories:
+            qs = qs.filter(product_class__product_category_id__in=product_categories)
+
+        agg = qs.aggregate(min_date=Min('sale_date'), max_date=Max('sale_date'))
+        min_date = agg['min_date']
+        max_date = agg['max_date']
+        
+        if not min_date or not max_date:
+            self.customer.monthly_consumption_by_class = []
+            self.customer.consumption_months = []
+            self.customer.consumption_totals = {}
+            return
+            
+        months_list = []
+        current = date(min_date.year, min_date.month, 1)
+        end_month = date(max_date.year, max_date.month, 1)
+        while current <= end_month:
+            months_list.append(current)
+            current += relativedelta(months=1)
+
+        grouped = qs.values(
+            'product_class__id', 
+            'product_class__name'
+        ).annotate(
+            month=TruncMonth('sale_date'),
+            total=Sum('net_amount')
+        )
+
+        classes_dict = {}
+        for row in grouped:
+            c_id = row['product_class__id']
+            c_name = row['product_class__name'] or 'Sin Clase'
+            m = row['month']
+            if hasattr(m, 'date'):
+                m = m.date()
+            m = date(m.year, m.month, 1)
+            
+            if c_id not in classes_dict:
+                classes_dict[c_id] = {
+                    'product_class': {'id': c_id, 'name': c_name},
+                    'months': {mon: Decimal('0.00') for mon in months_list},
+                    'total': Decimal('0.00')
+                }
+                
+            val = row['total'] or Decimal('0.00')
+            classes_dict[c_id]['months'][m] += val
+            classes_dict[c_id]['total'] += val
+
+        sorted_classes = sorted(classes_dict.values(), key=lambda x: x['total'], reverse=True)
+
+        totals_row = {
+            'months': {mon: Decimal('0.00') for mon in months_list},
+            'grand_total': Decimal('0.00')
+        }
+        
+        for pc in sorted_classes:
+            for mon in months_list:
+                totals_row['months'][mon] += pc['months'][mon]
+            totals_row['grand_total'] += pc['total']
+            pc['monthly_amounts'] = [pc['months'][mon] for mon in months_list]
+
+        totals_row['monthly_amounts'] = [totals_row['months'][mon] for mon in months_list]
+        
+        self.customer.monthly_consumption_by_class = sorted_classes
+        self.customer.consumption_months = months_list
+        self.customer.consumption_totals = totals_row
