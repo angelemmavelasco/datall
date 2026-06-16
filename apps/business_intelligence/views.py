@@ -24,6 +24,7 @@ from apps.business_intelligence.services.routes_kpis.routes_kpis import RoutesKp
 from apps.business_intelligence.services.commercial_risk.commercial_risk import CommercialRisk
 from apps.business_intelligence.services.sales_breakdown.sales_breakdown import SalesBreakdownService
 from apps.business_intelligence.services.unique_customers.unique_customers import UniqueCustomersService
+from apps.business_intelligence.services.target_scope.target_scope import TargetScopeService
 from apps.business_intelligence.services.monthly_breakdown_by_warehouse.monthly_breakdown_by_warehouse import MonthlyBreakdownByWarehouse  
 
 from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
@@ -440,10 +441,51 @@ async def export_commercial_risk_data(request):
 def target_scope(request):
     template = 'business_intelligence/target_scope/target_scope.html'
     allowed_routes = get_allowed_routes_for_user(request.user)
+
+    today = date.today()
+    date_start = request.GET.get('date_start')
+    date_end = request.GET.get('date_end')
     
+    if not date_start:
+        date_start = today.replace(day=1).strftime('%Y-%m-%d')
+    if not date_end:
+        date_end = (today.replace(today.year, today.month+1, 1) - timedelta(days=1)).strftime('%Y-%m-%d')
+
+    product_classes = request.GET.getlist('product_class')
+    product_categories = request.GET.getlist('product_category')
+    routes = request.GET.getlist('routes')
+    warehouses = request.GET.getlist('warehouses')
+    regions = request.GET.getlist('regions')
+
+    filters = {}
+    if date_start: filters['sale_date_start'] = date_start
+    if date_end: filters['sale_date_end'] = date_end
+    if product_classes: filters['product_classes'] = product_classes
+    if product_categories: filters['product_categories'] = product_categories
+    if routes: filters['routes'] = routes
+    if warehouses: filters['route_warehouse_ids'] = warehouses
+    if regions: filters['regions'] = regions
+
+    service = TargetScopeService(allowed_routes, filters)
+    data = service.get_data()
     
     context = {
         'allowed_routes': allowed_routes,
+        'data': data,
+        
+        'filter_warehouses': Warehouse.objects.all(),
+        'filter_product_classes': ProductClass.objects.all(),
+        'filter_product_categories': ProductCategory.objects.all(),
+        'filter_regions': Region.objects.all(),
+        'filter_routes': allowed_routes,
+        
+        'selected_date_start': date_start,
+        'selected_date_end': date_end,
+        'selected_product_class': product_classes,
+        'selected_product_category': product_categories,
+        'selected_routes': routes,
+        'selected_warehouses': warehouses,
+        'selected_regions': regions,
     }
     return render(request, template, context)
 
@@ -685,8 +727,10 @@ def sale_targets(request):
     allowed_routes = get_allowed_routes_for_user(request.user)
     
     # Extract filters
+    today = date.today()
     date_start = request.GET.get('date_start')
     date_end = request.GET.get('date_end')
+
     
     product_classes = request.GET.getlist('product_classes')
     product_categories = request.GET.getlist('product_categories')
