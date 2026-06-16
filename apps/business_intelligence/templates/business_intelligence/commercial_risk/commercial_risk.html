@@ -524,6 +524,8 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
     const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim();
     const chartData = {{ data|safe }};
+    const selectedRoute = {{ selected_route|safe }}
+    const baseCustomerUrl = "{% url 'business_intelligence:customer_kpis' customer_id='PLACEHOLDER' %}";
 
     // clientes ganados perdidos
     const lostAndWonBarChart = echarts.init(document.getElementById("lostAndWonBarChart"))
@@ -537,7 +539,9 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         toolbox: {
             feature: {
                 saveAsImage: { 
-                    title: 'Guardar imagen',  
+                    title: 'Guardar imagen',
+                    type: 'png',
+                    name: `ctes_gan_per${selectedRoute}`
                 }
             }
         },
@@ -593,7 +597,9 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         toolbox: {
             feature: {
                 saveAsImage: { 
-                    title: 'Guardar imagen',  
+                    title: 'Guardar imagen',
+                    type: 'png',
+                    name: `nvos_ctes_alc_cart_${selectedRoute}`
                 }
             }
         },
@@ -682,7 +688,9 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         toolbox: {
             feature: {
                 saveAsImage: { 
-                    title: 'Guardar imagen',  
+                    title: 'Guardar imagen',
+                    type: 'png',
+                    name: `volatil_volum_${selectedRoute}`
                 }
             }
         },
@@ -740,6 +748,20 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
     volatilitySaleVolumeChart.setOption(volatilitySaleVolumeChartOption);
 
+    volatilitySaleVolumeChart.on('click', function (params) {
+        if (params.componentType === 'series') {
+            
+            const customerId = params.value[3]; 
+            
+            if (customerId) {
+                const finalUrl = baseCustomerUrl.replace('PLACEHOLDER', encodeURIComponent(customerId));
+                // window.location.href = finalUrl;
+                
+                window.open(finalUrl, '_blank');
+            }
+        }
+    });
+
 
 
     // sesgo y crecimiento
@@ -755,7 +777,13 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             textStyle: { fontWeight: 'normal', fontSize: 14, color: titleColor }
         },
         toolbox: {
-            feature: { saveAsImage: { title: 'Guardar imagen' } }
+            feature: {
+                saveAsImage: { 
+                    title: 'Guardar imagen',
+                    type: 'png',
+                    name: `fct_cre_sesgo_${selectedRoute}`
+                }
+            }
         },
         tooltip: {
             formatter: function (params) {
@@ -824,6 +852,20 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
     };
 
     growthBiasChart.setOption(growthBiasChartOption);
+    growthBiasChart.on('click', function (params) {
+        if (params.componentType === 'series') {
+            
+            const customerId = params.value[3]; 
+            
+            if (customerId) {
+                const finalUrl = baseCustomerUrl.replace('PLACEHOLDER', encodeURIComponent(customerId));
+                // window.location.href = finalUrl;
+                
+                window.open(finalUrl, '_blank');
+            }
+        }
+    });
+
 
 
 
@@ -923,7 +965,13 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             }
         },
         toolbox: {
-            feature: { saveAsImage: { title: 'Guardar imagen' } }
+            feature: {
+                saveAsImage: { 
+                    title: 'Guardar imagen',
+                    type: 'png',
+                    name: `cat_ctes_cart_${selectedRoute}`
+                }
+            }
         },
         legend: {
             selectedMode: false,
@@ -980,6 +1028,15 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         title: {
             text: 'Contribución Monetaria por Categoría (%)',
             textStyle: { fontWeight: 'normal', fontSize: 14, color: titleColor }
+        },
+        toolbox: {
+            feature: {
+                saveAsImage: { 
+                    title: 'Guardar imagen',
+                    type: 'png',
+                    name: `contrib_mon_cats_${selectedRoute}`
+                }
+            }
         },
         tooltip: {
             trigger: 'axis',
@@ -1057,6 +1114,15 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                 fontWeight: 'normal',
                 fontSize: 16,
                 color: titleColor
+            }
+        },
+        toolbox: {
+            feature: {
+                saveAsImage: { 
+                    title: 'Guardar imagen',
+                    type: 'png',
+                    name: `riesgo_comm_evol_${selectedRoute}`
+                }
             }
         },
         tooltip: {

@@ -12,7 +12,7 @@ urlpatterns = [
 
 
     path('customers_kpis/', customers_kpis, name='customers_kpis'),
-    path('customer_kpis/<int:customer_id>/', customer_kpis, name='customer_kpis'),
+    path('customer_kpis/<str:customer_id>/', customer_kpis, name='customer_kpis'),
 
 
 
