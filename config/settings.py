@@ -81,9 +81,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    "django.contrib.sessions.middleware.SessionMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -134,6 +132,18 @@ if DEBUG:
         }
     }
 
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+
+    STATIC_URL = '/static/'
+    MEDIA_URL = '/media/'
+
 else:
     DATABASES = {
         'default': {
@@ -147,30 +157,38 @@ else:
     }
 
 
-# #r2/s3 config
-AWS_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME')
-AWS_S3_ENDPOINT_URL = os.environ.get('R2_ENDPOINT_URL')
+    # #r2/s3 config
+    AWS_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME')
+    AWS_S3_ENDPOINT_URL = os.environ.get('R2_ENDPOINT_URL')
 
-AWS_S3_CUSTOM_DOMAIN = 'media.datall.com.mx'
-AWS_QUERYSTRING_AUTH = False 
-AWS_DEFAULT_ACL = None
+    AWS_S3_CUSTOM_DOMAIN = 'media.datall.com.mx'
+    AWS_QUERYSTRING_AUTH = False 
+    AWS_DEFAULT_ACL = None
 
-AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400',
-}
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',
+    }
 
-STORAGES = {
-    "default": {
-        "BACKEND": "storages.backends.s3.S3Storage",
-    },
-    "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-    },
-}
+    STORAGES = {
 
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "location": "media",
+            }
+        },
+        "staticfiles": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            'OPTIONS': {
+                'location': 'static'
+            }
+        },
+    }
+
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+    STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -203,5 +221,5 @@ USE_I18N = True
 USE_TZ = True
 
 
-STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+MEDIA_ROOT = BASE_DIR / 'media'

@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 
     <title>Datall</title>
-    <link rel="icon" type="image/png" href="{{ MEDIA_URL }}static/favicon.ico">
+    <link rel="icon" type="image/png" href="https://media.datall.com.mx/static/favicon.ico">
 
     <script>
         const savedTheme = localStorage.getItem('theme');
@@ -139,7 +139,7 @@
         <h1 class="text-3xl flex items-center justify-center gap-0 transition-colors  h-24 my-auto">
             <span class="text-body tracking-widest hover:text-hover transition-colors ">dat</span>
             <span class="text-strong tracking-widest hover:text-hover transition-colors ">all</span>
-            <img src="{{ MEDIA_URL }}static/logo.svg" alt="" class="h-10 w-10 object-contain p-1 bg-[#f1f1f1] rounded-sm">
+            <img src="https://media.datall.com.mx/static/logo.svg" alt="" class="h-10 w-10 object-contain p-1 bg-[#f1f1f1] rounded-sm">
         </h1>
 
         <form class="flex flex-col gap-4 w-full items-center justify-center" method="POST" action="{% url 'login' %}">
