@@ -49,8 +49,11 @@ ALLOWED_HOSTS = [
 
 ]
 CSRF_TRUSTED_ORIGINS = [
-    'https://datall.angel-velasco.com'
+    'https://datall.angel-velasco.com',
+    'https://datall.com.mx',
 ]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 CSRF_FAILURE_VIEW = 'apps.core.views.custom_csrf_failure'
 
