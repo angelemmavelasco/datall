@@ -32,7 +32,7 @@
         .dust-cloud {
             position: absolute;
             border-radius: 50%;
-            filter: blur(60px);
+            filter: blur(120px);
             z-index: 0;
             pointer-events: none;
         }
@@ -45,10 +45,10 @@
         .dust-1 {
             width: 600px;
             height: 500px;
-            background: var(--chart-yellow);
+            background: oklch(70.4% 0.14 182.503);
             top: 0px;
             left: -100px;
-            animation: float-1 7s infinite ease-in-out alternate;
+            animation: float-1 17s infinite ease-in-out alternate;
         }
 
         .dust-2 {
@@ -57,17 +57,17 @@
             background: var(--chart-purple);
             bottom: 0px;
             right: 0px;
-            animation: float-2 7s infinite ease-in-out alternate;
+            animation: float-2 15s infinite ease-in-out alternate;
         }
 
         
         .dust-3 {
             width: 500px;
             height: 500px;
-            background: var(--chart-green);
+            background: oklch(62.3% 0.214 259.815);
             top: 40%;
             left: 20%;
-            animation: float-3 7s infinite ease-in-out alternate;
+            animation: float-3 9s infinite ease-in-out alternate;
         }
 
         .dust-4 {
@@ -76,7 +76,7 @@
             background: var(--chart-blue);
             bottom: -50px;
             left: -100px;
-            animation: float-4 7s infinite ease-in-out alternate;
+            animation: float-4 12s infinite ease-in-out alternate;
         }
 
         @keyframes float-1 {
