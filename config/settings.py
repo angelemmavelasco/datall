@@ -106,7 +106,9 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
 
                 #get allowed modules for users
-                'apps.core.context_processors.module_permissions'                
+                'apps.core.context_processors.module_permissions',
+                # media files
+                'django.template.context_processors.media',                
             ],
         },
     },
@@ -144,20 +146,20 @@ else:
         }
     }
 
-#r2/s3 config
 
+# #r2/s3 config
 AWS_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME')
 AWS_S3_ENDPOINT_URL = os.environ.get('R2_ENDPOINT_URL')
 
+AWS_S3_CUSTOM_DOMAIN = 'media.datall.com.mx'
+AWS_QUERYSTRING_AUTH = False 
+AWS_DEFAULT_ACL = None
 
 AWS_S3_OBJECT_PARAMETERS = {
     'CacheControl': 'max-age=86400',
 }
-
-AWS_LOCATION = 'media'
-AWS_DEFAULT_ACL = None
 
 STORAGES = {
     "default": {
@@ -167,6 +169,8 @@ STORAGES = {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
+
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

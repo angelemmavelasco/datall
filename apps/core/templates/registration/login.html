@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-    <title>Datall - Login</title>
+
+    <title>Datall</title>
+    <link rel="icon" type="image/png" href="{{ MEDIA_URL }}static/favicon.ico">
 
     <script>
         const savedTheme = localStorage.getItem('theme');
@@ -132,11 +134,15 @@
     <div id="bg-chart" class="absolute inset-0 w-full h-full z-0"></div>
 
     <div
-        class="relative z-10 w-3/4 max-w-md min-h-screen p-2 bg-container/10 backdrop-blur-xl rounded border border-border flex flex-col items-center justify-center">
+        class="relative z-10 w-3/4 max-w-md min-h-screen p-2 bg-container/10 backdrop-blur-xl rounded border border-border grid grid-cols-1 grid-rows-3">
 
-        <h1 class="text-2xl text-center text-title my-10">datall</h1>
+        <h1 class="text-3xl flex items-center justify-center gap-0 transition-colors  h-24 my-auto">
+            <span class="text-body tracking-widest hover:text-hover transition-colors ">dat</span>
+            <span class="text-strong tracking-widest hover:text-hover transition-colors ">all</span>
+            <img src="{{ MEDIA_URL }}static/logo.svg" alt="" class="h-10 w-10 object-contain p-1 bg-[#f1f1f1] rounded-sm">
+        </h1>
 
-        <form class="flex flex-col gap-4 w-full items-center" method="POST" action="{% url 'login' %}">
+        <form class="flex flex-col gap-4 w-full items-center justify-center" method="POST" action="{% url 'login' %}">
             {% csrf_token %}
 
             {% if form.errors %}
@@ -180,7 +186,34 @@
                 <span>Ingresar</span>
             </button>
         </form>
+
+        <footer
+            class="bottom-0 mt-auto left-0 text-[10px] w-full z-40 border-t border-border bg-page flex items-center justify-center min-h-40 max-h-40 md:min-h-15 md:max-h-15 text-title">
+            <ul class="flex gap-2 md:gap-4 flex-col md:flex-row">
+                <!-- <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info-icon lucide-info"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                    Soporte
+                </li>
+                <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                    Ayuda
+                </li>
+                <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle-more-icon lucide-message-circle-more"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg>
+                    Blog
+                </li>
+                <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-text-icon lucide-book-text"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/><path d="M8 11h8"/><path d="M8 7h6"/></svg>
+                    Terminos y condiciones
+                </li> -->
+                <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copyright-icon lucide-copyright"><circle cx="12" cy="12" r="10"/><path d="M14.83 14.83a4 4 0 1 1 0-5.66"/></svg>
+                    Datall 2026. Todos los derechos reservados.
+                </li>
+            </ul>
+        </footer>
     </div>
+
 
 </body>
 
