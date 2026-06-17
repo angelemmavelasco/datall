@@ -43,7 +43,9 @@ ALLOWED_HOSTS = [
     'localhost',
     'datall.angel-velasco.com',
     '192.168.100.114',
-    '127.0.0.1' 
+    '127.0.0.1' ,
+    'datall.com.mx',
+    'www.datall.com.mx',
 
 ]
 CSRF_TRUSTED_ORIGINS = [
