@@ -354,6 +354,7 @@ class CommercialRisk:
             total_sales = sum(month_sales)
             
             if total_sales == 0:
+                gini = 0.0
                 gini_list.append(0.0)
             else:
                 sum_ix = sum((i + 1) * amount for i, amount in enumerate(month_sales))
