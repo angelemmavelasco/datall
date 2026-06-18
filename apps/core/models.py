@@ -162,6 +162,12 @@ class DataHistory(models.Model):
         help_text="Payload JSON con el estado anterior y nuevo, o detalles del error."
     )
 
+    metadata = models.JSONField(
+        null=True, 
+        blank=True, 
+        help_text="Filtros de búsqueda, parámetros de URL o metadatos extra."
+    )
+
     class Meta:
         db_table = 'data_history'
         verbose_name = 'Data History'
