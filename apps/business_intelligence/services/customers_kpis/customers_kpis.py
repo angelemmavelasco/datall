@@ -4,6 +4,9 @@ from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 from django.db.models import Sum, F, Count, Max
 from apps.core.models import Customer, SaleTransaction, AccountsReceivable
+import io
+import csv
+
 
 CATEGORIZATIONS = [
     ('DIAMANTE', 250_000),
@@ -196,6 +199,46 @@ class CustomersKpis:
         dashboard_customers.sort(key=lambda x: getattr(x, 'previous_moving_quarter_average', Decimal('0.00')), reverse=True)
 
         return dashboard_customers, months_headers
+
+    def export_report_data(self):
+        """
+        Genera el CSV en memoria y retorna el contenido puro (string).
+        """
+        buffer = io.StringIO()
+        buffer.write('\ufeff') 
+        writer = csv.writer(buffer)
+
+        all_customers_data, months_headers = self.build_dashboard_data()
+
+        header_row = [
+            'ID', 'Nombre', 'Clasificación', 'Frecuencia de compra',
+            'Saldo Actual', 'Saldo Vencido', 'Límite de crédito', '% Uso de crédito',
+            'Categorías de productos', 'Promedio mensual año pasado', 'Promedio mensual año actual'
+        ]
+        for h in months_headers:
+            header_row.append(h.strftime('%b %Y'))
+            
+        writer.writerow(header_row)
+
+        for c in all_customers_data:
+            row = [
+                c.id, c.name, getattr(c.category_last_moving_q, 'name', ''),
+                getattr(c, 'frequency', ''),
+                round(getattr(c, 'current_balance', 0), 2),
+                round(getattr(c, 'overdue_balance', 0), 2),
+                round(getattr(c, 'credit_limit', 0), 2),
+                round(getattr(c, 'credit_usage', 0), 2),
+                getattr(c, 'product_classes_with_consumption', 0),
+                round(getattr(c, 'previous_year_average', 0), 2),
+                round(getattr(c, 'current_year_average', 0), 2)
+            ]
+            for m in getattr(c, 'monthly_consumption_qs', []):
+                row.append(round(m.get('sale', 0), 2))
+                
+            writer.writerow(row)
+
+        return buffer.getvalue()
+
 
 
 

@@ -1,4 +1,4 @@
-from apps.core.models import Warehouse, ProductClass, ProductCategory, CustomerType, Region, Route, Employee, SaleTransaction, Customer
+from apps.core.models import Warehouse, ProductClass, ProductCategory, CustomerType, Region, Route, Employee, SaleTransaction, Customer, SystemModule
 from apps.core.utils import get_allowed_routes_for_user
 from django.db.models import Sum, Q
 from django.db.models.functions import ExtractYear
@@ -33,12 +33,15 @@ from apps.sales.services.sale_targets.sale_targets_crud import SaleTargetCRUD
 from apps.customers.services.customers_crud.customers_crud import CustomerCrud
 
 
+from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
+
+
 
 @login_required
 def sales_dashboard(request):
     template = 'business_intelligence/sales_dashboard/sales_dashboard.html'
-
     allowed_routes = get_allowed_routes_for_user(request.user)
+    
 
     warehouses = request.GET.getlist('warehouses')
     sale_warehouses = request.GET.getlist('sale_warehouses')
@@ -128,6 +131,18 @@ def sales_dashboard(request):
         'selected_date_end': date_end,
     }
 
+    module = SystemModule.objects.filter(url_name='business_intelligence:sales_dashboard').first()
+    metadata = filters if filters else None
+    ActivityLogger.log_read(
+        user=request.user, 
+        module=module, 
+        obj=None, 
+        description='visualización del dashboard de ventas',
+        metadata={
+            'filters': metadata if metadata else {}
+        }
+    )
+
     return render(request, template, context)
 
 @login_required
@@ -158,8 +173,6 @@ def routes_kpis(request):
     routes_data, global_charts = service.get_data()
     
     route_data = routes_data[0] if routes_data else None
-    print(route_data)
-    print(global_charts)
 
     context = {
         'route': route_data,
@@ -169,6 +182,24 @@ def routes_kpis(request):
         'selected_date_end': date_end,
         'selected_route': str(selected_route_id) if selected_route_id else '',
     }
+
+    module = SystemModule.objects.filter(url_name='business_intelligence:routes_kpis').first()
+    metadata = {}
+    if date_start:
+        metadata['date_start'] = date_start
+    if date_end:
+        metadata['date_end'] = date_end
+    if selected_route_id:
+        metadata['selected_route'] = selected_route_id
+
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description='visualización de kpis de rutas',
+        metadata={
+            'filters': metadata if metadata else {}
+        }
+    )
 
     return render(request, template, context)
 
@@ -193,7 +224,6 @@ def products_kpis(request):
 def customers_kpis(request):
     template = 'business_intelligence/customers_kpis/customers_kpis.html'
     allowed_routes = get_allowed_routes_for_user(request.user)
-    print(allowed_routes)
 
     #get filters
     warehouses = request.GET.getlist('warehouses')
@@ -214,13 +244,14 @@ def customers_kpis(request):
     if start_registration_date: filters['start_registration_date'] = start_registration_date
     if end_registration_date: filters['end_registration_date'] = end_registration_date
 
+    metadata = filters if filters else None
+
+
     #apply filters and instance objs
     customers_crud = CustomerCrud()
     customers_qs = customers_crud.read(allowed_routes, **filters)
 
     if request.GET.get('export') == 'csv':
-
-
         response = HttpResponse(content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = 'attachment; filename="customers_kpis.csv"'
         response.write(b'\xef\xbb\xbf')
@@ -291,7 +322,73 @@ def customers_kpis(request):
     if request.htmx:
         return render(request, 'business_intelligence/customers_kpis/partials/customer_kpis_rows.html', context)
 
+    module = SystemModule.objects.filter(url_name='business_intelligence:customers_kpis').first()
+    
+
+    ActivityLogger.log_read(
+        user=request.user,
+        obj=None,
+        module=module,
+        description='visualización de kpis de clientes',
+        metadata={
+            'filters': filters if filters else {}
+        }
+    )
+
     return render(request, template, context)
+
+@login_required
+async def export_customers_kpis_data(request):
+    warehouses = request.GET.getlist('warehouses')
+    routes = request.GET.getlist('routes')
+    customer_types = request.GET.getlist('customer_types')
+    opinion_leader = request.GET.get('opinion_leader')
+    start_registration_date = request.GET.get('start_registration_date')
+    end_registration_date = request.GET.get('end_registration_date')
+    query_text = request.GET.get('query_text')
+
+    filters = {}
+    if routes: filters['routes'] = routes
+    if warehouses: filters['warehouses'] = warehouses
+    if customer_types: filters['customer_types'] = customer_types
+    if query_text: filters['query_text'] = query_text
+    if opinion_leader: filters['opinion_leader'] = opinion_leader
+    if start_registration_date: filters['start_registration_date'] = start_registration_date
+    if end_registration_date: filters['end_registration_date'] = end_registration_date
+
+    user = request.user
+
+    @sync_to_async
+    def generate_file():
+        allowed_routes = get_allowed_routes_for_user(user)
+        customers_crud = CustomerCrud()
+        customers_qs = customers_crud.read(allowed_routes, **filters)
+        customers_kpis_service = CustomersKpis(customers_qs)
+        csv_content = customers_kpis_service.export_report_data()
+
+        module = SystemModule.objects.filter(url_name='business_intelligence:customers_kpis').first()
+        ActivityLogger.log_download(
+            user=user,
+            obj=None,
+            module=module,
+            description='Exportación de KPIs de clientes',
+            metadata={
+                'filters': filters if filters else {}
+            }
+        )
+
+        return csv_content
+
+    csv_file = await generate_file()
+    response = HttpResponse(
+        csv_file, 
+        content_type='text/csv; charset=utf-8'
+    )
+    response['Content-Disposition'] = 'attachment; filename="customers_kpis.csv"'
+    
+    return response
+
+
 
 @login_required
 def customer_kpis(request, customer_id):
@@ -343,6 +440,28 @@ def customer_kpis(request, customer_id):
         'selected_product_category': product_categories,
     }
 
+    metadata = {
+        'customer_id': customer_id,
+        'date_start': date_start,
+        'date_end': date_end,
+        'product_classes': product_classes,
+        'product_categories': product_categories,
+        'regions': regions,
+        'warehouses': warehouses
+    }
+
+    module = SystemModule.objects.filter(url_name='business_intelligence:customers_kpis').first()
+
+    ActivityLogger.log_read(
+        user=request.user,
+        obj=customer_with_kpis,
+        module=module,
+        description=f'Visualización de KPIs del cliente {customer_with_kpis.name.title()}',    
+        metadata={
+            'filters': metadata if metadata else {}
+        }
+    )
+
     return render(request, template, context)
 
 
@@ -357,9 +476,9 @@ def commercial_risk(request):
     allowed_routes = get_allowed_routes_for_user(request.user)
 
     today = date.today()
-    date_start = request.GET.get('date_start')
-    date_end = request.GET.get('date_end')
-    selected_route_id = request.GET.get('route')
+    date_start = request.POST.get('date_start')
+    date_end = request.POST.get('date_end')
+    selected_route_id = request.POST.get('route')
 
     if not date_start:
         date_start = date(today.year-1, 1, 1).strftime('%Y-%m-%d')
@@ -394,15 +513,36 @@ def commercial_risk(request):
         
     }
 
+    metadata = {
+        'route_id': selected_route_id,
+        'date_start': date_start,
+        'date_end': date_end,
+    }
+
+    module = SystemModule.objects.filter(url_name='business_intelligence:commercial_risk').first()
+
+    ActivityLogger.log_read(
+        user=request.user,
+        obj=None,
+        module=module,
+        description='Visualización de riesgo comercial',
+        metadata={
+            'filters': metadata if metadata else {}
+        }
+    )
+
     return render(request, template, context)
 
 @login_required
 async def export_commercial_risk_data(request):
+    user = await request.auser()
 
     today = date.today()
-    date_start = request.GET.get('date_start')
-    date_end = request.GET.get('date_end')
-    selected_route_id = request.GET.get('route')
+    date_start = request.POST.get('date_start')
+    date_end = request.POST.get('date_end')
+    selected_route_id = request.POST.get('route')
+
+    print("Filtros recibidos:", date_start, date_end, selected_route_id)
 
     if not date_start:
         date_start = date(today.year-1, 1, 1).strftime('%Y-%m-%d')
@@ -419,6 +559,23 @@ async def export_commercial_risk_data(request):
             date_end=date_end_obj, 
             route_id=selected_route_id
         )
+
+        metadata = {
+            'route_id': selected_route_id,
+            'date_start': date_start,
+            'date_end': date_end,
+        }
+
+        module = SystemModule.objects.filter(url_name='business_intelligence:commercial_risk').first()
+        ActivityLogger.log_download(
+            user=user,
+            obj=None,
+            module=module,
+            description='Exportación de riesgo comercial',
+            metadata={
+                'filters': metadata if metadata else {}
+            }
+        )
         return risk_engine.get_data_report()
 
     excel_file = await generate_file()
@@ -430,7 +587,6 @@ async def export_commercial_risk_data(request):
     response['Content-Disposition'] = f'attachment; filename="reporte_riesgo_comercial_ruta_{selected_route_id}.xlsx"'
     
     return response
-
 
 
 
@@ -487,6 +643,17 @@ def target_scope(request):
         'selected_warehouses': warehouses,
         'selected_regions': regions,
     }
+
+    module = SystemModule.objects.filter(url_name='business_intelligence:target_scope').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        obj=None,
+        module=module,
+        description='Visualización de alcance de objetivos',
+        metadata={
+            'filters': filters if filters else {}
+        }
+    )
     return render(request, template, context)
 
 
@@ -529,13 +696,26 @@ def monthly_breakdown_by_warehouse(request):
 
     service = MonthlyBreakdownByWarehouse(year, allowed_routes, warehouse)
     warehouse_data = service.get_data()
-    print(service.summary_for_assistant())
 
     context['filter_warehouses'] = allowed_warehouses
     context['filter_years'] = filter_years
     context['selected_warehouse'] = str(warehouse)
     context['selected_year'] = str(year)
     context['warehouse_data'] = warehouse_data
+
+    module = SystemModule.objects.filter(url_name='business_intelligence:monthly_breakdown_by_warehouse').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        obj=None,
+        module=module,
+        description='Visualización de desglose mensual por gerencia',
+        metadata={
+            'filters': {
+                'year': year,
+                'warehouse': warehouse,
+            }
+        }
+    )
 
     return render(request, template, context)
 
@@ -549,6 +729,20 @@ def export_monthly_breakdown_data(request):
     if not warehouse:
         return HttpResponse("No se seleccionó ninguna gerencia.", status=400)
     service = MonthlyBreakdownByWarehouse(year, allowed_routes, warehouse)
+
+    module = SystemModule.objects.filter(url_name='business_intelligence:monthly_breakdown_by_warehouse').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        obj=None,
+        module=module,
+        description='Exportación de desglose mensual por gerencia',
+        metadata={
+            'filters': {
+                'year': year,
+                'warehouse': warehouse,
+            }
+        }
+    )
     
     return service.get_data_report()
 
@@ -616,7 +810,19 @@ def sales_breakdown(request):
 
     if request.htmx:
         return render(request, 'business_intelligence/sales_breakdown/partials/sales_breakdown_rows.html', context)
-        
+
+    module = SystemModule.objects.filter(url_name='business_intelligence:sales_breakdown').first()
+    metadata = {
+        'dimension': selected_dimension,
+        'filters': filters if filters else {}
+    }
+    ActivityLogger.log_read(
+        user=request.user,
+        obj=None,
+        module=module,
+        description='Visualización de desglose de ventas',
+        metadata=metadata
+    )
     return render(request, template, context)
 
 @login_required
@@ -645,6 +851,20 @@ async def export_sales_breakdown_data(request):
         transactions_qs = transaction_crud.read(allowed_routes, **filters)
 
         service = SalesBreakdownService(transactions_qs, dimension)
+
+
+        module = SystemModule.objects.filter(url_name='business_intelligence:sales_breakdown').first()
+        metadata = {
+            'dimension': dimension,
+            'filters': filters if filters else {}
+        }
+        ActivityLogger.log_read(
+            user=request.user,
+            obj=None,
+            module=module,
+            description='Exportación de desglose de ventas',
+            metadata=metadata
+        )  
         
         return service.get_report_data()
 
@@ -654,6 +874,7 @@ async def export_sales_breakdown_data(request):
     response['Content-Disposition'] = 'attachment; filename="desglose_ventas.csv"'
     response.write(b'\xef\xbb\xbf')
     response.write(csv_string)
+
     
     return response
 
@@ -711,6 +932,17 @@ def unique_customers(request):
         'selected_warehouses': warehouses,
         'selected_regions': regions,
     }
+
+    module = SystemModule.objects.filter(url_name='business_intelligence:unique_customers').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        obj=None,
+        module=module,
+        description='Visualización de clientes únicos',
+        metadata={
+            'filters': filters if filters else {}
+        }
+    )
 
     return render(request, template, context)
 

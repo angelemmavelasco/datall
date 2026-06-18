@@ -13,6 +13,7 @@ urlpatterns = [
 
 
     path('customers_kpis/', customers_kpis, name='customers_kpis'),
+    path('customers_kpis/export/', export_customers_kpis_data, name='export_customers_kpis_data'),
     path('customer_kpis/<str:customer_id>/', customer_kpis, name='customer_kpis'),
 
 

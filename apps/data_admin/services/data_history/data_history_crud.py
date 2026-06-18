@@ -221,6 +221,24 @@ class ActivityLogger:
         )
 
     @classmethod
+    def log_download(
+        cls, *,
+        user = None,
+        obj=None,
+        module = None,
+        description='descarga de registros',
+        metadata = None
+    ):
+        return cls._create_log(
+            action=DataHistory.Action.EXPORT, 
+            user=user, 
+            module=module, 
+            obj=obj, 
+            description=description,
+            metadata=metadata
+        )
+
+    @classmethod
     def log_login(cls, user, request=None):
         extra_data = {}
         if request:

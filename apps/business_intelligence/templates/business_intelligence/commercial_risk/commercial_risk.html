@@ -14,9 +14,21 @@
     Descargar reporte
 </button>
 
-<a href="#" onclick="getDataReport(event)" class="hover:text-hover text-strong transition-colors cursor-pointer">
+<button onclick="exportarRiesgo()" class="hover:text-hover text-strong transition-colors cursor-pointer">
     Descargar datos
-</a>
+</button>
+
+<script>
+    function exportarRiesgo() {
+        const form = document.getElementById('params_filters');
+        const actionOriginal = form.action;
+        
+        form.action = "{% url 'business_intelligence:export_commercial_risk_data' %}";
+        form.submit();
+        
+        form.action = actionOriginal;
+    }
+</script>
 
 <button onclick="toggleAssistant()" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center justify-center gap-1">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-astroid-icon lucide-astroid"><path d="M12.983 21.186a1 1 0 0 1-1.966 0 10 10 0 0 0-8.203-8.203 1 1 0 0 1 0-1.966 10 10 0 0 0 8.203-8.203 1 1 0 0 1 1.966 0 10 10 0 0 0 8.203 8.203 1 1 0 0 1 0 1.966 10 10 0 0 0-8.203 8.203"/></svg>
@@ -56,7 +68,8 @@
 
 
 {% block filters %}
-<form method="GET" action="{% url 'business_intelligence:commercial_risk' %}" class="flex flex-col gap-4 text-strong" id="params_filters">
+<form method="POST" action="{% url 'business_intelligence:commercial_risk' %}" class="flex flex-col gap-4 text-strong" id="params_filters">
+    {% csrf_token %}
     
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Periodo Inicio</label>
