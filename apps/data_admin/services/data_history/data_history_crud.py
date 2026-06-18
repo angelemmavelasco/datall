@@ -1,5 +1,7 @@
 from django.db.models import Q
 from apps.core.models import DataHistory
+from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 
 class DataHistoryCrud:
 
@@ -122,3 +124,113 @@ class DataHistoryCrud:
 
         history.delete()
         return True
+
+
+class ActivityLogger:
+    """
+    Creates quicker data history logs from any view
+    """
+
+    @classmethod
+    def _create_log(
+        cls, *,
+        action = DataHistory.Action.READ,
+        user = None,
+        module = None,
+        obj = None,
+        result=DataHistory.Result.SUCCESS,
+        description=None,
+        changes=None,
+        metadata = None
+    ):
+        """Create data history log from any view"""
+
+        content_type=None
+        object_id=None
+
+        if obj:
+            content_type = ContentType.objects.get_for_model(obj)
+            object_id = obj.pk
+        
+        return DataHistory.objects.create(
+            action=action,
+            created_by=user,
+            module=module,
+            content_type=content_type,
+            object_id=object_id,
+            result=result,
+            description=description,
+            changes=changes,
+            metadata=metadata
+        )
+
+    @classmethod
+    def log_read(cls, *,
+        user = None,
+        obj=None,
+        module = None,
+        description='visualización de registros',
+        metadata = None
+        ):
+        return cls._create_log(
+            action=DataHistory.Action.READ, 
+            user=user, 
+            module=module, 
+            obj=obj, 
+            description=description,
+            metadata=metadata
+        )
+            
+    @classmethod
+    def log_create(
+        cls, *,
+        user = None,
+        obj=None,
+        module = None,
+        description='creación de registro',
+        changes=None,
+    ):
+        return cls._create_log(
+            action=DataHistory.Action.CREATE, 
+            user=user, 
+            module=module, 
+            obj=obj, 
+            description=description,
+            changes=changes
+        )
+
+    @classmethod
+    def log_error(
+        cls, * ,
+        user = None,
+        action = None,
+        error_details = None,
+        module = None,
+        obj = None,
+        metadata = None
+    ):
+
+        return cls._create_log(
+            action=action, 
+            user=user, 
+            module=module, 
+            obj=obj, 
+            result=DataHistory.Result.ERROR, 
+            description=error_details,
+            metadata=metadata
+        )
+
+    @classmethod
+    def log_login(cls, user, request=None):
+        extra_data = {}
+        if request:
+            extra_data['ip_address'] = request.META.get('REMOTE_ADDR')
+            extra_data['user_agent'] = request.META.get('HTTP_USER_AGENT')
+
+        return cls._create_log(
+            action=DataHistory.Action.LOGIN,
+            user=user,
+            description="El usuario inició sesión en el sistema.",
+            changes=extra_data if extra_data else None
+        )
+        
