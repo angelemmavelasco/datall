@@ -124,6 +124,15 @@ AUTH_USER_MODEL = 'core.User'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'static', 
+]
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 if DEBUG:
     DATABASES = {
         'default': {
@@ -141,9 +150,6 @@ if DEBUG:
         },
     }
 
-    STATIC_URL = '/static/'
-    MEDIA_URL = '/media/'
-
 else:
     DATABASES = {
         'default': {
@@ -156,8 +162,7 @@ else:
         }
     }
 
-
-    # #r2/s3 config
+    # Cloudflare R2 / S3 Config
     AWS_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')
     AWS_STORAGE_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME')
@@ -172,7 +177,6 @@ else:
     }
 
     STORAGES = {
-
         "default": {
             "BACKEND": "storages.backends.s3.S3Storage",
             "OPTIONS": {
@@ -186,7 +190,6 @@ else:
             }
         },
     }
-
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
     STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
 
@@ -221,5 +224,4 @@ USE_I18N = True
 USE_TZ = True
 
 
-STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_ROOT = BASE_DIR / 'media'

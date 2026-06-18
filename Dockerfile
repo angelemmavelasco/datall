@@ -17,6 +17,7 @@ RUN pip install -r requirements.txt
 
 COPY . /app/
 
+RUN tailwindcss -i static/src/input.css -o static/css/output.css --minify
 EXPOSE 8000
 
-CMD ["gunicorn", "config.asgi:application", "-k", "uvicorn.workers.UvicornWorker", "--workers", "5", "--bind", "0.0.0.0:8000"]
+CMD sh -c "python manage.py collectstatic --noinput && exec gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker --workers 5 --bind 0.0.0.0:8000"
