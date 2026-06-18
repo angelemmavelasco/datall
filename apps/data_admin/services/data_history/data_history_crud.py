@@ -170,7 +170,8 @@ class ActivityLogger:
         obj=None,
         module = None,
         description='visualización de registros',
-        metadata = None
+        metadata = None,
+        result=DataHistory.Result.SUCCESS
         ):
         return cls._create_log(
             action=DataHistory.Action.READ, 
@@ -178,7 +179,8 @@ class ActivityLogger:
             module=module, 
             obj=obj, 
             description=description,
-            metadata=metadata
+            metadata=metadata,
+            result=result
         )
             
     @classmethod
@@ -189,6 +191,7 @@ class ActivityLogger:
         module = None,
         description='creación de registro',
         changes=None,
+        result=DataHistory.Result.SUCCESS
     ):
         return cls._create_log(
             action=DataHistory.Action.CREATE, 
@@ -196,7 +199,8 @@ class ActivityLogger:
             module=module, 
             obj=obj, 
             description=description,
-            changes=changes
+            changes=changes,
+            result=result
         )
 
     @classmethod
@@ -227,7 +231,8 @@ class ActivityLogger:
         obj=None,
         module = None,
         description='descarga de registros',
-        metadata = None
+        metadata = None,
+        result=DataHistory.Result.SUCCESS
     ):
         return cls._create_log(
             action=DataHistory.Action.EXPORT, 
@@ -235,7 +240,28 @@ class ActivityLogger:
             module=module, 
             obj=obj, 
             description=description,
-            metadata=metadata
+            metadata=metadata,
+            result=result
+        )
+
+    @classmethod
+    def log_upload(
+        cls, *,
+        user = None,
+        obj=None,
+        module = None,
+        description='subida de registros',
+        metadata = None,
+        result=DataHistory.Result.SUCCESS
+    ):
+        return cls._create_log(
+            action=DataHistory.Action.IMPORT, 
+            user=user, 
+            module=module, 
+            obj=obj, 
+            description=description,
+            metadata=metadata,
+            result=result
         )
 
     @classmethod

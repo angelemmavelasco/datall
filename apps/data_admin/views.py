@@ -5,11 +5,16 @@ from django.urls import reverse
 
 from apps.data_admin.services.users import users_crud
 from apps.data_admin.services.groups import groups_crud
-from apps.core.models import SystemModule
+from apps.core.models import SystemModule, DataHistory
 from django.contrib.auth.models import Group
 
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth import get_user_model
+
+
 from apps.customers.services.customers_crud.customer_bulk import CustomersBulk
+
+from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
 
 
 @login_required
@@ -64,6 +69,16 @@ def users(request):
         'all_groups': all_groups,
     }
 
+    module = SystemModule.objects.filter(url_name='data_admin:users').first()
+    ActivityLogger.log_read(
+        user=request.user, 
+        module=module, 
+        metadata={
+            'filters': current_filters if current_filters else {}
+        },
+        description=f'visualizacion de usuarios',
+    )
+
     return render(request, TEMPLATE, context)
 
 @login_required
@@ -100,6 +115,15 @@ def user(request, user_id: int = None):
     context['user_obj_group_ids'] = list(user_obj.groups.values_list('id', flat=True))
     context['accessible_modules'] = accessible_modules
 
+    module = SystemModule.objects.filter(url_name='data_admin:user').first()
+    obj = obj = get_user_model().objects.filter(id=user_id).first()
+    ActivityLogger.log_read(
+        user=request.user, 
+        module=module, 
+        obj=obj,
+        description=f'visualizacion del usuario {obj.username}, {obj.last_name} {obj.first_name}'
+    )
+
     return render(request, 'data_admin/users/user.html', context)
 
 
@@ -122,8 +146,18 @@ def user_create(request):
 
         new_user = users_service.process_user_create(raw_data=raw_data, selected_groups=selected_groups)
 
+
+
         if new_user:
             messages.success(request, f'Usuario {new_user.username} creado con éxito.')
+
+            module = SystemModule.objects.filter(url_name='data_admin:users').first()
+            ActivityLogger.log_create(
+                user=request.user, 
+                module=module, 
+                obj=new_user,
+                description=f'creacion del usuario {new_user.username}, {new_user.last_name} {new_user.first_name}'
+            )
             #redirect to user page detailed
             return redirect('data_admin:user', user_id=new_user.id)
         else:
@@ -132,8 +166,22 @@ def user_create(request):
 
             #return to user create page with errors
             context['user'] = raw_data
+
+            module = SystemModule.objects.filter(url_name='data_admin:users').first()
+            ActivityLogger.log_read(
+                user=request.user, 
+                module=module,
+                result= DataHistory.Result.ERROR,
+                description=f'error al crear el usuario {raw_data.get("username")}, {raw_data.get("last_name")} {raw_data.get("first_name")}'
+            )
             return render(request, TEMPLATE, context)
 
+    module = SystemModule.objects.filter(url_name='data_admin:users').first()
+    ActivityLogger.log_read(
+        user=request.user, 
+        module=module, 
+        description=f'visualizacion de la creacion del usuario'
+    )
     return render(request, TEMPLATE, context)
 
 @login_required
@@ -153,6 +201,16 @@ def groups(request):
         'groups': groups_qs,
         'current_filters': current_filters,
     }
+
+    module = SystemModule.objects.filter(url_name='data_admin:groups').first()
+    ActivityLogger.log_read(
+        user=request.user, 
+        module=module, 
+        description=f'visualizacion de los grupos',
+        metadata={
+            'filters': current_filters if current_filters else {}
+        }
+    )
     
     return render(request, TEMPLATE, context)
 
@@ -160,7 +218,7 @@ def groups(request):
 def group(request, group_id: int = None):
     groups_service = groups_crud.GroupsCRUD()
     TEMPLATE = 'data_admin/groups/group.html'
-    
+    module = SystemModule.objects.filter(url_name='data_admin:groups').first()    
     context = {}
     
     if request.method == 'POST':
@@ -175,6 +233,7 @@ def group(request, group_id: int = None):
 
         if update_success:
             messages.success(request, 'Grupo actualizado con éxito.')
+
         else:
             messages.error(request, 'Error al actualizar: Verifica que el nombre no esté vacío o en uso.')
 
