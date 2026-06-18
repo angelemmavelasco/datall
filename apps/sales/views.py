@@ -9,6 +9,8 @@ import pandas as pd
 import io
 from apps.core.utils import get_allowed_routes_for_user
 from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
+from apps.core.models import DataHistory
+from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
 
 @login_required
 def products(request):
@@ -39,6 +41,12 @@ def products(request):
     if request.htmx:
         template = 'sales/products/partials/product_rows.html'
         
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta del catálogo de productos.",
+        changes={"filters": filters}
+    )
     return render(request, template, context)
 
 @login_required
@@ -78,6 +86,12 @@ def products_export(request):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = 'attachment; filename=productos.xlsx'
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.EXPORT,
+        description="Exportación de productos a Excel.",
+        changes={"filters": filters}
+    )
     return response
 
 @login_required
@@ -90,6 +104,12 @@ def product(request, product_id: str):
         'product': product
     }
 
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description=f"Consulta de detalle del producto {product_id}.",
+        changes={"product_id": product_id}
+    )
     return render(request, TEMPLATE, context)
 
 
@@ -158,6 +178,12 @@ def sale_transactions(request):
     if request.htmx:
         template = 'sales/sale_transactions/partials/sale_transaction_rows.html'
 
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta del registro de transacciones de venta.",
+        changes={"filters": filters}
+    )
     return render(request, template, context)
 
 @login_required
@@ -216,4 +242,10 @@ def sale_transactions_export(request):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = 'attachment; filename=transacciones.xlsx'
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.EXPORT,
+        description="Exportación de transacciones de venta a Excel.",
+        changes={"filters": filters}
+    )
     return response

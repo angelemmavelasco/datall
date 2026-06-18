@@ -30,6 +30,14 @@ async def data_assistant(request):
     def fetch_report_data():
         params = request.GET.dict()
         params['user'] = user
+        from apps.core.models import DataHistory
+        from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
+        DataHistoryCrud().log_action(
+            request=request,
+            action=DataHistory.Action.READ,
+            description="Generación de insights con el asistente de IA.",
+            changes={"report_type": report_type, "params": request.GET.dict()}
+        )
         return builder_function(params)
 
     data = data = await fetch_report_data()

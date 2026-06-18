@@ -22,38 +22,28 @@ class CustomersBulk:
 
             if df.empty:
                 return False, "El archivo está vacío."
-
-            # 1. Obtener el ContentType para Customer
             ctype = ContentType.objects.get_for_model(Customer)
 
-            # 2. Traer las referencias de columnas (importaciones)
             references = Reference.objects.filter(
                 field_context='column',
                 content_type=ctype,
                 module__name__iexact='importaciones'
             )
             
-            # 3. Crear mapa de renombre: { nombre_crudo: nombre_modelo }
             column_map = {ref.key: ref.reference for ref in references}
             df.rename(columns=column_map, inplace=True)
 
-            # 4. RESOLUCIÓN DINÁMICA DE LLAVES FORÁNEAS (El truco mágico)
-            # Inspeccionamos el modelo buscando relaciones (ForeignKeys)
-            # f.name suele ser "customer_type", f.attname suele ser "customer_type_id"
             fk_map = {}
             for f in Customer._meta.get_fields():
                 if f.is_relation and hasattr(f, 'attname'):
                     if f.name != f.attname:
                         fk_map[f.name] = f.attname
             
-            # Renombramos las columnas si el usuario mapeó al nombre base sin el '_id'
             df.rename(columns=fk_map, inplace=True)
 
-            # 5. Verificar si existe al menos la columna ID y name después del mapeo
             if 'id' not in df.columns:
                 return False, "El archivo debe contener una columna identificadora mapeada a 'id'."
 
-            # 6. Mapeo de valores para la columna customer_type (ahora garantizada como customer_type_id)
             if 'customer_type_id' in df.columns:
                 ct_type = ContentType.objects.get_for_model(CustomerType)
                 type_references = Reference.objects.filter(
@@ -68,7 +58,6 @@ class CustomersBulk:
                 if type_map:
                     df['customer_type_id'] = df['customer_type_id'].map(type_map).fillna('otr')
 
-            # 7. Limpieza de fechas (registration_date)
             if 'registration_date' in df.columns:
                 df['registration_date'] = pd.to_datetime(df['registration_date'], errors='coerce')
                 df['registration_date'] = df['registration_date'].fillna(pd.Timestamp('2020-01-01')).dt.date

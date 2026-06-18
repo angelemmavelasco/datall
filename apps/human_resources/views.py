@@ -6,7 +6,9 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 
 from apps.human_resources.services.employees import employees_crud
-from apps.core.models import Position, Warehouse, Employee, PayrollType, Periodicity, TaxSystem
+from apps.core.models import Position, Warehouse, Employee, PayrollType, Periodicity, TaxSystem, DataHistory
+from django.contrib.contenttypes.models import ContentType
+from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
 
 User = get_user_model()
 
@@ -27,6 +29,12 @@ def employees(request):
         'users': users_qs,
         'current_filters': current_filters,
     }
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta del catálogo de empleados.",
+        changes={"filters": current_filters}
+    )
     
     return render(request, TEMPLATE, context)
 
@@ -45,6 +53,12 @@ def employee(request, user_id: int = None):
         
     context['user'] = user_obj
     context['employee_history'] = user_obj.employees.all()
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description=f"Consulta de historial laboral del usuario {user_id}.",
+        changes={"user_id": user_id}
+    )
     
     return render(request, TEMPLATE, context)
 
@@ -78,6 +92,16 @@ def employee_create(request):
         new_employee = employees_service.process_employee_create(raw_data=raw_data)
         
         if new_employee:
+            from django.forms.models import model_to_dict
+            new_state = model_to_dict(new_employee)
+            DataHistoryCrud().log_action(
+                request=request,
+                action=DataHistory.Action.CREATE,
+                content_type=ContentType.objects.get_for_model(Employee),
+                object_id=str(new_employee.id),
+                description=f"Asignación de posición laboral al usuario {new_employee.user_id}.",
+                changes={"new_state": new_state}
+            )
             messages.success(request, 'Posición asignada con éxito al empleado.')
             return redirect('human_resources:employee', user_id=new_employee.user_id)
         else:
@@ -85,12 +109,21 @@ def employee_create(request):
             context['employee_data'] = raw_data
             return render(request, TEMPLATE, context)
             
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta del formulario de asignación de posición laboral."
+    )
     return render(request, TEMPLATE, context)
 
 @login_required
 def org_chart(request):
     TEMPLATE = 'human_resources/org_chart/org_chart.html'
-    
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta del organigrama de la empresa."
+    )
     return render(request, TEMPLATE)
 
 @login_required
@@ -138,5 +171,11 @@ def get_org_chart_data(request):
 
     chart_data = roots[0] if len(roots) == 1 else {'name': 'Organización', 'children': roots}
     
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Carga de datos del organigrama de la empresa.",
+        changes={"filters": {"q": search_query}}
+    )
     return JsonResponse(chart_data)
 

@@ -4,7 +4,9 @@ from apps.core.models import (
     User, MenuSection, SystemModule, Department, TaxSystem,
     PayrollType, Periodicity, Position, Region, Warehouse, Employee,
     ProductCategory, ProductClass, Product, Reference,
-    RouteType, SaleChannel, Route, RouteAssignment
+    RouteType, SaleChannel, Route, RouteAssignment,
+    Benefit, CustomerAgreement, AgreementProductLine,
+    AgreementEvaluationPeriod, AgreementPeriodLineTarget
 )
 
 @admin.register(User)
@@ -142,4 +144,31 @@ class RouteAssignmentAdmin(admin.ModelAdmin):
     search_fields = ('route__id', 'route__name', 'employee__user__first_name', 'employee__user__last_name')
     list_filter = ('route', 'employee', 'start_date', 'end_date')
 
+@admin.register(Benefit)
+class BenefitAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'benefit_type', 'cost', 'stock', 'is_active')
+    search_fields = ('id', 'name')
+    list_filter = ('benefit_type', 'is_active')
+
+@admin.register(CustomerAgreement)
+class CustomerAgreementAdmin(admin.ModelAdmin):
+    list_display = ('id', 'doc_id', 'customer', 'route', 'agreement_type', 'start_date', 'end_date', 'target_amount')
+    search_fields = ('doc_id', 'customer__name', 'route__name')
+    list_filter = ('agreement_type', 'target_freq', 'penalty_freq')
+
+@admin.register(AgreementProductLine)
+class AgreementProductLineAdmin(admin.ModelAdmin):
+    list_display = ('id', 'customer_agreement', 'product_class', 'required_target')
+    search_fields = ('customer_agreement__doc_id', 'product_class__name')
+
+@admin.register(AgreementEvaluationPeriod)
+class AgreementEvaluationPeriodAdmin(admin.ModelAdmin):
+    list_display = ('id', 'customer_agreement', 'period_number', 'start_date', 'end_date', 'status', 'expected_global_target')
+    search_fields = ('customer_agreement__doc_id',)
+    list_filter = ('status', 'penalty_applied')
+
+@admin.register(AgreementPeriodLineTarget)
+class AgreementPeriodLineTargetAdmin(admin.ModelAdmin):
+    list_display = ('id', 'evaluation_period', 'product_class', 'expected_line_target', 'achieved_line_sales')
+    search_fields = ('evaluation_period__customer_agreement__doc_id', 'product_class__name')
 

@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Convenios{% endblock %}
+
+{% block module_name %}Convenios{% endblock %}
+
+{% block module_actions %}
+    <a href="{% url 'customers:customer_agreement_create' %}" target="_blank" title="Crear nuevo convenio" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0">Nuevo convenio</a>
+
+    <a href="{% url 'data_admin:user_create' %}" target="_blank" title="Crear nuevo beneficio" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0">Nuevo beneficio</a>
+
+    <a href="{% url 'data_admin:user_create' %}" target="_blank" title="Calculadora de convenios" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0">Calculadora de convenios</a>
+
+
+    <button onclick="toggleFilters()"
+        class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+            <path d="M10 5H3" />
+            <path d="M12 19H3" />
+            <path d="M14 3v4" />
+            <path d="M16 17v4" />
+            <path d="M21 12h-9" />
+            <path d="M21 19h-5" />
+            <path d="M21 5h-7" />
+            <path d="M8 10v4" />
+            <path d="M8 12H3" />
+        </svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+{% endblock %}
+
+
+{% block content %}
+
+    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+        <table class="w-full table-fixed text-left border-collapse">
+            <thead>
+            <tr class="border-b border-border">
+                <th class="w-40 p-1 text-center text-title">Cliente</th>
+                <th class="w-20 p-1 text-center text-title">Ruta</th>
+                <th class="w-20 p-1 text-center text-title">Cedis</th>
+                <th class="w-40 p-1 text-center text-title">Beneficio</th>
+                <th class="w-40 p-1 text-center text-title">Cuota global</th>
+                <th class="w-40 p-1 text-center text-title">Cuota por periodo</th>
+                <th class="w-20 p-1 text-center text-title">Fecha inicio</th>
+                <th class="w-20 p-1 text-center text-title">Fecha fin</th>
+                <th class="w-20 p-1 text-center text-title">Estado</th>
+                <th class="w-30 p-1 text-center text-title">Documento</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            {% for agreement in agreements %}
+            <tr class="hover:bg-hover transition-colors duration-300">
+                <td class="p-2">
+                    <a href="" target="_blank" class="flex items-center gap-2 underline text-strong">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
+                        <span>
+                            {{ agreement.customer.id|upper }} {{ agreement.customer.name|title }}
+                        </span>
+                    </a>
+                </td>
+                <td class="p-2 truncate">{{ agreement.route.id|upper|default:"-" }}</td>
+                <td class="p-2 truncate">{{ agreement.route.warehouse.id|title|default:"-" }}</td>
+                <td class="p-2 truncate">{{ agreement.agreed_benefit.benefit.name }}</td>
+                <td class="p-2 truncate">${{ agreement.global_target_amount|floatformat:2|intcomma }}</td>
+                <td class="p-2 truncate">${{ agreement.period_target_amount|floatformat:2|intcomma }}</td>
+                <td class="p-2 text-center">{{ agreement.start_date|date:"d/m/Y"|default:"-" }}</td>
+                <td class="p-2 text-center">{{ agreement.end_date|date:"d/m/Y"|default:"-" }}</td>
+                <td class="p-2 text-center">
+                    {% now "Y-m-d" as today %}
+                    {% if agreement.end_date|date:"Y-m-d" >= today %}Vigente{% else %}Vencido{% endif %}
+                </td>
+                <td class="p-2 text-center">{{ agreement.doc_id|upper }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="p-2 text-center">No hay datos para mostrar</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+
+
+
+{% endblock %}

@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Crear nuevo convenio{% endblock %}
+
+{% block module_name %}Crear nuevo convenio{% endblock %}
+
+{% block module_actions %}
+
+    <button type="submit" form="agreementForm" id="btn-save" class="hover:text-hover text-green-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+      <span>
+        Confirmar
+      </span>
+    </button>
+
+    <a href="{% url 'customers:customer_agreements' %}" class="hover:text-hover text-red-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+      <span>
+        Cancelar
+      </span>
+    </a>
+{% endblock %}
+
+{% block content %}
+<form method="POST" action="{% url 'customers:customer_agreement_create' %}" enctype="multipart/form-data" id="agreementForm">
+    {% csrf_token %}
+    <div class="flex flex-col gap-4 max-w-4xl mx-auto">
+
+        <!-- GENERALES -->
+        <p class="text-title   tracking-wider">Datos generales</p>
+        <hr class="border-border border">
+        
+        <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded ">
+            <span class="text-title">Folio de convenio (Opcional)</span>
+            <input type="text" name="doc_id" id="doc_id" class="w-full bg-transparent border-b border-border focus:border-primary outline-none p-1" placeholder="Dejar vacío para autogenerar">
+
+            <span class="text-title">Cliente</span>
+            <select name="customer_id" id="customer_id" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1" required>
+                <option value="">Seleccionar cliente</option>
+                {% for c in customers %}
+                <option value="{{ c.id }}" data-name="{{ c.name }}">{{ c.id }} - {{ c.name }}</option>
+                {% endfor %}
+            </select>
+
+            <span class="text-title">Ruta</span>
+            <select name="route_id" id="route_id" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1" required>
+                <option value="">Seleccionar ruta</option>
+                {% for r in routes %}
+                <option value="{{ r.id }}" data-name="{{ r.name }}">{{ r.id }} - {{ r.name }}</option>
+                {% endfor %}
+            </select>
+
+            <span class="text-title">Tipo de convenio</span>
+            <select name="agreement_type" id="agreement_type" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1" required>
+                <option value="lt">Largo plazo</option>
+                <option value="mt">Medio plazo</option>
+                <option value="st" selected>Corto plazo</option>
+            </select>
+
+            <span class="text-title">Beneficio pactado</span>
+            <select name="agreed_benefit_id" id="agreed_benefit_id" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1" required>
+                <option value="">Seleccionar beneficio</option>
+                {% for b in benefits %}
+                <option value="{{ b.id }}" data-name="{{ b.name }}">{{ b.name }}</option>
+                {% endfor %}
+            </select>
+
+            <span class="text-title">Documento relacionado</span>
+            <input type="file" name="related_doc" placeholder="Seleccionar archivo" id="related_doc" class="w-full  text-title file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file: file file:bg-primary file:text-primary hover:file:cursor-pointer hover:file:bg-hover">
+        </div>
+
+        <!-- CONDICIONES COMERCIALES -->
+        <p class="text-title   tracking-wider mt-4">Condiciones comerciales</p>
+        <hr class="border-border border">
+
+        <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded ">
+            <span class="text-title col-span-2 border border-border p-2 text-center bg-background rounded">Duración</span>
+
+            <span class="text-title">Fecha inicio</span>
+            <input type="date" name="start_date" id="start_date" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1" required onchange="calculatePreview()">
+
+            <span class="text-title">Fecha fin</span>
+            <input type="date" name="end_date" id="end_date" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1" required onchange="calculatePreview()">
+
+            <span class="text-title col-span-2 border border-border p-2 text-center bg-background rounded mt-4">Financiero</span>
+
+            <span class="text-title">Objetivo (Monto)</span>
+            <input type="number" step="0.01" name="target_amount" id="target_amount" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1" value="0.00" required oninput="calculatePreview()">
+
+            <span class="text-title">Periodicidad del objetivo</span>
+            <div class="flex items-center gap-4">
+                <select name="target_freq_id" id="target_freq_id" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1" onchange="calculatePreview()">
+                    {% for p in periodicities %}
+                    <option value="{{ p.id }}" data-months="{{ p.months_duration }}" data-name="{{ p.name }}">{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+                <label class="flex items-center gap-2  whitespace-nowrap">
+                    <input type="checkbox" name="target_freq_end" id="target_freq_end" onchange="toggleFreq('target_freq_id', this.checked); calculatePreview()"> Al finalizar
+                </label>
+            </div>
+
+            <span class="text-title">Penalización (Monto)</span>
+            <input type="number" step="0.01" name="penalty_amount" id="penalty_amount" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1" value="0.00" oninput="calculatePreview()">
+
+            <span class="text-title">Periodicidad de la penalización</span>
+            <div class="flex items-center gap-4">
+                <select name="penalty_freq_id" id="penalty_freq_id" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1" onchange="calculatePreview()">
+                    {% for p in periodicities %}
+                    <option value="{{ p.id }}" data-months="{{ p.months_duration }}" data-name="{{ p.name }}">{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+                <label class="flex items-center gap-2  whitespace-nowrap">
+                    <input type="checkbox" name="penalty_freq_end" id="penalty_freq_end" onchange="toggleFreq('penalty_freq_id', this.checked); calculatePreview()"> Al finalizar
+                </label>
+            </div>
+
+            <span class="text-title">Porcentaje de crecimiento (%)</span>
+            <input type="number" step="0.01" name="growth_value" id="growth_value" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1" value="0.00" oninput="calculatePreview()">
+
+            <span class="text-title">Periodicidad del crecimiento</span>
+            <select name="growth_freq_id" id="growth_freq_id" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1" onchange="calculatePreview()">
+                <option value="">Sin crecimiento</option>
+                {% for p in periodicities %}
+                <option value="{{ p.id }}" data-months="{{ p.months_duration }}" data-name="{{ p.name }}">{{ p.name }}</option>
+                {% endfor %}
+            </select>
+            
+            <span class="text-title col-span-2 border border-border p-2 text-center bg-background rounded mt-4">Líneas participantes</span>
+
+            {% for pc in product_classes %}
+            <div class="col-span-2 grid grid-cols-2 gap-2 items-center p-2 border-l-2 border-transparent hover:border-primary transition-colors">
+                <label class="flex items-center gap-3 text-title cursor-pointer">
+                    <input type="checkbox" name="line_selected_{{ pc.id }}" id="line_selected_{{ pc.id }}" onchange="toggleLineTarget('{{ pc.id }}', this.checked); calculatePreview()">
+                    {{ pc.name|title }}
+                </label>
+                <div class="flex items-center gap-2">
+                    <span class=" text-title">Objetivo:</span>
+                    <input type="number" step="0.01" name="line_target_{{ pc.id }}" id="line_target_{{ pc.id }}" class="w-full bg-transparent border-b border-border focus:border-primary outline-none py-1 text-right" value="0.00" disabled oninput="calculatePreview()">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- PREVIEW -->
+        <div class="flex items-center justify-between mt-4">
+            <p class="text-title   tracking-wider">Previsualización de Resultados</p>
+            <button type="button" onclick="printPreview()" class=" text-primary hover:text-hover border border-primary px-3 py-1 rounded">Imprimir Resumen</button>
+        </div>
+        <hr class="border-border border">
+
+        <div id="preview_container" class="bg-container p-6 rounded  border border-border">
+            <p class="text-center text-title mb-4 italic">Complete las fechas y montos para ver la proyección del convenio.</p>
+        </div>
+
+    </div>
+</form>
+
+<script>
+    function toggleFreq(selectId, isChecked) {
+        document.getElementById(selectId).disabled = isChecked;
+    }
+
+    function toggleLineTarget(pcId, isChecked) {
+        const input = document.getElementById('line_target_' + pcId);
+        input.disabled = !isChecked;
+        if (!isChecked) input.value = '0.00';
+    }
+
+    function addMonths(dateStr, months) {
+        if (!dateStr) return null;
+        let d = new Date(dateStr);
+        d.setUTCMonth(d.getUTCMonth() + months);
+        return d;
+    }
+
+    function formatDate(d) {
+        if (!d) return '';
+        let day = ('0' + d.getUTCDate()).slice(-2);
+        let mon = ('0' + (d.getUTCMonth() + 1)).slice(-2);
+        return `${day}/${mon}/${d.getUTCFullYear()}`;
+    }
+
+    function calculatePreview() {
+        const startDateStr = document.getElementById('start_date').value;
+        const endDateStr = document.getElementById('end_date').value;
+        const targetAmount = parseFloat(document.getElementById('target_amount').value) || 0;
+        const targetFreqSelect = document.getElementById('target_freq_id');
+        const isTargetEnd = document.getElementById('target_freq_end').checked;
+        const penaltyAmount = parseFloat(document.getElementById('penalty_amount').value) || 0;
+        const penaltyFreqSelect = document.getElementById('penalty_freq_id');
+        const isPenaltyEnd = document.getElementById('penalty_freq_end').checked;
+        
+        const growthValue = parseFloat(document.getElementById('growth_value').value) || 0;
+        const growthFreqSelect = document.getElementById('growth_freq_id');
+
+        if (!startDateStr || !endDateStr || targetAmount <= 0) {
+            document.getElementById('preview_container').innerHTML = '<p class="text-center text-title italic">Complete las fechas y montos para ver la proyección del convenio.</p>';
+            return;
+        }
+
+        let sDate = new Date(startDateStr);
+        let eDate = new Date(endDateStr);
+
+        if (sDate >= eDate) {
+            document.getElementById('preview_container').innerHTML = '<p class="text-center text-red-500">La fecha de fin debe ser posterior a la fecha de inicio.</p>';
+            return;
+        }
+
+        let globalTotal = 0;
+        let summaryHtml = '';
+
+        const customerName = document.getElementById('customer_id').options[document.getElementById('customer_id').selectedIndex]?.getAttribute('data-name') || 'No definido';
+        const routeName = document.getElementById('route_id').options[document.getElementById('route_id').selectedIndex]?.getAttribute('data-name') || 'No definido';
+
+        summaryHtml += `<h2 class="text-xl text-center mb-4 text-title border-b pb-2">Proyección del Convenio Comercial</h2>`;
+        summaryHtml += `<div class="grid grid-cols-2 gap-2  mb-6">
+            <div><strong>Cliente:</strong> ${customerName}</div>
+            <div><strong>Ruta:</strong> ${routeName}</div>
+            <div><strong>Duración:</strong> ${formatDate(sDate)} al ${formatDate(eDate)}</div>
+        </div>`;
+
+        // Iteration logic
+        let periodsHtml = '<table class="w-full text-left  border-collapse mb-6"><thead><tr class="border-b"><th class="py-1">Periodo</th><th class="py-1">Inicio</th><th class="py-1">Fin</th><th class="py-1 text-right">Objetivo Base</th></tr></thead><tbody>';
+
+        if (isTargetEnd) {
+            globalTotal = targetAmount;
+            periodsHtml += `<tr><td class="py-1">Único (Al final)</td><td class="py-1">${formatDate(sDate)}</td><td class="py-1">${formatDate(eDate)}</td><td class="py-1 text-right">$ ${targetAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}</td></tr>`;
+        } else {
+            let monthsStep = parseInt(targetFreqSelect.options[targetFreqSelect.selectedIndex].getAttribute('data-months')) || 1;
+            let growthMonthsStep = growthFreqSelect.value ? parseInt(growthFreqSelect.options[growthFreqSelect.selectedIndex].getAttribute('data-months')) || 1 : null;
+            
+            let curDate = new Date(sDate);
+            let pNum = 1;
+            let curTarget = targetAmount;
+            let monthsSinceGrowth = 0;
+
+            while (curDate < eDate) {
+                let nextDate = addMonths(curDate, monthsStep);
+                nextDate.setUTCDate(nextDate.getUTCDate() - 1);
+                if (nextDate >= eDate) nextDate = new Date(eDate);
+
+                globalTotal += curTarget;
+                periodsHtml += `<tr><td class="py-1">${pNum}</td><td class="py-1">${formatDate(curDate)}</td><td class="py-1">${formatDate(nextDate)}</td><td class="py-1 text-right">$ ${curTarget.toLocaleString('en-US', {minimumFractionDigits: 2})}</td></tr>`;
+
+                monthsSinceGrowth += monthsStep;
+                if (growthMonthsStep && monthsSinceGrowth >= growthMonthsStep) {
+                    curTarget = curTarget * (1 + (growthValue / 100));
+                    monthsSinceGrowth = 0;
+                }
+
+                curDate = new Date(nextDate);
+                curDate.setUTCDate(curDate.getUTCDate() + 1);
+                pNum++;
+            }
+        }
+        periodsHtml += '</tbody></table>';
+
+        let targetName = isTargetEnd ? 'Al finalizar el contrato' : targetFreqSelect.options[targetFreqSelect.selectedIndex].getAttribute('data-name');
+        let penaltyName = isPenaltyEnd ? 'Al finalizar el contrato' : penaltyFreqSelect.options[penaltyFreqSelect.selectedIndex].getAttribute('data-name');
+        let growthName = growthFreqSelect.value ? growthFreqSelect.options[growthFreqSelect.selectedIndex].getAttribute('data-name') : null;
+
+        summaryHtml += `<ul class="list-disc pl-6 space-y-2 text-title ">
+            <li>Al finalizar el convenio, el cliente habrá tenido un objetivo global de <strong class="text-strong">$ ${globalTotal.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>.</li>
+            <li>El cliente tendrá un objetivo base de <strong class="text-strong">$ ${targetAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong> con periodicidad <strong class="text-strong">${targetName}</strong> para evitar penalización.</li>
+            <li>La penalización aplicable es de <strong class="text-strong">$ ${penaltyAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong> con periodicidad <strong class="text-strong">${penaltyName}</strong> si no se cumple el objetivo.</li>`;
+        
+        if (growthName && growthValue > 0) {
+            summaryHtml += `<li>El cliente tendrá un incremento en su cuota del <strong class="text-strong">${growthValue}%</strong> con periodicidad <strong class="text-strong">${growthName}</strong>.</li>`;
+        }
+
+        // Product lines summary
+        let linesHtml = '';
+        {% for pc in product_classes %}
+        if (document.getElementById('line_selected_{{ pc.id }}').checked) {
+            let val = parseFloat(document.getElementById('line_target_{{ pc.id }}').value) || 0;
+            if (val > 0) {
+                linesHtml += `<li><strong>{{ pc.product_class }}</strong> con un consumo base de <strong>$ ${val.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong> (Crecerá proporcionalmente según incremento de cuota).</li>`;
+            } else {
+                linesHtml += `<li><strong>{{ pc.product_class }}</strong> participa en el convenio sin objetivo interno específico.</li>`;
+            }
+        }
+        {% endfor %}
+
+        if (linesHtml !== '') {
+            summaryHtml += `<li>Se tomarán en cuenta específicamente las siguientes líneas de productos: <ul class="list-disc pl-6 mt-1">${linesHtml}</ul></li>`;
+        }
+
+        summaryHtml += `</ul><div class="mt-6">` + periodsHtml + `</div>`;
+
+        document.getElementById('preview_container').innerHTML = summaryHtml;
+    }
+
+    function printPreview() {
+        const previewHTML = document.getElementById('preview_container').innerHTML;
+        const originalHTML = document.body.innerHTML;
+        
+        document.body.innerHTML = `<div class="p-8 max-w-4xl mx-auto font-sans bg-white text-black">` + previewHTML + `</div>`;
+        window.print();
+        document.body.innerHTML = originalHTML;
+        // Re-attach event listeners / reinitialize inputs if necessary, but since we overwrite body, we just reload or simple restore.
+        // Quickest robust way after printing is reloading the page state
+        window.location.reload();
+    }
+</script>
+{% endblock %}

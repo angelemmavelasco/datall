@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Detalle de actividad{% endblock %}
+
+{% block module_name %}Detalle de actividad{% endblock %}
+
+
+{% block content %}
+
+<div class="flex flex-col gap-4">
+
+    <p class="text-title text-sm">Ejecución</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+      <span class="text-title">ID</span>
+      <div>
+        <span class="view-el">{{ log.id|upper }}</span>
+      </div>
+
+      <span class="text-title">Usuario</span>
+      <div>
+        <span class="view-el">{{ log.created_by|title }}</span>
+      </div>
+
+      <span class="text-title">Fecha</span>
+      <div>
+        <span class="view-el">{{ log.created_at|date:'d/M/Y' }}</span>
+      </div>
+
+      <span class="text-title">Hora</span>
+      <div>
+        <span class="view-el">{{ log.created_at|time:'H:i' }} hrs.</span>
+      </div>
+
+    </div>
+
+    <p class="text-title text-sm">Sistema</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+      <span class="text-title">Módulo</span>
+      <div>
+        <span class="view-el">{{ log.module.name|title }}</span>
+      </div>
+
+      <span class="text-title">Sección</span>
+      <div>
+        <span class="view-el">{{ log.module.section.name|title }}</span>
+      </div>
+
+      <span class="text-title">Modelo relacional</span>
+      <div>
+        <span class="view-el">{{ log.content_type.name|title|default:'-' }}</span>
+      </div>
+
+      <span class="text-title">Objeto</span>
+      <div>
+        <span class="view-el">{{ log.object_id|default:'-' }}</span>
+      </div>
+
+    </div>
+
+    <p class="text-title text-sm">Acción</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+      <span class="text-title">Acción</span>
+      <div>
+        <span class="view-el">{{ log.action|upper }}</span>
+      </div>
+
+      <span class="text-title">Resultado</span>
+      <div>
+        <span class="view-el">{{ log.result|upper }}</span>
+      </div>
+
+      <span class="text-title">Descripción</span>
+      <div>
+        <span class="view-el">{{ log.description|title|default:'-' }}</span>
+      </div>
+
+      <span class="text-title">Estado anterior</span>
+      <div>
+        <span class="view-el">{{ log.old_state_display|default:'-' }}</span>
+      </div>
+
+      <span class="text-title">Estado posterior</span>
+      <div>
+        <span class="view-el">{{ log.new_state_display|default:'-' }}</span>
+      </div>
+
+      <span class="text-title">Filtros aplicados</span>
+      <div>
+        <span class="view-el">{{ log.applied_filters_display|default:'-' }}</span>
+      </div>
+
+      <span class="text-title">Archivos relacionados</span>
+      <div>
+        <span class="view-el">{{ log.related_files_display|default:'-' }}</span>
+      </div>
+
+
+
+    </div>
+
+</div>
+
+{% endblock %}

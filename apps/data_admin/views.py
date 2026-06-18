@@ -2,14 +2,20 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.urls import reverse
-
-from apps.data_admin.services.users import users_crud
-from apps.data_admin.services.groups import groups_crud
-from apps.core.models import SystemModule
 from django.contrib.auth.models import Group
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.paginator import Paginator
+
+
+from datetime import date
+
+
+from apps.core.models import SystemModule,DataHistory
+from apps.data_admin.services.users import users_crud
+from apps.data_admin.services.groups import groups_crud
 from apps.customers.services.customers_crud.customer_bulk import CustomersBulk
+from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
 
 
 @login_required
@@ -63,6 +69,12 @@ def users(request):
         'user_groups': user_groups,
         'all_groups': all_groups,
     }
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta del catálogo de usuarios.",
+        changes={"filters": current_filters}
+    )
 
     return render(request, TEMPLATE, context)
 
@@ -74,11 +86,26 @@ def user(request, user_id: int = None):
     context = {}
 
     if request.method == 'POST':
+        user_obj_before = users_service.get_user(user_id=user_id)
+        from django.forms.models import model_to_dict
+        old_state = model_to_dict(user_obj_before) if user_obj_before else {}
+
         raw_data = request.POST.dict()
         selected_groups = request.POST.getlist('groups')
         update_success = users_service.process_user_update(user_id=user_id, raw_data=raw_data, selected_groups=selected_groups)
 
         if update_success:
+            updated_user = users_service.get_user(user_id=user_id)
+            new_state = model_to_dict(updated_user) if updated_user else {}
+            from django.contrib.auth import get_user_model
+            DataHistoryCrud().log_action(
+                request=request,
+                action=DataHistory.Action.UPDATE,
+                content_type=ContentType.objects.get_for_model(get_user_model()),
+                object_id=str(user_id),
+                description=f"Actualización del usuario {user_id}.",
+                changes={"old_state": old_state, "new_state": new_state}
+            )
             messages.success(request, 'Usuario actualizado con éxito.')
         else:
             messages.error(request, 'Error al actualizar: Verifica que los datos obligatorios estén completos.')
@@ -99,6 +126,12 @@ def user(request, user_id: int = None):
     context['all_groups'] = all_groups
     context['user_obj_group_ids'] = list(user_obj.groups.values_list('id', flat=True))
     context['accessible_modules'] = accessible_modules
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description=f"Consulta de detalles del usuario {user_id}.",
+        changes={"user_id": user_id}
+    )
 
     return render(request, 'data_admin/users/user.html', context)
 
@@ -123,6 +156,17 @@ def user_create(request):
         new_user = users_service.process_user_create(raw_data=raw_data, selected_groups=selected_groups)
 
         if new_user:
+            from django.forms.models import model_to_dict
+            new_state = model_to_dict(new_user)
+            from django.contrib.auth import get_user_model
+            DataHistoryCrud().log_action(
+                request=request,
+                action=DataHistory.Action.CREATE,
+                content_type=ContentType.objects.get_for_model(get_user_model()),
+                object_id=str(new_user.id),
+                description=f"Creación del usuario {new_user.username}.",
+                changes={"new_state": new_state}
+            )
             messages.success(request, f'Usuario {new_user.username} creado con éxito.')
             #redirect to user page detailed
             return redirect('data_admin:user', user_id=new_user.id)
@@ -134,6 +178,11 @@ def user_create(request):
             context['user'] = raw_data
             return render(request, TEMPLATE, context)
 
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta del formulario de creación de usuario."
+    )
     return render(request, TEMPLATE, context)
 
 @login_required
@@ -154,6 +203,12 @@ def groups(request):
         'current_filters': current_filters,
     }
     
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta del catálogo de grupos.",
+        changes={"filters": current_filters}
+    )
     return render(request, TEMPLATE, context)
 
 @login_required
@@ -164,6 +219,12 @@ def group(request, group_id: int = None):
     context = {}
     
     if request.method == 'POST':
+        group_obj_before = groups_service.get_group(group_id=group_id)
+        from django.forms.models import model_to_dict
+        old_state = model_to_dict(group_obj_before) if group_obj_before else {}
+        if group_obj_before:
+            old_state['modules'] = list(group_obj_before.accessible_modules.values_list('id', flat=True))
+
         raw_data = request.POST.dict()
         selected_modules = request.POST.getlist('modules')
         
@@ -174,6 +235,19 @@ def group(request, group_id: int = None):
         )
 
         if update_success:
+            updated_group = groups_service.get_group(group_id=group_id)
+            new_state = model_to_dict(updated_group) if updated_group else {}
+            if updated_group:
+                new_state['modules'] = list(updated_group.accessible_modules.values_list('id', flat=True))
+            from django.contrib.auth.models import Group
+            DataHistoryCrud().log_action(
+                request=request,
+                action=DataHistory.Action.UPDATE,
+                content_type=ContentType.objects.get_for_model(Group),
+                object_id=str(group_id),
+                description=f"Actualización del grupo {group_id}.",
+                changes={"old_state": old_state, "new_state": new_state}
+            )
             messages.success(request, 'Grupo actualizado con éxito.')
         else:
             messages.error(request, 'Error al actualizar: Verifica que el nombre no esté vacío o en uso.')
@@ -194,6 +268,12 @@ def group(request, group_id: int = None):
     context['all_modules'] = all_modules
     context['group_modules_ids'] = list(group_obj.accessible_modules.values_list('id', flat=True))
 
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description=f"Consulta de detalles del grupo {group_id}.",
+        changes={"group_id": group_id}
+    )
     return render(request, TEMPLATE, context)
 
 @login_required
@@ -218,6 +298,18 @@ def group_create(request):
         )
 
         if new_group:
+            from django.forms.models import model_to_dict
+            new_state = model_to_dict(new_group)
+            new_state['modules'] = list(new_group.accessible_modules.values_list('id', flat=True))
+            from django.contrib.auth.models import Group
+            DataHistoryCrud().log_action(
+                request=request,
+                action=DataHistory.Action.CREATE,
+                content_type=ContentType.objects.get_for_model(Group),
+                object_id=str(new_group.id),
+                description=f"Creación del grupo {new_group.name}.",
+                changes={"new_state": new_state}
+            )
             messages.success(request, f'Grupo "{new_group.name}" creado con éxito.')
             return redirect('data_admin:group', group_id=new_group.id)
         else:
@@ -225,6 +317,11 @@ def group_create(request):
             context['group'] = raw_data
             return render(request, TEMPLATE, context)
 
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta del formulario de creación de grupo."
+    )
     return render(request, TEMPLATE, context)
 
 
@@ -233,9 +330,7 @@ def group_create(request):
 def uploads(request):
     TEMPLATE = 'data_admin/uploads/uploads.html'
     
-    from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
-    from apps.core.models import DataHistory
-    from django.core.paginator import Paginator
+
 
     # Filters
     query_text = request.GET.get('query_text')
@@ -277,6 +372,13 @@ def uploads(request):
         'filter_actions': [{'id': a[0], 'name': a[1]} for a in DataHistory.Action.choices if a[0] in [DataHistory.Action.IMPORT, DataHistory.Action.EXPORT]],
     }
     
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta de historial de cargas masivas.",
+        changes={"filters": filters}
+    )
+    
     if request.htmx:
         return render(request, 'data_admin/uploads/partials/uploads_rows.html', context)
     
@@ -307,14 +409,14 @@ def upload_create(request):
             
         def audit_upload(status, message):
             crud = DataHistoryCrud()
-            crud.process_history_create({
-                'action': DataHistory.Action.IMPORT,
-                'result': status,
-                'content_type': content_type,
-                'created_by': request.user,
-                'description': message,
-                'changes': {"filename": uploaded_file.name}
-            })
+            crud.log_action(
+                request=request,
+                action=DataHistory.Action.IMPORT,
+                result=status,
+                content_type=content_type,
+                description=message,
+                changes={"filename": uploaded_file.name}
+            )
 
         if content_type.model == 'customer':
             bulk_service = CustomersBulk()
@@ -414,6 +516,11 @@ def upload_create(request):
         'content_types': content_types,
     }
 
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta del formulario de carga masiva."
+    )
     return render(request, TEMPLATE, context)
 
 
@@ -422,8 +529,66 @@ def upload_create(request):
 @login_required
 def activity(request):
     TEMPLATE = 'data_admin/activity/activity.html'
+
+    date_start = request.POST.get('date_start')
+    date_end = request.POST.get('date_end')
+    users = request.POST.getlist('users')
+    actions = request.POST.getlist('actions')
+    results = request.POST.getlist('results')
+    modules = request.POST.getlist('modules')
+
+
+    today = date.today()
+    if not date_start: date_start = today.replace(day=1)
+    if not date_end: date_end = today
+
+    filters = {}
+    filters['start_date'] = date_start
+    filters['end_date'] = date_end
+    if users:
+        filters['users'] = users
+    if actions:
+        filters['actions'] = actions
+    if results:
+        filters['results'] = results
+    if modules:
+        filters['modules'] = modules
     
+
+    service = DataHistoryCrud()
+    logs = service.get_histories(**filters)
     
-    context = {}
-    
+    context = {
+        'logs': logs,
+    }
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta de historial de actividad del sistema.",
+        changes={"filters": filters}
+    )
     return render(request, TEMPLATE, context)
+
+
+
+@login_required
+def activity_detail(request, activity_id):
+    template = 'data_admin/activity/activity_detail.html'
+    context = {}
+
+    service = DataHistoryCrud()
+    log = service.get_history(history_id =  activity_id)
+
+    if log is None:
+        messages.error(request, "No se encontró la actividad.")
+        return redirect('data_admin:activity')
+    
+    context['log'] = log
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description=f"Consulta del detalle de actividad {activity_id}.",
+        changes={"activity_id": activity_id}
+    )
+    return render(request, template, context)
+    

@@ -98,6 +98,8 @@ class SystemModule(models.Model):
         return f"{self.section.name} -> {self.name}"
 
 
+from django.core.serializers.json import DjangoJSONEncoder
+
 class DataHistory(models.Model):
     class Action(models.TextChoices):
         IMPORT = 'importación', 'importación'
@@ -157,6 +159,7 @@ class DataHistory(models.Model):
     )
 
     changes = models.JSONField(
+        encoder=DjangoJSONEncoder,
         null=True, 
         blank=True, 
         help_text="Payload JSON con el estado anterior y nuevo, o detalles del error."
@@ -174,6 +177,42 @@ class DataHistory(models.Model):
     def filename(self):
         if isinstance(self.changes, dict):
             return self.changes.get('filename')
+        return None
+
+    def _format_dict(self, data):
+        if not data:
+            return None
+        if isinstance(data, dict):
+            clean_data = {k: v for k, v in data.items() if v}
+            if not clean_data:
+                return None
+            return ", ".join([f"{k}: {v}" for k, v in clean_data.items()])
+        return str(data)
+
+    @property
+    def old_state_display(self):
+        if isinstance(self.changes, dict):
+            return self._format_dict(self.changes.get('old_state'))
+        return None
+
+    @property
+    def new_state_display(self):
+        if isinstance(self.changes, dict):
+            return self._format_dict(self.changes.get('new_state'))
+        return None
+
+    @property
+    def applied_filters_display(self):
+        if isinstance(self.changes, dict):
+            filters = self.changes.get('filters') or self.changes.get('applied_filters')
+            return self._format_dict(filters)
+        return None
+
+    @property
+    def related_files_display(self):
+        if isinstance(self.changes, dict):
+            files = self.changes.get('filename') or self.changes.get('files')
+            return self._format_dict(files)
         return None
 
     def save(self, *args, **kwargs):
@@ -248,6 +287,7 @@ class PayrollType(models.Model):
 class Periodicity(models.Model):
     id = models.CharField(max_length=20, primary_key=True)
     name = models.CharField(max_length=255)
+    months_duration = models.IntegerField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Periodicity"
@@ -675,6 +715,207 @@ class AccountsReceivable(models.Model):
     def __str__(self):
         return f'{self.customer_id}: $ {self.total_balance}, periodo: {self.period.month}-{self.period.year}'
     
+
+class Benefit(models.Model):
+    class Type(models.TextChoices):
+        PRODUCT = 'product', 'producto'
+        SERVICE = 'service', 'servicio'
+        DISCOUNT = 'discount', 'descuento'
+        OTHER = 'other', 'otro'
+
+    id = models.CharField(primary_key=True, max_length=100)
+    
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+
+    benefit_type = models.CharField(
+        max_length=20,
+        choices=Type.choices,
+        default=Type.PRODUCT
+    )
+
+    cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    image = models.ImageField(upload_to='media/benefits', null=True, blank=True)
+    stock = models.IntegerField(default=0)
+
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f'{self.id} - {self.name}'
+
+    class Meta:
+        db_table = 'benefits'
+        verbose_name = 'Benefit'
+        verbose_name_plural = 'Benefits'
+    
+
+class CustomerAgreement(models.Model):
+    """
+    Cabcera general de convenios. solo trae datos generales, los detalles de cuotas vienen a parte.
+    """
+    class TypesChoices(models.TextChoices):
+        LONG_TERM = 'lt', 'largo plazo'
+        MEDIUM_TERM = 'mt', 'medio plazo'
+        SHORT_TERM = 'st', 'corto plazo'
+
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.PROTECT,
+        related_name='agreements'
+    )
+
+    route = models.ForeignKey(
+        Route,
+        on_delete=models.PROTECT,
+        related_name='customer_agreements'
+    )
+
+    agreement_type = models.CharField(max_length=2, choices=TypesChoices.choices, default=TypesChoices.SHORT_TERM)
+    doc_id = models.CharField(max_length=255, null=True, blank=True)
+    agreed_benefit = models.ForeignKey(
+        Benefit,
+        on_delete=models.PROTECT,
+        related_name='customer_agreements',
+        null=True,
+        blank=True
+    )
+
+    benefit_granted = models.BooleanField(default=False)
+
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+
+    target_freq = models.ForeignKey(
+        Periodicity,
+        on_delete=models.PROTECT,
+        related_name='target_agreements',
+        null=True,
+        blank=True
+    )
+
+    penalty_freq = models.ForeignKey(
+        Periodicity,
+        on_delete=models.PROTECT,
+        related_name='penalty_agreements',
+        null=True,
+        blank=True
+    )
+
+    target_amount = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+    penalty_amount = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+
+    growth_freq = models.ForeignKey(
+        Periodicity,
+        on_delete=models.PROTECT,
+        related_name='growth_agreements',
+        null=True,
+        blank=True
+    )
+
+    growth_value = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+
+    related_doc = models.FileField(upload_to='agreements', null=True, blank=True)
+
+    @property
+    def period_target_amount(self):
+        if not self.target_freq:
+            return 0
+        return self.target_amount
+
+    @property
+    def global_target_amount(self):
+        if not self.target_freq:
+            return self.target_amount
+        # Sum of all expected global targets of evaluation periods
+        total = sum(period.expected_global_target or 0 for period in self.evaluation_periods.all())
+        return total
+
+    def __str__(self):
+        return f"{self.customer.code} {self.customer.name} - {self.agreed_benefit.benefit.title()}"
+
+    class Meta:
+        db_table = 'customer_agreements'
+        verbose_name = 'Customer agreement'
+        verbose_name_plural = 'Customer agreements'
+
+class AgreementProductLine(models.Model):
+    customer_agreement = models.ForeignKey(
+        CustomerAgreement,
+        on_delete=models.CASCADE,
+        related_name='product_lines'
+    )
+    product_class = models.ForeignKey(
+        ProductClass,
+        on_delete=models.PROTECT,
+        related_name='customer_agreement_product_lines'
+    )
+    required_target = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.customer_agreement} - {self.product_class.name}"
+
+    class Meta:
+        db_table = 'customer_agreement_product_lines'
+        verbose_name = 'Customer agreement product line'
+        verbose_name_plural = 'Customer agreement product lines'
+
+class AgreementEvaluationPeriod(models.Model):
+
+    class StatusChoices(models.TextChoices):
+        PENDING = 'pendiente', 'pendiente'
+        EVALUATING = 'evaluando', 'en evaluación'
+        ACHIEVED = 'alcanzado', 'objetivo cumplido'
+        FAILED = 'no_alcanzado', 'objetivo no cumplido'
+
+    customer_agreement = models.ForeignKey(
+        CustomerAgreement,
+        on_delete=models.CASCADE,
+        related_name='evaluation_periods'
+    )
+    period_number = models.PositiveIntegerField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    expected_global_target = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+    achieved_global_sales = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+
+    status = models.CharField(max_length=20, choices=StatusChoices.choices, default=StatusChoices.PENDING)
+
+    penalty_applied = models.BooleanField(default=False)
+
+    observations = models.TextField(max_length=500, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.customer_agreement} - {self.period_number}"
+
+    class Meta:
+        db_table = 'agreement_evaluation_periods'
+        verbose_name = 'Agreement evaluation period'
+        verbose_name_plural = 'Agreement evaluation periods'
+
+
+class AgreementPeriodLineTarget(models.Model):
+    evaluation_period = models.ForeignKey(
+        AgreementEvaluationPeriod,
+        on_delete=models.CASCADE,
+        related_name='period_lines'
+    )
+    product_class = models.ForeignKey(
+        ProductClass,
+        on_delete=models.PROTECT,
+        related_name='agreement_period_lines'
+    )
+    expected_line_target = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+    achieved_line_sales = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.evaluation_period.customer_agreement} - {self.evaluation_period} - {self.product_class.name}"
+
+    class Meta:
+        db_table = 'agreement_period_lines_target'
+        verbose_name = 'Agreement period line target'
+        verbose_name_plural = 'Agreement period lines target'
+
 
 
 # transactions and targets

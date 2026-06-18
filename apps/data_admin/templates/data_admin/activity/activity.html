@@ -38,9 +38,9 @@
             <tr class="border-b border-border">
                 <th class="w-40 p-1 text-center text-title">Usuario</th>
                 <th class="w-40 p-1 text-center text-title">Ejecución</th>
-                <th class="w-40 p-1 text-center text-title">Módulo</th>
-                <th class="w-40 p-1 text-center text-title">Modelo</th>
-                <th class="w-60 p-1 text-center text-title">Objeto</th>
+                <th class="w-70 p-1 text-center text-title">Módulo</th>
+                <th class="w-30 p-1 text-center text-title">Modelo</th>
+                <th class="w-30 p-1 text-center text-title">Objeto</th>
                 <th class="w-20 p-1 text-center text-title">Acción</th>
                 <th class="w-20 p-1 text-center text-title">Estado</th>
                 <th class="w-60 p-1 text-center text-title">Detalles</th>
@@ -51,7 +51,7 @@
             {% for log in logs %}
             <tr class="hover:bg-hover transition-colors duration-300">
                 <td class="p-2">
-                    <a href="{% url 'data_admin:upload' upload.id %}" target="_blank"
+                    <a href="{% url 'data_admin:activity_detail' log.id %}" target="_blank"
                         class="flex items-center gap-2 underline text-strong">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -61,16 +61,25 @@
                             <path d="M16 2h6v6" />
                         </svg>
                         <span>
-                            {{ upload.filename|default:"-" }}
+                            {{ log.created_by|default:"-" }}
                         </span>
                     </a>
                 </td>
-                <td class="p-2 truncate">{{ user.first_name|title|default:"-" }}</td>
-                <td class="p-2 truncate">{{ user.last_name|title|default:"-" }}</td>
-                <td class="p-2 truncate">{% if user.second_last_name %}{{ user.second_last_name|title|default:"-" }}{%
-                    else %}-{% endif %}</td>
-                <td class="p-2 truncate">{{ user.email|default:"-" }}</td>
-                <td class="p-2 text-center">{% if user.is_active %}Activo{% else %}Inactivo{% endif %}</td>
+                <td class="p-2 truncate">{{ log.created_at|date:'d/M/Y H:i' }}</td>
+                <td class="p-2 truncate">{% if log.module %}{{ log.module|title }}{% else %}-{% endif %}</td>
+                <td class="p-2 truncate">{{ log.content_type.model|title|default:"-" }}</td>
+                <td class="p-2 truncate">{{ log.object_id|default:"-" }}</td>
+                <td class="p-2 text-center">{{ log.action|title|default:"-" }}</td>
+                <td class="p-2 text-center
+                {% if log.result == 'éxito' %}
+                text-green-600
+                {% elif log.result == 'parcial' %}
+                text-orange-600
+                {% else %}
+                text-red-600
+                {% endif %}
+                ">{{ log.result|title|default:"-" }}</td>
+                <td class="p-2 text-left">{{ log.description|default:"-" }}</td>
             </tr>
             {% empty %}
             <tr>

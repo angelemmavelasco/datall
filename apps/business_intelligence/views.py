@@ -1,14 +1,29 @@
-from apps.core.models import Warehouse, ProductClass, ProductCategory, CustomerType, Region, Route, Employee, SaleTransaction, Customer
+from apps.core.models import (
+    Warehouse, 
+    ProductClass, 
+    ProductCategory, 
+    CustomerType, 
+    Region, 
+    Route, 
+    Employee, 
+    SaleTransaction, 
+    Customer,
+    SystemModule,
+    DataHistory
+)
+
 from apps.core.utils import get_allowed_routes_for_user
 from django.db.models import Sum, Q
 from django.db.models.functions import ExtractYear
+from django.contrib.contenttypes.models import ContentType
 
 import json
 import csv
 import asyncio
 import openpyxl
 from collections import defaultdict
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
+from django.utils import timezone
 from asgiref.sync import sync_to_async
 
 
@@ -29,6 +44,7 @@ from apps.business_intelligence.services.monthly_breakdown_by_warehouse.monthly_
 
 from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
 from apps.sales.services.sale_targets.sale_targets_crud import SaleTargetCRUD
+from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
 
 from apps.customers.services.customers_crud.customers_crud import CustomerCrud
 
@@ -52,9 +68,6 @@ def sales_dashboard(request):
     
     if not date_start:
         date_start = date(today.year, 1, 1).strftime('%Y-%m-%d')
-    if not date_end:
-        date_end = today.strftime('%Y-%m-%d')
-
     filters = {}
     if routes: filters['routes'] = routes
     if warehouses: filters['route_warehouse_ids'] = warehouses
@@ -128,6 +141,28 @@ def sales_dashboard(request):
         'selected_date_end': date_end,
     }
 
+    # Log the action automatically
+    history_crud = DataHistoryCrud()
+    history_crud.log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        result=DataHistory.Result.SUCCESS,
+        description="Consulta del Dashboard de Ventas.",
+        changes={
+            "applied_filters": {
+                "routes": routes,
+                "warehouses": warehouses,
+                "sale_warehouses": sale_warehouses,
+                "product_class": product_class,
+                "product_category": product_category,
+                "regions": regions,
+                "date_start": date_start,
+                "date_end": date_end
+            },
+            "allowed_routes_accessed": list(allowed_routes.values_list('id', flat=True)) if allowed_routes else []
+        }
+    )
+
     return render(request, template, context)
 
 @login_required
@@ -170,11 +205,32 @@ def routes_kpis(request):
         'selected_route': str(selected_route_id) if selected_route_id else '',
     }
 
+
+
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta del Dashboard de Rutas.",
+        changes={
+            "applied_filters": {
+                "date_start": date_start,
+                "date_end": date_end,
+                "route_id": selected_route_id,
+            },
+            "allowed_routes_accessed": list(allowed_routes.values_list('id', flat=True)) if allowed_routes else []
+        }
+    )
+
     return render(request, template, context)
 
 @login_required
 def warehouses_kpis(request):
     context = {}
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta de KPIs de Gerencias."
+    )
     return render(request, 'business_intelligence/warehouses_kpis/warehouses_kpis.html', context)
 
 
@@ -182,6 +238,11 @@ def warehouses_kpis(request):
 @login_required
 def products_kpis(request):
     context = {}
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta de KPIs de Productos."
+    )
     return render(request, 'business_intelligence/products_kpis/products_kpis.html', context)
 
 
@@ -256,6 +317,12 @@ def customers_kpis(request):
                 
             writer.writerow(row)
 
+        DataHistoryCrud().log_action(
+            request=request,
+            action=DataHistory.Action.EXPORT,
+            description="Exportación de KPIs de Clientes a CSV.",
+            changes={"filters": filters}
+        )
         return response
 
     paginator = Paginator(customers_qs, 100)
@@ -291,6 +358,12 @@ def customers_kpis(request):
     if request.htmx:
         return render(request, 'business_intelligence/customers_kpis/partials/customer_kpis_rows.html', context)
 
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta de KPIs de Clientes.",
+        changes={"filters": filters}
+    )
     return render(request, template, context)
 
 @login_required
@@ -343,6 +416,12 @@ def customer_kpis(request, customer_id):
         'selected_product_category': product_categories,
     }
 
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description=f"Consulta de KPIs del Cliente {customer_id}.",
+        changes={"filters": filters, "customer_id": customer_id}
+    )
     return render(request, template, context)
 
 
@@ -394,6 +473,12 @@ def commercial_risk(request):
         
     }
 
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta del Dashboard de Riesgo Comercial.",
+        changes={"date_start": date_start, "date_end": date_end, "route_id": selected_route_id}
+    )
     return render(request, template, context)
 
 @login_required
@@ -418,6 +503,12 @@ async def export_commercial_risk_data(request):
             date_start=date_start_obj, 
             date_end=date_end_obj, 
             route_id=selected_route_id
+        )
+        DataHistoryCrud().log_action(
+            request=request,
+            action=DataHistory.Action.EXPORT,
+            description="Exportación de Riesgo Comercial a Excel.",
+            changes={"date_start": date_start, "date_end": date_end, "route_id": selected_route_id}
         )
         return risk_engine.get_data_report()
 
@@ -487,6 +578,12 @@ def target_scope(request):
         'selected_warehouses': warehouses,
         'selected_regions': regions,
     }
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta de Target Scope.",
+        changes={"filters": filters}
+    )
     return render(request, template, context)
 
 
@@ -537,6 +634,12 @@ def monthly_breakdown_by_warehouse(request):
     context['selected_year'] = str(year)
     context['warehouse_data'] = warehouse_data
 
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta de Desglose Mensual por Gerencia.",
+        changes={"year": year, "warehouse_id": warehouse}
+    )
     return render(request, template, context)
 
 @login_required
@@ -550,6 +653,12 @@ def export_monthly_breakdown_data(request):
         return HttpResponse("No se seleccionó ninguna gerencia.", status=400)
     service = MonthlyBreakdownByWarehouse(year, allowed_routes, warehouse)
     
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.EXPORT,
+        description="Exportación de Desglose Mensual por Gerencia.",
+        changes={"year": year, "warehouse_id": warehouse}
+    )
     return service.get_data_report()
 
 
@@ -617,6 +726,12 @@ def sales_breakdown(request):
     if request.htmx:
         return render(request, 'business_intelligence/sales_breakdown/partials/sales_breakdown_rows.html', context)
         
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta de Desglose de Ventas.",
+        changes={"filters": filters, "dimension": dimension}
+    )
     return render(request, template, context)
 
 @login_required
@@ -645,6 +760,13 @@ async def export_sales_breakdown_data(request):
         transactions_qs = transaction_crud.read(allowed_routes, **filters)
 
         service = SalesBreakdownService(transactions_qs, dimension)
+        
+        DataHistoryCrud().log_action(
+            request=request,
+            action=DataHistory.Action.EXPORT,
+            description="Exportación de Desglose de Ventas a CSV.",
+            changes={"filters": filters, "dimension": dimension}
+        )
         
         return service.get_report_data()
 
@@ -712,6 +834,12 @@ def unique_customers(request):
         'selected_regions': regions,
     }
 
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta de Clientes Únicos.",
+        changes={"filters": filters}
+    )
     return render(request, template, context)
 
 
@@ -775,6 +903,12 @@ def sale_targets(request):
     if request.htmx:
         return render(request, 'sales/sale_targets/partials/sale_targets_rows.html', context)
 
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.READ,
+        description="Consulta de Objetivos de Venta.",
+        changes={"filters": filters}
+    )
     return render(request, template, context)
 
 
@@ -832,6 +966,13 @@ def sale_targets_export(request):
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename=objetivos_venta.xlsx'
     wb.save(response)
+
+    DataHistoryCrud().log_action(
+        request=request,
+        action=DataHistory.Action.EXPORT,
+        description="Exportación de Objetivos de Venta a Excel.",
+        changes={"filters": filters}
+    )
     return response
 
 
