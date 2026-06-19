@@ -47,7 +47,19 @@ def get_allowed_routes_for_user(user):
     Returns a QuerySet of routes to which the user has access, based on their global group, CEDIS or their subordinate tree.
     """
 
-    if user.groups.filter(name='acceso global').exists() or user.is_superuser:
+
+    if user.is_superuser:
+        return Route.objects.all()
+
+    user_group_names = list(user.groups.values_list('name', flat=True))
+
+    has_global_access = Reference.objects.filter(
+        field_context='allowed_routes',
+        key__in=user_group_names,
+        reference__iexact='1'
+    ).exists()
+
+    if has_global_access:
         return Route.objects.all()
 
     employee = user.employees.first()
