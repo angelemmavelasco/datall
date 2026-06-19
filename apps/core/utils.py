@@ -56,7 +56,7 @@ def get_allowed_routes_for_user(user):
     has_global_access = Reference.objects.filter(
         field_context='allowed_routes',
         key__in=user_group_names,
-        reference__iexact='1'
+        reference__in=['1', 'true', 'True', 1]
     ).exists()
 
     if has_global_access:
