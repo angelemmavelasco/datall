@@ -51,12 +51,22 @@ def get_allowed_routes_for_user(user):
     if user.is_superuser:
         return Route.objects.all()
 
-    user_group_names = list(user.groups.values_list('name', flat=True))
+    user_group_names = [name.strip() for name in user.groups.values_list('name', flat=True)]
+    
+    if not user_group_names:
+        return Route.objects.none()
+
+    group_query = Q()
+    for name in user_group_names:
+        group_query |= Q(key__iexact=name)
 
     has_global_access = Reference.objects.filter(
-        field_context='allowed_routes',
-        key__in=user_group_names,
-        reference__in=['1', 'true', 'True', 1]
+        group_query,
+        field_context='allowed_routes'
+    ).filter(
+        Q(reference__iexact='1') | 
+        Q(reference__iexact='true') | 
+        Q(reference__icontains='1')
     ).exists()
 
     if has_global_access:

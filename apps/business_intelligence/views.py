@@ -40,7 +40,10 @@ from apps.data_admin.services.data_history.data_history_crud import ActivityLogg
 @login_required
 def sales_dashboard(request):
     template = 'business_intelligence/sales_dashboard/sales_dashboard.html'
+    print(request.user)
+    print(request.user.groups.all())
     allowed_routes = get_allowed_routes_for_user(request.user)
+    print(allowed_routes)
     
 
     warehouses = request.GET.getlist('warehouses')
