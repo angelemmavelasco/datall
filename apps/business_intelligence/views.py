@@ -255,41 +255,11 @@ def customers_kpis(request):
     customers_qs = customers_crud.read(allowed_routes, **filters)
 
     if request.GET.get('export') == 'csv':
-        response = HttpResponse(content_type='text/csv; charset=utf-8')
-        response['Content-Disposition'] = 'attachment; filename="customers_kpis.csv"'
-        response.write(b'\xef\xbb\xbf')
-        writer = csv.writer(response)
-
         customers_kpis_service = CustomersKpis(customers_qs)
-        all_customers_data, months_headers = customers_kpis_service.build_dashboard_data()
+        csv_content = customers_kpis_service.export_report_data()
 
-        header_row = [
-            'ID', 'Nombre', 'Clasificación', 'Frecuencia de compra',
-            'Saldo Actual', 'Saldo Vencido', 'Límite de crédito', '% Uso de crédito',
-            'Categorías de productos', 'Promedio mensual año pasado', 'Promedio mensual año actual'
-        ]
-        for h in months_headers:
-            header_row.append(h.strftime('%b %Y'))
-            
-        writer.writerow(header_row)
-
-        for c in all_customers_data:
-            row = [
-                c.id, c.name, getattr(c.category_last_moving_q, 'name', ''),
-                getattr(c, 'frequency', ''),
-                round(getattr(c, 'current_balance', 0), 2),
-                round(getattr(c, 'overdue_balance', 0), 2),
-                round(getattr(c, 'credit_limit', 0), 2),
-                round(getattr(c, 'credit_usage', 0), 2),
-                getattr(c, 'product_classes_with_consumption', 0),
-                round(getattr(c, 'previous_year_average', 0), 2),
-                round(getattr(c, 'current_year_average', 0), 2)
-            ]
-            for m in getattr(c, 'monthly_consumption_qs', []):
-                row.append(round(m.get('sale', 0), 2))
-                
-            writer.writerow(row)
-
+        response = HttpResponse(csv_content, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="customers_kpis.csv"'
         return response
 
     paginator = Paginator(customers_qs, 100)
@@ -390,6 +360,17 @@ async def export_customers_kpis_data(request):
     response['Content-Disposition'] = 'attachment; filename="customers_kpis.csv"'
     
     return response
+
+
+
+
+
+
+
+
+
+
+
 
 
 

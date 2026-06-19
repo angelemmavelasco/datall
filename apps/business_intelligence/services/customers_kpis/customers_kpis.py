@@ -211,29 +211,46 @@ class CustomersKpis:
         all_customers_data, months_headers = self.build_dashboard_data()
 
         header_row = [
-            'ID', 'Nombre', 'Clasificación', 'Frecuencia de compra',
-            'Saldo Actual', 'Saldo Vencido', 'Límite de crédito', '% Uso de crédito',
-            'Categorías de productos', 'Promedio mensual año pasado', 'Promedio mensual año actual'
+            'Cliente', 'Ruta', 'Gerencia', 'Tipo de cliente', 'Categoría', 
+            'Frecuencia', 'Líder de opinión', 'Saldo al corriente', 'Saldo vencido', 
+            'Uso (%)', 'Convenios activos', 'Clases de producto', 'Promedio año previo', 
+            'Promedio año actual', 'Promedio trimestre'
         ]
         for h in months_headers:
-            header_row.append(h.strftime('%b %Y'))
+            month_str = h.strftime('%b %Y').title()
+            header_row.append(f'{month_str} ($)')
+            header_row.append(f'{month_str} Crecimiento (%)')
             
         writer.writerow(header_row)
 
         for c in all_customers_data:
+            opinion_leader_str = "Sí" if getattr(c, 'opinion_leader', False) else "No"
+            
+            client_display = f"{c.id} {c.name}"
+            route_display = getattr(c.route, 'id', '') if hasattr(c, 'route') and c.route else ''
+            warehouse_display = getattr(c.route.warehouse, 'name', '') if hasattr(c, 'route') and c.route and hasattr(c.route, 'warehouse') and c.route.warehouse else ''
+            customer_type_display = getattr(c.customer_type, 'name', '') if hasattr(c, 'customer_type') and c.customer_type else ''
+            
             row = [
-                c.id, c.name, getattr(c.category_last_moving_q, 'name', ''),
+                client_display,
+                route_display,
+                warehouse_display,
+                customer_type_display,
+                getattr(c.category_last_moving_q, 'name', ''),
                 getattr(c, 'frequency', ''),
+                opinion_leader_str,
                 round(getattr(c, 'current_balance', 0), 2),
                 round(getattr(c, 'overdue_balance', 0), 2),
-                round(getattr(c, 'credit_limit', 0), 2),
                 round(getattr(c, 'credit_usage', 0), 2),
+                getattr(c, 'active_agreements', 0),
                 getattr(c, 'product_classes_with_consumption', 0),
                 round(getattr(c, 'previous_year_average', 0), 2),
-                round(getattr(c, 'current_year_average', 0), 2)
+                round(getattr(c, 'current_year_average', 0), 2),
+                round(getattr(c, 'previous_moving_quarter_average', 0), 2)
             ]
             for m in getattr(c, 'monthly_consumption_qs', []):
                 row.append(round(m.get('sale', 0), 2))
+                row.append(round(m.get('growth_vs_previous_month', 0), 0))
                 
             writer.writerow(row)
 

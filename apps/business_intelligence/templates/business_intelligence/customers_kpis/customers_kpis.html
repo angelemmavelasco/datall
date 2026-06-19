@@ -19,10 +19,7 @@
 
 
 
-
-<a href="{% url 'business_intelligence:export_customers_kpis_data' %}" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar datos</a>
-
-
+<a href="#" id="downloadReport" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar datos</a>
 
 <button onclick="toggleFilters()"
     class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
@@ -137,8 +134,16 @@
         </div>
     </div>
 
-    <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2">Aplicar filtros</button>
+    <div class="flex gap-2 flex-col">
+        <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar filtros</button>
+        <a href="{{ request.path }}" class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar filtros</a>
+    </div>
+
+
+    
 </form>
+
+
 
 <script>
 function filterCheckboxes(inputElement, listId) {
@@ -240,7 +245,8 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         btnElement.classList.toggle('text-muted');
     }
 
-    document.getElementById('downloadReport').addEventListener('click', function() {
+    document.getElementById('downloadReport').addEventListener('click', function(e) {
+        e.preventDefault();
         const urlParams = new URLSearchParams(window.location.search);
         urlParams.set('export', 'csv');
         window.location.search = urlParams.toString();
