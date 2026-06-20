@@ -4,8 +4,12 @@ from apps.core.models import (
     User, MenuSection, SystemModule, Department, TaxSystem,
     PayrollType, Periodicity, Position, Region, Warehouse, Employee,
     ProductCategory, ProductClass, Product, Reference,
-    RouteType, SaleChannel, Route, RouteAssignment
+    RouteType, SaleChannel, Route, RouteAssignment,
+    CommissionProfile, CommissionTier, RouteCommissionSetup,
+    RouteCommissionException, CommissionSettlement
 )
+from datetime import date
+from django.db.models import Q
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
@@ -143,3 +147,51 @@ class RouteAssignmentAdmin(admin.ModelAdmin):
     list_filter = ('route', 'employee', 'start_date', 'end_date')
 
 
+class CommissionTierInline(admin.TabularInline):
+    model = CommissionTier
+    extra = 1
+
+class RouteCommissionSetupInline(admin.TabularInline):
+    model = RouteCommissionSetup
+    extra = 1
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        today = date.today()
+        # Only active: end_date is null or greater/equal to today
+        return qs.filter(Q(end_date__isnull=True) | Q(end_date__gte=today))
+
+@admin.register(CommissionProfile)
+class CommissionProfileAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'is_active')
+    search_fields = ('name',)
+    list_filter = ('is_active',)
+    inlines = [CommissionTierInline, RouteCommissionSetupInline]
+
+
+@admin.register(RouteCommissionException)
+class RouteCommissionExceptionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'route', 'start_date', 'end_date', 'scope_tolerance_pct', 'guaranteed_flat_bonus')
+    search_fields = ('route__name', 'route__id')
+    list_filter = ('start_date', 'end_date')
+
+
+@admin.register(CommissionSettlement)
+class CommissionSettlementAdmin(admin.ModelAdmin):
+    list_display = ('id', 'employee', 'route', 'period_start', 'period_end', 'status', 'final_calculated_bonus')
+    search_fields = ('employee__user__first_name', 'employee__user__last_name', 'route__name', 'route__id')
+    list_filter = ('status', 'period_start', 'period_end')
+
+
+@admin.register(CommissionTier)
+class CommissionTierAdmin(admin.ModelAdmin):
+    list_display = ('id', 'commission_profile', 'min_global_scope_pct', 'min_completed_classes', 'bonus_multiplier_pct', 'extra_flat_bonus')
+    search_fields = ('commission_profile__name',)
+    list_filter = ('commission_profile',)
+
+
+@admin.register(RouteCommissionSetup)
+class RouteCommissionSetupAdmin(admin.ModelAdmin):
+    list_display = ('id', 'route', 'profile', 'start_date', 'end_date', 'bonus_type', 'base_bonus_amount')
+    search_fields = ('route__name', 'route__id', 'profile__name')
+    list_filter = ('start_date', 'end_date', 'bonus_type', 'profile')
