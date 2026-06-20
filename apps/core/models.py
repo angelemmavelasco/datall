@@ -786,6 +786,156 @@ class SaleTarget(models.Model):
 
 
 
+#commissions
+
+class CommissionProfile(models.Model):
+    """
+    Commission profiles are the base that define the rules that are gonna 
+    be applied in the calculation of the commissions.
+    This is a generalization of the commission system, so that we can have
+    different commission systems for different profiles.
+    """
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        db_table = 'commission_profiles'
+        verbose_name = 'Commission profile'
+        verbose_name_plural = 'Commission profiles'
+    
+    def __str__(self):
+        return self.name.strip().title()
+        
+class CommissionTier(models.Model):
+    """
+    Tier-based commission rules. This works as a range of values. For example, if the global rach is 90% and above, 
+    and the profile dont require min lines to complete, then, the multplier is gonne be applied on the potential bonus previously calculated.
+    
+    """
+    commission_profile = models.ForeignKey(CommissionProfile, on_delete=models.CASCADE, related_name='commission_tiers')
+
+    min_global_scope_pct = models.DecimalField(max_digits=5, decimal_places=2) #set from 0 to 100 +
+    min_completed_classes = models.IntegerField(default=0) #set as integer
+    bonus_multiplier_pct = models.DecimalField(max_digits=5, decimal_places=2)
+    extra_flat_bonus = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ['-min_global_scope_pct', '-min_completed_classes']
+        db_table = 'commission_tiers'
+        verbose_name = 'Commission tier'
+        verbose_name_plural = 'Commission tiers'
+
+    def __str__(self):
+        return f'{self.commission_profile.name}\nAlcance global: {self.min_global_scope_pct} %\nLíneas requeridas: {self.min_completed_classes}\nMultiplicador: {self.bonus_multiplier_pct}%\nBono extra (si aplica): {self.extra_flat_bonus}'
+    
+    
+class RouteCommissionSetup(models.Model):
+    """
+    Register the commission setup for a specific route in a specific period.
+    """ 
+    route = models.ForeignKey('Route', on_delete=models.CASCADE, related_name='commission_history')
+    profile = models.ForeignKey(CommissionProfile, on_delete=models.PROTECT)
+
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+
+
+    BONUS_CHOICES = (('f', 'fijo'), ('v', 'variable'))
+
+    bonus_type = models.CharField(max_length=10, choices=BONUS_CHOICES, default='v')
+    base_bonus_amount = models.DecimalField(max_digits=12, decimal_places=2)
+
+    def __str__(self):
+        return f'{self.route} | {self.profile} | {self.start_date} - {self.end_date}'
+
+    class Meta:
+        db_table = 'route_commission_setup'
+        verbose_name = 'Route commission setup'
+        verbose_name_plural = 'Route commission setups'
+
+
+class RouteCommissionException(models.Model):
+    """
+    Register the commission exception for a specific route in a specific period. For example, during a period
+    the route will receive an extra percentage of the global target scope. This is applicable for incoming employees
+    """
+
+    route = models.ForeignKey('Route', on_delete=models.CASCADE, related_name='commission_exceptions')
+    
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    scope_tolerance_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    guaranteed_flat_bonus = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    notes = models.CharField(max_length=255)
+
+    def __str__(self):
+        return f'{self.route} | tolerancia pct: {self.scope_tolerance_pct} % | monto garantizado: $ {self.guaranteed_flat_bonus} | desde {self.start_date} hasta {self.end_date}'
+    
+    class Meta:
+        db_table = 'route_commission_exception'
+        verbose_name = 'Route commission exception'
+        verbose_name_plural = 'Route commission exceptions'
+
+
+class CommissionSettlement(models.Model):
+
+    """
+    This table store the final commission amounts. It can be modified and recalculated only 
+    through the admin site or if the status is draft.
+    """
+
+    STATUS_CHOICES = (('draft', 'borrador'), ('closed', 'cerrado'))
+
+    period_start = models.DateField()
+    period_end = models.DateField()
+
+    route = models.ForeignKey('Route', on_delete=models.PROTECT)
+    employee = models.ForeignKey('Employee', on_delete=models.PROTECT)
+
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
+    calculated_at = models.DateTimeField(auto_now=True)
+
+    snapshot_profile_name = models.CharField(max_length=100)
+    snapshot_net_sales = models.DecimalField(max_digits=18, decimal_places=2)
+    snapshot_target = models.DecimalField(max_digits=18, decimal_places=2)
+    snapshot_global_scope = models.DecimalField(max_digits=8, decimal_places=2)
+    snapshot_completed_classes = models.IntegerField()
+    snapshot_base_bonus = models.DecimalField(max_digits=12, decimal_places=2)
+
+    final_calculated_bonus = models.DecimalField(max_digits=12, decimal_places=2)
+
+    #this field is only for manual adjustments made by the admin when the status is closed and there are unexpected results.
+    manual_adjustment = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    def __str__(self):
+        return f'{self.employee.user} | {self.route} | {self.period_start} - {self.period_end} | monto: ${self.final_calculated_bonus}'
+
+    class Meta:
+        db_table = 'commission_settlement'
+        verbose_name = 'Commission settlement'
+        verbose_name_plural = 'Commission settlements'
+        ordering = ['-period_start']
+    
+
+
+
+
+
+
+
+
+
+    
+    
+
+
+
+
+
+
+
 
 
 
