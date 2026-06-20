@@ -1,12 +1,20 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect,get_object_or_404
 from django.http import JsonResponse
+
+from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 
 from apps.human_resources.services.employees import employees_crud
-from apps.core.models import Position, Warehouse, Employee, PayrollType, Periodicity, TaxSystem
+from apps.core.models import (
+    Position, Warehouse, Employee, 
+    PayrollType, Periodicity, TaxSystem,
+    SystemModule, RouteCommissionSetup, CommissionProfile)
+from apps.core.utils import get_allowed_routes_for_user
+
+from apps.human_resources.services.comissions.comissions import Comissions
 
 User = get_user_model()
 
@@ -140,3 +148,201 @@ def get_org_chart_data(request):
     
     return JsonResponse(chart_data)
 
+
+
+@login_required
+def commissions(request):
+    user = request.user
+    template = 'human_resources/payroll/commissions.html'
+    module = SystemModule.objects.filter(url_name='human_resources:commissions').first()
+    allowed_routes = get_allowed_routes_for_user(user).order_by('id')
+
+    filters = {
+        'q': request.GET.get('q', '').strip(),
+        'status': request.GET.get('status', ''),
+        'min_classes': request.GET.get('min_classes', '')
+    }
+
+    comissions_service = Comissions(allowed_routes=allowed_routes)
+    profiles_data = comissions_service.commissions_read(filters)
+    
+    context = {
+        'routes': allowed_routes,
+        'profiles_data': profiles_data,
+        'filters': filters, 
+    }
+    
+    return render(request, template, context)
+
+
+@login_required
+def commission_profile_detail(request, cp_id: int):
+    user = request.user
+    template = 'human_resources/payroll/commission_profile_detail.html'
+    allowed_routes = get_allowed_routes_for_user(user).order_by('id')
+    profile = get_object_or_404(CommissionProfile, id=cp_id)
+    
+    if request.method == 'POST':
+        profile_data = {
+            'name': request.POST.get('name'),
+            'description': request.POST.get('description', ''),
+            'is_active': request.POST.get('is_active') == 'on'
+        }
+
+        #extract tiers
+        scopes = request.POST.getlist('min_global_scope_pct[]')
+        classes = request.POST.getlist('min_completed_classes[]')
+        multipliers = request.POST.getlist('bonus_multiplier_pct[]')
+        extras = request.POST.getlist('extra_flat_bonus[]')
+
+        tiers_data = []
+        for s, c, m, e in zip(scopes, classes, multipliers, extras):
+            if s and m: 
+                tiers_data.append({
+                    'min_global_scope_pct': s,
+                    'min_completed_classes': c,
+                    'bonus_multiplier_pct': m,
+                    'extra_flat_bonus': e or 0
+                })
+
+        #extract configurations
+        configs_data = []
+        i = 0
+        while f'start_date_{i}' in request.POST:
+            routes = request.POST.getlist(f'route_ids_{i}')
+            if routes:
+                configs_data.append({
+                    'start_date': request.POST.get(f'start_date_{i}'),
+                    'end_date': request.POST.get(f'end_date_{i}'),
+                    'bonus_type': request.POST.get(f'bonus_type_{i}'),
+                    'base_bonus_amount': request.POST.get(f'base_bonus_amount_{i}'),
+                    'routes': routes
+                })
+            i += 1
+
+        #security
+        allowed_route_ids = set(allowed_routes.values_list('id', flat=True))
+        all_submitted_routes = [r_id for config in configs_data for r_id in config['routes']]
+        invalid_routes = [r_id for r_id in all_submitted_routes if r_id not in allowed_route_ids]
+        
+        if invalid_routes:
+            messages.error(request, 'Error de seguridad: Intentaste asignar rutas sobre las cuales no tienes permiso.')
+            return redirect('human_resources:commission_profile_detail', cp_id=profile.id)
+
+        #service
+        service = Comissions()
+        try:
+            service.commission_profile_update(profile.id, profile_data, tiers_data, configs_data)
+            messages.success(request, 'El perfil de comisiones se actualizó correctamente.')
+            return redirect('human_resources:commission_profile_detail', cp_id=profile.id)
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f'Ocurrió un error inesperado: {str(e)}')
+
+    #group existing configurations to inject them into the template
+    grouped_configs = {}
+    for setup in profile.routecommissionsetup_set.all():
+        key = (setup.start_date, setup.end_date, setup.bonus_type, setup.get_bonus_type_display(), setup.base_bonus_amount)
+        if key not in grouped_configs:
+            grouped_configs[key] = []
+        grouped_configs[key].append(setup.route_id)
+        
+    configs_list = [
+        {
+            'start_date': k[0],
+            'end_date': k[1],
+            'bonus_type': k[2],
+            'bonus_type_display': k[3],
+            'base_bonus_amount': k[4],
+            'route_ids': v
+        } for k, v in grouped_configs.items()
+    ]
+
+    context = {
+        'profile': profile,
+        'routes': allowed_routes,
+        'commission_types': RouteCommissionSetup.BONUS_CHOICES,
+        'configs_list': configs_list,
+    }
+    
+    return render(request, template, context)
+
+
+
+
+
+
+@login_required
+def commission_profile_create(request):
+    user = request.user
+    template = 'human_resources/payroll/commission_profile_create.html'
+    allowed_routes = get_allowed_routes_for_user(user).order_by('id')
+    
+    if request.method == 'POST':
+        #general info
+        profile_data = {
+            'name': request.POST.get('name'),
+            'description': request.POST.get('description', ''),
+            'is_active': request.POST.get('is_active') == 'on'
+        }
+
+        #tiers extraction
+        scopes = request.POST.getlist('min_global_scope_pct[]')
+        classes = request.POST.getlist('min_completed_classes[]')
+        multipliers = request.POST.getlist('bonus_multiplier_pct[]')
+        extras = request.POST.getlist('extra_flat_bonus[]')
+
+        tiers_data = []
+        for s, c, m, e in zip(scopes, classes, multipliers, extras):
+            if s and m: # Ignorar vacíos
+                tiers_data.append({
+                    'min_global_scope_pct': s,
+                    'min_completed_classes': c,
+                    'bonus_multiplier_pct': m,
+                    'extra_flat_bonus': e or 0
+                })
+
+        #multiple config extration
+        configs_data = []
+        i = 0
+        while f'start_date_{i}' in request.POST:
+            routes = request.POST.getlist(f'route_ids_{i}')
+            if routes:
+                configs_data.append({
+                    'start_date': request.POST.get(f'start_date_{i}'),
+                    'end_date': request.POST.get(f'end_date_{i}'),
+                    'bonus_type': request.POST.get(f'bonus_type_{i}'),
+                    'base_bonus_amount': request.POST.get(f'base_bonus_amount_{i}'),
+                    'routes': routes
+                })
+            i += 1
+
+        #allowed routes validation
+        allowed_route_ids = set(allowed_routes.values_list('id', flat=True))
+        all_submitted_routes = [r_id for config in configs_data for r_id in config['routes']]
+        invalid_routes = [r_id for r_id in all_submitted_routes if r_id not in allowed_route_ids]
+        
+        if invalid_routes:
+            messages.error(request, 'Error de seguridad: Intentaste asignar rutas sobre las cuales no tienes permiso.')
+            return redirect('human_resources:commission_profile_create')
+
+        service = Comissions()
+        try:
+            service.commission_profile_create(profile_data, tiers_data, configs_data)
+            messages.success(request, 'El perfil de comisiones y sus asignaciones se guardaron correctamente.')
+            return redirect('human_resources:commissions') 
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f'Ocurrió un error inesperado: {str(e)}')
+
+    context = {
+        'routes': allowed_routes,
+        'commission_types': RouteCommissionSetup.BONUS_CHOICES,
+    }
+    
+    return render(request, template, context)
+    
+    
+    

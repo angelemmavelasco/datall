@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Nuevo perfil de comisión{% endblock %}
+{% block module_name %}Nuevo perfil de comisión{% endblock %}
+
+{% block module_actions %}
+<button type="submit" form="create-commission-profile-form" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+    <span>Confirmar perfil de comisión</span>
+</button>
+
+<a href="{% url 'human_resources:commissions' %}" class="hover:text-hover text-red-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+    <span>Cancelar</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<form method="POST" class="flex flex-col gap-4" id="create-commission-profile-form">
+    {% csrf_token %}
+
+    <p class="text-title text-sm">Datos generales</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+      <span class="text-title">Nombre</span>
+      <div class="bg-page border border-border p-1">
+        <input type="text" name="name" class="edit-el text-body w-full outline-none" required>
+      </div>
+
+      <span class="text-title">Descripción</span>
+      <div class="bg-page border border-border p-1">
+        <textarea name="description" class="edit-el text-body w-full outline-none"></textarea>
+      </div>
+
+      <div class="flex items-center gap-4">
+          <span class="text-title">Activo</span>
+          <input type="checkbox" name="is_active" class="edit-el text-body outline-none" checked>
+      </div>
+    </div>
+
+    <p class="text-title text-sm flex items-center justify-between gap-10">
+        <span>Umbrales</span>
+        <button type="button" id="btn-add-tier" class="flex items-center gap-2 cursor-pointer hover:text-hover transition-colors outline-none">
+            Agregar umbral
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+        </button>
+    </p>
+    <hr class="border-border border">
+
+<div id="tiers-container" class="flex flex-col gap-2">
+    <div class="tier-row grid grid-cols-4 gap-4 items-center bg-container p-4 pr-12 rounded relative">
+        
+        <div class="grid grid-cols-2 gap-2 items-center">
+            <span class="text-title">Alcance global <br>mínimo (%)</span>
+            <div class="bg-page border border-border p-1 w-full">
+                <input type="number" name="min_global_scope_pct[]" class="edit-el text-body w-full outline-none" value="100" max="150" min="0" step="any" required>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 items-center">
+            <span class="text-title">Clases completadas mínimas</span>
+            <div class="bg-page border border-border p-1 w-full">
+                <input type="number" name="min_completed_classes[]" class="edit-el text-body w-full outline-none" value="4" min="0" max="10" required>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 items-center">
+            <span class="text-title">Multiplicador (%)</span>
+            <div class="bg-page border border-border p-1 w-full">
+                <input type="number" name="bonus_multiplier_pct[]" class="edit-el text-body w-full outline-none" value="100" max="100" min="0" step="any" required>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 items-center">
+            <span class="text-title">Bono extra (si aplica)</span>
+            <div class="bg-page border border-border p-1">
+                <input type="number" name="extra_flat_bonus[]" class="edit-el text-body w-full outline-none" value="0" step="any">
+            </div>
+        </div>
+        
+        <button type="button" class="remove-tier hidden absolute top-3 right-3 text-red-600 hover:text-red-800 cursor-pointer transition-colors" title="Eliminar umbral">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="m15 9-6 6"/>
+                <path d="m9 9 6 6"/>
+            </svg>
+        </button>
+
+    </div>
+</div>
+
+    <p class="text-title text-sm flex items-center justify-between gap-10 mt-4">
+        <span>Configuración de rutas</span>
+        <button type="button" id="btn-add-config" class="flex items-center gap-2 cursor-pointer hover:text-hover transition-colors outline-none">
+            Agregar configuración
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+        </button>
+    </p>
+    <hr class="border-border border">
+
+    <div id="configs-container" class="flex flex-col gap-4">
+        <div class="config-block grid grid-cols-4 gap-2 items-center bg-container p-2 rounded overflow-y-auto min-h-20 max-h-100 relative">
+            <button type="button" class="remove-config hidden absolute top-2 right-2 text-red-600 hover:text-red-800 cursor-pointer" title="Eliminar configuración">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            </button>
+
+            <div class="col-span-4 grid grid-cols-4 gap-4 items-center mb-4 mt-4">
+                <div class="flex gap-2 items-center">
+                    <span class="text-title">Fecha inicio</span>
+                    <input type="date" name="start_date_0" class="edit-el text-body outline-none p-1 bg-page border border-border rounded w-40">
+                </div>
+
+                <div class="flex gap-2 items-center">
+                    <span class="text-title">Fecha fin</span>
+                    <input type="date" name="end_date_0" class="edit-el text-body outline-none p-1 bg-page border border-border rounded w-40">
+                </div>
+
+                <div class="flex gap-2 items-center">
+                    <span class="text-title">Tipo de comisión</span>
+                    <select name="bonus_type_0" class="edit-el text-body outline-none p-1 bg-page border border-border rounded w-40">
+                        <option value="" class="text-body">Seleccionar</option>
+                        {% for type in commission_types %}
+                            <option value="{{ type.0 }}" class="text-body">{{ type.1|title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex gap-2 items-center">
+                    <span class="text-title">Bono base</span>
+                    <input type="number" name="base_bonus_amount_0" class="edit-el text-body outline-none p-1 bg-page border border-border rounded w-40" max="100000" min="0" step="any" value="0">
+                </div>
+            </div>
+
+            <div class="col-span-4 flex items-center justify-between gap-4 mb-5 border-t border-border pt-4">
+                <label class="flex items-center justify-start gap-4 w-full cursor-pointer">
+                    <input type="checkbox" class="select-all-routes edit-el text-body cursor-pointer">
+                    <span class="text-title">Seleccionar todas</span>
+                </label>
+        
+                <div class="flex items-center justify-start gap-4 w-full bg-page border border-border rounded">
+                    <input type="search" class="search-route-input edit-el text-body w-full outline-none p-1" placeholder="Buscar ruta...">
+                </div>
+            </div>
+
+            <div class="routes-list col-span-4 grid grid-cols-2 gap-4">
+                {% for route in routes %}
+                    <div class="route-item flex items-center gap-4" data-search="{{ route.id|lower }} {{ route.name|lower }}">
+                        <label class="flex items-center justify-start gap-4 w-full cursor-pointer">
+                            <input type="checkbox" name="route_ids_0" value="{{ route.id }}" class="route-checkbox edit-el text-body outline-none cursor-pointer">
+                            <span class="text-title">{{ route.id }}. {{ route.name|title }}</span>
+                        </label>
+                    </div>
+                {% empty %}
+                    <span class="text-body col-span-2">No tienes rutas disponibles para asignar.</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // === 1. LÓGICA DE UMBRALES ===
+    const btnAddTier = document.getElementById('btn-add-tier');
+    const tiersContainer = document.getElementById('tiers-container');
+
+    btnAddTier.addEventListener('click', function() {
+        const firstRow = tiersContainer.querySelector('.tier-row');
+        const newRow = firstRow.cloneNode(true);
+        
+        const inputs = newRow.querySelectorAll('input');
+        inputs.forEach(input => {
+            if(input.name !== 'min_completed_classes[]') {
+                input.value = (input.name === 'extra_flat_bonus[]') ? '0' : '';
+            }
+        });
+
+        const removeBtn = newRow.querySelector('.remove-tier');
+        removeBtn.classList.remove('hidden');
+        removeBtn.addEventListener('click', () => newRow.remove());
+
+        tiersContainer.appendChild(newRow);
+    });
+
+    // === 2. LÓGICA DE CONFIGURACIONES DE RUTAS MÚLTIPLES ===
+    const btnAddConfig = document.getElementById('btn-add-config');
+    const configsContainer = document.getElementById('configs-container');
+    let configIndex = 0; // Índice global para diferenciar los inputs en Django (ej. start_date_1, start_date_2)
+
+    btnAddConfig.addEventListener('click', function() {
+        configIndex++;
+        const firstBlock = configsContainer.querySelector('.config-block');
+        const newBlock = firstBlock.cloneNode(true);
+        
+        // Actualizar el atributo 'name' de todos los inputs para que terminen con el nuevo índice
+        const inputs = newBlock.querySelectorAll('[name]');
+        inputs.forEach(input => {
+            // Reemplaza el número final (ej. route_ids_0 -> route_ids_1)
+            input.name = input.name.replace(/_\d+$/, '_' + configIndex);
+            
+            // Limpiar valores
+            if(input.type === 'checkbox' || input.type === 'radio') {
+                input.checked = false;
+            } else if (input.tagName === 'SELECT') {
+                input.selectedIndex = 0;
+            } else {
+                input.value = input.name.startsWith('base_bonus_amount') ? '0' : '';
+            }
+        });
+
+        // Limpiar inputs que no tienen name (ej. buscador, select-all)
+        newBlock.querySelector('.select-all-routes').checked = false;
+        newBlock.querySelector('.search-route-input').value = '';
+        
+        // Mostrar todas las rutas de nuevo
+        newBlock.querySelectorAll('.route-item').forEach(item => item.style.display = 'flex');
+
+        // Botón eliminar
+        const removeBtn = newBlock.querySelector('.remove-config');
+        removeBtn.classList.remove('hidden');
+        removeBtn.addEventListener('click', () => newBlock.remove());
+
+        configsContainer.appendChild(newBlock);
+    });
+
+    configsContainer.addEventListener('input', function(e) {
+        if (e.target.classList.contains('search-route-input')) {
+            const term = e.target.value.toLowerCase();
+            const block = e.target.closest('.config-block');
+            const routeItems = block.querySelectorAll('.route-item');
+
+            routeItems.forEach(item => {
+                const searchText = item.getAttribute('data-search');
+                item.style.display = searchText.includes(term) ? 'flex' : 'none';
+            });
+        }
+    });
+
+    configsContainer.addEventListener('change', function(e) {
+        if (e.target.classList.contains('select-all-routes')) {
+            const block = e.target.closest('.config-block');
+            const isChecked = e.target.checked;
+            const checkboxes = block.querySelectorAll('.route-checkbox');
+
+            checkboxes.forEach(cb => {
+                const parentItem = cb.closest('.route-item');
+                if (parentItem.style.display !== 'none') {
+                    cb.checked = isChecked;
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

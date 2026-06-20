@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% load humanize %}
+
+{% block title %}Perfiles de comisión{% endblock %}
+
+{% block module_name %}Perfiles de comisión{% endblock %}
+
+{% block module_actions %}
+
+    <a href="{% url 'human_resources:commission_profile_create' %}" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2">Nuevo perfil de comisión</a>
+
+    <button onclick="toggleFilters()"
+        class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+            <path d="M10 5H3" />
+            <path d="M12 19H3" />
+            <path d="M14 3v4" />
+            <path d="M16 17v4" />
+            <path d="M21 12h-9" />
+            <path d="M21 19h-5" />
+            <path d="M21 5h-7" />
+            <path d="M8 10v4" />
+            <path d="M8 12H3" />
+        </svg>
+        <span>Filtrar</span>
+    </button>
+
+{% endblock %}
+
+{% block filters %}
+<form method="GET" action="" class="flex flex-col gap-4">
+
+    <div class="flex flex-col gap-1">
+        <label for="q" class="text-title text-sm">Buscar por nombre</label>
+        <input type="text" name="q" id="q" value="{{ filters.q }}" placeholder="Ej. Perfil Base..." class="edit-el text-body bg-page border border-border p-2 rounded outline-none w-full">
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="status" class="text-title text-sm">Estado</label>
+        <select name="status" id="status" class="edit-el text-body bg-page border border-border p-2 rounded outline-none w-full">
+            <option value="">Todos</option>
+            <option value="1" {% if filters.status == '1' %}selected{% endif %}>Activos</option>
+            <option value="0" {% if filters.status == '0' %}selected{% endif %}>Inactivos</option>
+        </select>
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="min_classes" class="text-title text-sm">Clases mínimas (Umbrales)</label>
+        <input type="number" name="min_classes" id="min_classes" value="{{ filters.min_classes }}" min="0" placeholder="Ej. 4" class="edit-el text-body bg-page border border-border p-2 rounded outline-none w-full">
+    </div>
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar filtros</button>
+        <a href="{{ request.path }}" class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar filtros</a>
+    </div>
+
+</form>
+{% endblock %}
+
+{% block content %}
+    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+        <table class="w-full min-w-max text-left border-separate border-spacing-0">
+            <thead>
+                <tr class="">
+                    <th class="min-w-60 p-2 text-center text-title border-b  border-border">Perfil</th>
+                    <th class="min-w-20 p-2 text-center text-title border-b border-border">Estado</th>
+                    <th class="min-w-20 p-2 text-center text-title border-b border-border">Rutas asociadas</th>
+                    <th class="min-w-20 p-2 text-center text-title border-b border-border">Umbrales aplicables</th>
+                    <th class="min-w-20 p-2 text-center text-title border-b border-border">Reportes generados</th>
+                    <th class="min-w-40 p-2 text-center text-title border-b border-border">Total pagado</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for profile in profiles_data %}
+                <tr class="hover:bg-hover transition-colors">
+
+                    <td class="p-2">
+                        <div class="flex flex-col">
+                            <a href="{% url 'human_resources:commission_profile_detail' profile.id %}" target="_blank" class="flex items-center gap-2 underline text-strong">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
+                                <span>{{ profile.name|title|default:'-' }}</span>
+                            </a>
+                            <span class="text-xs text-gray-500 truncate max-w-xs" title="{{ profile.description }}">
+                                {{ profile.description|title|default:'Sin descripción' }}
+                            </span>
+                        </div>
+                    </td>
+                    
+                    <td class="p-2 truncate text-center ">
+                        {% if profile.is_active %}
+                        <span class="text-green-600 font-medium">
+                            Activo
+                        </span>
+                        {% else %}
+                        <span class="text-red-600 font-medium">
+                            Inactivo
+                        </span>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="p-2 truncate text-center ">{{ profile.associated_routes_count|floatformat:0|intcomma }}</td>
+                    <td class="p-2 truncate text-center ">{{ profile.applicable_tiers_count|floatformat:0|intcomma }}</td>
+                    <td class="p-2 truncate text-center ">{{ profile.generated_reports_count|floatformat:0|intcomma }}</td>
+                    <td class="p-2 truncate text-right ">$ {{ profile.total_paid_sum|floatformat:2|intcomma }}</td>
+                </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="p-4 text-center text-body">No se encontraron perfiles de comisión que coincidan con los filtros.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
