@@ -1,0 +1,240 @@
+:root {
+    /* Mapeo de colores claros de Tailwind a variables de Django Admin */
+    --primary: oklch(37.2% 0.044 257.287); /* text-strong */
+    --secondary: oklch(44.6% 0.03 256.802); /* text-title */
+    --accent: oklch(70.7% 0.022 261.325); /* hover */
+    --primary-fg: #fff;
+
+    --body-fg: oklch(12.9% 0.042 264.695); /* text-body */
+    --body-bg: oklch(98.4% 0.003 247.858); /* bg-page */
+    --body-quiet-color: oklch(55.4% 0.046 257.417); /* placeholder */
+    --body-loud-color: oklch(37.2% 0.044 257.287); /* text-strong */
+
+    --header-color: oklch(12.9% 0.042 264.695); /* text-body */
+    --header-branding-color: oklch(12.9% 0.042 264.695);
+    --header-bg: oklch(98.4% 0.003 247.858); /* bg-page */
+    --header-link-color: oklch(12.9% 0.042 264.695);
+
+    --breadcrumbs-fg: oklch(12.9% 0.042 264.695);
+    --breadcrumbs-link-fg: oklch(37.2% 0.044 257.287);
+    --breadcrumbs-bg: oklch(94.6% 0.01 255); /* bg-container */
+
+    --link-fg: oklch(37.2% 0.044 257.287);
+    --link-hover-color: oklch(70.7% 0.022 261.325);
+    --link-selected-fg: oklch(37.2% 0.044 257.287);
+
+    --hairline-color: oklch(86.9% 0.022 252.894); /* border */
+    --border-color: oklch(86.9% 0.022 252.894);
+
+    --error-fg: oklch(25.8% 0.092 26.042);
+    --message-success-bg: oklch(86.9% 0.022 252.894);
+    --message-warning-bg: oklch(83.7% 0.128 66.29);
+    --message-error-bg: oklch(80.8% 0.114 19.571);
+
+    --darkened-bg: oklch(94.6% 0.01 255); /* bg-container */
+    --selected-bg: oklch(94.6% 0.01 255);
+    --selected-row: oklch(94.6% 0.01 255);
+
+    --button-fg: #fff;
+    --button-bg: oklch(37.2% 0.044 257.287);
+    --button-hover-bg: oklch(44.6% 0.03 256.802);
+    --default-button-bg: oklch(37.2% 0.044 257.287);
+    --default-button-hover-bg: oklch(44.6% 0.03 256.802);
+    --close-button-bg: oklch(55.4% 0.046 257.417);
+    --close-button-hover-bg: oklch(44.6% 0.03 256.802);
+    --delete-button-bg: oklch(80.8% 0.114 19.571);
+    --delete-button-hover-bg: oklch(25.8% 0.092 26.042);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --primary: oklch(78% 0.035 256.788);
+        --secondary: oklch(70.7% 0.022 261.325);
+        --accent: oklch(44.6% 0.03 256.802);
+        --primary-fg: oklch(13% 0.028 261.692);
+
+        --body-fg: oklch(98.4% 0.003 247.858);
+        --body-bg: oklch(13% 0.028 261.692);
+        --body-quiet-color: oklch(55.4% 0.046 257.417);
+        --body-loud-color: oklch(78% 0.035 256.788);
+
+        --header-color: oklch(98.4% 0.003 247.858);
+        --header-branding-color: oklch(98.4% 0.003 247.858);
+        --header-bg: oklch(13% 0.028 261.692);
+        --header-link-color: oklch(98.4% 0.003 247.858);
+
+        --breadcrumbs-fg: oklch(98.4% 0.003 247.858);
+        --breadcrumbs-link-fg: oklch(78% 0.035 256.788);
+        --breadcrumbs-bg: oklch(18% 0.033 260);
+
+        --link-fg: oklch(78% 0.035 256.788);
+        --link-hover-color: oklch(44.6% 0.03 256.802);
+        --link-selected-fg: oklch(78% 0.035 256.788);
+
+        --hairline-color: oklch(27.9% 0.041 260.031);
+        --border-color: oklch(27.9% 0.041 260.031);
+
+        --darkened-bg: oklch(18% 0.033 260);
+        --selected-bg: oklch(18% 0.033 260);
+        --selected-row: oklch(18% 0.033 260);
+
+        --button-fg: oklch(13% 0.028 261.692);
+        --button-bg: oklch(78% 0.035 256.788);
+        --button-hover-bg: oklch(70.7% 0.022 261.325);
+        --default-button-bg: oklch(78% 0.035 256.788);
+        --default-button-hover-bg: oklch(70.7% 0.022 261.325);
+        --close-button-bg: oklch(55.4% 0.046 257.417);
+        --close-button-hover-bg: oklch(70.7% 0.022 261.325);
+        --delete-button-bg: oklch(80.8% 0.114 19.571);
+        --delete-button-hover-bg: oklch(25.8% 0.092 26.042);
+    }
+}
+
+[data-theme="dark"] {
+    --primary: oklch(78% 0.035 256.788);
+    --secondary: oklch(70.7% 0.022 261.325);
+    --accent: oklch(44.6% 0.03 256.802);
+    --primary-fg: oklch(13% 0.028 261.692);
+
+    --body-fg: oklch(98.4% 0.003 247.858);
+    --body-bg: oklch(13% 0.028 261.692);
+    --body-quiet-color: oklch(55.4% 0.046 257.417);
+    --body-loud-color: oklch(78% 0.035 256.788);
+
+    --header-color: oklch(98.4% 0.003 247.858);
+    --header-branding-color: oklch(98.4% 0.003 247.858);
+    --header-bg: oklch(13% 0.028 261.692);
+    --header-link-color: oklch(98.4% 0.003 247.858);
+
+    --breadcrumbs-fg: oklch(98.4% 0.003 247.858);
+    --breadcrumbs-link-fg: oklch(78% 0.035 256.788);
+    --breadcrumbs-bg: oklch(18% 0.033 260);
+
+    --link-fg: oklch(78% 0.035 256.788);
+    --link-hover-color: oklch(44.6% 0.03 256.802);
+    --link-selected-fg: oklch(78% 0.035 256.788);
+
+    --hairline-color: oklch(27.9% 0.041 260.031);
+    --border-color: oklch(27.9% 0.041 260.031);
+
+    --darkened-bg: oklch(18% 0.033 260);
+    --selected-bg: oklch(18% 0.033 260);
+    --selected-row: oklch(18% 0.033 260);
+
+    --button-fg: oklch(13% 0.028 261.692);
+    --button-bg: oklch(78% 0.035 256.788);
+    --button-hover-bg: oklch(70.7% 0.022 261.325);
+    --default-button-bg: oklch(78% 0.035 256.788);
+    --default-button-hover-bg: oklch(70.7% 0.022 261.325);
+    --close-button-bg: oklch(55.4% 0.046 257.417);
+    --close-button-hover-bg: oklch(70.7% 0.022 261.325);
+    --delete-button-bg: oklch(80.8% 0.114 19.571);
+    --delete-button-hover-bg: oklch(25.8% 0.092 26.042);
+}
+
+/* Ajustes finos específicos del template base de Django para igualar base.html */
+body {
+    background-color: var(--body-bg) !important;
+    color: var(--body-fg) !important;
+}
+
+#header {
+    background-color: var(--body-bg) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    color: var(--header-color) !important;
+}
+
+#branding {
+    background-color: transparent !important;
+}
+
+#branding h1, #branding h1 a {
+    color: var(--secondary) !important;
+    font-weight: normal !important;
+}
+
+#user-tools {
+    color: var(--body-fg) !important;
+    font-weight: normal !important;
+}
+
+#user-tools a {
+    color: var(--secondary) !important;
+    font-weight: normal !important;
+}
+
+#user-tools a:hover {
+    color: var(--accent) !important;
+}
+
+div.breadcrumbs {
+    background-color: var(--body-bg) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    color: var(--body-fg) !important;
+}
+
+div.breadcrumbs a {
+    color: var(--secondary) !important;
+}
+
+#content {
+    background-color: var(--body-bg) !important;
+}
+
+/* Contenedores estilo "bg-container" */
+.module, #content-related {
+    background-color: var(--darkened-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px;
+}
+
+.module h2, .module caption, .inline-group h2 {
+    background: var(--darkened-bg) !important;
+    color: var(--secondary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    font-weight: normal !important;
+}
+
+table thead th {
+    background-color: var(--darkened-bg) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+table tbody tr {
+    border-bottom: 1px solid var(--hairline-color) !important;
+    background-color: var(--darkened-bg) !important;
+}
+
+table tbody tr:hover {
+    background-color: var(--body-bg) !important;
+}
+
+input, textarea, select {
+    border: 1px solid var(--border-color) !important;
+    background-color: var(--body-bg) !important;
+    color: var(--body-fg) !important;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+}
+
+a:link, a:visited {
+    color: var(--secondary) !important;
+}
+
+a:hover {
+    color: var(--accent) !important;
+}
+
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+    background-color: var(--body-bg) !important;
+    color: var(--primary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 4px !important;
+    font-weight: normal !important;
+    transition: background-color 0.2s;
+}
+
+.button:hover, input[type=submit]:hover, input[type=button]:hover, .submit-row input:hover, a.button:hover {
+    background-color: var(--darkened-bg) !important;
+    color: var(--accent) !important;
+}

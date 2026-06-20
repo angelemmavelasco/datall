@@ -1,0 +1,77 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | Datall Admin{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'css/admin_theme.css' %}">
+<style>
+    /* Forzar tipografía simple similar a Tailwind */
+    body {
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    }
+    
+    /* Variables de Django (theme toggle de Django >= 4.2) */
+    html[data-theme="dark"], body.dark {
+        --primary: oklch(78% 0.035 256.788);
+        --secondary: oklch(70.7% 0.022 261.325);
+        --accent: oklch(44.6% 0.03 256.802);
+        --primary-fg: oklch(13% 0.028 261.692);
+
+        --body-fg: oklch(98.4% 0.003 247.858);
+        --body-bg: oklch(13% 0.028 261.692);
+        --body-quiet-color: oklch(55.4% 0.046 257.417);
+        --body-loud-color: oklch(78% 0.035 256.788);
+
+        --header-color: oklch(98.4% 0.003 247.858);
+        --header-branding-color: oklch(98.4% 0.003 247.858);
+        --header-bg: oklch(13% 0.028 261.692);
+        --header-link-color: oklch(98.4% 0.003 247.858);
+
+        --breadcrumbs-fg: oklch(98.4% 0.003 247.858);
+        --breadcrumbs-link-fg: oklch(78% 0.035 256.788);
+        --breadcrumbs-bg: oklch(18% 0.033 260);
+
+        --link-fg: oklch(78% 0.035 256.788);
+        --link-hover-color: oklch(44.6% 0.03 256.802);
+        --link-selected-fg: oklch(78% 0.035 256.788);
+
+        --hairline-color: oklch(27.9% 0.041 260.031);
+        --border-color: oklch(27.9% 0.041 260.031);
+
+        --darkened-bg: oklch(18% 0.033 260);
+        --selected-bg: oklch(18% 0.033 260);
+        --selected-row: oklch(18% 0.033 260);
+
+        --button-fg: oklch(13% 0.028 261.692);
+        --button-bg: oklch(78% 0.035 256.788);
+        --button-hover-bg: oklch(70.7% 0.022 261.325);
+        --default-button-bg: oklch(78% 0.035 256.788);
+        --default-button-hover-bg: oklch(70.7% 0.022 261.325);
+        --close-button-bg: oklch(55.4% 0.046 257.417);
+        --close-button-hover-bg: oklch(70.7% 0.022 261.325);
+        --delete-button-bg: oklch(80.8% 0.114 19.571);
+        --delete-button-hover-bg: oklch(25.8% 0.092 26.042);
+    }
+</style>
+<script>
+    // Sincronizar el tema con localStorage de la app
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.body.classList.add('dark');
+        } else if (savedTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+            document.body.classList.remove('dark');
+        }
+    });
+</script>
+{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">Datall</a></h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
