@@ -1,9 +1,15 @@
 from django.db import transaction
-from apps.core.models import CommissionProfile, CommissionTier, RouteCommissionSetup, CommissionSettlement
+from apps.core.models import (
+    CommissionProfile,
+    CommissionTier,
+    RouteCommissionSetup,
+    CommissionSettlement,
+    RouteCommissionException,
+    RouteAssignment)
 from datetime import datetime
-from django.db.models import Count, Sum, Q, Subquery, OuterRef, IntegerField, DecimalField
+from django.db.models import Count, Sum, Q, Subquery, OuterRef, IntegerField, DecimalField, CharField, Value
 from decimal import Decimal
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, Concat
 
 
 class Comissions:
@@ -192,4 +198,86 @@ class Comissions:
             self.configure_profile_to_route(profile, config)
             
         return profile
+
+
+
+
+
+class CommissionExceptions:
+    def __init__(self, allowed_routes=None, *args, **kwargs):
+        self.allowed_routes = allowed_routes
+
+    def read(self, **kwargs):
+        qs = RouteCommissionException.objects.filter(route__in=self.allowed_routes)
         
+        if 'q' in kwargs and kwargs['q']:
+            qs = qs.filter(route__id__icontains=kwargs['q'])
+            
+        if 'status' in kwargs and kwargs['status'] in ['1', '0']:
+            is_active = kwargs['status'] == '1'
+            qs = qs.filter(route__is_active=is_active)
+            
+        if 'min_tolerance' in kwargs and kwargs['min_tolerance']:
+            qs = qs.filter(scope_tolerance_pct__gte=kwargs['min_tolerance'])
+            
+        if 'start_date' in kwargs and kwargs['start_date']:
+            qs = qs.filter(start_date__gte=kwargs['start_date'])
+            
+        if 'end_date' in kwargs and kwargs['end_date']:
+            qs = qs.filter(end_date__lte=kwargs['end_date'])
+            
+        return qs
+
+    def get_data(self, **kwargs):
+        qs = self.read(**kwargs)
+
+        assignments = RouteAssignment.objects.filter(
+            route=OuterRef('route'),
+            start_date__lte=OuterRef('end_date')
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=OuterRef('start_date'))
+        ).order_by('-start_date')
+
+        first_name_sq = assignments.values('employee__user__first_name')[:1]
+        last_name_sq = assignments.values('employee__user__last_name')[:1]
+
+        qs = qs.annotate(
+            first_name=Subquery(first_name_sq),
+            last_name=Subquery(last_name_sq)
+        ).annotate(
+            employee=Concat('first_name', Value(' '), 'last_name', output_field=CharField())
+        ).order_by('-start_date', 'route__id')
+
+        return qs
+
+    def create(self, **kwargs):
+        return RouteCommissionException.objects.create(**kwargs)
+
+    def create_multiple(self, route_ids, exception_data):
+        valid_routes = self.allowed_routes.filter(id__in=route_ids)
+        
+        exceptions_to_create = []
+        for route in valid_routes:
+            exceptions_to_create.append(
+                RouteCommissionException(
+                    route=route,
+                    **exception_data
+                )
+            )
+        
+        if exceptions_to_create:
+            RouteCommissionException.objects.bulk_create(exceptions_to_create)
+            
+        return len(exceptions_to_create)
+
+    def update(self, exception_id, **kwargs):
+        exception = RouteCommissionException.objects.get(id=exception_id, route__in=self.allowed_routes)
+        for key, value in kwargs.items():
+            setattr(exception, key, value)
+        exception.save()
+        return exception
+
+    def delete(self, exception_id):
+        exception = RouteCommissionException.objects.get(id=exception_id, route__in=self.allowed_routes)
+        exception.delete()
+        return True

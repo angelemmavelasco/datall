@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% load humanize %}
+
+{% block title %}Excepciones sobre comisiones{% endblock %}
+
+{% block module_name %}Excepciones sobre comisiones{% endblock %}
+
+{% block module_actions %}
+
+
+    <a href="{% url 'human_resources:commission_exception_create' %}" target="_blank" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2">Nueva excepción</a>
+
+    <button onclick="toggleFilters()"
+        class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+            <path d="M10 5H3" />
+            <path d="M12 19H3" />
+            <path d="M14 3v4" />
+            <path d="M16 17v4" />
+            <path d="M21 12h-9" />
+            <path d="M21 19h-5" />
+            <path d="M21 5h-7" />
+            <path d="M8 10v4" />
+            <path d="M8 12H3" />
+        </svg>
+        <span>Filtrar</span>
+    </button>
+
+{% endblock %}
+
+{% block filters %}
+<form method="GET" action="" class="flex flex-col gap-4">
+
+    <div class="flex flex-col gap-1">
+        <label for="q_route" class="text-title text-sm">Ruta (ID)</label>
+        <input type="text" name="q_route" id="q_route" value="{{ filters.q_route }}" placeholder="Ej. 101..." class="edit-el text-body bg-page border border-border p-1 rounded outline-none w-full">
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="q_employee" class="text-title text-sm">Colaborador</label>
+        <input type="text" name="q_employee" id="q_employee" value="{{ filters.q_employee }}" placeholder="Ej. Juan Perez..." class="edit-el text-body bg-page border border-border p-1 rounded outline-none w-full">
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+        <div class="flex flex-col gap-1">
+            <label for="start_date" class="text-title text-sm">Desde</label>
+            <input type="date" name="start_date" id="start_date" value="{{ filters.start_date }}" class="edit-el text-body bg-page border border-border p-1 rounded outline-none w-full">
+        </div>
+        <div class="flex flex-col gap-1">
+            <label for="end_date" class="text-title text-sm">Hasta</label>
+            <input type="date" name="end_date" id="end_date" value="{{ filters.end_date }}" class="edit-el text-body bg-page border border-border p-1 rounded outline-none w-full">
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+        <div class="flex flex-col gap-1">
+            <label for="min_pct" class="text-title text-sm">Min (%)</label>
+            <input type="number" name="min_pct" id="min_pct" value="{{ filters.min_pct }}" min="0" step="any" placeholder="Ej. 0" class="edit-el text-body bg-page border border-border p-1 rounded outline-none w-full">
+        </div>
+        <div class="flex flex-col gap-1">
+            <label for="max_pct" class="text-title text-sm">Max (%)</label>
+            <input type="number" name="max_pct" id="max_pct" value="{{ filters.max_pct }}" min="0" step="any" placeholder="Ej. 100" class="edit-el text-body bg-page border border-border p-1 rounded outline-none w-full">
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+        <div class="flex flex-col gap-1">
+            <label for="min_amount" class="text-title text-sm">Min ($)</label>
+            <input type="number" name="min_amount" id="min_amount" value="{{ filters.min_amount }}" min="0" step="any" placeholder="Ej. 1000" class="edit-el text-body bg-page border border-border p-1 rounded outline-none w-full">
+        </div>
+        <div class="flex flex-col gap-1">
+            <label for="max_amount" class="text-title text-sm">Max ($)</label>
+            <input type="number" name="max_amount" id="max_amount" value="{{ filters.max_amount }}" min="0" step="any" placeholder="Ej. 5000" class="edit-el text-body bg-page border border-border p-1 rounded outline-none w-full">
+        </div>
+    </div>
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-1 rounded transition-colors cursor-pointer w-full">Aplicar filtros</button>
+        <a href="{{ request.path }}" class="bg-page border border-border text-strong hover:bg-hover p-1 rounded transition-colors cursor-pointer w-full text-center">Limpiar filtros</a>
+    </div>
+
+</form>
+{% endblock %}
+
+
+
+{% block content %}
+    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+        <table class="w-full min-w-max text-left border-separate border-spacing-0">
+            <thead>
+                <tr class="">
+                    <th class="min-w-20 p-2 text-center text-title border-b  border-border">Ruta</th>
+                    <th class="min-w-40 p-2 text-center text-title border-b border-border">Colaborador</th>
+                    <th class="min-w-20 p-2 text-center text-title border-b border-border">Desde</th>
+                    <th class="min-w-20 p-2 text-center text-title border-b border-border">Hasta</th>
+                    <th class="min-w-20 p-2 text-center text-title border-b border-border">Porcentaje de tolerancia</th>
+                    <th class="min-w-40 p-2 text-center text-title border-b border-border">Monto garantizado</th>
+                    <th class="min-w-40 p-2 text-center text-title border-b border-border">Notas</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for exception in exceptions %}
+                <tr class="hover:bg-hover transition-colors">
+
+                    <td class="p-2">
+                        <a href="" target="_blank" class="flex items-center gap-2 underline text-strong">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
+                            <span>{{ exception.route.id|upper }}</span>
+                        </a>
+                    </td>
+                    
+                    <td class="p-2 truncate text-center ">{{ exception.employee|title|default:"-" }}</td>
+                    
+                    <td class="p-2 truncate text-center ">{{ exception.start_date|date:"d/m/Y" }}</td>
+                    <td class="p-2 truncate text-center ">{{ exception.end_date|date:"d/m/Y" }}</td>
+                    <td class="p-2 truncate text-center ">{{ exception.scope_tolerance_pct|floatformat:2|intcomma }} %</td>
+                    <td class="p-2 truncate text-right ">$ {{ exception.guaranteed_flat_bonus|floatformat:2|intcomma }}</td>
+                    <td class="p-2 truncate text-right ">{{ exception.notes|title|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="p-4 text-center text-body">No se encontraron excepciones que coincidan con los filtros.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

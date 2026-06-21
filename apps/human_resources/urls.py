@@ -14,5 +14,8 @@ urlpatterns = [
 
     path('commissions/', commissions, name='commissions'),
     path('commissions/create/', commission_profile_create, name='commission_profile_create'),
-    path('commissions/<int:cp_id>/', commission_profile_detail, name='commission_profile_detail')
+    path('commissions/<int:cp_id>/', commission_profile_detail, name='commission_profile_detail'),
+
+    path('commissions/exceptions/', commission_exceptions, name='commission_exceptions'),
+    path('commissions/exceptions/create/', commission_exception_create, name='commission_exception_create'),
 ]

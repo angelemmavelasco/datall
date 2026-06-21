@@ -8,6 +8,8 @@
 
 {% block module_actions %}
 
+    <a href="{% url 'human_resources:commission_exceptions' %}" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2">Excepciones sobre comisiones</a>
+
     <a href="{% url 'human_resources:commission_profile_create' %}" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2">Nuevo perfil de comisión</a>
 
     <button onclick="toggleFilters()"
@@ -35,12 +37,12 @@
 
     <div class="flex flex-col gap-1">
         <label for="q" class="text-title text-sm">Buscar por nombre</label>
-        <input type="text" name="q" id="q" value="{{ filters.q }}" placeholder="Ej. Perfil Base..." class="edit-el text-body bg-page border border-border p-2 rounded outline-none w-full">
+        <input type="text" name="q" id="q" value="{{ filters.q }}" placeholder="Ej. Perfil Base..." class="edit-el text-body bg-page border border-border p-1 rounded outline-none w-full">
     </div>
 
     <div class="flex flex-col gap-1">
         <label for="status" class="text-title text-sm">Estado</label>
-        <select name="status" id="status" class="edit-el text-body bg-page border border-border p-2 rounded outline-none w-full">
+        <select name="status" id="status" class="edit-el text-body bg-page border border-border p-1 rounded outline-none w-full">
             <option value="">Todos</option>
             <option value="1" {% if filters.status == '1' %}selected{% endif %}>Activos</option>
             <option value="0" {% if filters.status == '0' %}selected{% endif %}>Inactivos</option>
@@ -49,12 +51,12 @@
 
     <div class="flex flex-col gap-1">
         <label for="min_classes" class="text-title text-sm">Clases mínimas (Umbrales)</label>
-        <input type="number" name="min_classes" id="min_classes" value="{{ filters.min_classes }}" min="0" placeholder="Ej. 4" class="edit-el text-body bg-page border border-border p-2 rounded outline-none w-full">
+        <input type="number" name="min_classes" id="min_classes" value="{{ filters.min_classes }}" min="0" placeholder="Ej. 4" class="edit-el text-body bg-page border border-border p-1 rounded outline-none w-full">
     </div>
 
     <div class="flex gap-2 flex-col mt-2">
-        <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar filtros</button>
-        <a href="{{ request.path }}" class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar filtros</a>
+        <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-1 rounded transition-colors cursor-pointer w-full">Aplicar filtros</button>
+        <a href="{{ request.path }}" class="bg-page border border-border text-strong hover:bg-hover p-1 rounded transition-colors cursor-pointer w-full text-center">Limpiar filtros</a>
     </div>
 
 </form>

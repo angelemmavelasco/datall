@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Nueva excepción sobre comisiones{% endblock %}
+{% block module_name %}Nueva excepción sobre comisiones{% endblock %}
+
+{% block module_actions %}
+<button type="submit" form="create-commission-exception-form" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+    <span>Confirmar excepción</span>
+</button>
+
+<a href="{% url 'human_resources:commission_exceptions' %}" class="hover:text-hover text-red-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+    <span>Cancelar</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<form method="POST" class="flex flex-col gap-4" id="create-commission-exception-form">
+    {% csrf_token %}
+
+    <p class="text-title text-sm">Reglas de la excepción</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-4 gap-4 items-center bg-container p-4 rounded">
+        
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-sm">Fecha inicio</span>
+            <div class="bg-page border border-border p-1 w-full">
+                <input type="date" name="start_date" class="edit-el text-body w-full outline-none" required>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-sm">Fecha fin</span>
+            <div class="bg-page border border-border p-1 w-full">
+                <input type="date" name="end_date" class="edit-el text-body w-full outline-none" required>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-sm">Tolerancia alcance (%)</span>
+            <div class="bg-page border border-border p-1 w-full">
+                <input type="number" name="scope_tolerance_pct" class="edit-el text-body w-full outline-none" value="0" min="0" step="any" required>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-sm">Monto garantizado ($)</span>
+            <div class="bg-page border border-border p-1 w-full">
+                <input type="number" name="guaranteed_flat_bonus" class="edit-el text-body w-full outline-none" placeholder="Opcional" min="0" step="any">
+            </div>
+        </div>
+
+        <div class="col-span-4 flex flex-col gap-1 mt-2">
+            <span class="text-title text-sm">Notas / Justificación</span>
+            <div class="bg-page border border-border p-1 w-full">
+                <input type="text" name="notes" class="edit-el text-body w-full outline-none" placeholder="Ej. Curva de aprendizaje para nuevo ingreso..." maxlength="255" required>
+            </div>
+        </div>
+
+    </div>
+
+    <p class="text-title text-sm mt-4">Selección de rutas</p>
+    <hr class="border-border border">
+
+    <div class="bg-container p-4 rounded overflow-y-auto max-h-100 flex flex-col gap-4" id="routes-container">
+        
+        <!-- Controles de búsqueda y selección -->
+        <div class="flex items-center justify-between gap-4 mb-2 pb-4 border-b border-border">
+            <label class="flex items-center justify-start gap-4 w-full cursor-pointer">
+                <input type="checkbox" id="select-all-routes" class="edit-el text-body cursor-pointer">
+                <span class="text-title">Seleccionar todas</span>
+            </label>
+    
+            <div class="flex items-center justify-start gap-4 w-full bg-page border border-border rounded">
+                <input type="search" id="search-route-input" class="edit-el text-body w-full outline-none p-1" placeholder="Buscar ruta por ID o nombre...">
+            </div>
+        </div>
+
+        <!-- Lista de rutas iterada -->
+        <div class="grid grid-cols-3 gap-4" id="routes-list">
+            {% for route in routes %}
+                <div class="route-item flex items-center gap-4" data-search="{{ route.id|lower }} {{ route.name|lower }}">
+                    <label class="flex items-center justify-start gap-4 w-full cursor-pointer">
+                        <!-- El input envía un array llamado route_ids -->
+                        <input type="checkbox" name="route_ids" value="{{ route.id }}" class="route-checkbox edit-el text-body outline-none cursor-pointer">
+                        <span class="text-title">{{ route.id }}. {{ route.name|title }}</span>
+                    </label>
+                </div>
+            {% empty %}
+                <span class="text-body col-span-3">No tienes rutas disponibles.</span>
+            {% endfor %}
+        </div>
+        
+    </div>
+
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    const searchInput = document.getElementById('search-route-input');
+    const selectAllCheckbox = document.getElementById('select-all-routes');
+    const routesList = document.getElementById('routes-list');
+    const routeItems = routesList.querySelectorAll('.route-item');
+
+    searchInput.addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        routeItems.forEach(item => {
+            const searchText = item.getAttribute('data-search');
+            item.style.display = searchText.includes(term) ? 'flex' : 'none';
+        });
+    });
+
+    selectAllCheckbox.addEventListener('change', function(e) {
+        const isChecked = e.target.checked;
+        const checkboxes = routesList.querySelectorAll('.route-checkbox');
+
+        checkboxes.forEach(cb => {
+            const parentItem = cb.closest('.route-item');
+            if (parentItem.style.display !== 'none') {
+                cb.checked = isChecked;
+            }
+        });
+    });
+
+});
+</script>
+{% endblock %}

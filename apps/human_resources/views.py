@@ -14,7 +14,7 @@ from apps.core.models import (
     SystemModule, RouteCommissionSetup, CommissionProfile)
 from apps.core.utils import get_allowed_routes_for_user
 
-from apps.human_resources.services.comissions.comissions import Comissions
+from apps.human_resources.services.comissions.comissions import Comissions, CommissionExceptions
 
 User = get_user_model()
 
@@ -269,10 +269,6 @@ def commission_profile_detail(request, cp_id: int):
     return render(request, template, context)
 
 
-
-
-
-
 @login_required
 def commission_profile_create(request):
     user = request.user
@@ -345,4 +341,70 @@ def commission_profile_create(request):
     return render(request, template, context)
     
     
+
+@login_required
+def commission_exceptions(request):
+    user = request.user
+    template = 'human_resources/payroll/commission_exceptions.html'
+    module = SystemModule.objects.filter(url_name='human_resources:commissions').first()
+    
+    allowed_routes = get_allowed_routes_for_user(user).order_by('id')
+
+    filters = {
+        'q_route': request.GET.get('q_route', '').strip(),
+        'q_employee': request.GET.get('q_employee', '').strip(),
+        'start_date': request.GET.get('start_date', ''),
+        'end_date': request.GET.get('end_date', ''),
+        'min_pct': request.GET.get('min_pct', ''),
+        'max_pct': request.GET.get('max_pct', ''),
+        'min_amount': request.GET.get('min_amount', ''),
+        'max_amount': request.GET.get('max_amount', '')
+    }
+
+    service = CommissionExceptions(allowed_routes=allowed_routes)
+    exceptions = service.get_data(**filters)
+
+    context = {
+        'routes': allowed_routes,
+        'exceptions': exceptions,
+        'filters': filters,
+    }
+    
+    return render(request, template, context)
+
+@login_required
+def commission_exception_create(request):
+    user = request.user
+    template = 'human_resources/payroll/commission_exception_create.html'
+    allowed_routes = get_allowed_routes_for_user(user).order_by('id')
+
+    if request.method == 'POST':
+        route_ids = request.POST.getlist('route_ids')
+        
+        guaranteed_bonus = request.POST.get('guaranteed_flat_bonus')
+        guaranteed_bonus = float(guaranteed_bonus) if guaranteed_bonus else None
+        
+        tolerance = request.POST.get('scope_tolerance_pct')
+        tolerance = float(tolerance) if tolerance else 0.0
+
+        exception_data = {
+            'start_date': request.POST.get('start_date'),
+            'end_date': request.POST.get('end_date'),
+            'scope_tolerance_pct': tolerance,
+            'guaranteed_flat_bonus': guaranteed_bonus,
+            'notes': request.POST.get('notes', '').strip(),
+        }
+
+        service = CommissionExceptions(allowed_routes=allowed_routes)
+        created_count = service.create_multiple(route_ids, exception_data)
+        messages.success(request, f'Se registraron correctamente {created_count} excepciones.')
+        return redirect('human_resources:commission_exceptions')
+
+    context = {
+        'routes': allowed_routes,
+    }
+    
+    return render(request, template, context)
+    
+
     
