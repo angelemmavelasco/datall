@@ -107,7 +107,7 @@
                 <tr class="hover:bg-hover transition-colors">
 
                     <td class="p-2">
-                        <a href="" target="_blank" class="flex items-center gap-2 underline text-strong">
+                        <a href="{% url 'human_resources:commission_exception_detail' exception.id %}" target="_blank" class="flex items-center gap-2 underline text-strong">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
                             <span>{{ exception.route.id|upper }}</span>
                         </a>
@@ -117,8 +117,8 @@
                     
                     <td class="p-2 truncate text-center ">{{ exception.start_date|date:"d/m/Y" }}</td>
                     <td class="p-2 truncate text-center ">{{ exception.end_date|date:"d/m/Y" }}</td>
-                    <td class="p-2 truncate text-center ">{{ exception.scope_tolerance_pct|floatformat:2|intcomma }} %</td>
-                    <td class="p-2 truncate text-right ">$ {{ exception.guaranteed_flat_bonus|floatformat:2|intcomma }}</td>
+                    <td class="p-2 truncate text-center ">{{ exception.scope_tolerance_pct|default:0|floatformat:2|intcomma }} %</td>
+                    <td class="p-2 truncate text-right ">$ {{ exception.guaranteed_flat_bonus|default:0|floatformat:2|intcomma }}</td>
                     <td class="p-2 truncate text-right ">{{ exception.notes|title|default:"-" }}</td>
                 </tr>
                 {% empty %}

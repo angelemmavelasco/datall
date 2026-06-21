@@ -253,6 +253,7 @@ class CommissionExceptions:
     def create(self, **kwargs):
         return RouteCommissionException.objects.create(**kwargs)
 
+    @transaction.atomic
     def create_multiple(self, route_ids, exception_data):
         valid_routes = self.allowed_routes.filter(id__in=route_ids)
         

@@ -406,5 +406,46 @@ def commission_exception_create(request):
     
     return render(request, template, context)
     
+@login_required
+def commission_exception_detail(request, ce_id):
+    user = request.user
+    template = 'human_resources/payroll/commission_exception_detail.html'
+    allowed_routes = get_allowed_routes_for_user(user).order_by('id')
 
+    service = CommissionExceptions(allowed_routes=allowed_routes)
+
+    try:
+        exception = service.get_data().get(id=ce_id)
+    except RouteCommissionException.DoesNotExist:
+        messages.error(request, "La excepción no existe o no tienes permisos para verla.")
+        return redirect('human_resources:commission_exceptions')
+
+    if request.method == 'POST':
+        guaranteed_bonus = request.POST.get('guaranteed_flat_bonus')
+        guaranteed_bonus = float(guaranteed_bonus) if guaranteed_bonus else None
+        
+        tolerance = request.POST.get('scope_tolerance_pct')
+        tolerance = float(tolerance) if tolerance else 0.0
+
+        update_data = {
+            'start_date': request.POST.get('start_date'),
+            'end_date': request.POST.get('end_date'),
+            'scope_tolerance_pct': tolerance,
+            'guaranteed_flat_bonus': guaranteed_bonus,
+            'notes': request.POST.get('notes', '').strip(),
+        }
+
+        try:
+            service.update(ce_id, **update_data)
+            messages.success(request, 'Excepción actualizada correctamente.')
+            return redirect('human_resources:commission_exception_detail', ce_id=ce_id)
+        except Exception as e:
+            messages.error(request, f'Error al actualizar: {str(e)}')
+
+    context = {
+        'exception': exception,
+    }
+
+    return render(request, template, context)
+    
     

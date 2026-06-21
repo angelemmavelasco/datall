@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Detalles de excepción sobre comisión{% endblock %}
+{% block module_name %}Detalles de excepción{% endblock %}
+
+{% block module_actions %}
+<button type="submit" form="update-commission-exception-form" id="btn-save" class="hidden hover:text-hover text-green-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+    <span>Confirmar cambios</span>
+</button>
+
+<button type="button" id="btn-cancel" onclick="toggleEditMode()" class="hidden hover:text-hover text-red-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+    <span>Cancelar</span>
+</button>
+
+<button type="button" id="btn-edit" onclick="toggleEditMode()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-slash-icon lucide-circle-slash"><circle cx="12" cy="12" r="10"/><line x1="9" x2="15" y1="15" y2="9"/></svg>
+    <span>Editar</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<form method="POST" action="." class="flex flex-col gap-4" id="update-commission-exception-form">
+    {% csrf_token %}
+
+    <p class="text-title text-sm">Información de la ruta</p>
+    <hr class="border-border border">
+    
+    <!-- Bloque estático (No editable) para proteger la ruta original -->
+    <div class="grid grid-cols-2 gap-4 items-center bg-container p-4 rounded">
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-sm">Ruta asignada</span>
+            <div class="bg-page border border-border p-1 w-full rounded">
+                <span class="text-body">{{ exception.route.id|upper }} - {{ exception.route.name|title }}</span>
+            </div>
+        </div>
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-sm">Colaborador en el periodo</span>
+            <div class="bg-page border border-border p-1 w-full rounded">
+                <span class="text-body">{{ exception.employee|title|default:"Sin colaborador asignado" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <p class="text-title text-sm mt-4">Reglas de la excepción</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-4 gap-4 items-center bg-container p-4 rounded">
+
+        <!-- Fecha Inicio -->
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-sm">Fecha inicio</span>
+            <div class="bg-page border border-border p-1 w-full rounded">
+                <span class="view-el text-body">{{ exception.start_date|date:"d/m/Y" }}</span>
+                <input type="date" name="start_date" value="{{ exception.start_date|date:'Y-m-d' }}" class="edit-el hidden text-body w-full outline-none bg-transparent" required>
+            </div>
+        </div>
+
+        <!-- Fecha Fin -->
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-sm">Fecha fin</span>
+            <div class="bg-page border border-border p-1 w-full rounded">
+                <span class="view-el text-body">{{ exception.end_date|date:"d/m/Y" }}</span>
+                <input type="date" name="end_date" value="{{ exception.end_date|date:'Y-m-d' }}" class="edit-el hidden text-body w-full outline-none bg-transparent" required>
+            </div>
+        </div>
+
+        <!-- Tolerancia -->
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-sm">Tolerancia alcance (%)</span>
+            <div class="bg-page border border-border p-1 w-full rounded">
+                <span class="view-el text-body">{{ exception.scope_tolerance_pct|stringformat:'s' }}</span>
+                <input type="number" name="scope_tolerance_pct" value="{{ exception.scope_tolerance_pct|stringformat:'s' }}" class="edit-el hidden text-body w-full outline-none bg-transparent" min="0" step="any" required>
+            </div>
+        </div>
+
+        <!-- Monto Garantizado -->
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-sm">Monto garantizado ($)</span>
+            <div class="bg-page border border-border p-1 w-full rounded">
+                <span class="view-el text-body">{% if exception.guaranteed_flat_bonus %}{{ exception.guaranteed_flat_bonus|stringformat:'s' }}{% else %}-{% endif %}</span>
+                <input type="number" name="guaranteed_flat_bonus" value="{{ exception.guaranteed_flat_bonus|stringformat:'s' }}" class="edit-el hidden text-body w-full outline-none bg-transparent" placeholder="Opcional" min="0" step="any">
+            </div>
+        </div>
+
+        <!-- Notas -->
+        <div class="col-span-4 flex flex-col gap-1 mt-2">
+            <span class="text-title text-sm">Notas / Justificación</span>
+            <div class="bg-page border border-border p-1 w-full rounded">
+                <span class="view-el text-body">{{ exception.notes|default:"-" }}</span>
+                <input type="text" name="notes" value="{{ exception.notes }}" class="edit-el hidden text-body w-full outline-none bg-transparent" placeholder="Ej. Curva de aprendizaje para nuevo ingreso..." maxlength="255" required>
+            </div>
+        </div>
+
+    </div>
+</form>
+
+<script>
+    function toggleEditMode() {
+
+        document.querySelectorAll('.view-el').forEach(el => el.classList.toggle('hidden'));
+        document.querySelectorAll('.edit-el').forEach(el => el.classList.toggle('hidden'));
+
+        document.getElementById('btn-edit').classList.toggle('hidden');
+        document.getElementById('btn-cancel').classList.toggle('hidden');
+        document.getElementById('btn-save').classList.toggle('hidden');
+    }
+</script>
+{% endblock %}
