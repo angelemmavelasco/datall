@@ -46,6 +46,8 @@ ALLOWED_HOSTS = [
     '127.0.0.1' ,
     'datall.com.mx',
     'www.datall.com.mx',
+    'urvet.datall.com.mx',
+    'www.urvet.datall.com.mx'
 
 ]
 CSRF_TRUSTED_ORIGINS = [
