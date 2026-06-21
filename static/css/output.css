@@ -57,7 +57,6 @@
     --radius-lg: 0.5rem;
     --radius-3xl: 1.5rem;
     --drop-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.15);
-    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
     --animate-spin: spin 1s linear infinite;
     --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     --blur-xl: 24px;
@@ -303,9 +302,6 @@
   .left-0 {
     left: 0;
   }
-  .left-20 {
-    left: calc(var(--spacing) * 20);
-  }
   .left-24 {
     left: calc(var(--spacing) * 24);
   }
@@ -344,9 +340,6 @@
   }
   .mx-auto {
     margin-inline: auto;
-  }
-  .my-2 {
-    margin-block: calc(var(--spacing) * 2);
   }
   .my-auto {
     margin-block: auto;
@@ -429,9 +422,6 @@
   .h-32 {
     height: calc(var(--spacing) * 32);
   }
-  .h-72 {
-    height: calc(var(--spacing) * 72);
-  }
   .h-80 {
     height: calc(var(--spacing) * 80);
   }
@@ -464,9 +454,6 @@
   }
   .max-h-100 {
     max-height: calc(var(--spacing) * 100);
-  }
-  .max-h-300 {
-    max-height: calc(var(--spacing) * 300);
   }
   .min-h-5 {
     min-height: calc(var(--spacing) * 5);
@@ -545,9 +532,6 @@
   }
   .max-w-40 {
     max-width: calc(var(--spacing) * 40);
-  }
-  .max-w-60 {
-    max-width: calc(var(--spacing) * 60);
   }
   .max-w-md {
     max-width: var(--container-md);
@@ -852,9 +836,6 @@
   .border-red-200 {
     border-color: var(--color-red-200);
   }
-  .border-r-border {
-    border-right-color: var(--color-border);
-  }
   .bg-\[\#f1f1f1\] {
     background-color: #f1f1f1;
   }
@@ -1075,9 +1056,6 @@
   .text-blue-500 {
     color: var(--color-blue-500);
   }
-  .text-blue-600 {
-    color: var(--color-blue-600);
-  }
   .text-body {
     color: var(--color-body);
   }
@@ -1288,20 +1266,6 @@
       }
     }
   }
-  .hover\:bg-page {
-    &:hover {
-      @media (hover: hover) {
-        background-color: var(--color-page);
-      }
-    }
-  }
-  .hover\:text-blue-800 {
-    &:hover {
-      @media (hover: hover) {
-        color: var(--color-blue-800);
-      }
-    }
-  }
   .hover\:text-hover {
     &:hover {
       @media (hover: hover) {
@@ -1320,13 +1284,6 @@
     &:hover {
       @media (hover: hover) {
         color: var(--color-strong);
-      }
-    }
-  }
-  .hover\:underline {
-    &:hover {
-      @media (hover: hover) {
-        text-decoration-line: underline;
       }
     }
   }

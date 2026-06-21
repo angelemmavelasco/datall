@@ -1,6 +1,7 @@
 
 @import "tailwindcss";
 @source "../../apps";
+@source "../../templates";
 
 @theme {
     --color-page: var(--bg-page);
