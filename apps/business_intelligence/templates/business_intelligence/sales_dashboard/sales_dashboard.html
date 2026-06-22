@@ -284,7 +284,7 @@
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Unidades</p>
-            <p class="text-xl text-title">$ {{ kpis.units|default:0.00|floatformat:2|intcomma }}</p>
+            <p class="text-xl text-title">{{ kpis.units|default:0.00|floatformat:0|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Clientes con compras</p>
@@ -679,6 +679,12 @@
 
 
     // Product class bar chart
+        const formatCurrency = (value) => {
+            return new Intl.NumberFormat('es-MX', {
+                style: 'currency',
+                currency: 'MXN'
+            }).format(value);
+        };
 
         const productClassData = {{ product_class_chart_data|safe }};
 
@@ -689,34 +695,51 @@
                 fontWeight: 'normal',
                 fontSize: 14,
                 color: titleColor
-            }
-        },
-        toolbox: {
-            feature: {
-                saveAsImage: {}
-            }
-        },
-        xAxis: {
-            type: 'category',
-            data: productClassData.categories,
-
-        },
-        yAxis: {
-            type: 'value',
-            splitLine: {
-                lineStyle: {
-                    opacity: 0.1
+                }
+            },
+            toolbox: {
+                feature: {
+                    saveAsImage: {}
+                }
+            },
+            tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    },
+                    formatter: function (params) {
+                        if (!params || params.length === 0) return '';
+                        
+                        let tooltipText = `<strong>${params[0].name}</strong><br/>`;
+                        
+                        params.forEach(item => {
+                            tooltipText += `${item.marker} ${item.seriesName}: <strong>${formatCurrency(item.value)}</strong><br/>`;
+                        });
+                        
+                        return tooltipText;
+                    }
                 },
-                show: true
-            }
-        },
-        series: [
-            {
-                data: productClassData.sales,
-                type: 'bar',
-            }
-        ]
-    };
+            xAxis: {
+                type: 'category',
+                data: productClassData.categories,
+
+            },
+            yAxis: {
+                type: 'value',
+                splitLine: {
+                    lineStyle: {
+                        opacity: 0.1
+                    },
+                    show: true
+                }
+            },
+            series: [
+                {
+                    data: productClassData.sales,
+                    type: 'bar',
+                }
+            ]
+        };
 
         const productClassBarChart = echarts.init(document.getElementById('productClassBarChart'),);
         productClassBarChart.setOption(ProductClassBarOption);
