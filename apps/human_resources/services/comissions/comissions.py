@@ -607,7 +607,7 @@ class CommissionsReport(SaleTransactionCRUD, SaleTargetCRUD):
         return count, csv_buffer.getvalue()
 
     def export_report_data(self, route_ids, month, year):
-        count, csv_content = self._generate_csv_content(route_ids, month, year)
+        count, csv_content = self._generate_csv_data(route_ids, month, year)
         
         if count == 0:
             return None
@@ -623,12 +623,15 @@ class CommissionsReport(SaleTransactionCRUD, SaleTargetCRUD):
         month = int(month)
         year = int(year)
         
-        count, csv_content = self._generate_csv_content(route_ids, month, year, status_filter=report_type)
+        count, csv_content = self._generate_csv_data(route_ids, month, year, status_filter=report_type)
         
         if count == 0:
             return 0
 
         if report_type == 'draft':
+            next_month = 1 if month == 12 else month + 1
+            next_year = year + 1 if month == 12 else year
+            close_date = f"06/{next_month:02d}/{next_year}"
             subject = f'Borrador de Reporte de Comisiones - Periodo {month:02d}/{year}'
             body = (
                 f"Buen día equipo,\n\n"

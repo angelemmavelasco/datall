@@ -27,33 +27,45 @@
             <span class="action-icon-to-hide">Cerrar cálculo</span>
         </button>
 
-        <button type="button" onclick="submitAction('export_data')" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-1">
+        <button type="button" onclick="submitAction('export_data')" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2">
             <span>Descargar datos</span>
         </button>
 
     </form>
     
     <!-- <a href="" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2">Descargar reporte</a> -->
-    <a href="" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2">Descargar datos</a>
-    <div class="relative group">
-        <button type="button" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-1 h-full py-1">
+    <div class="flex items-center gap-2 border-l border-border pl-4">
+        <div class="flex items-center gap-1 text-strong" title="Compartir">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-share-2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
-            <span>Compartir</span>
-        </button>
-        
-        <div class="absolute right-0 top-20 mt-1 w-48 bg-page border border-border rounded shadow-lg hidden group-hover:block z-50 overflow-hidden">
-            <button type="button" onclick="submitAction('send_draft')" class="w-full text-left px-4 py-2 text-strong hover:bg-hover transition-colors text-sm flex items-center gap-2 border-b border-border">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-600"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
-                Solo borradores
-            </button>
-            <button type="button" onclick="submitAction('send_closed')" class="w-full text-left px-4 py-2 text-strong hover:bg-hover transition-colors text-sm flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                Solo cerrados
-            </button>
         </div>
+        <select id="share-state-select" class="bg-page border border-border rounded p-1 text-sm outline-none cursor-pointer text-strong disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            <option value="">Seleccionar estado</option>
+            <option value="send_draft">Solo borradores</option>
+            <option value="send_closed">Solo cerrados</option>
+        </select>
+        <button type="button" id="btn-share-forward" onclick="submitShareAction()" class="hidden hover:text-hover text-strong transition-colors cursor-pointer flex items-center justify-center p-1" title="Enviar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-forward-icon lucide-forward"><path d="m15 17 5-5-5-5"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>
+        </button>
     </div>
-    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
-        <span>Filtrar</span>
+
+    <button onclick="toggleFilters()"
+        class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+            <path d="M10 5H3" />
+            <path d="M12 19H3" />
+            <path d="M14 3v4" />
+            <path d="M16 17v4" />
+            <path d="M21 12h-9" />
+            <path d="M21 19h-5" />
+            <path d="M21 5h-7" />
+            <path d="M8 10v4" />
+            <path d="M8 12H3" />
+        </svg>
+        <span>
+            Filtrar
+        </span>
     </button>
 {% endblock %}
 
@@ -257,6 +269,32 @@
                     icon.classList.remove('hidden');
                 }
             });
+
+            const shareSelect = document.getElementById('share-state-select');
+            if(anyChecked) {
+                shareSelect.removeAttribute('disabled');
+            } else {
+                shareSelect.setAttribute('disabled', 'true');
+                shareSelect.value = '';
+            }
+            updateShareForwardBtn();
+        }
+
+        function updateShareForwardBtn() {
+            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+            const shareSelect = document.getElementById('share-state-select');
+            const btnShareForward = document.getElementById('btn-share-forward');
+            
+            if (anyChecked && shareSelect.value !== "") {
+                btnShareForward.classList.remove('hidden');
+            } else {
+                btnShareForward.classList.add('hidden');
+            }
+        }
+
+        const shareSelect = document.getElementById('share-state-select');
+        if (shareSelect) {
+            shareSelect.addEventListener('change', updateShareForwardBtn);
         }
 
         selectAll.addEventListener('change', function(e) {
@@ -277,6 +315,13 @@
         document.getElementById('action-month').value = currentMonth;
         document.getElementById('action-year').value = currentYear;
         document.getElementById('action-form').submit();
+    }
+
+    function submitShareAction() {
+        const action = document.getElementById('share-state-select').value;
+        if (action) {
+            submitAction(action);
+        }
     }
 </script>
 {% endblock %}

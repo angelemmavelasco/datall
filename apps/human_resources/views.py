@@ -543,7 +543,7 @@ def commissions_action(request):
             except Exception as e:
                 messages.error(request, f'Error al cerrar los cálculos: {str(e)}')
 
-    elif action == 'export_csv':
+    elif action == 'export_data':
         if not selected_routes:
             messages.error(request, 'Debes seleccionar al menos una ruta en la tabla para descargar los datos.')
         else:
