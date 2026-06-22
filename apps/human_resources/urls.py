@@ -18,5 +18,8 @@ urlpatterns = [
 
     path('commissions/exceptions/', commission_exceptions, name='commission_exceptions'),
     path('commissions/exceptions/create/', commission_exception_create, name='commission_exception_create'),
-    path('commissions/exceptions/<int:ce_id>/', commission_exception_detail, name='commission_exception_detail')
+    path('commissions/exceptions/<int:ce_id>/', commission_exception_detail, name='commission_exception_detail'),
+
+    path('commissions_report/', commissions_report, name='commissions_report'),
+    path('commissions_report/action/', commissions_action, name='commissions_action'),
 ]

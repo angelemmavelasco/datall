@@ -219,7 +219,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'es'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Mexico_City'
 
 USE_I18N = True
 
@@ -227,3 +227,21 @@ USE_TZ = True
 
 
 MEDIA_ROOT = BASE_DIR / 'media'
+
+
+
+#email sending config
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.resend.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'resend'
+EMAIL_HOST_PASSWORD = os.getenv('RESEND_API_KEY')
+
+DEFAULT_FROM_EMAIL = 'Datall <no-reply@datall.com.mx>'
+HR_FROM_EMAIL = 'Datall <rh@datall.com.mx>'
+DATA_ANALYST_FROM_EMAIL = 'Datall <analisis@datall.com.mx>'
+COMMERCIAL_FROM_EMAIL = 'Datall <comercial@datall.com.mx>'
+MARKETING_FROM_EMAIL = 'Datall <marketing@datall.com.mx>'
+
+

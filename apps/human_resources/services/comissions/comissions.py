@@ -5,11 +5,38 @@ from apps.core.models import (
     RouteCommissionSetup,
     CommissionSettlement,
     RouteCommissionException,
-    RouteAssignment)
+    RouteAssignment,
+    SaleTarget
+    )
+
+from apps.sales.services.sale_targets.sale_targets_crud import SaleTargetCRUD
+from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
 from datetime import datetime
-from django.db.models import Count, Sum, Q, Subquery, OuterRef, IntegerField, DecimalField, CharField, Value
+from django.db.models import (
+    Q, F,
+    Count, Sum, Avg,
+    Subquery, OuterRef,
+    Case, When, Value,
+    CharField, IntegerField, DecimalField,
+    ExpressionWrapper
+)
+
+
+from django.db.models.functions import (
+    Coalesce,
+    Concat,
+    Cast,
+)
 from decimal import Decimal
-from django.db.models.functions import Coalesce, Concat
+import calendar
+from datetime import date, datetime
+import csv
+import io
+
+
+from django.core.mail import send_mail, EmailMessage
+from django.conf import settings
+from django.http import HttpResponse
 
 
 class Comissions:
@@ -282,3 +309,438 @@ class CommissionExceptions:
         exception = RouteCommissionException.objects.get(id=exception_id, route__in=self.allowed_routes)
         exception.delete()
         return True
+
+
+class CommissionsReport(SaleTransactionCRUD, SaleTargetCRUD):
+    def __init__(self, allowed_routes=None, *args, **kwargs):
+        self.allowed_routes = allowed_routes
+        super().__init__()
+
+    def read(self, **kwargs):
+        qs = CommissionSettlement.objects.filter(route__in=self.allowed_routes)
+        
+        month = kwargs.get('month')
+        year = kwargs.get('year')
+        if month:
+            qs = qs.filter(period_start__month=int(month))
+        if year:
+            qs = qs.filter(period_start__year=int(year))
+            
+        status = kwargs.get('status')
+        if status:
+            qs = qs.filter(status__in=status)
+            
+        warehouses = kwargs.get('warehouses')
+        if warehouses:
+            qs = qs.filter(route__warehouse_id__in=warehouses)
+            
+        regions = kwargs.get('regions')
+        if regions:
+            qs = qs.filter(route__warehouse__region_id__in=regions)
+            
+        routes = kwargs.get('routes')
+        if routes:
+            qs = qs.filter(route_id__in=routes)
+            
+        query_text = kwargs.get('query_text')
+        if query_text:
+            qs = qs.filter(
+                Q(route__id__icontains=query_text) | 
+                Q(employee__user__first_name__icontains=query_text) |
+                Q(employee__user__last_name__icontains=query_text)
+            )
+            
+        return qs.select_related('route', 'employee__user')
+
+    def _calculate_kpis(self, qs):
+        qs = qs.annotate(
+            potential_bonus=Case(
+                When(bonus_type='v', then=ExpressionWrapper(
+                    F('snapshot_base_bonus') * F('snapshot_net_sales') / Value(100.0),
+                    output_field=DecimalField()
+                )),
+                When(bonus_type='f', then=F('snapshot_base_bonus')),
+                default=Value(0.0),
+                output_field=DecimalField()
+            )
+        )
+        kpis = qs.aggregate(
+            avg_scope=Avg('snapshot_global_scope'),
+            avg_product_classes_scope=Avg('snapshot_completed_classes'),
+            total_paid=Sum('final_calculated_bonus'),
+            total_potential=Sum('potential_bonus')
+        )
+        total_paid = kpis['total_paid'] or 0
+        total_potential = kpis['total_potential'] or 0
+        return {
+            'avg_scope': kpis['avg_scope'] or 0,
+            'avg_product_classes_scope': kpis['avg_product_classes_scope'] or 0,
+            'total_paid': total_paid,
+            'total_potential': total_potential,
+            'savings_difference': total_potential - total_paid,
+        }
+
+    def get_data(self, **kwargs):
+        """Prepara el diccionario para inyectarlo directo al template"""
+        qs = self.read(**kwargs)
+        
+        setup_sq = RouteCommissionSetup.objects.filter(
+            route=OuterRef('route'),
+            start_date__lte=OuterRef('period_end')
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=OuterRef('period_start'))
+        ).order_by('-start_date')
+
+        qs = qs.annotate(
+            bonus_type=Subquery(setup_sq.values('bonus_type')[:1]),
+            profile_id=Subquery(setup_sq.values('profile_id')[:1])
+        )
+        
+        return {
+            'report': qs,
+            **self._calculate_kpis(qs)
+        }
+
+    def create_multiple(self, route_ids, month, year):
+        month = int(month)
+        year = int(year)
+        period_start = date(year, month, 1)
+        _, last_day = calendar.monthrange(year, month)
+        period_end = date(year, month, last_day)
+
+        valid_routes = self.allowed_routes.filter(id__in=route_ids)
+        print('--------------')
+        print(valid_routes)
+        print('--------------')
+        calculated_count = 0
+
+        for route in valid_routes:
+
+            settlement = CommissionSettlement.objects.filter(route=route, period_start=period_start).first()
+            if settlement and settlement.status == 'closed':
+                continue 
+
+            print('setup')
+            setup = RouteCommissionSetup.objects.filter(
+                route=route, start_date__lte=period_end
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=period_start)
+            ).order_by('-start_date').first()
+            print(setup)
+            
+            if not setup:
+                continue 
+            profile = setup.profile
+
+            assignment = RouteAssignment.objects.filter(
+                route=route, start_date__lte=period_end
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=period_start)
+            ).order_by('-start_date').first()
+
+            print(f'route: {route} assignment: {assignment}')
+            
+            if not assignment or not assignment.employee:
+                print('no assignmet or employee')
+                continue
+
+            targets_qs = SaleTargetCRUD.read(self, self.allowed_routes, routes=[route.id], period=period_start)
+            tx_qs = SaleTransactionCRUD.read(self, self.allowed_routes, routes=[route.id], sale_date_start=period_start, sale_date_end=period_end)
+
+            target_total = targets_qs.aggregate(t=Sum('target_amount'))['t'] or Decimal('0.00')
+            sales_total = tx_qs.aggregate(s=Sum('net_amount'))['s'] or Decimal('0.00')
+
+            scope = (sales_total / target_total * 100) if target_total > 0 else Decimal('0.00')
+
+            valid_targets = targets_qs.filter(is_valid_for_comission=True)
+            completed_classes = 0
+            for tgt in valid_targets:
+                cls_sales = tx_qs.filter(product_class=tgt.product_class).aggregate(s=Sum('net_amount'))['s'] or Decimal('0.00')
+                if cls_sales >= tgt.target_amount:
+                    completed_classes += 1
+
+            exception = RouteCommissionException.objects.filter(
+                route=route, start_date__lte=period_end, end_date__gte=period_start
+            ).order_by('-start_date').first()
+
+            if exception:
+                scope += exception.scope_tolerance_pct
+
+            tiers = profile.commission_tiers.all().order_by('-min_global_scope_pct', '-min_completed_classes')
+            applied_tier = None
+            for tier in tiers:
+                if scope >= tier.min_global_scope_pct and completed_classes >= tier.min_completed_classes:
+                    applied_tier = tier
+                    break
+
+            multiplier = applied_tier.bonus_multiplier_pct if applied_tier else Decimal('0.00')
+            
+            if exception and exception.guaranteed_flat_bonus is not None:
+                extra_flat = exception.guaranteed_flat_bonus
+            else:
+                extra_flat = applied_tier.extra_flat_bonus if applied_tier else Decimal('0.00')
+
+            base_bonus = setup.base_bonus_amount
+            if setup.bonus_type == 'v':
+                potential = (base_bonus * sales_total / Decimal('100.00'))
+                calculated = (potential * multiplier / Decimal('100.00')) + extra_flat
+            else:
+                calculated = (base_bonus * multiplier / Decimal('100.00')) + extra_flat
+
+            manual_adj = settlement.manual_adjustment if settlement else Decimal('0.00')
+            final_bonus = calculated + manual_adj
+
+            if not settlement:
+                settlement = CommissionSettlement(
+                    period_start=period_start,
+                    period_end=period_end,
+                    route=route,
+                    employee=assignment.employee
+                )
+            
+            settlement.snapshot_profile_name = profile.name
+            settlement.snapshot_target = target_total
+            settlement.snapshot_net_sales = sales_total
+            settlement.snapshot_global_scope = scope
+            settlement.snapshot_completed_classes = completed_classes
+            settlement.snapshot_base_bonus = base_bonus
+            settlement.final_calculated_bonus = final_bonus
+            settlement.manual_adjustment = manual_adj
+            settlement.save()
+
+            print('calculated')
+
+            print(calculated_count)
+            
+            calculated_count += 1
+            
+        return calculated_count
+
+    def close_settlements(self, route_ids, month, year):
+        month = int(month)
+        year = int(year)
+        
+        valid_routes = self.allowed_routes.filter(id__in=route_ids)
+        
+        settlements_to_close = CommissionSettlement.objects.filter(
+            route__in=valid_routes,
+            period_start__year=year,
+            period_start__month=month,
+            status='draft'
+        )
+        
+        updated_count = settlements_to_close.update(status='closed')
+        
+        return updated_count
+
+
+    def _generate_csv_data(self, route_ids, month, year, status_filter=None):
+        month = int(month)
+        year = int(year)
+        
+        valid_routes = self.allowed_routes.filter(id__in=route_ids)
+        settlements_qs = CommissionSettlement.objects.filter(
+            route__in=valid_routes,
+            period_start__year=year,
+            period_start__month=month
+        ).select_related('route', 'employee__user')
+
+        if status_filter:
+            settlements_qs = settlements_qs.filter(status=status_filter)
+
+        if not settlements_qs.exists():
+            return 0, None
+
+        csv_buffer = io.StringIO()
+        writer = csv.writer(csv_buffer)
+        
+        writer.writerow([
+            'Ruta', 'Colaborador', 'Estado', 'Periodo calculado', 'Fecha de cálculo', 
+            'Perfil de cálculo', 'Objetivo de venta', 'Venta neta', 'Alcance', 
+            'Clases completadas', 'Bono base', 'Multiplicador', 'Bono potencial', 
+            'Ajustes manuales', 'Conversión final', 'Diferencia (Potencial - Conversión)'
+        ])
+        
+        count = 0
+        for settlement in settlements_qs:
+            setup = RouteCommissionSetup.objects.filter(
+                route=settlement.route, start_date__lte=settlement.period_end
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=settlement.period_start)
+            ).order_by('-start_date').first()
+            
+            bonus_type = setup.bonus_type if setup else 'v'
+            
+            if bonus_type == 'v':
+                potential = (settlement.snapshot_base_bonus * settlement.snapshot_net_sales) / Decimal('100.0')
+                base_str = f"{settlement.snapshot_base_bonus} %"
+            else:
+                potential = settlement.snapshot_base_bonus
+                base_str = f"$ {settlement.snapshot_base_bonus:.2f}"
+
+            tier = CommissionTier.objects.filter(
+                commission_profile__name=settlement.snapshot_profile_name,
+                min_global_scope_pct__lte=settlement.snapshot_global_scope,
+                min_completed_classes__lte=settlement.snapshot_completed_classes
+            ).first()
+            
+            multiplier = tier.bonus_multiplier_pct if tier else Decimal('0.00')
+            difference = potential - settlement.final_calculated_bonus
+            
+            writer.writerow([
+                str(settlement.route.id).upper(),
+                f"{settlement.employee.user.first_name} {settlement.employee.user.last_name}".title(),
+                'Borrador' if settlement.status == 'draft' else 'Cerrado',
+                f"{settlement.period_start.strftime('%d/%m/%Y')} - {settlement.period_end.strftime('%d/%m/%Y')}",
+                settlement.calculated_at.strftime('%d/%m/%Y %H:%M'),
+                settlement.snapshot_profile_name.title(),
+                f"$ {settlement.snapshot_target:.2f}",
+                f"$ {settlement.snapshot_net_sales:.2f}",
+                f"{settlement.snapshot_global_scope} %",
+                settlement.snapshot_completed_classes,
+                base_str, f"{multiplier} %", f"$ {potential:.2f}",
+                f"$ {settlement.manual_adjustment:.2f}",
+                f"$ {settlement.final_calculated_bonus:.2f}", f"$ {difference:.2f}"
+            ])
+            count += 1
+            
+        return count, csv_buffer.getvalue()
+
+    def export_report_data(self, route_ids, month, year):
+        count, csv_content = self._generate_csv_content(route_ids, month, year)
+        
+        if count == 0:
+            return None
+            
+        response = HttpResponse(
+            csv_content.encode('utf-8-sig'), 
+            content_type='text/csv; charset=utf-8-sig'
+        )
+        response['Content-Disposition'] = f'attachment; filename="comisiones_{month}_{year}.csv"'
+        return response
+
+    def send_commission_report(self, route_ids, month, year, report_type='draft'):
+        month = int(month)
+        year = int(year)
+        
+        count, csv_content = self._generate_csv_content(route_ids, month, year, status_filter=report_type)
+        
+        if count == 0:
+            return 0
+
+        if report_type == 'draft':
+            subject = f'Borrador de Reporte de Comisiones - Periodo {month:02d}/{year}'
+            body = (
+                f"Buen día equipo,\n\n"
+                f"Se adjunta a este correo el borrador del reporte de comisiones correspondiente "
+                f"al periodo {month:02d}/{year} para su revisión.\n\n"
+                f"Por favor, les solicitamos validar la información. Les recordamos que el "
+                f"cierre definitivo de este periodo se llevará a cabo el día {close_date}.\n\n"
+                f"Cualquier aclaración o ajuste deberá reportarse antes de la fecha mencionada al equipo de análisis.\n\n"
+                f"Este correo fue enviado automáticamente desde la plataforma Datall.\n"
+                f"Saludos cordiales."
+            )
+
+            filename = f'reporte_comisiones_borrador_{month:02d}_{year}.csv'
+
+        else:
+            subject = f'Reporte de Comisiones Cerrado - Periodo {month:02d}/{year}'
+
+            body = (
+                f"Buen día equipo,\n\n"
+                f"Se adjunta el reporte de comisiones correspondiente "
+                f"al periodo {month:02d}/{year}.\n\n"
+                f"Este correo fue enviado automáticamente desde la plataforma Datall.\n"
+                f"Saludos cordiales."
+            )
+
+            filename = f'reporte_comisiones_cerrado_{month:02d}_{year}.csv'
+
+        email = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=settings.DEFAULT_FROM_EMAIL, 
+            to=['angel.emma.velasco@gmail.com'], 
+        )
+
+        email.attach(filename, csv_content.encode('utf-8-sig'), 'text/csv')
+        email.send(fail_silently=False)
+
+        return count
+
+    def send_commission_report_draft(self, month, year):
+        if month == 12:
+            next_month = 1
+            next_year = year + 1
+        else:
+            next_month = month + 1
+            next_year = year
+
+        close_date = f"06/{next_month:02d}/{next_year}"
+
+        subject = f'Borrador de Reporte de Comisiones - Periodo: {month:02d}/{year}'
+
+        body = (
+            f"Buen día equipo,\n\n"
+            f"Se adjunta a este correo el borrador del reporte de comisiones correspondiente "
+            f"al periodo {month:02d}/{year} para su revisión.\n\n"
+            f"Por favor, les solicitamos validar la información. Les recordamos que el "
+            f"cierre definitivo de este periodo se llevará a cabo el día {close_date}.\n\n"
+            f"Cualquier aclaración o ajuste deberá reportarse antes de la fecha mencionada al equipo de análisis.\n\n"
+            f"Este correo fue enviado automáticamente desde la plataforma Datall.\n"
+            f"Saludos cordiales."
+        )
+
+        email = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=settings.DATA_ANALYST_FROM_EMAIL,
+            to=['angel.emma.velasco@gmail.com'],
+        )
+
+        csv_buffer = io.StringIO()
+        writer = csv.writer(csv_buffer)
+        
+        writer.writerow(['Empleado', 'Comision', 'Estatus'])
+        writer.writerow(['Angel Velasco', '1500.00', 'Borrador']) 
+
+        email.attach(
+            f'borrador_comisiones_{month:02d}_{year}.csv',
+            csv_buffer.getvalue(),
+            'text/csv'
+        )
+
+        email.send(fail_silently=False)
+
+    def send_commission_report_closed(self, month, year):
+        subject = f'Reporte de Comisiones - Periodo: {month:02d}/{year}'
+
+        body = (
+            f"Buen día equipo,\n\n"
+            f"Se adjunta el reporte de comisiones correspondiente "
+            f"al periodo {month:02d}/{year}.\n\n"
+            f"Este correo fue enviado automáticamente desde la plataforma Datall.\n"
+            f"Saludos cordiales."
+        )
+
+        email = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=settings.DATA_ANALYST_FROM_EMAIL,
+            to=['angel.emma.velasco@gmail.com'],
+        )
+
+        csv_buffer = io.StringIO()
+        writer = csv.writer(csv_buffer)
+        
+        writer.writerow(['Empleado', 'Comision', 'Estatus'])
+        writer.writerow(['Angel Velasco', '1500.00', 'Cerrado']) 
+
+        email.attach(
+            f'reporte_comisiones_{month:02d}_{year}.csv',
+            csv_buffer.getvalue(),
+            'text/csv'
+        )
+
+        email.send(fail_silently=False)
+        

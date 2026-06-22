@@ -1,9 +1,12 @@
 from django.shortcuts import render, redirect,get_object_or_404
+from django.urls import reverse
+from urllib.parse import urlencode
 from django.http import JsonResponse
 
 from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 
@@ -11,10 +14,12 @@ from apps.human_resources.services.employees import employees_crud
 from apps.core.models import (
     Position, Warehouse, Employee, 
     PayrollType, Periodicity, TaxSystem,
-    SystemModule, RouteCommissionSetup, CommissionProfile)
+    SystemModule, RouteCommissionSetup, CommissionProfile,
+    SaleTarget, CommissionSettlement
+    )
 from apps.core.utils import get_allowed_routes_for_user
 
-from apps.human_resources.services.comissions.comissions import Comissions, CommissionExceptions
+from apps.human_resources.services.comissions.comissions import Comissions, CommissionExceptions, CommissionsReport
 
 User = get_user_model()
 
@@ -147,6 +152,9 @@ def get_org_chart_data(request):
     chart_data = roots[0] if len(roots) == 1 else {'name': 'Organización', 'children': roots}
     
     return JsonResponse(chart_data)
+
+
+
 
 
 
@@ -448,4 +456,123 @@ def commission_exception_detail(request, ce_id):
 
     return render(request, template, context)
     
+
+
+
+
+
+
+@login_required
+def commissions_report(request):
+    user = request.user
+    template = 'human_resources/payroll/commissions_report.html'
+    allowed_routes = get_allowed_routes_for_user(user).order_by('id')
+    service = CommissionsReport(allowed_routes=allowed_routes)
+
+    filters = {
+        'month': request.GET.get('month', str(datetime.now().month)),
+        'year': request.GET.get('year', str(datetime.now().year)),
+        'status': request.GET.getlist('status'),
+        'query_text': request.GET.get('query_text', ''),
+    }
+
+    available_years = SaleTarget.objects.values_list('period__year', flat=True).distinct().order_by('-period__year')
+    commissions_data = service.get_data(**filters)
+
+
+    context = {
+        'routes': allowed_routes,
+        'commissions': commissions_data,
+        'filters': filters,
+        'available_years': available_years,
+    }
     
+    return render(request, template, context)
+
+@login_required
+@require_POST
+def commissions_action(request):
+    user = request.user
+    allowed_routes = get_allowed_routes_for_user(user).order_by('id')
+    service = CommissionsReport(allowed_routes=allowed_routes)
+
+    action = request.POST.get('action')
+    selected_routes = request.POST.getlist('selected_routes')
+    month = request.POST.get('action_month')
+    year = request.POST.get('action_year')
+
+    base_url = reverse('human_resources:commissions_report')
+
+    if not month or not year:
+        messages.error(request, 'Faltan parámetros de fecha para realizar la acción.')
+        return redirect(base_url)
+
+    if action == 'recalculate':
+        existing_settlements = CommissionSettlement.objects.filter(
+            route__in=allowed_routes,
+            period_start__year=int(year),
+            period_start__month=int(month)
+        ).values_list('route_id', flat=True)
+        
+        missing_routes = set(allowed_routes.values_list('id', flat=True)) - set(existing_settlements)
+        routes_to_process = list(missing_routes.union(set(selected_routes)))
+
+        if not routes_to_process:
+            messages.warning(request, 'Todas las rutas del periodo ya están calculadas. Selecciona alguna en la tabla si deseas recalcularla.')
+        else:
+            try:
+                count = service.create_multiple(routes_to_process, month, year)
+                if count > 0:
+                    messages.success(request, f'Se procesaron {count} cálculos correctamente.')
+                else:
+                    messages.info(request, 'No se realizó ningún cálculo. Revisa que las rutas tengan perfil configurado o no estén cerradas.')
+            except Exception as e:
+                messages.error(request, f'Error durante el cálculo: {str(e)}')
+
+    elif action == 'close':
+        if not selected_routes:
+            messages.error(request, 'Debes seleccionar al menos una ruta en la tabla para cerrar su cálculo.')
+        else:
+            try:
+                count = service.close_settlements(selected_routes, month, year)
+                
+                if count > 0:
+                    messages.success(request, f'{count} cálculos de comisiones cerrados. Ya no podrán ser recalculados.')
+                else:
+                    messages.info(request, 'No se cerró ningún cálculo (es probable que las rutas seleccionadas ya tuvieran cálculos cerrados o no tengan en este periodo).')
+            except Exception as e:
+                messages.error(request, f'Error al cerrar los cálculos: {str(e)}')
+
+    elif action == 'export_csv':
+        if not selected_routes:
+            messages.error(request, 'Debes seleccionar al menos una ruta en la tabla para descargar los datos.')
+        else:
+            response = service.export_report_data(selected_routes, month, year)
+            if response:
+                return response
+            messages.info(request, 'No se encontraron datos para descargar con la selección actual.')
+
+    elif action == 'send_draft':
+        if not selected_routes:
+            messages.error(request, 'Selecciona al menos una ruta para compartir los borradores.')
+        else:
+            count = service.send_commission_report(selected_routes, month, year, report_type='draft')
+            if count > 0:
+                messages.success(request, f'Se envió el correo con {count} borradores exitosamente.')
+            else:
+                messages.info(request, 'Ninguna de las rutas seleccionadas está en estado Borrador.')
+
+    elif action == 'send_closed':
+        if not selected_routes:
+            messages.error(request, 'Selecciona al menos una ruta para compartir los reportes cerrados.')
+        else:
+            count = service.send_commission_report(selected_routes, month, year, report_type='closed')
+            if count > 0:
+                messages.success(request, f'Se envió el correo con {count} cálculos cerrados exitosamente.')
+            else:
+                messages.info(request, 'Ninguna de las rutas seleccionadas está en estado Cerrado.')
+
+    query_string = urlencode({'month': month, 'year': year})
+    redirect_url = f"{base_url}?{query_string}"
+    
+    return redirect(redirect_url)
