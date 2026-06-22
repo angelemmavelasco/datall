@@ -15,7 +15,7 @@ from apps.core.models import (
     Position, Warehouse, Employee, 
     PayrollType, Periodicity, TaxSystem,
     SystemModule, RouteCommissionSetup, CommissionProfile,
-    SaleTarget, CommissionSettlement
+    SaleTarget, CommissionSettlement, Reference
     )
 from apps.core.utils import get_allowed_routes_for_user
 
@@ -495,6 +495,12 @@ def commissions_action(request):
     user = request.user
     allowed_routes = get_allowed_routes_for_user(user).order_by('id')
     service = CommissionsReport(allowed_routes=allowed_routes)
+    
+    emails = [ref.reference for ref in Reference.objects.filter(
+        module__url_name='human_resources:commissions_report',
+        field_context = 'email_to',
+        key = 'human_resources',
+    )]
 
     action = request.POST.get('action')
     selected_routes = request.POST.getlist('selected_routes')
@@ -556,7 +562,7 @@ def commissions_action(request):
         if not selected_routes:
             messages.error(request, 'Selecciona al menos una ruta para compartir los borradores.')
         else:
-            count = service.send_commission_report(selected_routes, month, year, report_type='draft')
+            count = service.send_commission_report(selected_routes, month, year, report_type='draft', emails=emails)
             if count > 0:
                 messages.success(request, f'Se envió el correo con {count} borradores exitosamente.')
             else:
@@ -566,7 +572,7 @@ def commissions_action(request):
         if not selected_routes:
             messages.error(request, 'Selecciona al menos una ruta para compartir los reportes cerrados.')
         else:
-            count = service.send_commission_report(selected_routes, month, year, report_type='closed')
+            count = service.send_commission_report(selected_routes, month, year, report_type='closed',emails=emails)
             if count > 0:
                 messages.success(request, f'Se envió el correo con {count} cálculos cerrados exitosamente.')
             else:

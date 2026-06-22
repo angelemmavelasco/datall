@@ -653,10 +653,11 @@ def monthly_breakdown_by_warehouse(request):
 
     #valiodate which warehouses the user has access to
     if not user.groups.filter(name='acceso global').exists() and not user.is_superuser:
-        employee = Employee.objects.filter(user=user).first()
+        allowed_warehouse_ids = allowed_routes.values_list('warehouse_id', flat=True)
+        
         allowed_warehouses = Warehouse.objects.filter(
-            Q(manager=employee) | Q(region__manager=employee)
-        ).values('id', 'name').order_by('id')
+            id__in=allowed_warehouse_ids
+        ).distinct().values('id', 'name').order_by('id')
     else:
         allowed_warehouses = Warehouse.objects.all().values('id', 'name').order_by('id')
 

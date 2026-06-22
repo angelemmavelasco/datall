@@ -7,7 +7,7 @@ from apps.core.models import (
     RouteCommissionException,
     RouteAssignment,
     SaleTarget,
-    SaleTransaction
+    SaleTransaction,
     )
 
 from apps.sales.services.sale_targets.sale_targets_crud import SaleTargetCRUD
@@ -694,7 +694,7 @@ class CommissionsReport(SaleTransactionCRUD, SaleTargetCRUD):
         response['Content-Disposition'] = f'attachment; filename="comisiones_{month}_{year}.csv"'
         return response
 
-    def send_commission_report(self, route_ids, month, year, report_type='draft'):
+    def send_commission_report(self, route_ids, month, year, report_type: str ='draft', emails: list[str] = None):
         month = int(month)
         year = int(year)
         
@@ -738,7 +738,7 @@ class CommissionsReport(SaleTransactionCRUD, SaleTargetCRUD):
             subject=subject,
             body=body,
             from_email=settings.DEFAULT_FROM_EMAIL, 
-            to=['angel.emma.velasco@gmail.com'], 
+            to=emails if emails else ['angel.emma.velasco@gmail.com'], 
         )
 
         email.attach(filename, csv_content.encode('utf-8-sig'), 'text/csv')
