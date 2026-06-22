@@ -52,3 +52,16 @@ Para gestionar, buscar y crear nuevas reglas temporales (excepciones), el sistem
     * Primero, define las reglas (inicio, fin, tolerancias y justificación).
     * Luego, utiliza la barra de búsqueda en el contenedor de rutas para filtrar la lista en tiempo real.
     * La casilla *Seleccionar todas* cuenta con lógica dinámica: únicamente marcará o desmarcará las rutas que estén actualmente visibles tras aplicar tu filtro de búsqueda, agilizando la asignación por bloques sin afectar rutas ocultas.
+
+## 4. Calculo y revision de comisiones
+El proceso de calculo mensual de comisiones se gestiona desde el panel principal de reportes.
+
+* *Recalcular:* Ejecuta el motor de calculo para las rutas seleccionadas. El sistema recolecta transacciones y metas del mes, verifica el perfil y excepciones, y guarda el registro en estado de borrador.
+* *Detalles del calculo:* Al seleccionar una comision, puedes ver su desglose. Muestra la venta neta, clases completadas, alcance real y tolerancias aplicadas. Tambien permite imprimir o guardar el documento digital.
+* *Cerrar calculo:* Despues de validar, selecciona las rutas y ejecuta la accion de cierre. Un registro cerrado queda inmutable frente a cambios futuros en los perfiles.
+
+## 5. Descarga y envio de reportes
+Para la colaboracion con otros departamentos, existen opciones de exportacion de reportes.
+
+* *Descargar datos:* Genera un archivo tabular con el resumen general de la tabla en pantalla.
+* *Compartir:* Permite mandar el reporte directamente por correo. Se requiere seleccionar el estado a compartir (solo borradores o solo cerrados), y el sistema enviara exclusivamente las rutas que empaten con el estado elegido.

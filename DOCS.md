@@ -133,4 +133,55 @@ def create_multiple(self, route_ids, exception_data):
     if exceptions_to_create:
         RouteCommissionException.objects.bulk_create(exceptions_to_create)
 ```
-*El uso de `bulk_create` garantiza que la creación de decenas o cientos de excepciones para una lista de rutas no sature la red ni la base de datos, despachando la instrucción completa en una única transacción.*
+*El uso de bulk_create garantiza que la creación de decenas o cientos de excepciones para una lista de rutas no sature la red ni la base de datos, despachando la instrucción completa en una única transacción.*
+
+### Motor de calculo y tolerancias
+La generacion de calculos mensuales se orquesta en el metodo *create_multiple*. Se implemento una estrategia de separacion entre el alcance de metas reales y las reglas de negocio de compensacion.
+
+```python
+effective_scope = settlement.snapshot_global_scope
+if exception:
+    effective_scope += exception.scope_tolerance_pct
+
+applied_tier = tiers.filter(
+    min_global_scope_pct__lte=effective_scope,
+    min_completed_classes__lte=settlement.snapshot_completed_classes
+).first()
+```
+*Este fragmento de codigo del detalle de liquidacion ilustra como el sistema respeta y almacena permanentemente el rendimiento bruto del colaborador en la propiedad snapshot_global_scope. No obstante, al determinar que peldaño o multiplicador le corresponde, utiliza la variable calculada effective_scope, sumando asi la excepcion otorgada. Esto asegura integridad en reportes comerciales y equidad en el pago salarial.*
+
+### Controladores de vista multiplexados (views)
+En lugar de crear un endpoint y un controlador para cada accion individual sobre las comisiones, el archivo *apps/human_resources/views.py* consolida el manejo de formularios mediante un solo controlador.
+
+```python
+@login_required
+@require_POST
+def commissions_action(request):
+    action = request.POST.get('action')
+    selected_routes = request.POST.getlist('selected_routes')
+
+    if action == 'recalculate':
+        # Delega al servicio para calculo
+    elif action == 'close':
+        # Delega al servicio para cierre
+    elif action == 'export_data':
+        # Retorna el response CSV
+    elif action == 'send_closed':
+        # Envia correo electronico
+```
+*Esta arquitectura permite agregar nuevas herramientas de gestion de multiples rutas (como aprobaciones o rechazos) simplemente agregando condiciones al enrutador, reduciendo la redundancia de consultas de seguridad y permisos de usuario.*
+
+### Exportacion de archivos
+La clase *CommissionsReport* procesa el armado y entrega de datos sin comprometer almacenamiento en servidor.
+
+```python
+def export_report_data(self, route_ids, month, year):
+    count, csv_content = self._generate_csv_data(route_ids, month, year)
+    response = HttpResponse(
+        csv_content.encode('utf-8-sig'), 
+        content_type='text/csv; charset=utf-8-sig'
+    )
+    response['Content-Disposition'] = f'attachment; filename="comisiones_{month}_{year}.csv"'
+    return response
+```
+*Este fragmento explica como se inyecta el contenido de un buffer en memoria hacia una respuesta web directa. La codificacion utf-8-sig es critica, pues inserta la marca de orden de bytes (BOM) requerida por hojas de calculo populares para leer correctamente acentos y caracteres especiales sin alteraciones.*

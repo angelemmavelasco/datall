@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect,get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from urllib.parse import urlencode
 from django.http import JsonResponse
@@ -576,3 +576,16 @@ def commissions_action(request):
     redirect_url = f"{base_url}?{query_string}"
     
     return redirect(redirect_url)
+
+
+
+@login_required
+def commission_report_detail(request, pk):
+    user = request.user
+    template = 'human_resources/payroll/commission_report_detail.html'
+    allowed_routes = get_allowed_routes_for_user(user).order_by('id')
+    service = CommissionsReport(allowed_routes=allowed_routes)
+    
+    context = service.get_settlement_detail(pk)
+    
+    return render(request, template, context)

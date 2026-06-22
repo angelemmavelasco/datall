@@ -6,7 +6,8 @@ from apps.core.models import (
     CommissionSettlement,
     RouteCommissionException,
     RouteAssignment,
-    SaleTarget
+    SaleTarget,
+    SaleTransaction
     )
 
 from apps.sales.services.sale_targets.sale_targets_crud import SaleTargetCRUD
@@ -37,6 +38,7 @@ import io
 from django.core.mail import send_mail, EmailMessage
 from django.conf import settings
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 
 
 class Comissions:
@@ -395,6 +397,7 @@ class CommissionsReport(SaleTransactionCRUD, SaleTargetCRUD):
             bonus_type=Subquery(setup_sq.values('bonus_type')[:1]),
             profile_id=Subquery(setup_sq.values('profile_id')[:1])
         )
+        print(qs)
         
         return {
             'report': qs,
@@ -533,6 +536,78 @@ class CommissionsReport(SaleTransactionCRUD, SaleTargetCRUD):
         
         return updated_count
 
+    def get_settlement_detail(self, pk):
+
+        settlement = get_object_or_404(
+            CommissionSettlement.objects.select_related('route', 'employee__user'),
+            pk=pk,
+            route__in=self.allowed_routes
+        )
+
+        period_start = settlement.period_start
+        period_end = settlement.period_end
+        route = settlement.route
+
+        setup = RouteCommissionSetup.objects.filter(
+            route=route, start_date__lte=period_end
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=period_start)
+        ).order_by('-start_date').first()
+
+        bonus_type = setup.bonus_type if setup else 'v'
+
+        exception = RouteCommissionException.objects.filter(
+            route=route, start_date__lte=period_end, end_date__gte=period_start
+        ).order_by('-start_date').first()
+        targets_qs = SaleTarget.objects.filter(route=route, period=period_start).select_related('product_class')
+        tx_qs = SaleTransaction.objects.filter(route=route, sale_date__range=(period_start, period_end))
+
+        sales_breakdown = []
+        for tgt in targets_qs:
+            cls_sales = tx_qs.filter(product_class=tgt.product_class).aggregate(s=Sum('net_amount'))['s'] or Decimal('0.00')
+            scope = (cls_sales / tgt.target_amount * 100) if tgt.target_amount > 0 else Decimal('0.00')
+            sales_breakdown.append({
+                'class_name': str(tgt.product_class.name).title(),
+                'is_valid': tgt.is_valid_for_comission,
+                'target': tgt.target_amount,
+                'sales': cls_sales,
+                'scope': scope,
+                'completed': cls_sales >= tgt.target_amount
+            })
+
+        tiers = CommissionTier.objects.filter(
+            commission_profile__name=settlement.snapshot_profile_name
+        ).order_by('-min_global_scope_pct', '-min_completed_classes')
+        applied_tier = tiers.filter(
+            min_global_scope_pct__lte=settlement.snapshot_global_scope,
+            min_completed_classes__lte=settlement.snapshot_completed_classes
+        ).first()
+
+        if bonus_type == 'v':
+            potential_bonus = (settlement.snapshot_base_bonus * settlement.snapshot_net_sales) / Decimal('100.0')
+            formatted_base_bonus = f"{settlement.snapshot_base_bonus} %"
+        else:
+            potential_bonus = settlement.snapshot_base_bonus
+            formatted_base_bonus = f"$ {settlement.snapshot_base_bonus:,.2f}"
+            
+        multiplier = applied_tier.bonus_multiplier_pct if applied_tier else Decimal('0.00')
+        extra_flat = applied_tier.extra_flat_bonus if applied_tier else Decimal('0.00')
+        
+        obtained_bonus = settlement.final_calculated_bonus - settlement.manual_adjustment
+
+        return {
+            'settlement': settlement,
+            'bonus_type': bonus_type,
+            'formatted_base_bonus': formatted_base_bonus,
+            'sales_breakdown': sales_breakdown,
+            'tiers': tiers,
+            'applied_tier': applied_tier,
+            'exception': exception,
+            'potential_bonus': potential_bonus,
+            'obtained_bonus': obtained_bonus,
+            'multiplier': multiplier,
+            'extra_flat': extra_flat,
+        }
 
     def _generate_csv_data(self, route_ids, month, year, status_filter=None):
         month = int(month)
