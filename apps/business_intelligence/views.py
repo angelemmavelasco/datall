@@ -219,6 +219,17 @@ def products_kpis(request):
     return render(request, 'business_intelligence/products_kpis/products_kpis.html', context)
 
 
+@login_required
+def collections(request):
+    user = request.user
+    template = 'business_intelligence/collections/collections.html'
+    allowed_routes = get_allowed_routes_for_user(user)
+
+    context ={
+
+    }
+
+    return render(request, template, context)
 
 
 

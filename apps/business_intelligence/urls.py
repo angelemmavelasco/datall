@@ -28,6 +28,8 @@ urlpatterns = [
     path('monthly_breakdown_by_warehouse/', monthly_breakdown_by_warehouse, name='monthly_breakdown_by_warehouse'),
     path('export_monthly_breakdown_data/', export_monthly_breakdown_data, name='export_monthly_breakdown_data'),
 
+    path('collections/', collections, name='collections'),
+
 
 
     path('sales_breakdown/', sales_breakdown, name='sales_breakdown'),
