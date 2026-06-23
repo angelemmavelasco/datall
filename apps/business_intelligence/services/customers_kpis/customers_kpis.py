@@ -3,7 +3,7 @@ from decimal import Decimal
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 from django.db.models import Sum, F, Count, Max
-from apps.core.models import Customer, SaleTransaction, AccountsReceivable
+from apps.core.models import Customer, SaleTransaction, AccountsReceivable, Reference
 import io
 import csv
 
@@ -36,6 +36,7 @@ class CustomersKpis:
         """
         Assembles all the KPIs to send them to the template.
         """
+        
         today = date.today()
         current_year = today.year
         previous_year = current_year - 1
@@ -62,6 +63,7 @@ class CustomersKpis:
         for row in current_year_sales_qs:
             monthly_sales[row['customer_id']][row['month_num']] = row['total_sale'] or Decimal('0.00')
 
+
         prev_year_sales_qs = transactions.filter(
             sale_date__year=previous_year
         ).values('customer_id').annotate(
@@ -84,8 +86,16 @@ class CustomersKpis:
             totals_trim[cid] += (row['monthly_total'] or Decimal('0.00'))
             active_months_trim[cid] += 1
 
+        relevant_product_classes = Reference.objects.filter(
+            field_context='relevant_product_classes',
+            key='customer',
+            module__url_name='business_intelligence:customers_kpis'
+        ).values_list('reference', flat=True)
+        print(relevant_product_classes)
+
         product_classes_qs = transactions.filter(
-            sale_date__year=current_year
+            sale_date__year=current_year,
+            product_class_id__in=relevant_product_classes
         ).values('customer_id').annotate(
             classes_count=Count('product_class_id', distinct=True)
         )
@@ -152,7 +162,7 @@ class CustomersKpis:
             ar = accounts_receivable.get(cid)
             if ar:
                 customer.current_balance = ar.current_balance or Decimal('0.00')
-                customer.overdue_balance = ar.past_due or Decimal('0.00')
+                customer.overdue_balance = (ar.past_due + ar.balance_15 + ar.balance_30 + ar.balance_60) or Decimal('0.00')
                 total_balance = ar.total_balance or Decimal('0.00')
             else:
                 customer.current_balance = Decimal('0.00')
@@ -211,8 +221,8 @@ class CustomersKpis:
         all_customers_data, months_headers = self.build_dashboard_data()
 
         header_row = [
-            'Cliente', 'Ruta', 'Gerencia', 'Tipo de cliente', 'Categoría', 
-            'Frecuencia', 'Líder de opinión', 'Saldo al corriente', 'Saldo vencido', 
+            'ID Cliente','Cliente', 'Ruta', 'Gerencia', 'Tipo de cliente', 'Categoría', 
+            'Frecuencia', 'Líder de opinión','Límite de crédito', 'Saldo al corriente', 'Saldo vencido', 
             'Uso (%)', 'Convenios activos', 'Clases de producto', 'Promedio año previo', 
             'Promedio año actual', 'Promedio trimestre'
         ]
@@ -226,19 +236,21 @@ class CustomersKpis:
         for c in all_customers_data:
             opinion_leader_str = "Sí" if getattr(c, 'opinion_leader', False) else "No"
             
-            client_display = f"{c.id} {c.name}"
+            client_display = c.name.title()
             route_display = getattr(c.route, 'id', '') if hasattr(c, 'route') and c.route else ''
             warehouse_display = getattr(c.route.warehouse, 'name', '') if hasattr(c, 'route') and c.route and hasattr(c.route, 'warehouse') and c.route.warehouse else ''
             customer_type_display = getattr(c.customer_type, 'name', '') if hasattr(c, 'customer_type') and c.customer_type else ''
             
             row = [
+                c.id,
                 client_display,
                 route_display,
-                warehouse_display,
-                customer_type_display,
-                getattr(c.category_last_moving_q, 'name', ''),
-                getattr(c, 'frequency', ''),
-                opinion_leader_str,
+                warehouse_display.title(),
+                customer_type_display.title(),
+                getattr(c.category_last_moving_q, 'name', '').title(),
+                getattr(c, 'frequency', '').title(),
+                opinion_leader_str.title(),
+                round(getattr(c, 'credit_limit', 0), 2),
                 round(getattr(c, 'current_balance', 0), 2),
                 round(getattr(c, 'overdue_balance', 0), 2),
                 round(getattr(c, 'credit_usage', 0), 2),

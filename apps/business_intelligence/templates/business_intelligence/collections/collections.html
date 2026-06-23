@@ -36,7 +36,7 @@
 <div class="flex flex-col w-full gap-4">
     <!-- Ban de resultados -->
     <div class="">
-        <p class="text-title text-sm mb-2">Periodo {{ selected_date_start|default:'' }} al {{ selected_date_end|default:'' }}</p>
+        <p class="text-title text-sm mb-2">Periodo {{ periodo|default:'' }}</p>
         <hr class="border-border">
     </div>
 
@@ -58,11 +58,119 @@
         </div>
 
         <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-muted text-sm text-strong">Uso de crédito</p>
-            <p class="text-xl text-red-500">$ {{ kpis.difference|default:0.00|floatformat:2|intcomma }}</p>
+            <p class="text-muted text-sm text-strong">Cuentas por cobrar</p>
+            <p class="text-xl text-red-500">{{ kpis.difference|default:0.00|floatformat:0|intcomma }}</p>
         </div>
 
     </div>
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Antigüedad de saldos vencidos</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+        <table class="w-full table-fixed text-left border-collapse">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="min-w-40 p-1 text-center text-title">1-15 días</th>
+                    <th class="min-w-40 p-1 text-center text-title">16-30 días</th>
+                    <th class="min-w-40 p-1 text-center text-title">31-60 días</th>
+                    <th class="min-w-40 p-1 text-center text-title">+60 días</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for collection in collections %}
+                <tr class="border-b border-border">
+                    <td class="p-1 text-center text-title">{{ collection.client.name }}</td>
+                    <td class="p-1 text-center text-title">{{ collection.amount|floatformat:2|intcomma }}</td>
+                    <td class="p-1 text-center text-title">{{ collection.credit_limit|floatformat:2|intcomma }}</td>
+                    <td class="p-1 text-center text-title">{{ collection.days_past_due }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-2">No hay datos para mostrar.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Uso de crédito</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-200 md:h-100">
+        <div class=" border border-border rounded bg-container flex min-h-98 items-center justify-center"
+            id="creditUsageGaugeChart">
+        </div>
+
+        <div class=" border border-border rounded bg-container min-h-98 flex items-center justify-center"
+            id="debtByCustomerTypeBarChart">
+        </div>
+
+    </div>
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Desglose por cliente</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+        <table class="w-full table-fixed border-separate border-spacing-0">
+            <thead>
+                <tr>
+                    <th colspan="3">Identificación</th>
+                    <th colspan="4">Detalles de saldo</th>
+                </tr>
+                <tr class="border-b border-border">
+                    <th class="w-40 min-w-40 max-w-40 p-1 text-center border-b border-border text-title sticky left-0 z-10 bg-container">Cliente</th>
+                    <th class="w-40 min-w-40 max-w-40 p-1 text-center border-b border-border text-title sticky left-40 z-10 bg-container">Ruta</th>
+                    <th class="w-20 min-w-20 max-w-20 p-1 text-center border-b border-border text-title sticky left-80 z-10 bg-container border-r">Cedis</th>
+                    <th class="min-w-20 p-1 text-center border-b border-border text-title">Total</th>
+                    <th class="min-w-20 p-1 text-center border-b border-border text-title">Al corriente</th>
+                    <th class="min-w-20 p-1 text-center border-b border-border text-title">Vencido</th>
+                    <th class="min-w-40 p-1 text-center border-b border-border text-title">1-15 días</th>
+                    <th class="min-w-40 p-1 text-center border-b border-border text-title">16-30 días</th>
+                    <th class="min-w-40 p-1 text-center border-b border-border text-title">31-60 días</th>
+                    <th class="min-w-40 p-1 text-center border-b border-border text-title">+60 días</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in collections.customers %}
+                    <tr class="border-b border-border">
+                        <td class="w-40 min-w-40 max-w-40 p-1 text-center text-title sticky left-0 z-10 bg-container truncate" title="{{ customer.id|upper }} {{ customer.name|title }}">
+                            {{ customer.id|upper }} {{ customer.name|title }}
+                        </td>
+                        <td class="w-40 min-w-40 max-w-40 p-1 text-center text-title sticky left-40 z-10 bg-container truncate" title="{{ customer.route.id|upper }} {{ customer.route.name|title }}">
+                            {{ customer.route.id|upper }} {{ customer.route.name|title }}
+                        </td>
+                        <td class="w-20 min-w-20 max-w-20 p-1 text-center text-title sticky left-80 z-10 bg-container border-r border-border truncate">
+                            {{ customer.route.warehouse.id|upper }}
+                        </td>
+                        <td class="p-1 text-center text-title">{{ customer.total_balance|floatformat:2|intcomma }}</td>
+                        <td class="p-1 text-center text-title">{{ customer.current_balance|floatformat:2|intcomma }}</td>
+                        <td class="p-1 text-center text-title">{{ customer.past_due_balance|floatformat:2|intcomma }}</td>
+                        <td class="p-1 text-center text-title">{{ customer.balance_15|floatformat:2|intcomma }}</td>
+                        <td class="p-1 text-center text-title">{{ customer.balance_30|floatformat:2|intcomma }}</td>
+                        <td class="p-1 text-center text-title">{{ customer.balance_60|floatformat:2|intcomma }}</td>
+                        <td class="p-1 text-center text-title">{{ customer.past_due|floatformat:2|intcomma }}</td>
+                    </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="11" class="text-center text-muted py-2">No hay datos para mostrar.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+
+    
+
+
 </div>
 
 

@@ -182,49 +182,51 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
 {% block content %}
 
-<div class="w-full overflow-x-auto border border-border rounded bg-container">
-    <table class="w-full text-left border-collapse">
-        <thead>
-            <tr class="border-b border-border">
-                <th colspan="3" class="p-2 text-center border-r border-border">Identificación</th>
-                <th colspan="4" class="p-2 text-center border-r border-border">Segmentación</th>
-                <th colspan="3" class="seccion-cobranza     p-2 text-center border-r border-border" >Cobranza</th>
-                <th colspan="5" class="seccion-metricas p-2 text-center border-r border-border" >Métricas de consumo</th>
-                <th colspan="12" class="seccion-mensual min-w-[500px] p-2 text-center  border-r border-border" >Desglose de consumos mensuales año
-                    actual</th>
-            </tr>
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative">
+        <table class="w-full border-separate border-spacing-0 ">
+            <thead>
+                <tr class="border-b border-border">
+                    <th colspan="3" class="p-2 text-center border-r border-border sticky top-0 z-20 bg-page h-8">Identificación</th>
+                    <th colspan="4" class="p-2 text-center border-r border-border sticky top-0 z-20 bg-page h-8">Segmentación</th>
+                    <th colspan="4" class="seccion-cobranza     p-2 text-center border-r border-border sticky top-0 z-20 bg-page h-8" >Cobranza</th>
+                    <th colspan="5" class="seccion-metricas p-2 text-center border-r border-border sticky top-0 z-20 bg-page h-8" >Métricas de consumo</th>
+                    <th colspan="12" class="seccion-mensual min-w-[500px] p-2 text-center  border-r border-border sticky top-0 z-20 bg-page h-8" >Desglose de consumos mensuales año
+                        actual</th>
+                </tr>
+    
+                <tr class="border-b border-border text-xs">
+                    <th class="min-w-[240px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Cliente</th>
+                    <th class="min-w-[120px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Ruta</th>
+                    <th class="min-w-[120px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Gerencia</th>
+    
+                    <th class="min-w-[140px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Tipo de cliente</th>
+                    <th class="min-w-[120px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Categoría</th>
+                    <th class="min-w-[120px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Frecuencia</th>
+                    <th class="min-w-[140px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Líder de opinión</th>
+    
+                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8" >Límite de crédito</th>
+                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8" >Saldo al corriente</th>
+                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8" >Saldo vencido</th>
+                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8" >Uso</th>
+    
+                    <th class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Convenios activos</th>
+                    <th class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Clases de producto</th>
+                    <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Promedio año previo</th>
+                    <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Promedio año actual</th>
+                    <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Promedio trimestre</th>
+    
+                    {% for month in months_headers %}
+                        <th class="seccion-mensual min-w-[120px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">{{ month|date:"F"|title }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+    
+            <tbody>
+                {% include "business_intelligence/customers_kpis/partials/customer_kpis_rows.html" %}
+            </tbody>
+        </table>
+    </div>
 
-            <tr class="border-b border-border text-xs">
-                <th class="min-w-[240px] p-2 text-center text-title border-r border-border">Cliente</th>
-                <th class="min-w-[120px] p-2 text-center text-title border-r border-border">Ruta</th>
-                <th class="min-w-[120px] p-2 text-center text-title border-r border-border">Gerencia</th>
-
-                <th class="min-w-[140px] p-2 text-center text-title border-r border-border">Tipo de cliente</th>
-                <th class="min-w-[120px] p-2 text-center text-title border-r border-border">Categoría</th>
-                <th class="min-w-[120px] p-2 text-center text-title border-r border-border">Frecuencia</th>
-                <th class="min-w-[140px] p-2 text-center text-title border-r border-border">Líder de opinión</th>
-
-                <th class="seccion-cobranza min-w-[160px] p-2 text-center text-title border-r border-border" >Saldo al corriente</th>
-                <th class="seccion-cobranza min-w-[160px] p-2 text-center text-title border-r border-border" >Saldo vencido</th>
-                <th class="seccion-cobranza min-w-[100px] p-2 text-center text-title border-r border-border" >Uso</th>
-
-                <th class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-border">Convenios activos</th>
-                <th class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-border">Clases de producto</th>
-                <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-border">Promedio año previo</th>
-                <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-border">Promedio año actual</th>
-                <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-border">Promedio trimestre</th>
-
-                {% for month in months_headers %}
-                    <th class="seccion-mensual min-w-[120px] p-2 text-center text-title border-r border-border">{{ month|date:"F"|slice:":3" }}</th>
-                {% endfor %}
-            </tr>
-        </thead>
-
-        <tbody>
-            {% include "business_intelligence/customers_kpis/partials/customer_kpis_rows.html" %}
-        </tbody>
-    </table>
-</div>
 
 
 {% endblock %}

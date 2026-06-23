@@ -1,4 +1,4 @@
-from apps.core.models import Warehouse, ProductClass, ProductCategory, CustomerType, Region, Route, Employee, SaleTransaction, Customer, SystemModule
+from apps.core.models import Warehouse, ProductClass, ProductCategory, CustomerType, Region, Route, Employee, SaleTransaction, Customer, SystemModule, Reference
 from apps.core.utils import get_allowed_routes_for_user
 from django.db.models import Sum, Q
 from django.db.models.functions import ExtractYear
@@ -273,26 +273,38 @@ def customers_kpis(request):
         response['Content-Disposition'] = 'attachment; filename="customers_kpis.csv"'
         return response
 
-    paginator = Paginator(customers_qs, 100)
+    customers_kpis_service = CustomersKpis(customers_qs)
+    all_customers_data, months_headers = customers_kpis_service.build_dashboard_data()
+
+    paginator = Paginator(all_customers_data, 100)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    #get metrics only for the paginated slice
-    customers_data = []
-    months_headers = []
-    if page_obj.object_list:
-        customers_kpis_service = CustomersKpis(page_obj.object_list)
-        customers_data, months_headers = customers_kpis_service.build_dashboard_data()
+    customers_data = page_obj.object_list 
+
+    # To keep pagination filters clean
+    query_dict = request.GET.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
+    query_string = query_dict.urlencode()
+
+    relevant_product_classes_count = len(Reference.objects.filter(
+        field_context='relevant_product_classes',
+        key='customer',
+        module__url_name = 'business_intelligence:customers_kpis'
+    ).values_list('reference', flat=True))
 
     context = {
         'customers': customers_data,
         'page_obj': page_obj,
+        'query_string': query_string,
         'months_headers': months_headers,
         'filter_warehouses': Warehouse.objects.all(),
         'filter_product_classes': ProductClass.objects.all(),
         'filter_product_categories': ProductCategory.objects.all(),
         'filter_customer_types': CustomerType.objects.all(),
         'filter_routes': allowed_routes,
+        'relevant_product_classes_count': relevant_product_classes_count,
         
         'selected_start_registration_date': start_registration_date,
         'selected_end_registration_date': end_registration_date,
@@ -320,6 +332,8 @@ def customers_kpis(request):
     )
 
     return render(request, template, context)
+
+
 
 @login_required
 async def export_customers_kpis_data(request):
