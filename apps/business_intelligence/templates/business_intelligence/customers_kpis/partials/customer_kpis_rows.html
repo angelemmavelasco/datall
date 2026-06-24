@@ -1,11 +1,11 @@
 {% load humanize %}
 {% for customer in customers %}
-<tr class="hover:bg-hover transition-colors duration-300">
+<tr class="hover:bg-hover/30 transition-colors duration-300">
 
-    <th class="p-2 border-r border-border">
+    <th class="min-w-[240px] max-w-[240px] w-[240px] p-2 border-r border-border sticky md:left-0 z-20 bg-container">
         
         <a href="{% url 'business_intelligence:customer_kpis' customer.id %}" target="_blank" class="flex items-center justify-start gap-1 underline text-strong">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="min-w-[14px]">
                 <path d="M22 12A10 10 0 1 1 12 2" />
                 <path d="M22 2 12 12" />
                 <path d="M16 2h6v6" />
@@ -14,11 +14,11 @@
         </a>
     </th>
 
-    <td class="p-2 text-title border-r border-border text-center">
+    <td class="min-w-[120px] max-w-[120px] w-[120px] p-2 text-title border-r border-border text-center sticky md:left-[240px] z-20 bg-container">
         {{ customer.route.id|upper }}
     </td>
 
-    <td class="p-2 text-title border-r border-border text-center">
+    <td class="min-w-[120px] max-w-[120px] w-[120px] p-2 text-title border-r border-border text-center sticky md:left-[360px] z-20 bg-container">
         {{ customer.route.warehouse.id|upper }}
     </td>
 
@@ -64,38 +64,95 @@
         {% endif %}
     </td>
 
-    <td class="seccion-cobranza p-2 text-right text-title border-r border-border" >
+    <td class="p-2 text-right text-title border-r border-border" >
         $ {{ customer.credit_limit|floatformat:2|intcomma }}
     </td>
 
-    <td class="seccion-cobranza p-2 text-right text-title border-r border-border" >
+    <td class="p-2 text-right text-title border-r border-border" >
         $ {{ customer.current_balance|floatformat:2|intcomma }}
     </td>
-    <td class="seccion-cobranza p-2 text-right text-title border-r border-border" >
+    <td class="p-2 text-right text-title border-r border-border" >
         $ {{ customer.overdue_balance|floatformat:2|intcomma }}
     </td>
-    <td class="seccion-cobranza p-2 text-right text-title border-r border-border" >
+    <td class="p-2 text-right text-title border-r border-border" >
         {{ customer.credit_usage|floatformat:2|intcomma }}%
     </td>
 
-    <td class="seccion-metricas p-2 text-right text-title border-r border-border">
+    <td class="p-2 text-right text-title border-r border-border">
         {{ customer.active_agreements|floatformat:0|intcomma }}
     </td>
-    <td class="seccion-metricas p-2 text-right text-title border-r border-border">
+    <td class="p-2 text-right text-title border-r border-border">
         {{ customer.product_classes_with_consumption|floatformat:0|intcomma }} / {{ relevant_product_classes_count }}
     </td>
-    <td class="seccion-metricas p-2 text-right text-title border-r border-border">
+    <td class="p-2 text-right text-title border-r border-border">
         $ {{ customer.previous_year_average|floatformat:2|intcomma }}
     </td>
-    <td class="seccion-metricas p-2 text-right text-title border-r border-border">
+    <td class="p-2 text-right text-title border-r border-border">
         $ {{ customer.current_year_average|floatformat:2|intcomma }}
     </td>
-    <td class="seccion-metricas p-2 text-right text-title border-r border-border">
+    <td class="p-2 text-right text-title border-r border-border">
         $ {{ customer.previous_moving_quarter_average|floatformat:2|intcomma }}
     </td>
 
+    <!-- analisis de contribucion -->
+    <td class="p-2 text-title border-r border-border">
+        <div class="flex items-center justify-between gap-2">
+            <span class="text-blue-600">
+                Venta neta
+            </span>
+            <span>
+                $ {{ customer.performance_net_amount|default:0|floatformat:2|intcomma }}
+            </span>
+        </div>
+        <div class="flex items-center justify-between gap-2">
+            <span class="text-green-600">
+                Utilidad
+            </span>
+            <span>
+                $ {{ customer.performance_profit|default:0|floatformat:2|intcomma }}
+            </span>
+        </div>
+    </td>
+    <td class="p-2 text-title border-r border-border">
+        <div class="flex items-center justify-between gap-2">
+            <span class="text-blue-600">
+                Venta neta
+            </span>
+            <span>
+                {{ customer.contrib_net_amount|default:0|floatformat:2|intcomma }} %
+            </span>
+        </div>
+        <div class="flex items-center justify-between gap-2">
+            <span class="text-green-600">
+                Utilidad
+            </span>
+            <span>
+                {{ customer.contrib_profit|default:0|floatformat:2|intcomma }} %
+            </span>
+        </div>
+    </td>
+
+    <td class="p-2 text-title border-r border-border">
+        <div class="flex items-center justify-between gap-2">
+            <span class="text-violet-600">
+                {{ customer.selected_contrib_by|default:'Venta neta'|title }}
+            </span>
+            <span>
+                {{ customer.cumuled_contrib|default:0|floatformat:2|intcomma }} % 
+            </span>
+        </div>
+        <div class="flex items-center justify-between gap-2">
+            <span class="text-rose-600">
+                Clientes: {{ customer.cumuled_portafolio_count|default:0|floatformat:0|intcomma }}
+            </span>
+            <span>
+                {{ customer.cumuled_portafolio_pct|default:0|floatformat:2|intcomma }} %
+            </span>
+        </div>
+    </td>
+
     {% for month in customer.monthly_consumption_qs %}
-        <td class="seccion-mensual p-2 text-right text-title border-r border-border">
+        <td class="p-2 text-right text-title border-r border-border">
             <span class="font-medium">
                 $ {{ month.sale|floatformat:2|intcomma }}
             </span><br>
@@ -110,7 +167,7 @@
 {% empty %}
 {% if not page_obj.has_previous %}
 <tr>
-    <td colspan="28"  class="p-2 text-muted text-center border-border">
+    <td colspan="31"  class="p-2 text-muted text-center border-border">
         <div class="sticky left-1/2 -translate-x-1/2 w-max">
             No hay datos para mostrar
         </div>
@@ -121,7 +178,7 @@
 
 {% if page_obj.has_next %}
 <tr id="load-more-row-{{ page_obj.number }}">
-    <td colspan="28" class="p-4">
+    <td colspan="31" class="p-4">
         
         <div class="sticky left-1/2 -translate-x-1/2 w-max">
             

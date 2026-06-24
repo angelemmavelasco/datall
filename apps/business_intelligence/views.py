@@ -258,6 +258,16 @@ def customers_kpis(request):
     if start_registration_date: filters['start_registration_date'] = start_registration_date
     if end_registration_date: filters['end_registration_date'] = end_registration_date
 
+    order_contrib = request.POST.get('order_contrib') or request.GET.get('order_contrib', 'net_amount')
+    start_contrib = request.POST.get('start_contrib_from') or request.GET.get('start_contrib_from')
+    end_contrib = request.POST.get('start_contrib_to') or request.GET.get('start_contrib_to')
+
+    contrib_config = {
+        'order_contrib': order_contrib,
+        'start_date': start_contrib,
+        'end_date': end_contrib
+    }
+
     metadata = filters if filters else None
 
 
@@ -274,13 +284,23 @@ def customers_kpis(request):
         return response
 
     customers_kpis_service = CustomersKpis(customers_qs)
-    all_customers_data, months_headers = customers_kpis_service.build_dashboard_data()
+    all_customers_data, months_headers = customers_kpis_service.build_dashboard_data(contrib_config)
 
     paginator = Paginator(all_customers_data, 100)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
-
     customers_data = page_obj.object_list 
+
+    query_dict = request.GET.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
+        
+    if request.method == 'POST':
+        query_dict['order_contrib'] = order_contrib
+        if start_contrib: query_dict['start_contrib_from'] = start_contrib
+        if end_contrib: query_dict['start_contrib_to'] = end_contrib
+        
+    query_string = query_dict.urlencode()
 
     # To keep pagination filters clean
     query_dict = request.GET.copy()
@@ -313,6 +333,12 @@ def customers_kpis(request):
         'selected_customer_types': customer_types,
         'selected_opinion_leader': opinion_leader,
         'query_text': query_text,
+
+
+        'order_contrib': order_contrib,
+        'start_contrib_from': start_contrib,
+        'start_contrib_to': end_contrib,
+        'contrib_config': contrib_config,
     }
 
     if request.htmx:

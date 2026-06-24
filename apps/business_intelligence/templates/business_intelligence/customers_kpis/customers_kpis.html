@@ -182,41 +182,163 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
 {% block content %}
 
+<div class="flex flex-col w-full gap-4">
+    <!-- Ban de resultados -->
+    <div class="">
+        <p class="text-title text-sm mb-2">Métricas generales</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-sm text-strong">Clientes registrados</p>
+            <p class="text-xl text-blue-500">{{ customers.kpis.registered_customers|default:0.00|floatformat:0|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-sm text-strong">Clientes con consumo</p>
+            <p class="text-xl text-green-500">{{ customers.kpis.customers_with_consumption|default:0.00|floatformat:0|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-sm text-strong">Clientes sin consumo</p>
+            <p class="text-xl text-red-500">{{ customers.kpis.customers_without_consumption|default:0.00|floatformat:0|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-sm text-strong">Venta neta</p>
+            <p class="text-xl text-green-500">{{ customers.kpis.net_sales|default:0.00|floatformat:2|intcomma }}</p>
+        </div>
+
+    </div>
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Desglose por cliente</p>
+        <hr class="border-border">
+    </div>
+
     <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative">
-        <table class="w-full border-separate border-spacing-0 ">
+        <table class="w-max min-w-full border-separate border-spacing-0">
             <thead>
                 <tr class="border-b border-border">
-                    <th colspan="3" class="p-2 text-center border-r border-border sticky top-0 z-20 bg-page h-8">Identificación</th>
-                    <th colspan="4" class="p-2 text-center border-r border-border sticky top-0 z-20 bg-page h-8">Segmentación</th>
-                    <th colspan="4" class="seccion-cobranza     p-2 text-center border-r border-border sticky top-0 z-20 bg-page h-8" >Cobranza</th>
-                    <th colspan="5" class="seccion-metricas p-2 text-center border-r border-border sticky top-0 z-20 bg-page h-8" >Métricas de consumo</th>
-                    <th colspan="12" class="seccion-mensual min-w-[500px] p-2 text-center  border-r border-border sticky top-0 z-20 bg-page h-8" >Desglose de consumos mensuales año
+                    <th colspan="3" class="p-2 text-center border-r border-border sticky top-0 md:left-0 z-35 bg-page h-8">Identificación</th>
+                    <th colspan="4" class="p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8">Segmentación</th>
+                    <th colspan="4" class="seccion-cobranza     p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8" >Cobranza</th>
+                    <th colspan="5" class="seccion-metricas p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8" >Métricas de consumo</th>
+
+
+                    <!-- metricas de conusmo y filtro -->
+                    <th colspan="3" class="seccion-metricas p-2 border-r border-border sticky top-0 z-30 bg-page h-8 relative" id="th-contrib-filter">
+
+                        <div class="flex items-center justify-center w-full h-full">
+                            <span>Métricas de contribución del {{ contrib_config.start_date|date:"M Y"|title }} - {{ contrib_config.end_date|date:"M Y"|title }} </span>
+                        </div>
+                        
+                        <svg id="btn-contrib-filter" onclick="toggleContribFilter(event)" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
+                            class="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer hover:text-hover transition-colors lucide lucide-sliders-horizontal">
+                            <path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/>
+                        </svg>
+
+                        <div id="dropdown-contrib-filter" class="hidden absolute top-full right-0 mt-8 w-50 bg-body rounded z-50 text-page border border-border shadow-lg p-2 text-left">
+                            
+                            <form method="POST" action="" class="flex flex-col gap-3">
+                                {% csrf_token %}
+                                
+                                <div>
+                                    <p class="mb-1 text-xs text-strong">Ordenar por</p>
+                                    <label class="flex items-center gap-2 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                                        <input type="radio" name="order_contrib" value="net_amount" class="accent-blue-500" 
+                                            {% if order_contrib == 'net_amount' or not order_contrib %}checked{% endif %}>
+                                        <span class="text-title">Venta neta</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                                        <input type="radio" name="order_contrib" value="profit" class="accent-blue-500"
+                                            {% if order_contrib == 'profit' %}checked{% endif %}>
+                                        <span class="text-title">Utilidad</span>
+                                    </label>
+                                </div>
+
+                                <div>
+                                    <p class="mb-1 text-xs text-strong">Desde</p>
+                                    <input type="date" name="start_contrib_from" id="start_contrib_from" 
+                                        value="{{ start_contrib_from|default:'' }}" 
+                                        class="w-full border border-border rounded p-1 bg-page text-strong outline-none">
+                                </div>
+
+                                <div>
+                                    <p class="mb-1 text-xs text-strong">Hasta</p>
+                                    <input type="date" name="start_contrib_to" id="start_contrib_to" 
+                                        value="{{ start_contrib_to|default:'' }}" 
+                                        class="w-full border border-border rounded p-1 bg-page text-strong outline-none">
+                                </div>
+
+                                <div class="flex gap-2 flex-col mt-2">
+                                    <button type="submit" class="bg-body border border-border text-page hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar filtros</button>
+                                    <a href="{{ request.path }}" class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar filtros</a>
+                                </div>
+                            </form>
+                        </div>
+                    </th>
+
+                    <script>
+                        function toggleContribFilter(event) {
+                            event.stopPropagation(); 
+                            const dropdown = document.getElementById('dropdown-contrib-filter');
+                            dropdown.classList.toggle('hidden');
+                        }
+
+                        document.addEventListener('click', function(event) {
+                            const dropdown = document.getElementById('dropdown-contrib-filter');
+                            const thElement = document.getElementById('th-contrib-filter');
+                            
+                            if (!dropdown.classList.contains('hidden') && !thElement.contains(event.target)) {
+                                dropdown.classList.add('hidden'); 
+                            }
+                        });
+                    </script>
+
+
+
+
+                    <th colspan="12" class="seccion-mensual min-w-[500px] p-2 text-center  border-r border-border sticky top-0 z-30 bg-page h-8" >Desglose de consumos mensuales año
                         actual</th>
                 </tr>
     
                 <tr class="border-b border-border text-xs">
-                    <th class="min-w-[240px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Cliente</th>
-                    <th class="min-w-[120px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Ruta</th>
-                    <th class="min-w-[120px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Gerencia</th>
+                    <th class="min-w-[240px] max-w-[240px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-0 z-35 bg-page h-8">
+                        Cliente
+                    </th>
+                    
+                    <th class="min-w-[120px] max-w-[120px] w-[120px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-[240px] z-35 bg-page h-8">
+                        Ruta
+                    </th>
+                    
+                    <th class="min-w-[120px] max-w-[120px] w-[120px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-[360px] z-35 bg-page h-8">
+                        Gerencia
+                    </th>
     
-                    <th class="min-w-[140px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Tipo de cliente</th>
-                    <th class="min-w-[120px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Categoría</th>
-                    <th class="min-w-[120px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Frecuencia</th>
-                    <th class="min-w-[140px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Líder de opinión</th>
+                    <th class="min-w-[140px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Tipo de cliente</th>
+                    <th class="min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Categoría</th>
+                    <th class="min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Frecuencia</th>
+                    <th class="min-w-[140px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Líder de opinión</th>
     
-                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8" >Límite de crédito</th>
-                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8" >Saldo al corriente</th>
-                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8" >Saldo vencido</th>
-                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8" >Uso</th>
+                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8" >Límite de crédito</th>
+                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8" >Saldo al corriente</th>
+                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8" >Saldo vencido</th>
+                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8" >Uso</th>
     
-                    <th class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Convenios activos</th>
-                    <th class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Clases de producto</th>
-                    <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Promedio año previo</th>
-                    <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Promedio año actual</th>
-                    <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">Promedio trimestre</th>
+                    <th class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Convenios activos</th>
+                    <th class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Clases de producto</th>
+                    <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Promedio año previo</th>
+                    <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Promedio año actual</th>
+                    <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Promedio trimestre</th>
+
+                    <th class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Desempeño</th>
+                    <th class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Contribución global</th>
+                    <th class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Contribución acumulada</th>
     
                     {% for month in months_headers %}
-                        <th class="seccion-mensual min-w-[120px] p-2 text-center text-title border-r border-t border-border sticky top-8 z-20 bg-page h-8">{{ month|date:"F"|title }}</th>
+                        <th class="seccion-mensual min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">{{ month|date:"F"|title }}</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -226,6 +348,10 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             </tbody>
         </table>
     </div>
+
+
+</div>
+
 
 
 

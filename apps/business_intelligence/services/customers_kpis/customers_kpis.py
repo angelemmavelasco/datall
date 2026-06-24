@@ -2,7 +2,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
-from django.db.models import Sum, F, Count, Max
+from django.db.models import Sum, F, Count, Max, Min
 from apps.core.models import Customer, SaleTransaction, AccountsReceivable, Reference
 import io
 import csv
@@ -32,18 +32,101 @@ class CustomersKpis:
     def __init__(self, customers_qs):
         self.customers_qs = customers_qs
 
-    def build_dashboard_data(self):
+    def calculate_contrib(self, dashboard_customers, transactions, contrib_config):
+        """
+        Calculates performance and Pareto contribution metrics in memory.
+        Requires:
+        - contrib_config: dict with 'order_contrib', 'start_date', 'end_date'
+        """
+        start_date = contrib_config.get('start_date')
+        end_date = contrib_config.get('end_date')
+        order_by = contrib_config.get('order_contrib', 'net_amount')
+
+        contrib_qs = transactions
+        if start_date:
+            contrib_qs = contrib_qs.filter(sale_date__gte=start_date)
+        if end_date:
+            contrib_qs = contrib_qs.filter(sale_date__lte=end_date)
+
+        customer_performance_qs = contrib_qs.values('customer_id').annotate(
+            total_net=Sum('net_amount'),
+            total_profit=Sum('profit')
+        )
+        perf_net = defaultdict(Decimal)
+        perf_profit = defaultdict(Decimal)
+        
+        for row in customer_performance_qs:
+            perf_net[row['customer_id']] = row['total_net'] or Decimal('0.00')
+            perf_profit[row['customer_id']] = row['total_profit'] or Decimal('0.00')
+
+        global_net = sum(perf_net.values())
+        global_profit = sum(perf_profit.values())
+        
+        if order_by == 'net_amount':
+            active_customers = [c for c in dashboard_customers if perf_net[c.id] > 0]
+        else: # profit
+            active_customers = [c for c in dashboard_customers if perf_profit[c.id] > 0]
+
+        total_active_customers = len(active_customers)
+
+        for c in dashboard_customers:
+            c.performance_net_amount = perf_net[c.id]
+            c.performance_profit = perf_profit[c.id]
+            c.selected_contrib_by = 'Venta neta' if order_by == 'net_amount' else 'Utilidad'
+            
+            c.contrib_net_amount = Decimal('0.00')
+            c.contrib_profit = Decimal('0.00')
+            c.cumuled_contrib = Decimal('0.00')
+            c.cumuled_portafolio_count = 0
+            c.cumuled_portafolio_pct = Decimal('0.00')
+
+        if total_active_customers == 0:
+            dashboard_customers.sort(key=lambda x: getattr(x, 'performance_net_amount'), reverse=True)
+            return dashboard_customers
+
+        if order_by == 'net_amount':
+            active_customers.sort(key=lambda x: x.performance_net_amount, reverse=True)
+        else:
+            active_customers.sort(key=lambda x: x.performance_profit, reverse=True)
+
+        cumuled_val = Decimal('0.00')
+        
+        for index, customer in enumerate(active_customers, start=1):
+            if global_net > 0:
+                customer.contrib_net_amount = (customer.performance_net_amount / global_net) * 100
+            if global_profit > 0:
+                customer.contrib_profit = (customer.performance_profit / global_profit) * 100
+
+            if order_by == 'net_amount':
+                cumuled_val += customer.contrib_net_amount
+            else:
+                cumuled_val += customer.contrib_profit
+                
+            customer.cumuled_contrib = cumuled_val
+            customer.cumuled_portafolio_count = index
+            customer.cumuled_portafolio_pct = (Decimal(index) / Decimal(total_active_customers)) * 100
+
+        inactive_customers = [c for c in dashboard_customers if c not in active_customers]
+        
+        final_sorted_customers = active_customers + inactive_customers
+
+        return final_sorted_customers
+
+    def build_dashboard_data(self, contrib_config=None):
         """
         Assembles all the KPIs to send them to the template.
         """
+
+        if contrib_config is None:
+            contrib_config = {}
         
         today = date.today()
         current_year = today.year
         previous_year = current_year - 1
         
         first_day_current_month = date(today.year, today.month, 1)
-        last_day_trimestre = first_day_current_month - relativedelta(days=1)
-        first_day_trimestre = last_day_trimestre.replace(day=1) - relativedelta(months=2)
+        last_day_q = first_day_current_month - relativedelta(days=1)
+        first_day_q = last_day_q.replace(day=1) - relativedelta(months=2)
 
         dashboard_customers = list(self.customers_qs)
         customer_ids = [c.id for c in dashboard_customers]
@@ -72,8 +155,8 @@ class CustomersKpis:
         prev_year_sales = {row['customer_id']: row['total_sale'] or Decimal('0.00') for row in prev_year_sales_qs}
 
         monthly_sales_trim_qs = transactions.filter(
-            sale_date__gte=first_day_trimestre,
-            sale_date__lte=last_day_trimestre
+            sale_date__gte=first_day_q,
+            sale_date__lte=last_day_q
         ).values('customer_id', month=F('sale_date__month')).annotate(
             monthly_total=Sum('net_amount')
         )
@@ -101,23 +184,27 @@ class CustomersKpis:
         )
         product_classes_count = {row['customer_id']: row['classes_count'] for row in product_classes_qs}
 
-        positive_txs = transactions.filter(
+        frequency_qs = transactions.filter(
             net_amount__gt=0,
             sale_date__year__gte=current_year - 1 # Last 1-2 years is usually enough for frequency
-        ).values('customer_id', 'doc_id', 'sale_date').distinct().order_by('customer_id', 'sale_date')
-
-        customer_dates = defaultdict(list)
-        for tx in positive_txs:
-            customer_dates[tx['customer_id']].append(tx['sale_date'])
+        ).values('customer_id').annotate(
+            min_date=Min('sale_date'),
+            max_date=Max('sale_date'),
+            doc_count=Count('doc_id', distinct=True)
+        )
 
         frequency_dict = {}
-        for cid, dates in customer_dates.items():
-            if len(dates) > 1:
-                diffs = [(dates[i] - dates[i-1]).days for i in range(1, len(dates))]
-                avg_diff = sum(diffs) / len(diffs)
+        for row in frequency_qs:
+            cid = row['customer_id']
+            min_date = row['min_date']
+            max_date = row['max_date']
+            doc_count = row['doc_count']
+
+            if doc_count > 1 and min_date and max_date:
+                avg_diff = (max_date - min_date).days / (doc_count - 1)
+                frequency_dict[cid] = avg_diff
             else:
-                avg_diff = None
-            frequency_dict[cid] = avg_diff
+                frequency_dict[cid] = None
 
         latest_period = AccountsReceivable.objects.aggregate(max_date=Max('period'))['max_date']
         accounts_receivable = {}
@@ -132,13 +219,15 @@ class CustomersKpis:
         months_headers = []
         for month_num in range(1, 13):
             months_headers.append(date(current_year, month_num, 1))
+
+        
         for customer in dashboard_customers:
             cid = customer.id
             
             reg_date = customer.registration_date
             total_trim = totals_trim.get(cid, Decimal('0.00'))
             
-            if reg_date and first_day_trimestre <= reg_date <= last_day_trimestre:
+            if reg_date and first_day_q <= reg_date <= last_day_q:
                 months_divisor = active_months_trim.get(cid, 0)
             else:
                 months_divisor = 3
@@ -205,10 +294,15 @@ class CustomersKpis:
 
             customer.monthly_consumption_qs = monthly_qs
 
-        # Sort the customers by category avg_trim as per calculate_categorizations_trim
-        dashboard_customers.sort(key=lambda x: getattr(x, 'previous_moving_quarter_average', Decimal('0.00')), reverse=True)
+        if not contrib_config.get('start_date') or not contrib_config.get('end_date'):
+             contrib_config['start_date'] = first_day_q
+             contrib_config['end_date'] = last_day_q
+
+        dashboard_customers = self.calculate_contrib(dashboard_customers, transactions, contrib_config)
 
         return dashboard_customers, months_headers
+
+
 
     def export_report_data(self):
         """
