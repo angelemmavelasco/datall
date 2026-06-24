@@ -180,10 +180,19 @@
             }
         });
     }
+
+    function downloadData(e) {
+        e.preventDefault();
+        const form = document.getElementById('params_filters');
+        const params = new URLSearchParams(new FormData(form)).toString();
+        window.location.href = "{% url 'business_intelligence:export_target_scope_data' %}?" + params;
+    }
 </script>
 {% endblock %}
 
 {% block module_actions %}
+
+<a href="#" id="downloadReport" onclick="downloadData(event)" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar datos</a>
 
 <button onclick="toggleFilters()"
     class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">

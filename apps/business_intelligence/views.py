@@ -693,6 +693,46 @@ def target_scope(request):
 
 
 
+@login_required
+async def export_target_scope_data(request):
+    
+    user = await request.auser()
+    allowed_routes = await sync_to_async(get_allowed_routes_for_user)(user)
+
+    today = date.today()
+    date_start = request.GET.get('date_start')
+    date_end = request.GET.get('date_end')
+    
+    if not date_start:
+        date_start = today.replace(day=1).strftime('%Y-%m-%d')
+    if not date_end:
+        date_end = (today.replace(today.year, today.month+1, 1) - timedelta(days=1)).strftime('%Y-%m-%d')
+
+    product_classes = request.GET.getlist('product_class')
+    product_categories = request.GET.getlist('product_category')
+    routes = request.GET.getlist('routes')
+    warehouses = request.GET.getlist('warehouses')
+    regions = request.GET.getlist('regions')
+
+    filters = {}
+    if date_start: filters['sale_date_start'] = date_start
+    if date_end: filters['sale_date_end'] = date_end
+    if product_classes: filters['product_classes'] = product_classes
+    if product_categories: filters['product_categories'] = product_categories
+    if routes: filters['routes'] = routes
+    if warehouses: filters['route_warehouse_ids'] = warehouses
+    if regions: filters['regions'] = regions
+
+    service = TargetScopeService(allowed_routes, filters)
+    excel_data = await sync_to_async(service.export_report_data)()
+
+    response = HttpResponse(
+        excel_data, 
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="reporte_alcance_objetivos.xlsx"'
+    return response
+
 
 
 @login_required

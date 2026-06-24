@@ -355,3 +355,126 @@ class TargetScopeService:
 
         final_data.sort(key=lambda x: x['total_warehouse_data']['warehouse_name'])
         return final_data
+
+    def export_report_data(self):
+        import pandas as pd
+        import io
+        from django.db.models.functions import TruncMonth
+
+        date_start_str = self.filters.get('sale_date_start')
+        date_end_str = self.filters.get('sale_date_end')
+        
+        date_start_dt = None
+        date_end_dt = None
+        if date_start_str and date_end_str:
+            date_start_dt = datetime.strptime(date_start_str, '%Y-%m-%d').date()
+            date_end_dt = datetime.strptime(date_end_str, '%Y-%m-%d').date()
+
+        tx_crud = SaleTransactionCRUD()
+        tx_qs = tx_crud.read(self.allowed_routes, **self.filters)
+        
+        target_filters = self.filters.copy()
+        if date_start_dt: target_filters['period_start'] = date_start_dt
+        if date_end_dt: target_filters['period_end'] = date_end_dt
+        if 'sale_date_start' in target_filters: del target_filters['sale_date_start']
+        if 'sale_date_end' in target_filters: del target_filters['sale_date_end']
+        
+        target_crud = SaleTargetCRUD()
+        target_qs = target_crud.read(self.allowed_routes, **target_filters)
+
+        ventas_agrupadas = tx_qs.annotate(
+            periodo=TruncMonth('sale_date')
+        ).values(
+            'route_id', 'product_class_id', 'periodo',
+            'route__name', 'route__warehouse_id', 'product_class__name'
+        ).annotate(
+            venta_neta=Sum('net_amount')
+        )
+
+        cuotas_agrupadas = target_qs.annotate(
+            periodo=TruncMonth('period')
+        ).values(
+            'route_id', 'product_class_id', 'periodo',
+            'route__name', 'warehouse_id', 'product_class__name'
+        ).annotate(
+            cuota=Sum('target_amount')
+        )
+
+        consolidado = {}
+        for v in ventas_agrupadas:
+            key = (v['route_id'], v['product_class_id'], v['periodo'])
+            consolidado[key] = {
+                'ruta': v['route_id'],
+                'agente': v['route__name'],
+                'cedis ruta': v['route__warehouse_id'],
+                'periodo': v['periodo'].strftime('%d/%m/%y') if v['periodo'] else '',
+                'clase': v['product_class__name'],
+                'cuota': Decimal('0'),
+                'venta_neta': v['venta_neta'] or Decimal('0'),
+            }
+
+        for c in cuotas_agrupadas:
+            key = (c['route_id'], c['product_class_id'], c['periodo'])
+            if key not in consolidado:
+                consolidado[key] = {
+                    'ruta': c['route_id'],
+                    'agente': c['route__name'],
+                    'cedis ruta': c['warehouse_id'],
+                    'periodo': c['periodo'].strftime('%d/%m/%y') if c['periodo'] else '',
+                    'clase': c['product_class__name'],
+                    'cuota': c['cuota'] or Decimal('0'),
+                    'venta_neta': Decimal('0'),
+                }
+            else:
+                consolidado[key]['cuota'] = c['cuota'] or Decimal('0')
+
+        ventas_data = list(consolidado.values())
+        ventas_data.sort(key=lambda x: (x['ruta'], x['clase']))
+        df_ventas_final = pd.DataFrame(ventas_data)
+        if df_ventas_final.empty:
+            df_ventas_final = pd.DataFrame(columns=['ruta', 'agente', 'cedis ruta', 'periodo', 'clase', 'cuota', 'venta_neta'])
+
+        customer_qs = Customer.objects.filter(route__in=self.allowed_routes)
+        if date_end_dt:
+            customer_qs = customer_qs.filter(registration_date__lte=date_end_dt)
+            
+        clientes_nuevos_q = Q(registration_date__gte=date_start_dt, registration_date__lte=date_end_dt) if (date_start_dt and date_end_dt) else Q()
+        
+        base_clientes = customer_qs.values('route_id').annotate(
+            clientes_registrados=Count('id'),
+            clientes_nuevos=Count('id', filter=clientes_nuevos_q)
+        )
+        
+        consumo_clientes = tx_qs.values('route_id').annotate(
+            clientes_con_consumo=Count('customer_id', distinct=True)
+        )
+        
+        clientes_dict = {}
+        for b in base_clientes:
+            clientes_dict[b['route_id']] = {
+                'ruta': b['route_id'],
+                'clientes_registrados': b['clientes_registrados'],
+                'clientes_con_consumo': 0,
+                'efectividad_pct': 0.0,
+                'clientes_nuevos': b['clientes_nuevos']
+            }
+            
+        for c in consumo_clientes:
+            if c['route_id'] in clientes_dict:
+                clientes_dict[c['route_id']]['clientes_con_consumo'] = c['clientes_con_consumo']
+                reg = clientes_dict[c['route_id']]['clientes_registrados']
+                if reg > 0:
+                    clientes_dict[c['route_id']]['efectividad_pct'] = round((c['clientes_con_consumo'] * 100.0) / reg, 1)
+
+        clientes_data = list(clientes_dict.values())
+        clientes_data.sort(key=lambda x: x['ruta'])
+        df_clientes_final = pd.DataFrame(clientes_data)
+        if df_clientes_final.empty:
+            df_clientes_final = pd.DataFrame(columns=['ruta', 'clientes_registrados', 'clientes_con_consumo', 'efectividad_pct', 'clientes_nuevos'])
+
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df_clientes_final.to_excel(writer, sheet_name='Cartera', index=False)
+            df_ventas_final.to_excel(writer, sheet_name='Ventas y Cuotas', index=False)
+            
+        return output.getvalue()
