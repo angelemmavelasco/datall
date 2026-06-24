@@ -275,16 +275,8 @@ def customers_kpis(request):
     customers_crud = CustomerCrud()
     customers_qs = customers_crud.read(allowed_routes, **filters)
 
-    if request.GET.get('export') == 'csv':
-        customers_kpis_service = CustomersKpis(customers_qs)
-        csv_content = customers_kpis_service.export_report_data()
-
-        response = HttpResponse(csv_content, content_type='text/csv; charset=utf-8')
-        response['Content-Disposition'] = 'attachment; filename="customers_kpis.csv"'
-        return response
-
     customers_kpis_service = CustomersKpis(customers_qs)
-    all_customers_data, months_headers = customers_kpis_service.build_dashboard_data(contrib_config)
+    all_customers_data, months_headers, global_kpis = customers_kpis_service.build_dashboard_data(contrib_config)
 
     paginator = Paginator(all_customers_data, 100)
     page_number = request.GET.get('page', 1)
@@ -307,6 +299,7 @@ def customers_kpis(request):
     if 'page' in query_dict:
         del query_dict['page']
     query_string = query_dict.urlencode()
+    # print(query_string)
 
     relevant_product_classes_count = len(Reference.objects.filter(
         field_context='relevant_product_classes',
@@ -316,6 +309,7 @@ def customers_kpis(request):
 
     context = {
         'customers': customers_data,
+        'global_kpis': global_kpis,
         'page_obj': page_obj,
         'query_string': query_string,
         'months_headers': months_headers,
@@ -382,13 +376,23 @@ async def export_customers_kpis_data(request):
 
     user = request.user
 
+    order_contrib = request.POST.get('order_contrib') or request.GET.get('order_contrib', 'net_amount')
+    start_contrib = request.POST.get('start_contrib_from') or request.GET.get('start_contrib_from')
+    end_contrib = request.POST.get('start_contrib_to') or request.GET.get('start_contrib_to')
+
+    contrib_config = {
+        'order_contrib': order_contrib,
+        'start_date': start_contrib,
+        'end_date': end_contrib
+    }
+
     @sync_to_async
     def generate_file():
         allowed_routes = get_allowed_routes_for_user(user)
         customers_crud = CustomerCrud()
         customers_qs = customers_crud.read(allowed_routes, **filters)
         customers_kpis_service = CustomersKpis(customers_qs)
-        csv_content = customers_kpis_service.export_report_data()
+        csv_content = customers_kpis_service.export_report_data(contrib_config)
 
         module = SystemModule.objects.filter(url_name='business_intelligence:customers_kpis').first()
         ActivityLogger.log_download(

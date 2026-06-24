@@ -1470,6 +1470,16 @@
       opacity: 100%;
     }
   }
+  .group-\[\.htmx-request\]\:flex {
+    &:is(:where(.group):is(.htmx-request) *) {
+      display: flex;
+    }
+  }
+  .group-\[\.htmx-request\]\:hidden {
+    &:is(:where(.group):is(.htmx-request) *) {
+      display: none;
+    }
+  }
   .placeholder\:text-muted {
     &::placeholder {
       color: var(--color-muted);

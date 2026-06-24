@@ -42,6 +42,20 @@ class CustomersKpis:
         end_date = contrib_config.get('end_date')
         order_by = contrib_config.get('order_contrib', 'net_amount')
 
+        if start_date and isinstance(start_date, str):
+            try:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+                contrib_config['start_date'] = start_date
+            except ValueError:
+                pass
+
+        if end_date and isinstance(end_date, str):
+            try:
+                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+                contrib_config['end_date'] = end_date
+            except ValueError:
+                pass
+
         contrib_qs = transactions
         if start_date:
             contrib_qs = contrib_qs.filter(sale_date__gte=start_date)
@@ -54,6 +68,8 @@ class CustomersKpis:
         )
         perf_net = defaultdict(Decimal)
         perf_profit = defaultdict(Decimal)
+
+
         
         for row in customer_performance_qs:
             perf_net[row['customer_id']] = row['total_net'] or Decimal('0.00')
@@ -61,6 +77,28 @@ class CustomersKpis:
 
         global_net = sum(perf_net.values())
         global_profit = sum(perf_profit.values())
+
+
+        if end_date:
+            valid_customers = [c for c in dashboard_customers if c.registration_date and c.registration_date <= end_date]
+        else:
+            valid_customers = dashboard_customers
+
+        registered_customers = len(valid_customers)
+
+        customers_with_consumption = sum(1 for c in valid_customers if perf_net[c.id] > 0)
+        
+        customers_without_consumption = registered_customers - customers_with_consumption
+
+        kpis_dict = {
+            'registered_customers': registered_customers,
+            'customers_with_consumption': customers_with_consumption,
+            'customers_with_consumption_pct': customers_with_consumption/registered_customers*100 if registered_customers > 0 else 0,
+            'customers_without_consumption': customers_without_consumption,
+            'customers_without_consumption_pct': customers_without_consumption/registered_customers*100 if registered_customers > 0 else 0,
+            'net_sales': global_net,
+        }
+
         
         if order_by == 'net_amount':
             active_customers = [c for c in dashboard_customers if perf_net[c.id] > 0]
@@ -82,7 +120,7 @@ class CustomersKpis:
 
         if total_active_customers == 0:
             dashboard_customers.sort(key=lambda x: getattr(x, 'performance_net_amount'), reverse=True)
-            return dashboard_customers
+            return dashboard_customers, kpis_dict
 
         if order_by == 'net_amount':
             active_customers.sort(key=lambda x: x.performance_net_amount, reverse=True)
@@ -110,7 +148,7 @@ class CustomersKpis:
         
         final_sorted_customers = active_customers + inactive_customers
 
-        return final_sorted_customers
+        return final_sorted_customers, kpis_dict
 
     def build_dashboard_data(self, contrib_config=None):
         """
@@ -298,13 +336,12 @@ class CustomersKpis:
              contrib_config['start_date'] = first_day_q
              contrib_config['end_date'] = last_day_q
 
-        dashboard_customers = self.calculate_contrib(dashboard_customers, transactions, contrib_config)
+        dashboard_customers, kpis_dict = self.calculate_contrib(dashboard_customers, transactions, contrib_config)
 
-        return dashboard_customers, months_headers
+        return dashboard_customers, months_headers, kpis_dict
 
 
-
-    def export_report_data(self):
+    def export_report_data(self, contrib_config=None):
         """
         Genera el CSV en memoria y retorna el contenido puro (string).
         """
@@ -312,13 +349,15 @@ class CustomersKpis:
         buffer.write('\ufeff') 
         writer = csv.writer(buffer)
 
-        all_customers_data, months_headers = self.build_dashboard_data()
+        all_customers_data, months_headers, _ = self.build_dashboard_data(contrib_config)
 
         header_row = [
             'ID Cliente','Cliente', 'Ruta', 'Gerencia', 'Tipo de cliente', 'Categoría', 
             'Frecuencia', 'Líder de opinión','Límite de crédito', 'Saldo al corriente', 'Saldo vencido', 
             'Uso (%)', 'Convenios activos', 'Clases de producto', 'Promedio año previo', 
-            'Promedio año actual', 'Promedio trimestre'
+            'Promedio año actual', 'Promedio trimestre', 
+            # todo: mas a delante cambiar permisos para que vendedores no puedan ver utilidad
+            # 'Contribución: venta neta','Contribución: aporte global', 'Contribución acumulada', 'Conteo clientes', 'Conteo porcentual clientes'
         ]
         for h in months_headers:
             month_str = h.strftime('%b %Y').title()
@@ -352,7 +391,16 @@ class CustomersKpis:
                 getattr(c, 'product_classes_with_consumption', 0),
                 round(getattr(c, 'previous_year_average', 0), 2),
                 round(getattr(c, 'current_year_average', 0), 2),
-                round(getattr(c, 'previous_moving_quarter_average', 0), 2)
+                round(getattr(c, 'previous_moving_quarter_average', 0), 2),
+
+
+
+
+                # round(getattr(c, 'performance_net_amount', 0), 2),
+                # round(getattr(c, 'contrib_net_amount', 0), 2),
+                # round(getattr(c, 'cumuled_contrib', 0), 2),
+                # getattr(c, 'cumuled_portafolio_count', 0),
+                # getattr(c, 'cumuled_portafolio_pct', 0),
             ]
             for m in getattr(c, 'monthly_consumption_qs', []):
                 row.append(round(m.get('sale', 0), 2))
