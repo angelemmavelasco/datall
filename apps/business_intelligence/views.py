@@ -11,6 +11,7 @@ from collections import defaultdict
 from datetime import datetime, date, timedelta
 from asgiref.sync import sync_to_async
 import calendar
+from dateutil.relativedelta import relativedelta
 
 
 from django.core.paginator import Paginator
@@ -241,7 +242,6 @@ def customers_kpis(request):
     template = 'business_intelligence/customers_kpis/customers_kpis.html'
     allowed_routes = get_allowed_routes_for_user(request.user)
 
-    #get filters
     warehouses = request.GET.getlist('warehouses')
     routes = request.GET.getlist('routes')
     customer_types = request.GET.getlist('customer_types')
@@ -250,7 +250,10 @@ def customers_kpis(request):
     end_registration_date = request.GET.get('end_registration_date')
     query_text = request.GET.get('query_text')
 
-    #set filters dict
+    order_contrib = request.GET.get('order_contrib', 'net_amount')
+    start_contrib = request.GET.get('start_contrib_from')
+    end_contrib = request.GET.get('start_contrib_to')
+
     filters = {}
     if routes: filters['routes'] = routes
     if warehouses: filters['warehouses'] = warehouses
@@ -260,9 +263,24 @@ def customers_kpis(request):
     if start_registration_date: filters['start_registration_date'] = start_registration_date
     if end_registration_date: filters['end_registration_date'] = end_registration_date
 
-    order_contrib = request.POST.get('order_contrib') or request.GET.get('order_contrib', 'net_amount')
-    start_contrib = request.POST.get('start_contrib_from') or request.GET.get('start_contrib_from')
-    end_contrib = request.POST.get('start_contrib_to') or request.GET.get('start_contrib_to')
+    if start_contrib:
+        try:
+            start_contrib = datetime.strptime(start_contrib, '%Y-%m-%d').date()
+        except ValueError:
+            start_contrib = None
+
+    if end_contrib:
+        try:
+            end_contrib = datetime.strptime(end_contrib, '%Y-%m-%d').date()
+        except ValueError:
+            end_contrib = None
+
+    today = date.today()
+    if not start_contrib:
+        start_contrib = date(today.year, today.month, 1) + relativedelta(months=-3)
+
+    if not end_contrib:
+        end_contrib = date(today.year, today.month, 1) + relativedelta(days=-1)
 
     contrib_config = {
         'order_contrib': order_contrib,
@@ -270,10 +288,6 @@ def customers_kpis(request):
         'end_date': end_contrib
     }
 
-    metadata = filters if filters else None
-
-
-    #apply filters and instance objs
     customers_crud = CustomerCrud()
     customers_qs = customers_crud.read(allowed_routes, **filters)
 
@@ -284,29 +298,16 @@ def customers_kpis(request):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
     customers_data = page_obj.object_list 
-
     query_dict = request.GET.copy()
-    if 'page' in query_dict:
-        del query_dict['page']
-        
-    if request.method == 'POST':
-        query_dict['order_contrib'] = order_contrib
-        if start_contrib: query_dict['start_contrib_from'] = start_contrib
-        if end_contrib: query_dict['start_contrib_to'] = end_contrib
-        
-    query_string = query_dict.urlencode()
 
-    # To keep pagination filters clean
-    query_dict = request.GET.copy()
     if 'page' in query_dict:
         del query_dict['page']
     query_string = query_dict.urlencode()
-    # print(query_string)
 
     relevant_product_classes_count = len(Reference.objects.filter(
         field_context='relevant_product_classes',
         key='customer',
-        module__url_name = 'business_intelligence:customers_kpis'
+        module__url_name='business_intelligence:customers_kpis'
     ).values_list('reference', flat=True))
 
     context = {
@@ -330,10 +331,7 @@ def customers_kpis(request):
         'selected_opinion_leader': opinion_leader,
         'query_text': query_text,
 
-
         'order_contrib': order_contrib,
-        'start_contrib_from': start_contrib,
-        'start_contrib_to': end_contrib,
         'contrib_config': contrib_config,
     }
 
@@ -341,7 +339,6 @@ def customers_kpis(request):
         return render(request, 'business_intelligence/customers_kpis/partials/customer_kpis_rows.html', context)
 
     module = SystemModule.objects.filter(url_name='business_intelligence:customers_kpis').first()
-    
 
     ActivityLogger.log_read(
         user=request.user,
@@ -354,9 +351,6 @@ def customers_kpis(request):
     )
 
     return render(request, template, context)
-
-
-
 @login_required
 async def export_customers_kpis_data(request):
     warehouses = request.GET.getlist('warehouses')

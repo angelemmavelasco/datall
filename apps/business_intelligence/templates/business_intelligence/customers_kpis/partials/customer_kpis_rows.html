@@ -134,15 +134,30 @@
 
     <td class="p-2 text-title border-r border-border">
         <div class="flex items-center justify-between gap-2">
-            <span class="text-violet-600">
+            <span class="
+            {% if customer.selected_contrib_by == 'Utilidad' %}
+                text-green-600
+            {% else %}
+                text-blue-600
+            {% endif %}
+            ">
                 {{ customer.selected_contrib_by|default:'Venta neta'|title }}
             </span>
-            <span>
+            <span class="
+            {% if customer.cumuled_contrib >= 80 %}
+                text-orange-600
+            {% elif customer.cumuled_contrib <= 0 %}
+                text-red-500
+
+            {% else %}
+                text-strong italic font-bold
+            {% endif %}
+            ">
                 {{ customer.cumuled_contrib|default:0|floatformat:2|intcomma }} % 
             </span>
         </div>
         <div class="flex items-center justify-between gap-2">
-            <span class="text-rose-600">
+            <span class="text-purple-500">
                 Clientes: {{ customer.cumuled_portafolio_count|default:0|floatformat:0|intcomma }}
             </span>
             <span>
@@ -157,7 +172,7 @@
                 $ {{ month.sale|floatformat:2|intcomma }}
             </span><br>
             {% if month.growth_vs_previous_month >= 0 %}
-                <span class="text-white font-medium text-[10px] p-[1px] rounded bg-emerald-600 ">+{{ month.growth_vs_previous_month|floatformat:0|intcomma }}%</span>
+                <span class="text-white font-medium text-[10px] p-[1px] rounded bg-green-950 ">+{{ month.growth_vs_previous_month|floatformat:0|intcomma }}%</span>
             {% else %}
                 <span class="text-white font-medium text-[10px] p-[1px] rounded bg-red-600 "> {{ month.growth_vs_previous_month|floatformat:0|intcomma }}%</span>
             {% endif %}

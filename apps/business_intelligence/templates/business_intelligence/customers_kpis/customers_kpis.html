@@ -185,7 +185,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 <div class="flex flex-col w-full gap-4">
     <!-- Ban de resultados -->
     <div class="">
-        <p class="text-title text-sm mb-2">Métricas generales de contribución ({{ contrib_config.start_date|date:"j F Y" }} - {{ contrib_config.end_date|date:"j F Y" }})</p>
+        <p class="text-title text-sm mb-2">Métricas generales de contribución <br><span class="italic">{{ contrib_config.start_date }} - {{ contrib_config.end_date }}</span></p>
         <hr class="border-border">
     </div>
 
@@ -250,7 +250,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                     <th colspan="3" class="seccion-metricas p-2 border-r border-border sticky top-0 z-30 bg-page h-8 relative" id="th-contrib-filter">
 
                         <div class="flex items-center justify-center w-full h-full">
-                            <p>Métricas de contribución <span class="text-title italic">{{ contrib_config.start_date|date:"j F Y" }} - {{ contrib_config.end_date|date:"j F Y" }}</span></p>
+                            <p>Métricas de contribución <span class="text-title italic">{{ contrib_config.start_date }} al {{ contrib_config.end_date }}</span></p>
                         </div>
                         
                         <svg id="btn-contrib-filter" onclick="toggleContribFilter(event)" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
@@ -260,8 +260,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
                         <div id="dropdown-contrib-filter" class="hidden absolute top-full right-0 mt-8 w-50 bg-body rounded z-50 text-page border border-border shadow-lg p-2 text-left">
                             
-                            <form method="POST" action="" class="flex flex-col gap-3">
-                                {% csrf_token %}
+                            <form method="GET" action="{% url 'business_intelligence:customers_kpis' %}" class="flex flex-col gap-3">
                                 
                                 <div>
                                     <p class="mb-1 text-xs text-strong">Ordenar por</p>
@@ -352,8 +351,8 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                     <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Promedio año actual</th>
                     <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Promedio trimestre</th>
 
-                    <th class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Desempeño</th>
-                    <th class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Contribución global</th>
+                    <th class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Contribución monetaria</th>
+                    <th class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Contribución porcentual</th>
                     <th class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Contribución acumulada</th>
     
                     {% for month in months_headers %}
