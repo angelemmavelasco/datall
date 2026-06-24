@@ -4,7 +4,7 @@ from datetime import datetime, date
 import calendar
 
 class SalesDashboard:
-    def __init__(self, transactions: list[dict], targets, date_start=None, date_end=None):
+    def __init__(self, transactions: list[dict], targets: list[dict], date_start=None, date_end=None):
         """
         params:
         -------
@@ -22,6 +22,11 @@ class SalesDashboard:
         self.date_start = self._parse_date(date_start)
         self.date_end = self._parse_date(date_end)
 
+        self.applicable_targets = [
+            t for t in self.targets 
+            if self._get_applicable_target(t) != Decimal('0.00')
+        ]
+
     def _parse_date(self, date_val):
         if isinstance(date_val, str) and date_val:
             try:
@@ -30,12 +35,14 @@ class SalesDashboard:
                 return None
         return date_val
 
-    def _prorate_target(self, t):
+    def _get_applicable_target(self, t):
+        """
+        Devuelve el 100% del target si el periodo (mes/año) 
+        tiene algún solapamiento con el rango de fechas establecido.
+        """
         target_amount = self._safe_decimal(t.get('target_amount', 0))
         if not self.date_start and not self.date_end:
             return target_amount
-
-
 
         period = t.get('period')
         if not period:
@@ -47,7 +54,7 @@ class SalesDashboard:
             except ValueError:
                 return target_amount
         
-        month_start = period
+        month_start = period.replace(day=1)
         _, last_day = calendar.monthrange(month_start.year, month_start.month)
         month_end = date(month_start.year, month_start.month, last_day)
 
@@ -57,13 +64,10 @@ class SalesDashboard:
         overlap_start = max(month_start, start)
         overlap_end = min(month_end, end)
 
-        if overlap_start > overlap_end:
-            return Decimal('0.00')
-
-        overlap_days = (overlap_end - overlap_start).days + 1
-        total_days = (month_end - month_start).days + 1
-
-        return target_amount * Decimal(overlap_days) / Decimal(total_days)
+        if overlap_start <= overlap_end:
+            return target_amount
+            
+        return Decimal('0.00')
 
     def _safe_decimal(self, val):
         return Decimal(str(val)) if val is not None else Decimal('0.00')
@@ -84,11 +88,11 @@ class SalesDashboard:
                 customer_ids.add(t.get('customer_id'))
 
         target = Decimal('0.00')
-        for t in self.targets:
-            target += self._prorate_target(t)
+        for t in self.applicable_targets:
+            target += self._safe_decimal(t.get('target_amount', 0))
 
-        margin = (profit / net_sale * 100) if net_sale > 0 else Decimal('0.00')
-        scope = (net_sale / target * 100) if target > 0 else Decimal('0.00')
+        margin = (profit / net_sale * 100) if net_sale != 0 else Decimal('0.00')
+        scope = (net_sale / target * 100) if target != 0 else Decimal('0.00')
         difference = net_sale - target
 
         return {
@@ -140,9 +144,9 @@ class SalesDashboard:
             wh_id = t.get('route__warehouse_id') or 'N/A'
             wh_data[wh_id]['sale'] += self._safe_decimal(t.get('net_amount', 0))
             
-        for t in self.targets:
+        for t in self.applicable_targets:
             wh_id = t.get('route__warehouse_id') or 'N/A'
-            wh_data[wh_id]['target'] += self._prorate_target(t)
+            wh_data[wh_id]['target'] += self._safe_decimal(t.get('target_amount', 0))
             
         categories = sorted(wh_data.keys())
         return {
@@ -189,17 +193,17 @@ class SalesDashboard:
             route_data[r_id]['sale'] += self._safe_decimal(t.get('net_amount', 0))
             route_data[r_id]['profit'] += self._safe_decimal(t.get('profit', 0))
             
-        for t in self.targets:
+        for t in self.applicable_targets:
             r_id = t.get('route_id') or 'N/A'
-            route_data[r_id]['target'] += self._prorate_target(t)
+            route_data[r_id]['target'] += self._safe_decimal(t.get('target_amount', 0))
             if 'route__name' in t and not route_data[r_id]['name']:
                 route_data[r_id]['name'] = t.get('route__name') or ''
             
         table = []
         for r_id, data in route_data.items():
             diff = data['sale'] - data['target']
-            scope = (data['sale'] / data['target'] * 100) if data['target'] > 0 else Decimal('0.00')
-            margin = (data['profit'] / data['sale'] * 100) if data['sale'] > 0 else Decimal('0.00')
+            scope = (data['sale'] / data['target'] * 100) if data['target'] != 0 else Decimal('0.00')
+            margin = (data['profit'] / data['sale'] * 100) if data['sale'] != 0 else Decimal('0.00')
             table.append({
                 'id': r_id,
                 'name': data['name'],
@@ -231,7 +235,7 @@ class SalesDashboard:
             
         table = []
         for p_id, data in prod_data.items():
-            margin = (data['profit'] / data['net_sale'] * 100) if data['net_sale'] > 0 else Decimal('0.00')
+            margin = (data['profit'] / data['net_sale'] * 100) if data['net_sale'] != 0 else Decimal('0.00')
             table.append({
                 'id': p_id,
                 'name': data['name'],
@@ -263,7 +267,7 @@ class SalesDashboard:
             
         table = []
         for c_id, data in cust_data.items():
-            margin = (data['profit'] / data['net_sale'] * 100) if data['net_sale'] > 0 else Decimal('0.00')
+            margin = (data['profit'] / data['net_sale'] * 100) if data['net_sale'] != 0 else Decimal('0.00')
             table.append({
                 'id': c_id,
                 'name': data['name'],
@@ -275,4 +279,3 @@ class SalesDashboard:
             
         table = sorted(table, key=lambda x: x['total_net_sale'], reverse=True)
         return table[:limit]
-
