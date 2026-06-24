@@ -10,6 +10,7 @@ import openpyxl
 from collections import defaultdict
 from datetime import datetime, date, timedelta
 from asgiref.sync import sync_to_async
+import calendar
 
 
 from django.core.paginator import Paginator
@@ -59,7 +60,8 @@ def sales_dashboard(request):
     if not date_start:
         date_start = date(today.year, 1, 1).strftime('%Y-%m-%d')
     if not date_end:
-        date_end = today.strftime('%Y-%m-%d')
+        last_day = calendar.monthrange(today.year, today.month)[1]
+        date_end = date(today.year, today.month, last_day).strftime('%Y-%m-%d')
 
     filters = {}
     if routes: filters['routes'] = routes
