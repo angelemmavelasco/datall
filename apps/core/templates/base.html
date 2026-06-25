@@ -78,6 +78,37 @@
             max-width: 100% !important;
         }
     }
+
+    .custom-tooltip {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+    }
+
+    .custom-tooltip::after {
+        content: attr(data-title);
+        white-space: pre-line;
+        position: absolute;
+        top: 125%; 
+        bottom: auto;
+        right: 0%;
+        left: auto;
+        transform: none;
+        background-color: #333;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        width: 250px; 
+        z-index: 10;
+        
+        display: none; 
+    }
+
+    .custom-tooltip:hover::after {
+        display: block;
+    }
+
     </style>
 
     <script>
