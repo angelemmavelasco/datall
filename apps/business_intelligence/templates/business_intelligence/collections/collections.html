@@ -6,6 +6,174 @@
 
 {% block module_name %}Cobranza{% endblock %}
 
+{% block filters %}
+<form method="GET" action="" id="params_filters">
+
+
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Mes</label>
+        <select name="month" class="border border-border rounded p-1 bg-page text-sm outline-none w-full" required>
+            <option value="1" {% if filters.month == '1' %}selected{% endif %}>Enero</option>
+            <option value="2" {% if filters.month == '2' %}selected{% endif %}>Febrero</option>
+            <option value="3" {% if filters.month == '3' %}selected{% endif %}>Marzo</option>
+            <option value="4" {% if filters.month == '4' %}selected{% endif %}>Abril</option>
+            <option value="5" {% if filters.month == '5' %}selected{% endif %}>Mayo</option>
+            <option value="6" {% if filters.month == '6' %}selected{% endif %}>Junio</option>
+            <option value="7" {% if filters.month == '7' %}selected{% endif %}>Julio</option>
+            <option value="8" {% if filters.month == '8' %}selected{% endif %}>Agosto</option>
+            <option value="9" {% if filters.month == '9' %}selected{% endif %}>Septiembre</option>
+            <option value="10" {% if filters.month == '10' %}selected{% endif %}>Octubre</option>
+            <option value="11" {% if filters.month == '11' %}selected{% endif %}>Noviembre</option>
+            <option value="12" {% if filters.month == '12' %}selected{% endif %}>Diciembre</option>
+        </select>
+    </div>
+
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Año</label>
+        <select name="year" class="border border-border rounded p-1 bg-page text-sm outline-none w-full" required>
+            {% for y in available_years %}
+                <option value="{{ y }}" {% if filters.year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Clientes -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Clientes</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar cliente..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'customers-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'customers-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="customers-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for c in filter_customers %}
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="customers" value="{{ c.id }}" {% if c.id in selected_customers %}checked{% endif %}>
+                    <span class="searchable-text">{{ c.id|upper }} {{ c.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Gerencia -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Gerencia</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar gerencia..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'gerencia-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'gerencia-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="gerencia-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for w in filter_warehouses %}
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="warehouses" value="{{ w.id }}" {% if w.id in selected_warehouses %}checked{% endif %}>
+                    <span class="searchable-text">{{ w.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Región -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Región</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar región..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'region-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'region-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="region-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for r in filter_regions %}
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="regions" value="{{ r.id }}" {% if r.id in selected_regions %}checked{% endif %}>
+                    <span class="searchable-text">{{ r.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Rutas -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Rutas</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar ruta..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'routes-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'routes-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="routes-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for r in filter_routes %}
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="routes" value="{{ r.id }}" {% if r.id in selected_routes %}checked{% endif %}>
+                    <span class="searchable-text">{{ r.id|title }}: {{ r.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <button type="submit"
+        class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2 mb-2">Aplicar
+        filtros</button>
+    <a href="?"
+        class="block bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+        filtros</a>
+
+</form>
+
+<script>
+    function filterCheckboxes(inputElement, listId) {
+        const filter = inputElement.value.toLowerCase();
+        const list = document.getElementById(listId);
+        const labels = list.getElementsByTagName('label');
+
+        for (let i = 0; i < labels.length; i++) {
+            const span = labels[i].querySelector('.searchable-text');
+            if (span) {
+                const textValue = span.textContent || span.innerText;
+                if (textValue.toLowerCase().indexOf(filter) > -1) {
+                    labels[i].style.display = "";
+                } else {
+                    labels[i].style.display = "none";
+                }
+            }
+        }
+    }
+
+    function toggleAllCheckboxes(masterCheckbox, listId) {
+        const list = document.getElementById(listId);
+        const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            // Solo altera los checkboxes visibles (respeta el buscador)
+            if (cb.closest('label').style.display !== "none") {
+                cb.checked = masterCheckbox.checked;
+            }
+        });
+    }
+</script>
+{% endblock %}
+
 {% block module_actions %}
 
 <button onclick="toggleFilters()"
@@ -73,17 +241,17 @@
         <table class="w-full table-fixed text-left border-collapse">
             <thead>
                 <tr class="border-b border-border">
-                    <th class="min-w-40 p-1 text-center text-title">1-15 días</th>
-                    <th class="min-w-40 p-1 text-center text-title">16-30 días</th>
-                    <th class="min-w-40 p-1 text-center text-title">31-60 días</th>
+                    <th class="min-w-40 p-1 text-center border-r border-border text-title">1-15 días</th>
+                    <th class="min-w-40 p-1 text-center border-r border-border text-title">16-30 días</th>
+                    <th class="min-w-40 p-1 text-center border-r border-border text-title">31-60 días</th>
                     <th class="min-w-40 p-1 text-center text-title">+60 días</th>
                 </tr>
             </thead>
             <tbody>
                 {% for collection in collections %}
                 <tr class="border-b border-border">
-                    <td class="p-1 text-center text-title">{{ collection.client.name }}</td>
-                    <td class="p-1 text-center text-title">{{ collection.amount|floatformat:2|intcomma }}</td>
+                    <td class="p-1 text-center text-title">{{ collection.balance.name }}</td>
+                    <td class="p-1 text-center text-title">{{ collection.total_balance|floatformat:2|intcomma }}</td>
                     <td class="p-1 text-center text-title">{{ collection.credit_limit|floatformat:2|intcomma }}</td>
                     <td class="p-1 text-center text-title">{{ collection.days_past_due }}</td>
                 </tr>
@@ -118,60 +286,184 @@
         <hr class="border-border">
     </div>
 
-    <div class="w-full overflow-x-auto border border-border rounded bg-container">
-        <table class="w-full table-fixed border-separate border-spacing-0">
-            <thead>
-                <tr>
-                    <th colspan="3">Identificación</th>
-                    <th colspan="4">Detalles de saldo</th>
+<div class="w-full overflow-x-auto border border-border rounded bg-container max-h-80">
+    <table class="w-full table-auto border-separate border-spacing-0 whitespace-nowrap">
+        <thead>
+            <tr>
+                <th colspan="3" class="border-r border-b border-border p-1 bg-container text-center">Identificación</th>
+                <th colspan="7" class="border-b border-border p-1 bg-container text-center">Detalles de saldo</th>
+            </tr>
+            <tr>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">Cliente</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">Ruta</th>
+                <th class="w-20 min-w-20 p-1 text-center border-r border-b border-border text-title">Cedis</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">Total</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">Al corriente</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">Vencido</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">1-15 días</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">16-30 días</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">31-60 días</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">+60 días</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for collection in collections %}
+                <tr class="border-b border-border hover:bg-neutral-50/50">
+                    <td class="p-2 text-center text-title truncate max-w-40" title="{{ collection.balance.id|upper }} {{ collection.balance.name|title }}">
+                        {{ collection.customer__id|upper }} {{ collection.customer__name|title }}
+                    </td>
+                    <td class="p-2 text-center text-title truncate max-w-40" title="{{ collection.balance.route.id|upper }} {{ collection.balance.route.name|title }}">
+                        {{ collection.customer__route__id|upper }} {{ collection.customer__route__name|title }}
+                    </td>
+                    <td class="p-2 text-center text-title border-r border-border truncate max-w-20">
+                        {{ collection.customer__route__warehouse_id|upper }}
+                    </td>
+                    <td class="p-2 text-right text-title">$ {{ collection.total_balance|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right text-title">$ {{ collection.current_balance|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right text-title">$ {{ collection.overdue_balance_sum|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right text-title">$ {{ collection.balance_15|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right text-title">$ {{ collection.balance_30|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right text-title">$ {{ collection.balance_60|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right text-title">$ {{ collection.past_due|floatformat:2|intcomma }}</td>
                 </tr>
-                <tr class="border-b border-border">
-                    <th class="w-40 min-w-40 max-w-40 p-1 text-center border-b border-border text-title sticky left-0 z-10 bg-container">Cliente</th>
-                    <th class="w-40 min-w-40 max-w-40 p-1 text-center border-b border-border text-title sticky left-40 z-10 bg-container">Ruta</th>
-                    <th class="w-20 min-w-20 max-w-20 p-1 text-center border-b border-border text-title sticky left-80 z-10 bg-container border-r">Cedis</th>
-                    <th class="min-w-20 p-1 text-center border-b border-border text-title">Total</th>
-                    <th class="min-w-20 p-1 text-center border-b border-border text-title">Al corriente</th>
-                    <th class="min-w-20 p-1 text-center border-b border-border text-title">Vencido</th>
-                    <th class="min-w-40 p-1 text-center border-b border-border text-title">1-15 días</th>
-                    <th class="min-w-40 p-1 text-center border-b border-border text-title">16-30 días</th>
-                    <th class="min-w-40 p-1 text-center border-b border-border text-title">31-60 días</th>
-                    <th class="min-w-40 p-1 text-center border-b border-border text-title">+60 días</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for customer in collections.customers %}
-                    <tr class="border-b border-border">
-                        <td class="w-40 min-w-40 max-w-40 p-1 text-center text-title sticky left-0 z-10 bg-container truncate" title="{{ customer.id|upper }} {{ customer.name|title }}">
-                            {{ customer.id|upper }} {{ customer.name|title }}
-                        </td>
-                        <td class="w-40 min-w-40 max-w-40 p-1 text-center text-title sticky left-40 z-10 bg-container truncate" title="{{ customer.route.id|upper }} {{ customer.route.name|title }}">
-                            {{ customer.route.id|upper }} {{ customer.route.name|title }}
-                        </td>
-                        <td class="w-20 min-w-20 max-w-20 p-1 text-center text-title sticky left-80 z-10 bg-container border-r border-border truncate">
-                            {{ customer.route.warehouse.id|upper }}
-                        </td>
-                        <td class="p-1 text-center text-title">{{ customer.total_balance|floatformat:2|intcomma }}</td>
-                        <td class="p-1 text-center text-title">{{ customer.current_balance|floatformat:2|intcomma }}</td>
-                        <td class="p-1 text-center text-title">{{ customer.past_due_balance|floatformat:2|intcomma }}</td>
-                        <td class="p-1 text-center text-title">{{ customer.balance_15|floatformat:2|intcomma }}</td>
-                        <td class="p-1 text-center text-title">{{ customer.balance_30|floatformat:2|intcomma }}</td>
-                        <td class="p-1 text-center text-title">{{ customer.balance_60|floatformat:2|intcomma }}</td>
-                        <td class="p-1 text-center text-title">{{ customer.past_due|floatformat:2|intcomma }}</td>
-                    </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="11" class="text-center text-muted py-2">No hay datos para mostrar.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-    </div>
-
-    
+            {% empty %}
+            <tr>
+                <td colspan="10" class="text-center text-muted py-4">No hay datos para mostrar.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
 
 </div>
+
+
+
+<script>
+    const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim();
+
+
+    // cobranza por tipo de cliente
+    // const debtByCustomerTypeData = {{ debt_by_customer_type_data|safe }};
+    const debtByCustomerTypeBarChart = echarts.init(document.getElementById('debtByCustomerTypeBarChart'));
+    const debtByCustomerTypeOption = {
+    tooltip: {
+        trigger: 'item'
+    },
+    legend: {
+        bottom: '5%',
+        left: 'center'
+    },
+    title: {
+        text: 'Cobranza por tipo de cliente',
+        textStyle: {
+            fontSize: 14,
+            fontWeight: 'normal',
+
+        }
+    },
+    series: [
+        {
+        name: 'Access From',
+        type: 'pie',
+        radius: ['40%', '70%'],
+        avoidLabelOverlap: false,
+        padAngle: 5,
+        itemStyle: {
+            borderRadius: 10
+        },
+        label: {
+            show: false,
+            position: 'center'
+        },
+        emphasis: {
+            label: {
+            show: true,
+            fontSize: 40,
+            fontWeight: 'bold'
+            }
+        },
+        labelLine: {
+            show: false
+        },
+        data: [
+            { value: 1048, name: 'Search Engine' },
+            { value: 735, name: 'Direct' },
+            { value: 580, name: 'Email' },
+            { value: 484, name: 'Union Ads' },
+            { value: 300, name: 'Video Ads' }
+        ]
+        }
+    ]
+    };
+    debtByCustomerTypeBarChart.setOption(debtByCustomerTypeOption);
+
+    const creditUsageGaugeChart = echarts.init(document.getElementById('creditUsageGaugeChart'));
+    const creditUsageGaugeChartOption = {
+        title: {
+            text: 'Uso de crédito',
+            textStyle: {
+                fontWeight: 'normal',
+                fontSize: 14,
+                color: titleColor
+            },
+
+        },
+        series: [
+            {
+            type: 'gauge',
+            progress: {
+                show: true,
+                width: 18
+            },
+            axisLine: {
+                lineStyle: {
+                width: 18
+                }
+            },
+            axisTick: {
+                show: false
+            },
+            splitLine: {
+                length: 15,
+                lineStyle: {
+                width: 2,
+                color: '#999'
+                }
+            },
+            axisLabel: {
+                distance: 25,
+                color: '#999',
+                fontSize: 20
+            },
+            anchor: {
+                show: true,
+                showAbove: true,
+                size: 25,
+                itemStyle: {
+                borderWidth: 10
+                }
+            },
+            title: {
+                show: false
+            },
+            detail: {
+                valueAnimation: true,
+                fontSize: 80,
+                offsetCenter: [0, '70%']
+            },
+            data: [
+                {
+                value: 100
+                }
+            ]
+            }
+        ]
+        };
+    creditUsageGaugeChart.setOption(creditUsageGaugeChartOption);
+
+</script>
 
 
 {% endblock %}

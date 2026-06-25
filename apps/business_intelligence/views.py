@@ -28,11 +28,14 @@ from apps.business_intelligence.services.sales_breakdown.sales_breakdown import 
 from apps.business_intelligence.services.unique_customers.unique_customers import UniqueCustomersService
 from apps.business_intelligence.services.target_scope.target_scope import TargetScopeService
 from apps.business_intelligence.services.monthly_breakdown_by_warehouse.monthly_breakdown_by_warehouse import MonthlyBreakdownByWarehouse  
+from apps.business_intelligence.services.collections.collections import Collections
 
 from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
 from apps.sales.services.sale_targets.sale_targets_crud import SaleTargetCRUD
 
 from apps.customers.services.customers_crud.customers_crud import CustomerCrud
+from apps.customers.services.accounts_receivable.accounts_receivable_crud import AccountsReceivableCrud
+
 
 
 from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
@@ -226,9 +229,75 @@ def products_kpis(request):
 def collections(request):
     user = request.user
     template = 'business_intelligence/collections/collections.html'
+    
     allowed_routes = get_allowed_routes_for_user(user)
 
+    #valiodate which warehouses the user has access to
+    if not user.groups.filter(name='acceso global').exists() and not user.is_superuser:
+        allowed_warehouse_ids = allowed_routes.values_list('warehouse_id', flat=True)
+        allowed_region_ids = allowed_routes.values_list('warehouse__region_id', flat=True)
+        
+        allowed_warehouses = Warehouse.objects.filter(
+            id__in=allowed_warehouse_ids
+        ).distinct().values('id', 'name').order_by('id')
+
+        allowed_regions = Region.objects.filter(
+            id__in=allowed_region_ids
+        ).distinct().values('id', 'name').order_by('id')
+    else:
+        allowed_warehouses = Warehouse.objects.all().values('id', 'name').order_by('id')
+        allowed_regions = Region.objects.all().values('id', 'name').order_by('id')
+
+    print('alowed regions', allowed_regions)
+    print('allowed warehouses', allowed_warehouses)
+
+    allowed_customers = CustomerCrud().read(allowed_routes=allowed_routes)
+    
+    
+    # request filters
+
+    # dates
+    today = date.today().replace(day=1)
+    month = request.GET.get('month', today.month)
+    year = request.GET.get('year', today.year)
+    warehouses = request.GET.getlist('warehouses', allowed_warehouses.values_list('id', flat=True))
+    regions = request.GET.getlist('regions', allowed_regions.values_list('id', flat=True))
+    routes = request.GET.getlist('routes', allowed_routes.values_list('id', flat=True))
+    customers = request.GET.getlist('customers', allowed_customers.values_list('id', flat=True))
+
+    filters = {
+        'customers': customers
+    }
+    if month: filters['month'] = month
+    if year: filters['year'] = year
+
+    ar_service = Collections(
+        allowed_routes=allowed_routes, 
+        allowed_customers=allowed_customers
+    )
+    raw_qs = ar_service.read(**filters)
+
+    collections = ar_service.get_ar_by_customer(raw_qs)
+    print(collections[:10])
+
+
     context ={
+        'available_years': [2026, 2023],
+
+        # filters
+        'filter_customers': allowed_customers,
+        'filter_warehouses': allowed_warehouses,
+        'filter_routes': allowed_routes,
+        'filter_regions': allowed_regions,
+
+        # selected filters
+        'selected_customers': customers,
+        'selected_warehouses': warehouses,
+        'selected_routes': routes,
+        'selected_regions': regions,
+
+        # ar data
+        'collections': collections[:10]
 
     }
 
@@ -351,6 +420,8 @@ def customers_kpis(request):
     )
 
     return render(request, template, context)
+
+
 @login_required
 async def export_customers_kpis_data(request):
     warehouses = request.GET.getlist('warehouses')
@@ -411,18 +482,6 @@ async def export_customers_kpis_data(request):
     response['Content-Disposition'] = 'attachment; filename="customers_kpis.csv"'
     
     return response
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 @login_required
