@@ -30,6 +30,10 @@ class CustomerCrud:
         if warehouse:
             qs = qs.filter(route__warehouse__in=warehouse)
 
+        region = filters.get('regions')
+        if region:
+            qs = qs.filter(route__warehouse__region__in=region)
+
         customer_type = filters.get('customer_types')
         if customer_type:
             qs = qs.filter(customer_type__in=customer_type)

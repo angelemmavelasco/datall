@@ -10,31 +10,11 @@
 <form method="GET" action="" id="params_filters">
 
 
+    <!-- Fecha Fin -->
     <div class="flex flex-col gap-1 mb-4">
-        <label class="text-strong text-sm">Mes</label>
-        <select name="month" class="border border-border rounded p-1 bg-page text-sm outline-none w-full" required>
-            <option value="1" {% if filters.month == '1' %}selected{% endif %}>Enero</option>
-            <option value="2" {% if filters.month == '2' %}selected{% endif %}>Febrero</option>
-            <option value="3" {% if filters.month == '3' %}selected{% endif %}>Marzo</option>
-            <option value="4" {% if filters.month == '4' %}selected{% endif %}>Abril</option>
-            <option value="5" {% if filters.month == '5' %}selected{% endif %}>Mayo</option>
-            <option value="6" {% if filters.month == '6' %}selected{% endif %}>Junio</option>
-            <option value="7" {% if filters.month == '7' %}selected{% endif %}>Julio</option>
-            <option value="8" {% if filters.month == '8' %}selected{% endif %}>Agosto</option>
-            <option value="9" {% if filters.month == '9' %}selected{% endif %}>Septiembre</option>
-            <option value="10" {% if filters.month == '10' %}selected{% endif %}>Octubre</option>
-            <option value="11" {% if filters.month == '11' %}selected{% endif %}>Noviembre</option>
-            <option value="12" {% if filters.month == '12' %}selected{% endif %}>Diciembre</option>
-        </select>
-    </div>
-
-    <div class="flex flex-col gap-1 mb-4">
-        <label class="text-strong text-sm">Año</label>
-        <select name="year" class="border border-border rounded p-1 bg-page text-sm outline-none w-full" required>
-            {% for y in available_years %}
-                <option value="{{ y }}" {% if filters.year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
-            {% endfor %}
-        </select>
+        <label class="text-strong text-sm">Fecha de Corte</label>
+        <input type="date" name="date_end" value="{{ selected_date_end|default:'' }}"
+            class="border border-border rounded p-1 bg-page text-sm">
     </div>
 
     <!-- Clientes -->
@@ -171,6 +151,23 @@
             }
         });
     }
+
+    document.getElementById('params_filters').addEventListener('submit', function(e) {
+        const lists = ['customers-list', 'gerencia-list', 'region-list', 'routes-list'];
+        
+        lists.forEach(listId => {
+            const list = document.getElementById(listId);
+            if (list) {
+                const allCheckboxes = list.querySelectorAll('input[type="checkbox"]');
+                const checkedCheckboxes = list.querySelectorAll('input[type="checkbox"]:checked');
+                
+                // Si todos están seleccionados (o ninguno), deshabilitarlos para no saturar la URL (previene Error 414)
+                if (allCheckboxes.length > 0 && (checkedCheckboxes.length === allCheckboxes.length || checkedCheckboxes.length === 0)) {
+                    allCheckboxes.forEach(cb => cb.disabled = true);
+                }
+            }
+        });
+    });
 </script>
 {% endblock %}
 
@@ -204,7 +201,7 @@
 <div class="flex flex-col w-full gap-4">
     <!-- Ban de resultados -->
     <div class="">
-        <p class="text-title text-sm mb-2">Periodo {{ periodo|default:'' }}</p>
+        <p class="text-title text-sm mb-2">Corte al {{ selected_date_end|default:'' }}</p>
         <hr class="border-border">
     </div>
 
@@ -286,11 +283,11 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-200 md:h-100">
         <div class=" border border-border rounded bg-container flex min-h-98 items-center justify-center"
-            id="creditUsageGaugeChart">
+            id="creditUsageByARGaugeChart">
         </div>
 
         <div class=" border border-border rounded bg-container min-h-98 flex items-center justify-center"
-            id="debtByCustomerTypeBarChart">
+            id="creditUsageByPortafolioGaugeChart">
         </div>
 
     </div>
@@ -321,30 +318,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for collection in collections %}
-                <tr class="border-b border-border hover:bg-hover/50">
-                    <td class="p-2 text-left text-title truncate max-w-40" title="{{ collection.balance.id|upper }} {{ collection.balance.name|title }}">
-                        {{ collection.customer__id|upper }} {{ collection.customer__name|title }}
-                    </td>
-                    <td class="p-2 text-left text-title truncate max-w-40" title="{{ collection.balance.route.id|upper }} {{ collection.balance.route.name|title }}">
-                        {{ collection.customer__route__id|upper }} {{ collection.customer__route__name|title }}
-                    </td>
-                    <td class="p-2 text-left text-title border-r border-border truncate max-w-20">
-                        {{ collection.customer__route__warehouse_id|upper }}
-                    </td>
-                    <td class="p-2 text-right text-blue-600">$ {{ collection.total_balance|floatformat:2|intcomma }}</td>
-                    <td class="p-2 text-right text-green-600">$ {{ collection.current_balance|floatformat:2|intcomma }}</td>
-                    <td class="p-2 text-right text-red-600">$ {{ collection.overdue_balance_sum|floatformat:2|intcomma }}</td>
-                    <td class="p-2 text-right text-title">$ {{ collection.balance_15|floatformat:2|intcomma }}</td>
-                    <td class="p-2 text-right text-title">$ {{ collection.balance_30|floatformat:2|intcomma }}</td>
-                    <td class="p-2 text-right text-title">$ {{ collection.balance_60|floatformat:2|intcomma }}</td>
-                    <td class="p-2 text-right text-title">$ {{ collection.past_due|floatformat:2|intcomma }}</td>
-                </tr>
-            {% empty %}
-            <tr>
-                <td colspan="10" class="text-center text-muted py-4">No hay datos para mostrar.</td>
-            </tr>
-            {% endfor %}
+            {% include "business_intelligence/collections/partials/collections_rows.html" %}
         </tbody>
     </table>
 </div>
@@ -355,74 +329,33 @@
 
 
 <script>
+    
     const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim();
 
 
     // cobranza por tipo de cliente
-    // const debtByCustomerTypeData = {{ debt_by_customer_type_data|safe }};
-    const debtByCustomerTypeBarChart = echarts.init(document.getElementById('debtByCustomerTypeBarChart'));
-    const debtByCustomerTypeOption = {
-    tooltip: {
-        trigger: 'item'
-    },
-    legend: {
-        bottom: '5%',
-        left: 'center'
-    },
-    title: {
-        text: 'Cobranza por tipo de cliente',
-        textStyle: {
-            fontSize: 14,
-            fontWeight: 'normal',
-
-        }
-    },
-    series: [
-        {
-        name: 'Access From',
-        type: 'pie',
-        radius: ['40%', '70%'],
-        avoidLabelOverlap: false,
-        padAngle: 5,
-        itemStyle: {
-            borderRadius: 10
-        },
-        label: {
-            show: false,
-            position: 'center'
-        },
-        emphasis: {
-            label: {
-            show: true,
-            fontSize: 40,
-            fontWeight: 'bold'
-            }
-        },
-        labelLine: {
-            show: false
-        },
-        data: [
-            { value: 1048, name: 'Search Engine' },
-            { value: 735, name: 'Direct' },
-            { value: 580, name: 'Email' },
-            { value: 484, name: 'Union Ads' },
-            { value: 300, name: 'Video Ads' }
-        ]
-        }
-    ]
-    };
-    debtByCustomerTypeBarChart.setOption(debtByCustomerTypeOption);
-
-    const creditUsageGaugeChart = echarts.init(document.getElementById('creditUsageGaugeChart'));
-    const creditUsageGaugeChartOption = {
+    const creditUsageByPortafolioGaugeChart = echarts.init(document.getElementById('creditUsageByPortafolioGaugeChart'));
+    const creditUsageByPortafolioGaugeOption = {
         title: {
-            text: 'Uso de crédito',
+            text: 'Uso de crédito de toda la cartera',
             textStyle: {
                 fontWeight: 'normal',
                 fontSize: 14,
                 color: titleColor
             },
 
+        },
+        tooltip: {
+            formatter: function (params) {
+                const totalBalance = {{ kpis.total_balance|default:0|floatformat:"2u" }};
+                const formattedDebt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalBalance);
+                const formattedCredit = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.data.total_credit);
+                return `<div class="font-sans" style="color:#666">
+                            <strong style="color:var(--color-title)">Toda la Cartera</strong><br/>
+                            Límite de Crédito: ${formattedCredit}<br/>
+                            Crédito utilizado: ${formattedDebt}
+                        </div>`;
+            }
         },
         series: [
             {
@@ -469,13 +402,93 @@
             },
             data: [
                 {
-                value: 100
+                value: {{ kpis.credit_usage_by_ptf|default:0|floatformat:"2u" }},
+                total_credit: {{ kpis.credit_ptf|default:0|floatformat:"2u" }}
                 }
             ]
             }
         ]
         };
-    creditUsageGaugeChart.setOption(creditUsageGaugeChartOption);
+    creditUsageByPortafolioGaugeChart.setOption(creditUsageByPortafolioGaugeOption);
+
+    const creditUsageByARGaugeChart = echarts.init(document.getElementById('creditUsageByARGaugeChart'));
+    const creditUsageByARGaugeChartOption = {
+        title: {
+            text: 'Uso de crédito de cuentas por cobrar',
+            textStyle: {
+                fontWeight: 'normal',
+                fontSize: 14,
+                color: titleColor
+            },
+
+        },
+        tooltip: {
+            formatter: function (params) {
+                const totalBalance = {{ kpis.total_balance|default:0|floatformat:"2u" }};
+                const formattedDebt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalBalance);
+                const formattedCredit = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(params.data.total_credit);
+                return `<div class="font-sans" style="color:#666">
+                            <strong style="color:var(--color-title)">Cuentas por Cobrar</strong><br/>
+                            Límite de Crédito: ${formattedCredit}<br/>
+                            Crédito utilizado: ${formattedDebt}
+                        </div>`;
+            }
+        },
+        series: [
+            {
+            type: 'gauge',
+            progress: {
+                show: true,
+                width: 18
+            },
+            axisLine: {
+                lineStyle: {
+                width: 18
+                }
+            },
+            axisTick: {
+                show: false
+            },
+            splitLine: {
+                length: 15,
+                lineStyle: {
+                width: 2,
+                color: '#999'
+                }
+            },
+            axisLabel: {
+                distance: 25,
+                color: '#999',
+                fontSize: 20
+            },
+            anchor: {
+                show: true,
+                showAbove: true,
+                size: 25,
+                itemStyle: {
+                borderWidth: 10
+                }
+            },
+            title: {
+                show: false
+            },
+            detail: {
+                valueAnimation: true,
+                fontSize: 80,
+                offsetCenter: [0, '70%']
+            },
+            data: [
+                {
+                value: {{ kpis.credit_usage_by_ar|default:0|floatformat:"2u" }},
+                total_credit: {{ kpis.credit_ar|default:0|floatformat:"2u" }}
+                }
+            ]
+            }
+        ]
+        };
+    
+    
+        creditUsageByARGaugeChart.setOption(creditUsageByARGaugeChartOption);
 
 </script>
 

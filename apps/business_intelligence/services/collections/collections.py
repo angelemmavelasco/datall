@@ -14,6 +14,13 @@ class Collections(AccountsReceivableCrud):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def read(self, **kwargs):
+        # La vista de Cobranza siempre calcula el saldo acumulado HASTA la fecha fin (date_end).
+        # Ignoramos la fecha de inicio para que se tome en cuenta la deuda histórica.
+        kwargs.pop('date_start', None)
+        kwargs.pop('issue_date_start', None)
+        return super().read(**kwargs)
+
     def get_ar_by_customer(self, qs):
         return qs.values(
             'customer__id',
@@ -57,10 +64,22 @@ class Collections(AccountsReceivableCrud):
         kpis['balance_60'] = qs_agg.get('balance_60') or Decimal('0.00')
         kpis['past_due'] = qs_agg.get('past_due') or Decimal('0.00')
         kpis['accs_receivable_count'] = qs_agg.get('accs_receivable_count') or Decimal('0.00')
-
-        print(kpis)
-
         
+        kpis['credit_usage_by_ar'], kpis['credit_usage_by_ptf'], kpis['credit_ar'], kpis['credit_ptf'] = self.get_credit_usage(qs, kpis['total_balance'])
+
         return kpis
+
+    def get_credit_usage(self, qs, total_balance):
+        ar_customers_qs = qs.values('customer_id').distinct()
+        ar_credit_limit = Customer.objects.filter(id__in=ar_customers_qs).aggregate(total_limit=Sum('credit_limit'))['total_limit'] or Decimal('0.00')
+        
+        ptf_credit_limit = Decimal('0.00')
+        if self.allowed_customers is not None:
+            ptf_credit_limit = self.allowed_customers.aggregate(total_limit=Sum('credit_limit'))['total_limit'] or Decimal('0.00')
+
+        usage_ar = (total_balance / ar_credit_limit * 100) if ar_credit_limit > 0 else Decimal('0.00')
+        usage_ptf = (total_balance / ptf_credit_limit * 100) if ptf_credit_limit > 0 else Decimal('0.00')
+        
+        return usage_ar, usage_ptf, ar_credit_limit, ptf_credit_limit
 
         

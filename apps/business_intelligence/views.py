@@ -248,28 +248,28 @@ def collections(request):
         allowed_warehouses = Warehouse.objects.all().values('id', 'name').order_by('id')
         allowed_regions = Region.objects.all().values('id', 'name').order_by('id')
 
-    print('alowed regions', allowed_regions)
-    print('allowed warehouses', allowed_warehouses)
-
-    allowed_customers = CustomerCrud().read(allowed_routes=allowed_routes)
-    
-    
     # request filters
+    today = date.today()
+    date_end = request.GET.get('date_end', today)
+    warehouses = request.GET.getlist('warehouses')
+    regions = request.GET.getlist('regions')
+    routes = request.GET.getlist('routes')
+    customers = request.GET.getlist('customers')
 
-    # dates
-    today = date.today().replace(day=1)
-    month = request.GET.get('month', today.month)
-    year = request.GET.get('year', today.year)
-    warehouses = request.GET.getlist('warehouses', allowed_warehouses.values_list('id', flat=True))
-    regions = request.GET.getlist('regions', allowed_regions.values_list('id', flat=True))
-    routes = request.GET.getlist('routes', allowed_routes.values_list('id', flat=True))
-    customers = request.GET.getlist('customers', allowed_customers.values_list('id', flat=True))
+    customer_filters = {}
+    if routes: customer_filters['routes'] = routes
+    if warehouses: customer_filters['warehouses'] = warehouses
+    if regions: customer_filters['regions'] = regions
 
-    filters = {
-        'customers': customers
-    }
-    if month: filters['month'] = month
-    if year: filters['year'] = year
+    allowed_customers = CustomerCrud().read(allowed_routes=allowed_routes, **customer_filters)
+
+    filters = {}
+    if customers:
+        filters['customers'] = customers
+    else:
+        filters['customers'] = list(allowed_customers.values_list('id', flat=True))
+
+    if date_end: filters['date_end'] = date_end
 
     ar_service = Collections(
         allowed_routes=allowed_routes, 
@@ -279,29 +279,46 @@ def collections(request):
 
     collections = ar_service.get_ar_by_customer(raw_qs)
     kpis = ar_service.get_ar_kpis(raw_qs)
+
+    paginator = Paginator(collections, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    collections_data = page_obj.object_list 
+    query_dict = request.GET.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
+    query_string = query_dict.urlencode()
+
+    print(kpis)
     
 
 
     context ={
-        'available_years': [2026, 2023],
+        #htmx
+        'page_obj': page_obj,
+        'query_string': query_string,
 
         # filters
+        'available_years': [2026, 2023],
         'filter_customers': allowed_customers,
         'filter_warehouses': allowed_warehouses,
         'filter_routes': allowed_routes,
         'filter_regions': allowed_regions,
 
         # selected filters
-        'selected_customers': customers,
-        'selected_warehouses': warehouses,
-        'selected_routes': routes,
-        'selected_regions': regions,
+        'selected_customers': customers if customers else list(allowed_customers.values_list('id', flat=True)),
+        'selected_warehouses': warehouses if warehouses else list(allowed_warehouses.values_list('id', flat=True)),
+        'selected_routes': routes if routes else list(allowed_routes.values_list('id', flat=True)),
+        'selected_regions': regions if regions else list(allowed_regions.values_list('id', flat=True)),
+        'selected_date_end': date_end,
 
         # ar data
-        'collections': collections,
+        'collections': collections_data,
         'kpis': kpis
-
     }
+
+    if request.htmx:
+        return render(request, 'business_intelligence/collections/partials/collections_rows.html', context)
 
     return render(request, template, context)
 
