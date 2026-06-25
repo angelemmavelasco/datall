@@ -10,6 +10,23 @@
         <td class="p-2 text-left text-title border-r border-border truncate max-w-20">
             {{ collection.customer__route__warehouse_id|upper }}
         </td>
+
+        <td class="p-2 text-right text-body">
+            <span>
+                $ {{ collection.credit_limit|floatformat:2|intcomma }}
+            </span> <br>
+            <span class="text-[10px] font-medium
+            {% if collection.credit_usage > 80 %}
+                text-red-600
+            {% elif collection.credit_usage > 50 %}
+                text-orange-600
+            {% else %}
+                text-green-600
+            {% endif %}
+            ">
+                uso: {{ collection.credit_usage|floatformat:2|intcomma }} %
+            </span>
+        </td>
         <td class="p-2 text-right text-blue-600">$ {{ collection.total_balance|floatformat:2|intcomma }}</td>
         <td class="p-2 text-right text-green-600">$ {{ collection.current_balance|floatformat:2|intcomma }}</td>
         <td class="p-2 text-right text-red-600">$ {{ collection.overdue_balance_sum|floatformat:2|intcomma }}</td>

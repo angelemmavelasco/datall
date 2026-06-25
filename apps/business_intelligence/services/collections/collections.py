@@ -5,7 +5,7 @@ from apps.core.models import (
 )
 from apps.customers.services.accounts_receivable.accounts_receivable_crud import AccountsReceivableCrud
 
-from django.db.models import F, Sum, Count
+from django.db.models import F, Sum, Count, Case, When, Value, DecimalField
 from collections import defaultdict
 from decimal import Decimal
 
@@ -15,8 +15,6 @@ class Collections(AccountsReceivableCrud):
         super().__init__(**kwargs)
 
     def read(self, **kwargs):
-        # La vista de Cobranza siempre calcula el saldo acumulado HASTA la fecha fin (date_end).
-        # Ignoramos la fecha de inicio para que se tome en cuenta la deuda histórica.
         kwargs.pop('date_start', None)
         kwargs.pop('issue_date_start', None)
         return super().read(**kwargs)
@@ -35,8 +33,14 @@ class Collections(AccountsReceivableCrud):
             balance_30=Sum('balance_30'),
             balance_60=Sum('balance_60'),
             past_due=Sum('past_due'),
-            overdue_balance_sum=F('total_balance') - F('current_balance')
-        )
+            overdue_balance_sum=F('total_balance') - F('current_balance'),
+            credit_usage=Case(
+                When(customer__credit_limit__gt=0, then=(F('total_balance') * 100.0) / F('customer__credit_limit')),
+                default=Value(0.0),
+                output_field=DecimalField()
+            ),
+            credit_limit = F('customer__credit_limit') or Value(Decimal('0.00'), output_field=DecimalField())
+        ).order_by('-total_balance')
 
     def get_ar_kpis(self, qs):
         kpis = defaultdict(dict)

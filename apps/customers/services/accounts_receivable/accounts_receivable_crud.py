@@ -7,6 +7,9 @@ from apps.core.models import (
 from django.db.models import QuerySet, Q
 from typing import List
 from datetime import datetime, date
+from django.contrib.contenttypes.models import ContentType
+import pandas as pd
+from django.db import transaction
 
 
 class AccountsReceivableCrud:
@@ -61,10 +64,8 @@ class AccountsReceivableCrud:
 
 
 
-import pandas as pd
-from django.db import transaction
-from django.contrib.contenttypes.models import ContentType
-from apps.core.models import Reference, AccountsReceivable
+
+
 
 class AR_bulk:
     def __init__(self, *, allowed_routes=None, allowed_customers=None, allowed_warehouses=None):

@@ -246,13 +246,13 @@
             </thead>
             <tbody>
                 <tr class="border-b border-border">
-                    <td class="p-1 text-right text-title text-sm">$ {{ kpis.balance_15|default:0.00|floatformat:2|intcomma }}
+                    <td class="p-1 text-center text-title text-sm">$ {{ kpis.balance_15|default:0.00|floatformat:2|intcomma }}
                     </td>
-                    <td class="p-1 text-right text-title text-sm">$ {{ kpis.balance_30|default:0.00|floatformat:2|intcomma }}
+                    <td class="p-1 text-center text-title text-sm">$ {{ kpis.balance_30|default:0.00|floatformat:2|intcomma }}
                     </td>
-                    <td class="p-1 text-right text-title text-sm">$ {{ kpis.balance_60|default:0.00|floatformat:2|intcomma }}
+                    <td class="p-1 text-center text-title text-sm">$ {{ kpis.balance_60|default:0.00|floatformat:2|intcomma }}
                     </td>
-                    <td class="p-1 text-right text-title text-sm">$ {{ kpis.past_due|default:0.00|floatformat:2|intcomma }}
+                    <td class="p-1 text-center text-title text-sm">$ {{ kpis.past_due|default:0.00|floatformat:2|intcomma }}
                     </td>
                 </tr>
             </tbody>
@@ -301,20 +301,21 @@
     <table class="w-full table-auto border-separate border-spacing-0 whitespace-nowrap">
         <thead>
             <tr>
-                <th colspan="3" class="border-r border-b border-border p-1 bg-container text-center">Identificación</th>
-                <th colspan="7" class="border-b border-border p-1 bg-container text-center">Detalles de saldo</th>
+                <th colspan="3" class="border-r border-b border-border p-1 bg-container text-center sticky z-20 top-0 h-8">Identificación</th>
+                <th colspan="8" class="border-b border-border p-1 bg-container text-center sticky top-0 z-20 left-100 h-8">Detalles de saldo</th>
             </tr>
             <tr>
-                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">Cliente</th>
-                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">Ruta</th>
-                <th class="w-20 min-w-20 p-1 text-center border-r border-b border-border text-title">Cedis</th>
-                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">Total</th>
-                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">Al corriente</th>
-                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">Vencido</th>
-                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">1-15 días</th>
-                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">16-30 días</th>
-                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">31-60 días</th>
-                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title">+60 días</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title  sticky z-20 top-8 bg-container">Cliente</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title sticky top-8 z-20 bg-container">Ruta</th>
+                <th class="w-20 min-w-20 p-1 text-center border-r border-b border-border text-title sticky top-8 z-20 bg-container">Cedis</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title sticky top-8 z-20 bg-container">Crédito</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title sticky top-8 z-20 bg-container">Total</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title sticky top-8 z-20 bg-container">Al corriente</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title sticky top-8 z-20 bg-container">Vencido</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title sticky top-8 z-20 bg-container">1-15 días</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title sticky top-8 z-20 bg-container">16-30 días</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title sticky top-8 z-20 bg-container">31-60 días</th>
+                <th class="w-40 min-w-40 p-1 text-center border-r border-b border-border text-title sticky top-8 z-20 bg-container">+60 días</th>
             </tr>
         </thead>
         <tbody>
@@ -362,7 +363,7 @@
             type: 'gauge',
             progress: {
                 show: true,
-                width: 18
+                width: 10
             },
             axisLine: {
                 lineStyle: {
@@ -373,16 +374,14 @@
                 show: false
             },
             splitLine: {
-                length: 15,
+                length: 3,
                 lineStyle: {
-                width: 2,
+                width: 10,
                 color: '#999'
                 }
             },
             axisLabel: {
-                distance: 25,
-                color: '#999',
-                fontSize: 20
+                show:false
             },
             anchor: {
                 show: true,
@@ -397,8 +396,10 @@
             },
             detail: {
                 valueAnimation: true,
-                fontSize: 80,
-                offsetCenter: [0, '70%']
+                fontSize: 50,
+                offsetCenter: [0, '100%'],
+                fontWeight: 'normal',
+                formatter: '{value} %'
             },
             data: [
                 {
@@ -439,7 +440,7 @@
             type: 'gauge',
             progress: {
                 show: true,
-                width: 18
+                width: 10
             },
             axisLine: {
                 lineStyle: {
@@ -450,16 +451,14 @@
                 show: false
             },
             splitLine: {
-                length: 15,
+                length: 3,
                 lineStyle: {
-                width: 2,
+                width: 10,
                 color: '#999'
                 }
             },
             axisLabel: {
-                distance: 25,
-                color: '#999',
-                fontSize: 20
+                show:false
             },
             anchor: {
                 show: true,
@@ -474,8 +473,10 @@
             },
             detail: {
                 valueAnimation: true,
-                fontSize: 80,
-                offsetCenter: [0, '70%']
+                fontSize: 50,
+                offsetCenter: [0, '100%'],
+                fontWeight: 'normal',
+                formatter: '{value} %'
             },
             data: [
                 {
