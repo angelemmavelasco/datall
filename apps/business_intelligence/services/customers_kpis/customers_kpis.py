@@ -93,11 +93,13 @@ class CustomersKpis:
 
         stats_map = {row['customer_id']: row for row in sales_stats}
 
-        latest_period = AccountsReceivable.objects.aggregate(max_date=Max('period'))['max_date']
-        ar_map = {}
-        if latest_period:
-            ar_qs = AccountsReceivable.objects.filter(customer_id__in=customer_ids, period=latest_period)
-            ar_map = {ar.customer_id: ar for ar in ar_qs}
+        ar_qs = AccountsReceivable.objects.filter(
+            customer_id__in=customer_ids
+        ).values('customer_id').annotate(
+            total_balance=Sum('total_balance'),
+            current_balance=Sum('current_balance'),
+        )
+        ar_map = {row['customer_id']: row for row in ar_qs}
 
         months_headers = [date(current_year, m, 1) for m in range(1, 13)]
         global_net = Decimal('0.00')
@@ -133,9 +135,9 @@ class CustomersKpis:
 
             ar = ar_map.get(cid)
             if ar:
-                customer.current_balance = ar.current_balance or Decimal('0.00')
-                customer.overdue_balance = (ar.past_due + ar.balance_15 + ar.balance_30 + ar.balance_60) or Decimal('0.00')
-                total_balance = ar.total_balance or Decimal('0.00')
+                customer.current_balance = ar.get('current_balance') or Decimal('0.00')
+                total_balance = ar.get('total_balance') or Decimal('0.00')
+                customer.overdue_balance = total_balance - customer.current_balance
             else:
                 customer.current_balance = Decimal('0.00')
                 customer.overdue_balance = Decimal('0.00')
@@ -448,25 +450,24 @@ class CustomerProfileBuilder:
             self.customer.most_consumed_class_last_q = MockClass('Sin consumo reciente')
 
     def _set_accounts_receivable(self):
-        # Toma el registro más reciente de la tabla histórica de cobranza
-        latest_ar = AccountsReceivable.objects.filter(
+        ar_agg = AccountsReceivable.objects.filter(
             customer=self.customer
-        ).order_by('-period', '-id').first()
+        ).aggregate(
+            total_balance=Sum('total_balance'),
+            current_balance=Sum('current_balance'),
+            balance_15=Sum('balance_15'),
+            balance_30=Sum('balance_30'),
+            balance_60=Sum('balance_60'),
+            past_due=Sum('past_due'),
+        )
 
-        if latest_ar:
-            self.customer.total_balance = latest_ar.total_balance or Decimal('0.00')
-            self.customer.overdue_balance = latest_ar.past_due or Decimal('0.00')
-            self.customer.balance_15 = latest_ar.balance_15 or Decimal('0.00')
-            self.customer.balance_30 = latest_ar.balance_30 or Decimal('0.00')
-            self.customer.balance_60 = latest_ar.balance_60 or Decimal('0.00')
-            self.customer.past_due = latest_ar.past_due or Decimal('0.00')
-        else:
-            self.customer.total_balance = Decimal('0.00')
-            self.customer.overdue_balance = Decimal('0.00')
-            self.customer.balance_15 = Decimal('0.00')
-            self.customer.balance_30 = Decimal('0.00')
-            self.customer.balance_60 = Decimal('0.00')
-            self.customer.past_due = Decimal('0.00')
+        self.customer.total_balance = ar_agg['total_balance'] or Decimal('0.00')
+        self.customer.current_balance = ar_agg['current_balance'] or Decimal('0.00')
+        self.customer.overdue_balance = self.customer.total_balance - self.customer.current_balance
+        self.customer.balance_15 = ar_agg['balance_15'] or Decimal('0.00')
+        self.customer.balance_30 = ar_agg['balance_30'] or Decimal('0.00')
+        self.customer.balance_60 = ar_agg['balance_60'] or Decimal('0.00')
+        self.customer.past_due = ar_agg['past_due'] or Decimal('0.00')
 
         credit_limit = self.customer.credit_limit or Decimal('0.00')
         if credit_limit > 0:
