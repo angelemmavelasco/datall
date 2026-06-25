@@ -10,7 +10,9 @@ from django.contrib.auth.models import Group
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
+from django.core.paginator import Paginator
 
+from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
 
 from apps.customers.services.customers_crud.customer_bulk import CustomersBulk
 
@@ -292,10 +294,6 @@ def group_create(request):
 def uploads(request):
     TEMPLATE = 'data_admin/uploads/uploads.html'
     
-    from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
-    from apps.core.models import DataHistory
-    from django.core.paginator import Paginator
-
     # Filters
     query_text = request.GET.get('query_text')
     start_date = request.GET.get('start_date')
@@ -443,6 +441,28 @@ def upload_create(request):
         elif content_type.model == 'saletarget':
             from apps.sales.services.sale_targets.sale_targets_bulk import SaleTargetsBulk
             bulk_service = SaleTargetsBulk()
+            success, result = bulk_service.clean(uploaded_file)
+            
+            if not success:
+                audit_upload(DataHistory.Result.ERROR, result)
+                messages.error(request, result)
+                return redirect('data_admin:upload_create')
+            
+            df_cleaned = result
+            success_create, msg = bulk_service.create(df_cleaned)
+            
+            if success_create:
+                audit_upload(DataHistory.Result.SUCCESS, msg)
+                messages.success(request, msg)
+                return redirect('data_admin:uploads')
+            else:
+                audit_upload(DataHistory.Result.ERROR, msg)
+                messages.error(request, msg)
+                return redirect('data_admin:upload_create')
+                
+        elif content_type.model == 'accountsreceivable':
+            from apps.customers.services.accounts_receivable.accounts_receivable_crud import AR_bulk
+            bulk_service = AR_bulk()
             success, result = bulk_service.clean(uploaded_file)
             
             if not success:

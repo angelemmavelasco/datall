@@ -578,11 +578,6 @@ def customer_kpis(request, customer_id):
     return render(request, template, context)
 
 
-
-
-
-
-
 @login_required
 def commercial_risk(request):
     template = 'business_intelligence/commercial_risk/commercial_risk.html'
