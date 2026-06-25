@@ -261,7 +261,30 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
     <!-- cobranza -->
     <div class="">
-        <p class="text-title text-sm mb-2">Cobranza</p>
+        <div class="flex justify-between items-center">
+            <p class="text-title text-sm mb-2">Cobranza</p>
+            <span class="custom-tooltip" data-title="
+            Muestra la cobranza al último día seleccionado. ej. Un rango filtrado del 1 de enero de 2026 al 22 de junio de 2026, mostrará la cobranza en su estado al 22 de junio del 2026.
+            
+            Saldo total: la suma del saldo al corriente y el saldo vencido (considera todas las antigüedades).
+
+            Saldo al corriente: representa aquel saldo que está dentro de los plazos de crédito acordados o que todavía no están fuera del plazo de pago establecido en la misma factura.
+
+            Vencido: saldo del cuál no se ha recibido pago y que se encuentra fuera del plazo de crédito establecido. Se divide en 4 antigüedades:
+                ° 1 a 15 días
+                ° 16 a 30 días
+                ° 31 a 60 días
+                ° 60+ días
+
+            Cuentas por cobrar: el conteo de clientes que cuantan con al menos una factura por pagar.
+
+            
+            ">
+                
+            
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            </span>
+        </div>
         <hr class="border-border">
     </div>
 
@@ -362,7 +385,24 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
     <!-- detalle de clientes -->
     <div class="">
-        <p class="text-title text-sm mb-2">Clientes</p>
+        <div class="flex justify-between items-center">
+            <p class="text-title text-sm mb-2">Clientes</p>
+            <span class="custom-tooltip"
+            data-title="
+                Cartera: indica el número total de clientes registrados dada una fecha. Ej. para el rango del 1 de enero de 2026 al 22 de junio de 2026, se mostrarán los clientes registrados hasta el 22 de junio de 2026.
+
+                Clientes nuevos: muestra el número de clientes registrados dentro de un periodo seleccionado. Ej. para el rango del 1 de enero de 2026 al 31 de enero de 2026 se mostrarán los clientes registrados del 1 al 31 de enero de 2026.
+
+                Clientes con compras: muestra el número de clientes que realizaron compras dentro de un periodo seleccionado.
+
+                Alcance de cartera: indica el porcentaje de clientes que realizaron compras dentro de un periodo seleccionado con respecto al total de clientes registrados en ese mismo periodo.
+
+                Clientes ganados y perdidos (mensual): se muestra por mes el número de clientes ganados y perdidos. Un cliente perdido es aquel que en el mes anterior tuvo compras y en el mes actual no tuvo compras. Un cliente ganado es aquel que en el mes anterior no tuvo compras y en el mes actual tuvo compras. 
+                ">
+
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            </span>
+        </div>
         <hr class="border-border">
     </div>
 

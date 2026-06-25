@@ -29,7 +29,11 @@ class RoutesKpisService:
     def _safe_decimal(self, val):
         return Decimal(str(val)) if val is not None else Decimal('0.00')
 
-    def _prorate_target(self, t):
+    def _get_applicable_target(self, t):
+        """
+        Devuelve el 100% del target si el periodo (mes/año) 
+        tiene algún solapamiento con el rango de fechas establecido.
+        """
         target_amount = self._safe_decimal(t.get('target_amount', 0))
         if not self.date_start and not self.date_end:
             return target_amount
@@ -44,7 +48,7 @@ class RoutesKpisService:
             except ValueError:
                 return target_amount
         
-        month_start = period
+        month_start = period.replace(day=1)
         _, last_day = calendar.monthrange(month_start.year, month_start.month)
         month_end = datetime.date(month_start.year, month_start.month, last_day)
 
@@ -54,13 +58,10 @@ class RoutesKpisService:
         overlap_start = max(month_start, start)
         overlap_end = min(month_end, end)
 
-        if overlap_start > overlap_end:
-            return Decimal('0.00')
+        if overlap_start <= overlap_end:
+            return target_amount
 
-        overlap_days = (overlap_end - overlap_start).days + 1
-        total_days = (month_end - month_start).days + 1
-
-        return target_amount * Decimal(overlap_days) / Decimal(total_days)
+        return Decimal('0.00')
 
     def _initialize_routes(self):
         for route in self.routes_qs:
@@ -154,7 +155,7 @@ class RoutesKpisService:
             if not r_id or r_id not in self.routes_data:
                 continue
 
-            target_amt = self._prorate_target(t)
+            target_amt = self._get_applicable_target(t)
             self.routes_data[r_id]['sale_target'] += target_amt
 
             p_class = str(t.get('product_class_id') or 'otr').lower()
@@ -173,31 +174,30 @@ class RoutesKpisService:
         for c in customers:
             r_id = c['route_id']
             if r_id in self.routes_data:
+                reg_date = c.get('registration_date')
+                rd = None
+                if reg_date:
+                    rd = reg_date.date() if hasattr(reg_date, 'date') else reg_date
+                
+                if self.date_end and rd and rd > self.date_end:
+                    continue
+
                 self.routes_data[r_id]['collections']['total_credit'] += self._safe_decimal(c.get('credit_limit'))
                 self.routes_data[r_id]['clients'] += 1
                 
                 # new clients logic
-                reg_date = c.get('registration_date')
-                if reg_date and self.date_start and self.date_end:
-                    if self.date_start <= reg_date <= self.date_end:
+                if rd and self.date_start and self.date_end:
+                    if self.date_start <= rd <= self.date_end:
                         self.routes_data[r_id]['new_clients'] += 1
         
         #accs recaivale
-        ar_filters = {
-            'customer__route_id__in': route_ids,
+        ar_query = Q(customer__route_id__in=route_ids)
 
-        }
-
-        today = datetime.date.today()
         if self.date_end:
-            cutoff_month = self.date_end.replace(day=1)
-            ar_filters['period'] = cutoff_month
-        # elif self.date_start:
-        #     cutoff_month = self.date_start.replace(day=1, month=today.month, year=today.year)
-        #     ar_filters['period'] = cutoff_month
+            ar_query &= (Q(issue_date__lte=self.date_end) | Q(issue_date__isnull=True))
 
         ars = AccountsReceivable.objects.filter(
-            **ar_filters
+            ar_query
         ).values(
             'customer__route_id'
         ).annotate(
@@ -272,7 +272,7 @@ class RoutesKpisService:
         for t in targets:
             if t.get('period'):
                 period_str = t['period'].strftime('%Y-%m')
-                monthly_targets[period_str] += self._prorate_target(t)
+                monthly_targets[period_str] += self._get_applicable_target(t)
                 
         all_months = sorted(list(set(monthly_sales.keys()) | set(monthly_targets.keys())))
         
