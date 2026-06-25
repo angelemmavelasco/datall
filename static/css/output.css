@@ -42,6 +42,7 @@
     --color-gray-500: oklch(55.1% 0.027 264.364);
     --color-gray-600: oklch(44.6% 0.03 256.802);
     --color-gray-800: oklch(27.8% 0.033 256.848);
+    --color-neutral-50: oklch(98.5% 0 0);
     --color-black: #000;
     --color-white: #fff;
     --spacing: 0.25rem;
@@ -1416,6 +1417,26 @@
         background-color: var(--color-hover);
         @supports (color: color-mix(in lab, red, red)) {
           background-color: color-mix(in oklab, var(--color-hover) 30%, transparent);
+        }
+      }
+    }
+  }
+  .hover\:bg-hover\/50 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-hover);
+        @supports (color: color-mix(in lab, red, red)) {
+          background-color: color-mix(in oklab, var(--color-hover) 50%, transparent);
+        }
+      }
+    }
+  }
+  .hover\:bg-neutral-50\/50 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: color-mix(in srgb, oklch(98.5% 0 0) 50%, transparent);
+        @supports (color: color-mix(in lab, red, red)) {
+          background-color: color-mix(in oklab, var(--color-neutral-50) 50%, transparent);
         }
       }
     }

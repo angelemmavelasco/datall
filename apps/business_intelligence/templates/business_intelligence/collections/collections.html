@@ -212,22 +212,22 @@
 
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Saldo total</p>
-            <p class="text-xl text-green-500">$ {{ kpis.net_sale|default:0.00|floatformat:2|intcomma }}</p>
+            <p class="text-xl text-green-500">$ {{ kpis.total_balance|default:0.00|floatformat:2|intcomma }}</p>
         </div>
 
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Saldo al corriente</p>
-            <p class="text-xl text-blue-500">$ {{ kpis.target|default:0.00|floatformat:2|intcomma }}</p>
+            <p class="text-xl text-blue-500">$ {{ kpis.current_balance|default:0.00|floatformat:2|intcomma }}</p>
         </div>
 
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Saldo vencido</p>
-            <p class="text-xl text-violet-500">{{ kpis.scope|default:0.00|floatformat:2|intcomma }} %</p>
+            <p class="text-xl text-violet-500">$ {{ kpis.overdue_balance|default:0.00|floatformat:2|intcomma }}</p>
         </div>
 
         <div class="border border-border rounded p-2 flex flex-col bg-container">
             <p class="text-muted text-sm text-strong">Cuentas por cobrar</p>
-            <p class="text-xl text-red-500">{{ kpis.difference|default:0.00|floatformat:0|intcomma }}</p>
+            <p class="text-xl text-red-500">{{ kpis.accs_receivable_count|default:0.00|floatformat:0|intcomma }}</p>
         </div>
 
     </div>
@@ -237,7 +237,7 @@
         <hr class="border-border">
     </div>
 
-    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+    <div class="w-full overflow-x-auto border border-border rounded bg-container hidden md:block">
         <table class="w-full table-fixed text-left border-collapse">
             <thead>
                 <tr class="border-b border-border">
@@ -248,20 +248,34 @@
                 </tr>
             </thead>
             <tbody>
-                {% for collection in collections %}
                 <tr class="border-b border-border">
-                    <td class="p-1 text-center text-title">{{ collection.balance.name }}</td>
-                    <td class="p-1 text-center text-title">{{ collection.total_balance|floatformat:2|intcomma }}</td>
-                    <td class="p-1 text-center text-title">{{ collection.credit_limit|floatformat:2|intcomma }}</td>
-                    <td class="p-1 text-center text-title">{{ collection.days_past_due }}</td>
+                    <td class="p-1 text-right text-title text-sm">$ {{ kpis.balance_15|default:0.00|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-1 text-right text-title text-sm">$ {{ kpis.balance_30|default:0.00|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-1 text-right text-title text-sm">$ {{ kpis.balance_60|default:0.00|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-1 text-right text-title text-sm">$ {{ kpis.past_due|default:0.00|floatformat:2|intcomma }}
+                    </td>
                 </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" class="text-center text-muted py-2">No hay datos para mostrar.</td>
-                </tr>
-                {% endfor %}
             </tbody>
         </table>
+
+    </div>
+
+    <div class="w-full grid grid-cols-2 border border-border rounded bg-container md:hidden">
+
+        <span class="border-b border-border text-sm text-title p-1">1 a 15 días</span>
+        <span class="border-b border-border text-sm text-title p-1">$ {{ kpis.balance_15|default:0.00|floatformat:2|intcomma }}</span>
+
+        <span class="border-b border-border text-sm text-title p-1">16 a 30 días</span>
+        <span class="border-b border-border text-sm text-title p-1">$ {{ kpis.balance_30|default:0.00|floatformat:2|intcomma }}</span>
+
+        <span class="border-b border-border text-sm text-title p-1">31 a 60 días</span>
+        <span class="border-b border-border text-sm text-title p-1">$ {{ kpis.balance_60|default:0.00|floatformat:2|intcomma }}</span>
+
+        <span class="border-b border-border text-sm text-title p-1">+60 días</span>
+        <span class="border-b border-border text-sm text-title p-1">$ {{ kpis.past_due|default:0.00|floatformat:2|intcomma }}</span>
 
     </div>
 
@@ -308,19 +322,19 @@
         </thead>
         <tbody>
             {% for collection in collections %}
-                <tr class="border-b border-border hover:bg-neutral-50/50">
-                    <td class="p-2 text-center text-title truncate max-w-40" title="{{ collection.balance.id|upper }} {{ collection.balance.name|title }}">
+                <tr class="border-b border-border hover:bg-hover/50">
+                    <td class="p-2 text-left text-title truncate max-w-40" title="{{ collection.balance.id|upper }} {{ collection.balance.name|title }}">
                         {{ collection.customer__id|upper }} {{ collection.customer__name|title }}
                     </td>
-                    <td class="p-2 text-center text-title truncate max-w-40" title="{{ collection.balance.route.id|upper }} {{ collection.balance.route.name|title }}">
+                    <td class="p-2 text-left text-title truncate max-w-40" title="{{ collection.balance.route.id|upper }} {{ collection.balance.route.name|title }}">
                         {{ collection.customer__route__id|upper }} {{ collection.customer__route__name|title }}
                     </td>
-                    <td class="p-2 text-center text-title border-r border-border truncate max-w-20">
+                    <td class="p-2 text-left text-title border-r border-border truncate max-w-20">
                         {{ collection.customer__route__warehouse_id|upper }}
                     </td>
-                    <td class="p-2 text-right text-title">$ {{ collection.total_balance|floatformat:2|intcomma }}</td>
-                    <td class="p-2 text-right text-title">$ {{ collection.current_balance|floatformat:2|intcomma }}</td>
-                    <td class="p-2 text-right text-title">$ {{ collection.overdue_balance_sum|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right text-blue-600">$ {{ collection.total_balance|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right text-green-600">$ {{ collection.current_balance|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right text-red-600">$ {{ collection.overdue_balance_sum|floatformat:2|intcomma }}</td>
                     <td class="p-2 text-right text-title">$ {{ collection.balance_15|floatformat:2|intcomma }}</td>
                     <td class="p-2 text-right text-title">$ {{ collection.balance_30|floatformat:2|intcomma }}</td>
                     <td class="p-2 text-right text-title">$ {{ collection.balance_60|floatformat:2|intcomma }}</td>

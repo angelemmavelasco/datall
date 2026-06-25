@@ -278,7 +278,8 @@ def collections(request):
     raw_qs = ar_service.read(**filters)
 
     collections = ar_service.get_ar_by_customer(raw_qs)
-    print(collections[:10])
+    kpis = ar_service.get_ar_kpis(raw_qs)
+    
 
 
     context ={
@@ -297,7 +298,8 @@ def collections(request):
         'selected_regions': regions,
 
         # ar data
-        'collections': collections[:10]
+        'collections': collections,
+        'kpis': kpis
 
     }
 
