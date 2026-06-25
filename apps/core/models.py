@@ -650,12 +650,13 @@ class Customer(models.Model):
 
 
 class AccountsReceivable(models.Model):
+    #cve_cte
     customer = models.ForeignKey(
         Customer,
         on_delete=models.CASCADE,
         related_name='accounts_receivable'
     )
-
+    #cve_age
     route = models.ForeignKey(
         'Route',
         on_delete=models.SET_NULL,
@@ -663,15 +664,29 @@ class AccountsReceivable(models.Model):
         blank=True,
         related_name='accounts_receivables'
     )
-
+    #falta_fac
+    issue_date = models.DateField(null=True)
+    #f_pago
+    due_date = models.DateField(null=True)
+    #subtotal total
     total_balance = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
-    current_balance = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
+    #concepto
+    description = models.CharField(max_length=255, null=True, blank=True)
+    #odc_id
+    doc_id = models.CharField(max_length=255, null=True, blank=True)
+    #rango1
     balance_15 = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
+    #rango2
     balance_30 = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
+    #rango3
     balance_60 = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
+    #rango4 +60
     past_due = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
+    #rangoc al corriente
+    current_balance = models.DecimalField(max_digits=18, decimal_places=4, default=0, blank=True, null=True)
 
-    period = models.DateField()
+
+    
 
     class Meta:
         db_table = 'accounts_receivables'
@@ -679,7 +694,7 @@ class AccountsReceivable(models.Model):
         verbose_name_plural = 'Accounts receivables'
 
     def __str__(self):
-        return f'{self.customer_id}: $ {self.total_balance}, periodo: {self.period.month}-{self.period.year}'
+        return f'{self.customer_id}: total balance $ {self.total_balance}'
     
 
 
