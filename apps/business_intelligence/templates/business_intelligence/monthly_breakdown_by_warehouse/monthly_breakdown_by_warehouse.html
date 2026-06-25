@@ -48,7 +48,7 @@
 
 
 {% block filters %}
-<form method="POST" action="{% url 'business_intelligence:monthly_breakdown_by_warehouse' %}" class="flex flex-col gap-4 text-strong" id="params_filters">
+<form method="GET" action="{% url 'business_intelligence:monthly_breakdown_by_warehouse' %}" class="flex flex-col gap-4 text-strong" id="params_filters">
     {% csrf_token %}
     <!-- Años -->
     <div class="flex flex-col gap-1 mb-4">
@@ -83,6 +83,9 @@
     </div>
 
     <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2">Aplicar filtros</button>
+    <a href="?"
+        class="block bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+        filtros</a>
 </form>
 
 <script>

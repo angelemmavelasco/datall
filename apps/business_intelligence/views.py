@@ -828,10 +828,10 @@ def monthly_breakdown_by_warehouse(request):
     #catch filters
     today = date.today()
     try:
-        year = int(request.POST.get('year', today.year))
+        year = int(request.GET.get('year', today.year))
     except ValueError:
         year = today.year
-    warehouse_id_str = request.POST.get('warehouse')
+    warehouse_id_str = request.GET.get('warehouse')
     if not warehouse_id_str and allowed_warehouses.exists():
         warehouse = allowed_warehouses.first()['id']
     else:

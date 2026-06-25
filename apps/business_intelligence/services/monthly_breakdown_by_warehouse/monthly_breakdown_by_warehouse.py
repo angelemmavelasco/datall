@@ -95,22 +95,37 @@ class MonthlyBreakdownByWarehouse:
         return data
 
     def _get_monthly_accounts_receivable(self):
+        import calendar
+        from datetime import date
+
         ar_qs = AccountsReceivable.objects.filter(
-            period__year=self.year,
-            customer_id__route_id__in=self.route_ids
-        ).annotate(
-            month=ExtractMonth('period'),
-            current_route=F('customer__route_id')
-        ).values('current_route', 'month').annotate(
-            total_amount=Sum('total_balance'),
-            total_count=Count('id')
-        )
+            customer__route_id__in=self.route_ids
+        ).values('customer__route_id', 'issue_date', 'total_balance', 'customer_id')
+
         amount_data = defaultdict(Decimal)
         count_data = defaultdict(int)
+
+        month_end_dates = {}
+        for m in range(1, 13):
+            last_day = calendar.monthrange(self.year, m)[1]
+            month_end_dates[m] = date(self.year, m, last_day)
+
+        customers_per_route_month = defaultdict(set)
+
         for row in ar_qs:
-            route_id = row['current_route']
-            amount_data[(route_id, row['month'])] = row['total_amount'] or Decimal('0.00')
-            count_data[(route_id, row['month'])] = row['total_count'] or 0
+            route_id = row['customer__route_id']
+            issue_date = row['issue_date']
+            balance = row['total_balance'] or Decimal('0.00')
+            customer_id = row['customer_id']
+
+            for m in range(1, 13):
+                if issue_date is None or issue_date <= month_end_dates[m]:
+                    amount_data[(route_id, m)] += balance
+                    customers_per_route_month[(route_id, m)].add(customer_id)
+        
+        for key, customers_set in customers_per_route_month.items():
+            count_data[key] = len(customers_set)
+
         return count_data, amount_data
 
     def _get_monthly_promotions(self):
