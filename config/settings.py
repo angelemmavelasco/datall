@@ -239,6 +239,7 @@ EMAIL_HOST_USER = 'resend'
 EMAIL_HOST_PASSWORD = os.getenv('RESEND_API_KEY')
 
 DEFAULT_FROM_EMAIL = 'Datall <no-reply@datall.com.mx>'
+RESET_PASSWORD_FROM_EMAIL = 'Datall <reset-password@datall.com.mx>'
 HR_FROM_EMAIL = 'Datall <rh@datall.com.mx>'
 DATA_ANALYST_FROM_EMAIL = 'Datall <analisis@datall.com.mx>'
 COMMERCIAL_FROM_EMAIL = 'Datall <comercial@datall.com.mx>'

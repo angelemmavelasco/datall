@@ -18,11 +18,24 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import path, include
 from django.views.generic import RedirectView
+from django.conf import settings
 
 urlpatterns = [
-path('', RedirectView.as_view(url='/accounts/login/', permanent=False)),
-    path('admin/', admin.site.urls),
+    path('', RedirectView.as_view(url='/accounts/login/', permanent=False)),
     path('accounts/', include('django.contrib.auth.urls')),
+
+    #view where user enters their email
+    path('reset_password/', auth_views.PasswordResetView.as_view(
+        template_name='registration/password/password_reset.html',
+        from_email=settings.RESET_PASSWORD_FROM_EMAIL), name='reset_password'),
+    #Message saying an email was sent
+    path('reset_password_sent/', auth_views.PasswordResetDoneView.as_view(template_name="registration/password/password_reset_sent.html"), name="password_reset_done"),
+    #view where pwd is reset
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name="registration/password/password_reset_form.html"), name="password_reset_confirm"),
+    #Succesfully reset message
+    path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(template_name="registration/password/password_reset_done.html"), name="password_reset_complete"),
+
+    path('admin/', admin.site.urls),
     path('data_assistant/', include('apps.data_assistant.urls')),
 
     path('sales/', include('apps.sales.urls')),
