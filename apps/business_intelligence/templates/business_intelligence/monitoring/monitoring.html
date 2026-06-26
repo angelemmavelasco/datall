@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load has_group %}
+
+{% block title %}Seguimiento{% endblock %}
+
+{% block module_name %}Seguimiento{% endblock %}
+
+
+{% block module_actions %}
+ 
+<a href="{% url 'business_intelligence:monitoring_create' %}" target="_blank" class="hover:text-hover text-strong transition-colors cursor-pointer">Nuevo reporte</a>
+
+<!-- <button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button> -->
+
+<button onclick="toggleFilters()"
+    class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+        <path d="M10 5H3" />
+        <path d="M12 19H3" />
+        <path d="M14 3v4" />
+        <path d="M16 17v4" />
+        <path d="M21 12h-9" />
+        <path d="M21 19h-5" />
+        <path d="M21 5h-7" />
+        <path d="M8 10v4" />
+        <path d="M8 12H3" />
+    </svg>
+    <span>
+        Filtrar
+    </span>
+</button>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="flex flex-col w-full gap-4">
+    <!-- Ban de resultados -->
+    <div class="">
+        <p class="text-title text-sm mb-2">Periodo: </p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Reportes generados</p>
+            <p class="text-xl text-green-500">{{ kpis.generated_reports|default:0|floatformat:0|intcomma }}</p>
+        </div>
+        
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Cumplimiento</p>
+            <p class="text-xl text-yellow-500">{{ kpis.compliance_percentage|default:0|floatformat:0|intcomma  }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Entregas extemporáneas</p>
+            <p class="text-xl text-red-500">{{ kpis.late_deliveries|default:0|floatformat:0|intcomma  }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Metas cumplidas</p>
+            <p class="text-xl text-blue-500">{{ kpis.reached_goals|default:0|floatformat:0|intcomma  }}%</p>
+        </div>
+    </div>
+
+
+    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+        <table class="w-full text-left border-spacing-0 border-separate">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="p-2 w-60 text-center bg-container border-r border-border sticky left-0 z-10 font-medium text-title">Colaborador</th>
+                    <th class="p-2 w-60 text-center bg-container border-r border-border sticky left-0 z-10 font-medium text-title">Gerencia</th>
+                    <th class="p-2 w-60 text-center bg-container border-r border-border sticky left-0 z-10 font-medium text-title">Creación</th>
+                    <th class="p-2 w-60 text-center bg-container border-r border-border sticky left-0 z-10 font-medium text-title">Entrega a tiempo</th>
+                    <th class="p-2 w-60 text-center bg-container border-r border-border sticky left-0 z-10 font-medium text-title">Metas establecidas</th>
+                    <th class="p-2 w-60 text-center bg-container border-r border-border sticky left-0 z-10 font-medium text-title">Metas cumplidas</th>
+                    
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for w in warehouses_data %}
+                <tr class="hover:bg-hover transition-colors cursor-pointer">
+                    <td class="p-2 text-center bg-container border-r border-t border-border sticky left-0 font-medium text-strong">{{ w.name|title|default:"Sin Gerencia" }}</td>
+                    
+                    {% for c_data in w.aligned_classes %}
+                        <td class="p-2 text-center text-strong border-t border-border">
+                            {{ c_data.unique_customers_count|intcomma }}
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="100%" class="p-4 text-center text-strong border-t border-border">No hay datos para mostrar.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load has_group %}
+
+{% block title %}Nuevo reporte de seguimiento{% endblock %}
+
+{% block module_name %}Nuevo reporte de seguimiento{% endblock %}
+
+{% block module_actions %}
+<button type="submit" form="create-monitoring-form" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+    <span>Confirmar reporte</span>
+</button>
+
+<a href="{% url 'business_intelligence:monitoring' %}" class="hover:text-hover text-red-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+    <span>Cancelar</span>
+</a>
+{% endblock %}
+
+{% block content %}
+
+<form method="POST" enctype="multipart/form-data" class="flex flex-col gap-4" id="create-monitoring-form">
+    {% csrf_token %}
+    
+    <input type="hidden" name="activity_id" value="{{ activity.id }}">
+
+    <p class="text-title text-sm">Datos generales</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-container p-4 rounded">
+      <div>
+          <span class="text-title text-xs mb-1 block">Posición desde la que reporta</span>
+          <div class="bg-page border border-border p-1 rounded">
+            <select name="position" class="edit-el text-body w-full outline-none bg-transparent" required>
+                <option value="" disabled selected>Selecciona tu posición...</option>
+                <option value="gerente_almacen">Gerente de Almacén</option> 
+                <option value="coordinador_rh">Coordinador de RH</option>
+            </select>
+          </div>
+      </div>
+
+      <div>
+          <span class="text-title text-xs mb-1 block">Actividad a reportar</span>
+          <div class="bg-page border border-border p-1 rounded opacity-70 cursor-not-allowed">
+            <input type="text" value="{{ activity.title|default:'Semana 26' }}" class="edit-el text-body w-full outline-none bg-transparent cursor-not-allowed" readonly>
+          </div>
+      </div>
+    </div>
+
+    <p class="text-title text-sm mt-4">Ejecución del periodo actual</p>
+    <hr class="border-border border">
+
+    <div class="flex flex-col gap-4 bg-container p-4 rounded">
+      
+      <div>
+          <span class="text-title text-xs mb-2 block">Objetivos propuestos en el periodo anterior</span>
+          <div class="flex flex-col gap-1 mb-4">
+              <label class="flex items-start gap-2 cursor-pointer hover:bg-hover p-2 rounded transition-colors">
+                  <input type="checkbox" name="completed_objectives[]" value="1" class="mt-0.5">
+                  <span class="text-body text-sm opacity-80">Aumentar la retención de personal al 90%</span>
+              </label>
+              <label class="flex items-start gap-2 cursor-pointer hover:bg-hover p-2 rounded transition-colors">
+                  <input type="checkbox" name="completed_objectives[]" value="2" class="mt-0.5">
+                  <span class="text-body text-sm opacity-80">Conveniar 10 clientes de la ruta 154</span>
+              </label>
+          </div>
+      </div>
+
+      <div>
+          <span class="text-title text-xs mb-1 block">Redacción de resultados (¿Qué se logró?)</span>
+          <div class="bg-page border border-border p-1 rounded">
+            <textarea name="current_achievements" rows="4" class="edit-el text-body w-full outline-none bg-transparent resize-none" placeholder="Describe a detalle los logros de este periodo..." required></textarea>
+          </div>
+      </div>
+
+      <div>
+          <span class="text-title text-xs mb-1 block">Evidencias fotográficas (Máx. 10)</span>
+          <div class="bg-page border border-border p-1 rounded">
+            <input type="file" name="evidences" multiple accept="image/*, .pdf" class="edit-el text-body w-full outline-none" required>
+            <p class="text-xs text-muted mt-1">Puedes seleccionar múltiples archivos a la vez manteniendo presionada la tecla Ctrl/Cmd.</p>
+          </div>
+      </div>
+
+    </div>
+
+    <p class="text-title text-sm mt-4">Planeación para el siguiente periodo</p>
+    <hr class="border-border border">
+
+    <div class="flex flex-col gap-4 bg-container p-4 rounded">
+      
+      <div>
+          <span class="text-title text-xs mb-1 block">Estrategia y planeación general</span>
+          <div class="bg-page border border-border p-1 rounded">
+            <textarea name="next_week_plan" rows="4" class="edit-el text-body w-full outline-none bg-transparent resize-none" placeholder="¿Cuál es el plan de acción para la próxima semana?" required></textarea>
+          </div>
+      </div>
+
+      <div>
+          <span class="text-title text-xs mb-1 block">Nuevos objetivos propuestos (Compromisos)</span>
+          <div class="flex flex-col gap-2" id="objectives-container">
+              <!-- Fila de objetivo dinámico -->
+              <div class="bg-page border border-border p-1 rounded flex gap-2">
+                <input type="text" name="proposed_objectives[]" class="edit-el text-body w-full outline-none bg-transparent" placeholder="Ej. Reducir la rotación en un 5%..." required>
+              </div>
+              <div class="bg-page border border-border p-1 rounded flex gap-2">
+                <input type="text" name="proposed_objectives[]" class="edit-el text-body w-full outline-none bg-transparent" placeholder="Agregar otro objetivo...">
+              </div>
+          </div>
+          <button type="button" class="text-xs text-blue-500 mt-2 hover:underline">+ Agregar otro objetivo</button>
+      </div>
+
+    </div>
+
+</form>
+
+{% endblock %}
