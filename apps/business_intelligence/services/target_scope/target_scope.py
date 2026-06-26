@@ -213,13 +213,13 @@ class TargetScopeService:
                 if target > 0:
                     cdict['scope'] = (net / target) * 100
                 else:
-                    cdict['scope'] = Decimal('100.00') if net > 0 else Decimal('0.00')
+                    cdict['scope'] = Decimal('0.00')
                     
                 proyeccion = (net / Decimal(elapsed_b_days_m1)) * Decimal(total_b_days)
                 if target > 0:
                     cdict['scope_forecast'] = (proyeccion / target) * 100
                 else:
-                    cdict['scope_forecast'] = Decimal('100.00') if proyeccion > 0 else Decimal('0.00')
+                    cdict['scope_forecast'] = Decimal('0.00')
                     
                 if cname in self.valid_classes:
                     if target > 0 and net >= target:
@@ -241,13 +241,13 @@ class TargetScopeService:
             if r_target_total > 0:
                 scope = (r_net_total / r_target_total) * 100
             else:
-                scope = Decimal('100.00') if r_net_total > 0 else Decimal('0.00')
+                scope = Decimal('0.00')
                 
             proyeccion_r = (r_net_total / Decimal(elapsed_b_days_m1)) * Decimal(total_b_days)
             if r_target_total > 0:
                 scope_forecast = (proyeccion_r / r_target_total) * 100
             else:
-                scope_forecast = Decimal('100.00') if proyeccion_r > 0 else Decimal('0.00')
+                scope_forecast = Decimal('0.00')
 
             w_sum['target'] += r_target_total
             w_sum['net_amount'] += r_net_total
@@ -286,13 +286,13 @@ class TargetScopeService:
                 if t > 0:
                     wdict['scope'] = (n / t) * 100
                 else:
-                    wdict['scope'] = Decimal('100.00') if n > 0 else Decimal('0.00')
+                    wdict['scope'] = Decimal('0.00')
                     
                 p = (n / Decimal(elapsed_b_days_m1)) * Decimal(total_b_days)
                 if t > 0:
                     wdict['scope_forecast'] = (p / t) * 100
                 else:
-                    wdict['scope_forecast'] = Decimal('100.00') if p > 0 else Decimal('0.00')
+                    wdict['scope_forecast'] = Decimal('0.00')
                     
                 if cname in self.valid_classes:
                     if t > 0 and n >= t:
@@ -315,13 +315,13 @@ class TargetScopeService:
             if t_total > 0:
                 w_sum['scope'] = (n_total / t_total) * 100
             else:
-                w_sum['scope'] = Decimal('100.00') if n_total > 0 else Decimal('0.00')
+                w_sum['scope'] = Decimal('0.00')
                 
             p_total = (n_total / Decimal(elapsed_b_days_m1)) * Decimal(total_b_days)
             if t_total > 0:
                 w_sum['scope_forecast'] = (p_total / t_total) * 100
             else:
-                w_sum['scope_forecast'] = Decimal('100.00') if p_total > 0 else Decimal('0.00')
+                w_sum['scope_forecast'] = Decimal('0.00')
                 
             routes = w_sum['routes_data']
             routes_by_scope = sorted(routes, key=lambda x: x['scope'], reverse=True)

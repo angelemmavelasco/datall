@@ -219,6 +219,36 @@
 
 
 {% block content %}
+
+    <div class="mb-2">
+        <div class="flex justify-between items-center">
+            <p class="text-title text-sm mb-2">Detalle de alcance de objetivos</p>
+            <span class="custom-tooltip" data-title="Muestra el progreso y cumplimiento de objetivos de venta por ruta y por clase de producto.
+
+Cartera de clientes:
+• Registrados: clientes dados de alta hasta el fin del periodo seleccionado.
+• Con compras: clientes con al menos una venta en el periodo seleccionado.
+• Alcance: porcentaje de la cartera con compras.
+• Nuevos: clientes registrados dentro del periodo filtrado.
+
+Avance general:
+• Familias completadas: clases principales (Diamond, Care, etc.) que ya llegaron al 100% de su objetivo.
+• Objetivo: meta de venta asignada en el periodo.
+• Venta neta: venta real acumulada.
+• Diferencia: monto que falta para alcanzar el objetivo.
+• Alcance: porcentaje de la venta lograda vs objetivo.
+• Proyección: estimación matemática del alcance al cierre ((venta / días hábiles transcurridos) - 1) * días hábiles totales).
+• Ranking: lugar de la ruta en la gerencia por venta y por avance.
+
+Desglose por clase:
+El porcentaje de alcance por familia.
+Al pasar el cursor verás el detalle de objetivo, venta y diferencia de cada una.
+
+">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info text-strong cursor-pointer"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            </span>
+        </div>
+    </div>
     
     {% for gerencia_data in data %}
     <div class="w-full overflow-x-auto border border-border rounded bg-container mb-8">
@@ -315,7 +345,16 @@
                                 {% else %}text-red-600
                                 {% endif %}
                             ">
-                                {{ c.scope|floatformat:2 }}%
+                                <span class="custom-tooltip {% if forloop.parentloop.revcounter0 < 3 %}tooltip-up{% endif %} underline"
+                                data-title="
+                                Objetivo: $ {{ c.target|floatformat:2|intcomma }}
+                                Venta neta: $ {{ c.net_amount|floatformat:2|intcomma }}
+                                Diferencia: $ {{ c.difference|floatformat:2|intcomma }}
+                                Alcance: {{ c.scope|floatformat:2 }}%
+
+                                ">
+                                    {{ c.scope|floatformat:2 }}%
+                                </span>
                             </td>
                         {% endfor %}
                     </tr>
@@ -359,7 +398,16 @@
                     
                     {% for c in gerencia_data.total_warehouse_data.warehouse_product_classes_breakdown %}
                         <td class="p-2 text-center text-title  border  border-border {% if forloop.last %}border-0{% endif %}">
-                            {{ c.scope|floatformat:2 }}%
+                            <span class="custom-tooltip tooltip-up underline"
+                                data-title="
+                                Objetivo: $ {{ c.target|floatformat:2|intcomma }}
+                                Venta neta: $ {{ c.net_amount|floatformat:2|intcomma }}
+                                Diferencia: $ {{ c.difference|floatformat:2|intcomma }}
+                                Alcance: {{ c.scope|floatformat:2 }}%
+
+                                ">
+                                {{ c.scope|floatformat:2 }}%
+                            </span>
                         </td>
                     {% endfor %}
                 </tr>
