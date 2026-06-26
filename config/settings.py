@@ -138,8 +138,12 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 if DEBUG:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_DEBUG_NAME'),
+            'USER': os.getenv('DB_DEBUG_USER'),
+            'PASSWORD': os.getenv('DB_DEBUG_PASSWORD'),
+            'HOST': os.getenv('DB_DEBUG_HOST'),
+            'PORT': os.getenv('DB_DEBUG_PORT'),
         }
     }
 
