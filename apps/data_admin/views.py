@@ -6,7 +6,7 @@ from django.conf import settings
 
 from apps.data_admin.services.users import users_crud
 from apps.data_admin.services.groups import groups_crud
-from apps.core.models import SystemModule, DataHistory
+from apps.core.models import SystemModule, DataHistory, Reference
 from django.contrib.auth.models import Group
 
 from django.contrib.contenttypes.models import ContentType
@@ -520,6 +520,29 @@ def references(request):
             'email': settings.SUPPORT_FROM_EMAIL,
         }
         return render(request, settings.ACCESS_DENIED_TEMPLATE, context)
-    context = {}
+    from apps.core.models import Reference
+    all_refs = Reference.objects.select_related('module', 'content_type').all().order_by('module__name', 'content_type__model', 'key')
+
+    column_mappings = []
+    value_mappings = []
+    relevant_product_classes = []
+    route_permissions = []
+
+    for ref in all_refs:
+        if ref.field_context == 'column':
+            column_mappings.append(ref)
+        elif ref.field_context == 'relevant_product_classes':
+            relevant_product_classes.append(ref)
+        elif ref.field_context.startswith('value'):
+            value_mappings.append(ref)
+        elif ref.field_context == 'allowed_routes':
+            route_permissions.append(ref)
+
+    context = {
+        'column_mappings': column_mappings,
+        'value_mappings': value_mappings,
+        'relevant_product_classes': relevant_product_classes,
+        'route_permissions': route_permissions,
+    }
 
     return render(request, template, context)
