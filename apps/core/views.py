@@ -16,3 +16,9 @@ def custom_404_view(request, exception):
         'LOGIN_REDIRECT_URL': settings.LOGIN_REDIRECT_URL
     }
     return render(request, 'errors/404.html', context, status=404)
+
+def custom_500_view(request):
+    context = {
+        'LOGIN_REDIRECT_URL': settings.LOGIN_REDIRECT_URL
+    }
+    return render(request, 'errors/500.html', context, status=500)

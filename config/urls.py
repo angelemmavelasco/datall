@@ -47,4 +47,5 @@ urlpatterns = [
 ]
 
 handler404 = 'apps.core.views.custom_404_view'
+handler500 = 'apps.core.views.custom_500_view'
 
