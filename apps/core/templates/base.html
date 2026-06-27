@@ -175,12 +175,8 @@
     <aside id="assistant-sidebar"
         class="fixed inset-y-0 right-0 z-50 flex w-80 md:w-96 translate-x-full flex-col overflow-hidden border-l border-border bg-container p-4 transition-transform duration-300">
         
-        <div class="absolute inset-0 z-0 pointer-events-none">
-            <div class="dust-cloud dust-1"></div>
-            <div class="dust-cloud dust-2"></div>
-            <div class="dust-cloud dust-3"></div>
-            <div class="dust-cloud dust-4"></div>
-        </div>
+
+
 
         <div class="relative z-10 flex items-center justify-between border-b border-border pb-2 mb-4 shrink-0">
             <div class="flex items-center gap-2 text-title">
@@ -206,10 +202,22 @@
 
         <div class="flex-1 overflow-y-auto relative z-10" id="assistant-content">
             
+            <div id="ai-icon-container" class="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 transition-all duration-[1500ms] ease-in-out">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"
+                viewBox="0 0 24 24" fill="none" id="ia-icon"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="animate-pulse  text-title lucide lucide-circle-dot-dashed-icon lucide-circle-dot-dashed transition-all duration-[1500ms] ease-in-out">
+                    <path d="M10.1 2.18a9.93 9.93 0 0 1 3.8 0"/><path d="M17.6 3.71a9.95 9.95 0 0 1 2.69 2.7"/>
+                    <path d="M21.82 10.1a9.93 9.93 0 0 1 0 3.8"/><path d="M20.29 17.6a9.95 9.95 0 0 1-2.7 2.69"/>
+                    <path d="M13.9 21.82a9.94 9.94 0 0 1-3.8 0"/><path d="M6.4 20.29a9.95 9.95 0 0 1-2.69-2.7"/>
+                    <path d="M2.18 13.9a9.93 9.93 0 0 1 0-3.8"/><path d="M3.71 6.4a9.95 9.95 0 0 1 2.7-2.69"/>
+                <circle cx="12" cy="12" r="1"/></svg>
+            </div>
+
             <div class="flex flex-col items-center h-full justify-center text-center p-6">
                 
-                <div class="w-full max-w-xl p-8 rounded-3xl flex flex-col items-center justify-center relative" id="initial-analize-view">
-                    
+                <div class="w-full max-w-xl p-8 pt-20 rounded-3xl flex flex-col items-center justify-center relative transition-opacity duration-500" id="initial-analize-view">
+
                     <p class="text-sm mb-4 opacity-70 text-title">Obtén una descripción detallada de esta vista con un análisis rápido y completo de los datos que contiene.</p>
                     
                     <button 
@@ -218,18 +226,15 @@
                         hx-target="#assistant-content" 
                         hx-swap="innerHTML"
                         hx-indicator="#ai-spinner"
-                        class="flex items-center gap-2 p-1 px-3 bg-container text-title rounded hover:bg-hover transition-colors cursor-pointer border border-border shadow-md">
+                        class="flex items-center gap-2 p-1 px-3 bg-page text-title rounded hover:bg-hover transition-colors cursor-pointer border border-border">
                         Analizar vista
                     </button>
                 </div>
             </div>
 
-            <div id="ai-spinner" class="htmx-indicator absolute inset-0 flex flex-col items-center justify-center backdrop-blur-5xl z-10 transition-all duration-500">
-                <div class="flex flex-col items-center justify-center gap-4 animate-pulse">
-                    <div id="dynamic-loading-icon" class="transition-opacity duration-300 [&>svg]:w-12 [&>svg]:h-12">
-                        </div>
-                    <p id="dynamic-loading-text" class="text-base font-medium tracking-wide transition-opacity duration-300">
-                        Preparando análisis...
+            <div id="ai-spinner" class="htmx-indicator absolute inset-0 flex flex-col items-center justify-center backdrop-blur-5xl z-20 transition-all duration-500">
+                <div id="text-crossfade-container" class="relative mt-20 h-6 w-full flex items-center justify-center">
+                    <p class="absolute inset-0 text-center text-base font-medium tracking-wide transition-all duration-1000 text-sky-400">
                     </p>
                 </div>
             </div>
@@ -563,27 +568,22 @@
             {
                 text: "Consultando base de datos...",
                 color: "oklch(37.3% 0.034 259.733)", // gris
-                icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-database-search-icon lucide-database-search"><path d="M21 11.693V5"/><path d="m22 22-1.875-1.875"/><path d="M3 12a9 3 0 0 0 8.697 2.998"/><path d="M3 5v14a9 3 0 0 0 9.28 2.999"/><circle cx="18" cy="18" r="3"/><ellipse cx="12" cy="5" rx="9" ry="3"/></svg>`
             },
             {
                 text: "Generando agregaciones...",
                 color: "oklch(55.5% 0.163 48.998)", // ambar
-                icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layers-icon lucide-layers"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>`
             },
             {
                 text: "Obteniendo métricas...",
                 color: "oklch(58.6% 0.253 17.585)", // fucsia
-                icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chart-no-axes-combined-icon lucide-chart-no-axes-combined"><path d="M12 16v5"/><path d="M16 14.639V21"/><path d="M20 10.656V21"/><path d="m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15"/><path d="M4 18.463V21"/><path d="M8 14.656V21"/></svg>`
             },
             {
                 text: "Analizando resultados...",
                 color: "oklch(42.4% 0.199 265.638)", // azul
-                icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search-icon lucide-search"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>`
             },
             {
                 text: "Generando reporte...",
                 color: "oklch(43.8% 0.218 303.724)", // Morado Intenso
-                icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-summary-icon lucide-summary"><path d="M15 4H7"/><path d="m18 16 3 3-3 3"/><path d="M3 4v13a2 2 0 0 0 2 2h16"/><path d="M7 14h7"/><path d="M7 9h12"/></svg>`
             }
         ];
 
@@ -591,46 +591,71 @@
         let currentStateIndex = 0;
 
         function renderLoadingState() {
-            const iconContainer = document.getElementById('dynamic-loading-icon');
-            const textContainer = document.getElementById('dynamic-loading-text');
-            const initialView = document.getElementById('initial-analize-view');
+            const container = document.getElementById('text-crossfade-container');
+            const icon = document.getElementById('ia-icon');
             
+            if (!container) return;
 
-            iconContainer.style.opacity = '0';
-            textContainer.style.opacity = '0';
-            initialView.style.opacity = '0';
+            const state = aiLoadingStates[currentStateIndex];
+            
+            // Create new text element for cross-fade
+            const newText = document.createElement('p');
+            newText.className = 'absolute inset-0 text-center text-base font-medium tracking-wide transition-all duration-1000 animate-puls opacity-0';
+            newText.innerText = state.text;
+            newText.style.color = state.color;
+            
+            container.appendChild(newText);
+            
+            // Trigger reflow to start transition
+            void newText.offsetWidth;
+            
+            // Fade in new text
+            newText.classList.remove('opacity-0');
+            newText.classList.add('opacity-100');
+            
+            // Fade out old text(s) and remove them
+            const oldTexts = container.querySelectorAll('p:not(:last-child)');
+            oldTexts.forEach(p => {
+                p.classList.remove('opacity-100');
+                p.classList.add('opacity-0');
+                setTimeout(() => p.remove(), 1000);
+            });
+            
+            // Smoothly change icon color
+            if (icon) {
+                icon.style.color = state.color;
+            }
 
-            setTimeout(() => {
-                const state = aiLoadingStates[currentStateIndex];
-                
-                iconContainer.innerHTML = state.icon;
-                iconContainer.style.color = state.color;
-                textContainer.innerText = state.text;
-                textContainer.style.color = state.color;
-                
-
-                iconContainer.style.opacity = '1';
-                textContainer.style.opacity = '1';
-
-                if (currentStateIndex === 4) {
-                    currentStateIndex = 3;
-                } else {
-                    currentStateIndex++;
-                }
-            }, 300);
+            if (currentStateIndex === 4) {
+                currentStateIndex = 3;
+            } else {
+                currentStateIndex++;
+            }
         }
-
 
         document.body.addEventListener('htmx:beforeRequest', function(evt) {
             if (evt.detail.target.id === 'assistant-content') {
+                const iconContainer = document.getElementById('ai-icon-container');
+                const icon = document.getElementById('ia-icon');
+                const initialView = document.getElementById('initial-analize-view');
+                
+                if (iconContainer && icon && initialView) {
+                    iconContainer.classList.remove('top-[35%]');
+                    iconContainer.classList.add('top-1/2');
+                    
+                    icon.classList.remove('animate-ping');
+                    icon.classList.add('animate-spin');
+                    
+                    initialView.classList.add('opacity-0', 'pointer-events-none');
+                }
 
                 currentStateIndex = 0;
                 renderLoadingState(); 
-                
 
                 loadingStateTimer = setInterval(renderLoadingState, 4000);
             }
         });
+
         document.body.addEventListener('htmx:afterRequest', function(evt) {
             if (evt.detail.target.id === 'assistant-content') {
                 clearInterval(loadingStateTimer);
