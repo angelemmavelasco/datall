@@ -12,4 +12,7 @@ def custom_csrf_failure(request, reason=""):
     return redirect(settings.LOGIN_URL)
 
 def custom_404_view(request, exception):
-    return render(request, 'errors/404.html', status=404)
+    context = {
+        'LOGIN_REDIRECT_URL': settings.LOGIN_REDIRECT_URL
+    }
+    return render(request, 'errors/404.html', context, status=404)
