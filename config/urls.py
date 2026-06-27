@@ -46,3 +46,5 @@ urlpatterns = [
     path('business_intelligence/', include('apps.business_intelligence.urls')),
 ]
 
+handler404 = 'apps.core.views.custom_404_view'
+
