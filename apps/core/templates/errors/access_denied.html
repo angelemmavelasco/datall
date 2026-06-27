@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Acceso denegado{% endblock %}
+
+{% block module_name %}Acceso denegado{% endblock %}
+
+{% block content %}
+
+<div class="my-auto mx-auto flex flex-col items-center justify-center h-[300px] gap-4">
+    <p class="flex items-center gap-2 text-sm text-title">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600 lucide lucide-ban-icon lucide-ban"><circle cx="12" cy="12" r="10"/><path d="M4.929 4.929 19.07 19.071"/></svg>
+        No tienes permisos para acceder a esta página.
+    </p>
+    <p>
+        Si crees que es un error, contacta al administrador del sistema.
+    </p>
+
+    <div>
+        <a href="mailto:{{email}}" class="p-1 flex items-center justify-center gap-1 border border-border rounded">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail-icon lucide-mail"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+            Enviar correo
+        </a>
+        <a href="mailto:{{email}}" class="p-1 flex items-center justify-center gap-1 border border-border rounded">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail-icon lucide-mail"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+            Enviar correo
+        </a>
+    </div>
+
+</div>
+
+
+
+
+
+
+
+{% endblock %}

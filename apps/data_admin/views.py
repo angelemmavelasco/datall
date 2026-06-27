@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.urls import reverse
+from django.conf import settings
 
 from apps.data_admin.services.users import users_crud
 from apps.data_admin.services.groups import groups_crud
@@ -506,3 +507,19 @@ def activity(request):
     context = {}
     
     return render(request, TEMPLATE, context)
+
+
+
+@login_required
+def references(request):
+    template = 'data_admin/references/references.html'
+    user = request.user
+
+    if not user.is_superuser and not user.is_staff:
+        context = {
+            'email': settings.SUPPORT_FROM_EMAIL,
+        }
+        return render(request, settings.ACCESS_DENIED_TEMPLATE, context)
+    context = {}
+
+    return render(request, template, context)

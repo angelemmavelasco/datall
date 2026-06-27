@@ -14,4 +14,6 @@ urlpatterns = [
 
 
     path('activity/', activity, name='activity'),
+
+    path('references/', references, name='references'),
 ]

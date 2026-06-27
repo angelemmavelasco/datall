@@ -248,5 +248,13 @@ HR_FROM_EMAIL = 'Datall <rh@datall.com.mx>'
 DATA_ANALYST_FROM_EMAIL = 'Datall <analisis@datall.com.mx>'
 COMMERCIAL_FROM_EMAIL = 'Datall <comercial@datall.com.mx>'
 MARKETING_FROM_EMAIL = 'Datall <marketing@datall.com.mx>'
+SUPPORT_FROM_EMAIL = 'angel.emma.velasco@gmail.com'
+
+
+
+
+
+ACCESS_DENIED_TEMPLATE = 'errors/access_denied.html'
+PAGE_NOT_FOUND_TEMPLATE = 'errors/404.html'
 
 

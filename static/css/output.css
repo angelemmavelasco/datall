@@ -506,6 +506,9 @@
   .h-200 {
     height: calc(var(--spacing) * 200);
   }
+  .h-\[300px\] {
+    height: 300px;
+  }
   .h-\[calc\(100vh-4rem\)\] {
     height: calc(100vh - 4rem);
   }
