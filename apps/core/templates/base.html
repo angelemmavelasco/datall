@@ -90,7 +90,7 @@
         white-space: pre-line;
         text-align: left;
         position: absolute;
-        top: 125%; 
+        top: calc(100% + 8px); 
         bottom: auto;
         right: 0%;
         left: auto;
@@ -101,14 +101,31 @@
         border-radius: 4px;
         font-size: 12px;
         width: 250px; 
-        z-index: 50;
+        z-index: 40;
         
         display: none; 
     }
 
+    /* Orientación vertical */
     .custom-tooltip.tooltip-up::after {
         top: auto;
-        bottom: 125%;
+        bottom: calc(100% + 8px);
+    }
+    
+    .custom-tooltip.tooltip-down::after {
+        top: calc(100% + 8px);
+        bottom: auto;
+    }
+
+    /* Alineación horizontal */
+    .custom-tooltip.tooltip-left::after {
+        left: 0%;
+        right: auto;
+    }
+
+    .custom-tooltip.tooltip-right::after {
+        right: 0%;
+        left: auto;
     }
 
     .custom-tooltip:hover::after {

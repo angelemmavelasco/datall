@@ -7,19 +7,8 @@
 
 {% block module_actions %}
 
-<!-- <div class="flex gap-4 border border-border rounded p-1">
-    <p class="text-body">Mostrar / ocultar:</p>
-
-    <button onclick="toggleSection('seccion-cobranza', this)" class="hover:text-hover text-strong transition-colors cursor-pointer" id="btnCobranza">Cobranza</button>
-
-    <button onclick="toggleSection('seccion-metricas', this)" class="hover:text-hover text-strong transition-colors cursor-pointer" id="btnMetricas">Métricas de consumo</button>
-    
-    <button onclick="toggleSection('seccion-mensual', this)" class="hover:text-hover text-strong transition-colors cursor-pointer" id="btnMensual">Desglose de consumos mensuales</button>
-</div> -->
-
-
-
-<a href="#" id="downloadReport" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar datos</a>
+<a href="#" id="downloadReport" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar
+    datos</a>
 
 <button onclick="toggleFilters()"
     class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
@@ -50,10 +39,16 @@
 
 <form method="GET" action="">
 
+    <!-- Mantener filtros de contribución -->
+    <input type="hidden" name="order_contrib" value="{{ order_contrib|default:'net_amount' }}">
+    <input type="hidden" name="start_contrib_from" value="{{ contrib_config.start_date|date:'Y-m-d' }}">
+    <input type="hidden" name="start_contrib_to" value="{{ contrib_config.end_date|date:'Y-m-d' }}">
+
     <!-- Búsqueda General -->
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Búsqueda (ID o Nombre)</label>
-        <input type="text" name="query_text" value="{{ query_text|default:'' }}" class="border border-border rounded p-1 bg-page text-sm" placeholder="Buscar cliente...">
+        <input type="text" name="query_text" value="{{ query_text|default:'' }}"
+            class="border border-border rounded p-1 bg-page text-sm" placeholder="Buscar cliente...">
     </div>
 
     <div class="flex flex-col gap-1 mb-4">
@@ -67,25 +62,31 @@
 
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Registro desde</label>
-        <input type="date" name="start_registration_date" value="{{ selected_start_registration_date|default:'' }}" class="border border-border rounded p-1 bg-page text-sm">
+        <input type="date" name="start_registration_date" value="{{ selected_start_registration_date|default:'' }}"
+            class="border border-border rounded p-1 bg-page text-sm">
     </div>
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Registro hasta</label>
-        <input type="date" name="end_registration_date" value="{{ selected_end_registration_date|default:'' }}" class="border border-border rounded p-1 bg-page text-sm">
+        <input type="date" name="end_registration_date" value="{{ selected_end_registration_date|default:'' }}"
+            class="border border-border rounded p-1 bg-page text-sm">
     </div>
 
     <!-- Gerencia (Multi-select con búsqueda) -->
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Gerencia</label>
         <div class="border border-border rounded bg-page flex flex-col">
-            <input type="text" placeholder="Buscar gerencia..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'warehouses-list')">
-            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+            <input type="text" placeholder="Buscar gerencia..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'warehouses-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
                 <input type="checkbox" onchange="toggleAllCheckboxes(this, 'warehouses-list')">
                 <span class="text-strong">Seleccionar todo</span>
             </label>
             <div id="warehouses-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
                 {% for w in filter_warehouses %}
-                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                     <input type="checkbox" name="warehouses" value="{{ w.id }}" {% if w.id in selected_warehouses %}checked{% endif %}>
                     <span class="searchable-text">{{ w.name|title }}</span>
                 </label>
@@ -98,14 +99,18 @@
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Rutas</label>
         <div class="border border-border rounded bg-page flex flex-col">
-            <input type="text" placeholder="Buscar ruta..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'routes-list')">
-            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+            <input type="text" placeholder="Buscar ruta..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'routes-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
                 <input type="checkbox" onchange="toggleAllCheckboxes(this, 'routes-list')">
                 <span class="text-strong">Seleccionar todo</span>
             </label>
             <div id="routes-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
                 {% for r in filter_routes %}
-                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                     <input type="checkbox" name="routes" value="{{ r.id }}" {% if r.id in selected_routes %}checked{% endif %}>
                     <span class="searchable-text">{{ r.id|title }}: {{ r.name|title }}</span>
                 </label>
@@ -118,14 +123,18 @@
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Tipo de cliente</label>
         <div class="border border-border rounded bg-page flex flex-col">
-            <input type="text" placeholder="Buscar tipo..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'customer-types-list')">
-            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+            <input type="text" placeholder="Buscar tipo..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'customer-types-list')">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
                 <input type="checkbox" onchange="toggleAllCheckboxes(this, 'customer-types-list')">
                 <span class="text-strong">Seleccionar todo</span>
             </label>
             <div id="customer-types-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
                 {% for ct in filter_customer_types %}
-                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                     <input type="checkbox" name="customer_types" value="{{ ct.id }}" {% if ct.id in selected_customer_types %}checked{% endif %}>
                     <span class="searchable-text">{{ ct.id|title }}: {{ ct.name|title }}</span>
                 </label>
@@ -135,45 +144,49 @@
     </div>
 
     <div class="flex gap-2 flex-col">
-        <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar filtros</button>
-        <a href="{{ request.path }}" class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar filtros</a>
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
     </div>
 
 
-    
+
 </form>
 
 
 
 <script>
-function filterCheckboxes(inputElement, listId) {
-    const filter = inputElement.value.toLowerCase();
-    const list = document.getElementById(listId);
-    const labels = list.getElementsByTagName('label');
+    function filterCheckboxes(inputElement, listId) {
+        const filter = inputElement.value.toLowerCase();
+        const list = document.getElementById(listId);
+        const labels = list.getElementsByTagName('label');
 
-    for (let i = 0; i < labels.length; i++) {
-        const span = labels[i].querySelector('.searchable-text');
-        if (span) {
-            const textValue = span.textContent || span.innerText;
-            if (textValue.toLowerCase().indexOf(filter) > -1) {
-                labels[i].style.display = "";
-            } else {
-                labels[i].style.display = "none";
+        for (let i = 0; i < labels.length; i++) {
+            const span = labels[i].querySelector('.searchable-text');
+            if (span) {
+                const textValue = span.textContent || span.innerText;
+                if (textValue.toLowerCase().indexOf(filter) > -1) {
+                    labels[i].style.display = "";
+                } else {
+                    labels[i].style.display = "none";
+                }
             }
         }
     }
-}
 
-function toggleAllCheckboxes(masterCheckbox, listId) {
-    const list = document.getElementById(listId);
-    const checkboxes = list.querySelectorAll('input[type="checkbox"]');
-    checkboxes.forEach(cb => {
-        // Only toggle visible checkboxes to respect search filter
-        if (cb.closest('label').style.display !== "none") {
-            cb.checked = masterCheckbox.checked;
-        }
-    });
-}
+    function toggleAllCheckboxes(masterCheckbox, listId) {
+        const list = document.getElementById(listId);
+        const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            // Only toggle visible checkboxes to respect search filter
+            if (cb.closest('label').style.display !== "none") {
+                cb.checked = masterCheckbox.checked;
+            }
+        });
+    }
 </script>
 
 
@@ -185,13 +198,16 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 <div class="flex flex-col w-full gap-4">
     <!-- Ban de resultados -->
     <div class="">
-        <p class="text-title text-sm mb-2">Métricas generales de contribución <br><span class="italic">{{ contrib_config.start_date }} - {{ contrib_config.end_date }}</span></p>
+            <p class="text-title text-sm mb-2">Métricas generales de contribución <br><span class="italic">{{ contrib_config.start_date }} - {{ contrib_config.end_date }}</span></p>
         <hr class="border-border">
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-sm text-strong">Clientes registrados</p>
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+        data-title="Tamaño de la cartera de clientes válida al cierre del periodo seleccionado.&#10;&#10;Cuenta todos los clientes obtenidos por los filtros generales, asegurando que su fecha de registro sea anterior o igual a la fecha 'Hasta' de este análisis ({{ contrib_config.end_date }}).">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Clientes registrados
+            </p>
             <p class="text-xl text-blue-500">
                 <span>
                     {{ global_kpis.registered_customers|default:0.00|floatformat:0|intcomma }}
@@ -200,8 +216,11 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             </p>
         </div>
 
-        <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-sm text-strong">Clientes con consumo</p>
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
+        data-title="Identifica a los clientes activos y su impacto en la cartera.&#10;&#10;De los clientes registrados, cuenta estrictamente aquellos cuya sumatoria de venta neta es mayor a $0 considerando únicamente las facturas emitidas desde el {{ contrib_config.start_date }} al {{ contrib_config.end_date }}. El porcentaje representa su proporción frente al total de Clientes Registrados.">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Clientes con consumo
+            </p>
             <p class="text-xl text-green-500">
                 <span>
                     {{ global_kpis.customers_with_consumption|default:0.00|floatformat:0|intcomma }}
@@ -212,8 +231,11 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             </p>
         </div>
 
-        <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-sm text-strong">Clientes sin consumo</p>
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+        data-title="Identifica a los clientes inactivos o con nula retención en el periodo.&#10;&#10;Calcula la diferencia entre los clientes con consumo y los clientes registrados.">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Clientes sin consumo
+            </p>
             <p class="text-xl text-red-500">
                 <span>
                     {{ global_kpis.customers_without_consumption|default:0.00|floatformat:0|intcomma }}
@@ -224,15 +246,41 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             </p>
         </div>
 
-        <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-sm text-strong">Venta neta</p>
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
+        data-title="Mostrar el total monetario ingresado por la cartera en el rango de tiempo.&#10;&#10;Cálculo: Sumatoria total de la venta neta (net_amount) de las facturas de todos los clientes resultantes tras aplicar los Filtros Generales, evaluando exclusivamente aquellas emitidas desde el {{ contrib_config.start_date }} al {{ contrib_config.end_date }}.">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Venta neta
+            </p>
             <p class="text-xl text-green-500">$ {{ global_kpis.net_sales|default:0.00|floatformat:2|intcomma }}</p>
         </div>
 
     </div>
 
     <div class="">
-        <p class="text-title text-sm mb-2">Desglose por cliente</p>
+        <div class="flex justify-between items-center">
+            <p class="text-title text-sm mb-2">Desglose por cliente</span></p>
+            <span class="custom-tooltip" data-title="
+            Muestra la cobranza al último día seleccionado. ej. Un rango filtrado del 1 de enero de 2026 al 22 de junio de 2026, mostrará la cobranza en su estado al 22 de junio del 2026.
+            
+            Saldo total: la suma del saldo al corriente y el saldo vencido (considera todas las antigüedades).
+
+            Saldo al corriente: representa aquel saldo que está dentro de los plazos de crédito acordados o que todavía no están fuera del plazo de pago establecido en la misma factura.
+
+            Vencido: saldo del cuál no se ha recibido pago y que se encuentra fuera del plazo de crédito establecido. Se divide en 4 antigüedades:
+                ° 1 a 15 días
+                ° 16 a 30 días
+                ° 31 a 60 días
+                ° 60+ días
+
+            Cuentas por cobrar: el conteo de clientes que cuantan con al menos una factura por pagar.
+
+            
+            ">
+                
+            
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            </span>
+        </div>
         <hr class="border-border">
     </div>
 
@@ -240,36 +288,85 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         <table class="w-max min-w-full border-separate border-spacing-0">
             <thead>
                 <tr class="border-b border-border">
-                    <th colspan="3" class="p-2 text-center border-r border-border sticky top-0 md:left-0 z-35 bg-page h-8">Identificación</th>
-                    <th colspan="4" class="p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8">Segmentación</th>
-                    <th colspan="4" class="seccion-cobranza     p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8" >Cobranza</th>
-                    <th colspan="5" class="seccion-metricas p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8" >Métricas de consumo</th>
+                    <th colspan="3"
+                        class="p-2 text-center border-r border-border sticky top-0 md:left-0 z-35 bg-page h-8">
+                        Identificación</th>
+                    <th colspan="4" class="p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8">
+                        Segmentación</th>
+                    <th colspan="4"
+                        class="seccion-cobranza     p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8">
+                        Cobranza</th>
+                    <th colspan="5"
+                        class="seccion-metricas p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8">
+                        Métricas de consumo</th>
 
 
                     <!-- metricas de conusmo y filtro -->
-                    <th colspan="3" class="seccion-metricas p-2 border-r border-border sticky top-0 z-30 bg-page h-8 relative" id="th-contrib-filter">
+                    <th colspan="3"
+                        class="seccion-metricas p-2 border-r border-border sticky top-0 z-30 bg-page h-8 relative"
+                        id="th-contrib-filter">
 
                         <div class="flex items-center justify-center w-full h-full">
-                            <p>Métricas de contribución <span class="text-title italic">{{ contrib_config.start_date }} al {{ contrib_config.end_date }}</span></p>
+                            <p>Métricas de contribución <span class="text-title italic">{{ contrib_config.start_date }}
+                                    al {{ contrib_config.end_date }}</span></p>
                         </div>
-                        
-                        <svg id="btn-contrib-filter" onclick="toggleContribFilter(event)" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
+
+                        <svg id="btn-contrib-filter" onclick="toggleContribFilter(event)"
+                            xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                             class="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer hover:text-hover transition-colors lucide lucide-sliders-horizontal">
-                            <path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/>
+                            <path d="M10 5H3" />
+                            <path d="M12 19H3" />
+                            <path d="M14 3v4" />
+                            <path d="M16 17v4" />
+                            <path d="M21 12h-9" />
+                            <path d="M21 19h-5" />
+                            <path d="M21 5h-7" />
+                            <path d="M8 10v4" />
+                            <path d="M8 12H3" />
                         </svg>
 
-                        <div id="dropdown-contrib-filter" class="hidden absolute top-full right-0 mt-8 w-50 bg-body rounded z-50 text-page border border-border shadow-lg p-2 text-left">
-                            
-                            <form method="GET" action="{% url 'business_intelligence:customers_kpis' %}" class="flex flex-col gap-3">
-                                
+                        <div id="dropdown-contrib-filter"
+                            class="hidden absolute top-full right-0 mt-8 w-50 bg-body rounded z-50 text-page border border-border shadow-lg p-2 text-left">
+
+                            <form method="GET" action="{% url 'business_intelligence:customers_kpis' %}"
+                                class="flex flex-col gap-3">
+
+                                <!-- Mantener filtros generales -->
+                                {% if query_text %}
+                                <input type="hidden" name="query_text" value="{{ query_text }}">
+                                {% endif %}
+                                {% if selected_opinion_leader %}
+                                <input type="hidden" name="opinion_leader" value="{{ selected_opinion_leader }}">
+                                {% endif %}
+                                {% if selected_start_registration_date %}
+                                <input type="hidden" name="start_registration_date"
+                                    value="{{ selected_start_registration_date }}">
+                                {% endif %}
+                                {% if selected_end_registration_date %}
+                                <input type="hidden" name="end_registration_date"
+                                    value="{{ selected_end_registration_date }}">
+                                {% endif %}
+                                {% for w in selected_warehouses %}
+                                <input type="hidden" name="warehouses" value="{{ w }}">
+                                {% endfor %}
+                                {% for r in selected_routes %}
+                                <input type="hidden" name="routes" value="{{ r }}">
+                                {% endfor %}
+                                {% for ct in selected_customer_types %}
+                                <input type="hidden" name="customer_types" value="{{ ct }}">
+                                {% endfor %}
+
                                 <div>
                                     <p class="mb-1 text-xs text-strong">Ordenar por</p>
-                                    <label class="flex items-center gap-2 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
-                                        <input type="radio" name="order_contrib" value="net_amount" class="accent-blue-500" 
-                                            {% if order_contrib == 'net_amount' or not order_contrib %}checked{% endif %}>
+                                    <label
+                                        class="flex items-center gap-2 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                                        <input type="radio" name="order_contrib" value="net_amount"
+                                            class="accent-blue-500" {% if order_contrib == 'net_amount' or not order_contrib %}checked{% endif %}>
                                         <span class="text-title">Venta neta</span>
                                     </label>
-                                    <label class="flex items-center gap-2 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                                    <label
+                                        class="flex items-center gap-2 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                                         <input type="radio" name="order_contrib" value="profit" class="accent-blue-500"
                                             {% if order_contrib == 'profit' %}checked{% endif %}>
                                         <span class="text-title">Utilidad</span>
@@ -278,21 +375,25 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
                                 <div>
                                     <p class="mb-1 text-xs text-strong">Desde</p>
-                                    <input type="date" name="start_contrib_from" id="start_contrib_from" 
-                                        value="{{ contrib_config.start_date|date:'Y-m-d' }}" 
+                                    <input type="date" name="start_contrib_from" id="start_contrib_from"
+                                        value="{{ contrib_config.start_date|date:'Y-m-d' }}"
                                         class="w-full border border-border rounded p-1 bg-page text-strong outline-none">
                                 </div>
 
                                 <div>
                                     <p class="mb-1 text-xs text-strong">Hasta</p>
-                                    <input type="date" name="start_contrib_to" id="start_contrib_to" 
-                                        value="{{ contrib_config.end_date|date:'Y-m-d' }}" 
+                                    <input type="date" name="start_contrib_to" id="start_contrib_to"
+                                        value="{{ contrib_config.end_date|date:'Y-m-d' }}"
                                         class="w-full border border-border rounded p-1 bg-page text-strong outline-none">
                                 </div>
 
                                 <div class="flex gap-2 flex-col mt-2">
-                                    <button type="submit" class="bg-body border border-border text-page hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar filtros</button>
-                                    <a href="{{ request.path }}" class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar filtros</a>
+                                    <button type="submit"
+                                        class="bg-body border border-border text-page hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+                                        filtros</button>
+                                    <a href="{{ request.path }}"
+                                        class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+                                        filtros</a>
                                 </div>
                             </form>
                         </div>
@@ -300,17 +401,17 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
                     <script>
                         function toggleContribFilter(event) {
-                            event.stopPropagation(); 
+                            event.stopPropagation();
                             const dropdown = document.getElementById('dropdown-contrib-filter');
                             dropdown.classList.toggle('hidden');
                         }
 
-                        document.addEventListener('click', function(event) {
+                        document.addEventListener('click', function (event) {
                             const dropdown = document.getElementById('dropdown-contrib-filter');
                             const thElement = document.getElementById('th-contrib-filter');
-                            
+
                             if (!dropdown.classList.contains('hidden') && !thElement.contains(event.target)) {
-                                dropdown.classList.add('hidden'); 
+                                dropdown.classList.add('hidden');
                             }
                         });
                     </script>
@@ -318,49 +419,88 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
 
 
-                    <th colspan="12" class="seccion-mensual min-w-[500px] p-2 text-center  border-r border-border sticky top-0 z-30 bg-page h-8" >Desglose de consumos mensuales año
+                    <th colspan="12"
+                        class="seccion-mensual min-w-[500px] p-2 text-center  border-r border-border sticky top-0 z-30 bg-page h-8">
+                        Desglose de consumos mensuales año
                         actual</th>
                 </tr>
-    
+
                 <tr class="border-b border-border text-xs">
-                    <th class="min-w-[240px] max-w-[240px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-0 z-35 bg-page h-8">
+                    <th
+                        class="min-w-[240px] max-w-[240px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-0 z-35 bg-page h-8">
                         Cliente
                     </th>
-                    
-                    <th class="min-w-[120px] max-w-[120px] w-[120px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-[240px] z-35 bg-page h-8">
+
+                    <th
+                        class="min-w-[120px] max-w-[120px] w-[120px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-[240px] z-35 bg-page h-8">
                         Ruta
                     </th>
-                    
-                    <th class="min-w-[120px] max-w-[120px] w-[120px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-[360px] z-35 bg-page h-8">
+
+                    <th
+                        class="min-w-[120px] max-w-[120px] w-[120px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-[360px] z-35 bg-page h-8">
                         Gerencia
                     </th>
-    
-                    <th class="min-w-[140px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Tipo de cliente</th>
-                    <th class="min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Categoría</th>
-                    <th class="min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Frecuencia</th>
-                    <th class="min-w-[140px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Líder de opinión</th>
-    
-                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8" >Límite de crédito</th>
-                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8" >Saldo al corriente</th>
-                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8" >Saldo vencido</th>
-                    <th class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8" >Uso</th>
-    
-                    <th class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Convenios activos</th>
-                    <th class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Clases de producto</th>
-                    <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Promedio año previo</th>
-                    <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Promedio año actual</th>
-                    <th class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Promedio trimestre</th>
 
-                    <th class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Contribución monetaria</th>
-                    <th class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Contribución porcentual</th>
-                    <th class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">Contribución acumulada</th>
-    
+                    <th
+                        class="min-w-[140px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Tipo de cliente</th>
+                    <th
+                        class="min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Categoría</th>
+                    <th
+                        class="min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Frecuencia</th>
+                    <th
+                        class="min-w-[140px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Líder de opinión</th>
+
+                    <th
+                        class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Límite de crédito</th>
+                    <th
+                        class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Saldo al corriente</th>
+                    <th
+                        class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Saldo vencido</th>
+                    <th
+                        class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Uso</th>
+
+                    <th
+                        class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Convenios activos</th>
+                    <th
+                        class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Clases de producto</th>
+                    <th
+                        class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Promedio año previo</th>
+                    <th
+                        class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Promedio año actual</th>
+                    <th
+                        class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Promedio trimestre</th>
+
+                    <th
+                        class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Contribución monetaria</th>
+                    <th
+                        class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Contribución porcentual</th>
+                    <th
+                        class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        Contribución acumulada</th>
+
                     {% for month in months_headers %}
-                        <th class="seccion-mensual min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">{{ month|date:"F"|title }}</th>
+                    <th
+                        class="seccion-mensual min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        {{ month|date:"F"|title }}</th>
                     {% endfor %}
                 </tr>
             </thead>
-    
+
             <tbody>
                 {% include "business_intelligence/customers_kpis/partials/customer_kpis_rows.html" %}
             </tbody>
@@ -381,7 +521,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 <script>
     function toggleSection(sectionClass, btnElement) {
         const elements = document.querySelectorAll('.' + sectionClass);
-        
+
 
         elements.forEach(element => {
             element.classList.toggle('hidden');
@@ -391,7 +531,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
         btnElement.classList.toggle('text-muted');
     }
 
-    document.getElementById('downloadReport').addEventListener('click', function(e) {
+    document.getElementById('downloadReport').addEventListener('click', function (e) {
         e.preventDefault();
         window.location.href = "{% url 'business_intelligence:export_customers_kpis_data' %}?{{ query_string|safe }}";
     });
