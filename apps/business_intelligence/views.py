@@ -421,6 +421,11 @@ def customers_kpis(request):
 
         'order_contrib': order_contrib,
         'contrib_config': contrib_config,
+
+        # helpers for tooltips
+        'today': today,
+        'end_last_q': today.replace(day=1) - timedelta(days=1),
+        'start_last_q': today.replace(day=1) - relativedelta(months=3),
     }
 
     if request.htmx:

@@ -443,10 +443,27 @@
 
                     <th
                         class="min-w-[140px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Tipo de cliente</th>
+                        <span data-title="indica la segmentación bajo la cual fue registrado el cliente, e indica principalmente el canal de ventas, tipo de productos y logística que manejan." class="w-full custom-tooltip tooltip-left">
+                            Tipo de cliente
+                        </span>
+                    </th>
                     <th
                         class="min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Categoría</th>
+                        <span data-title="
+                        Indica de forma general el consumo del cliente a través de una categorización que toma umbrales de consumo.
+                        El cálculo se realiza tomando en cuenta la venta neta a ese cliente en el último trimestre móvil efectivamente cerrado y dividiendo entre el número de meses activo del cliente.
+                        Ejemplo: Si consultamos hoy ({{ today }}), el último trimestre móvil cerrado abarca del {{ start_last_q }} al {{ end_last_q }}.
+                        Si el cliente tiene una fecha de registro inferior a ese rango, entonces la división para obtener el promedio será entre 3. En caso contrario, la división se realiza por la cantidad de meses activos del cliente.
+                        Los umbrales considerados son:
+                        - C: menor a $3,000
+                        - A: $3,000 - $24,999.99
+                        - AA: $25,000 - $99,999.99
+                        - Oro: $100,000 - $249,999.99
+                        - Diamante: mayor o igual a $250,000
+                        " class="w-full custom-tooltip tooltip-left">
+                            Categoría
+                        </span>
+                    </th>
                     <th
                         class="min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
                         Frecuencia</th>
@@ -483,15 +500,27 @@
                         class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
                         Promedio trimestre</th>
 
+                    <th 
+                        class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
+                        <span data-title="Representa el monto (ya se de utilidad o de venta neta, dependiendo del reporte que tengas seleccionado) total generado en el periodo seleccionado."
+                        class="w-full custom-tooltip tooltip-left">
+                            Contribución monetaria
+                        </span>
+                    </th>
                     <th
                         class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Contribución monetaria</th>
+                        <span data-title="Es el porcentaje que representa la contribución monetaria frente al total del periodo seleccionado, se calcula como ( contribución monetaria / total del periodo seleccionado) * 100."
+                        class="w-full custom-tooltip tooltip-left">
+                            Contribución porcentual
+                        </span>
+                    </th>
                     <th
                         class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Contribución porcentual</th>
-                    <th
-                        class="min-w-[250px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Contribución acumulada</th>
+                        <span data-title="Es la suma acumulada de la contribución porcentual y del total del clientes que contribuyen a dicho porcentaje.&#10;&#10;Ejemplo: Si el cliente 1 representa el 10% de la contribución, el cliente 2 el 5% y el cliente 3 el 7%, la contribución acumulada del cliente 1 será del 10%, la del cliente 2 del 15% y la del cliente 3 del 22%.&#10;&#10;Al mismo tiempo, si el tamaño de la cartera es de 100 clientes, la forma de interpretar los resultados sería que, para llegar al 22% de la contribución monetaria, necesito a 3 clientes, o sea, el 3% de la cartera." 
+                        class="w-full custom-tooltip tooltip-left">
+                            Contribución acumulada
+                        </span>
+                    </th>
 
                     {% for month in months_headers %}
                     <th
