@@ -503,8 +503,39 @@ def upload_create(request):
 def activity(request):
     TEMPLATE = 'data_admin/activity/activity.html'
     
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    search_query = request.GET.get('search_query')
     
-    context = {}
+    filters = {}
+    if start_date: filters['start_date'] = start_date
+    if end_date: filters['end_date'] = end_date
+    if search_query: filters['search_query'] = search_query
+
+    crud = DataHistoryCrud()
+    logs_qs = crud.get_histories(**filters)
+    
+    paginator = Paginator(logs_qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    query_dict = request.GET.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
+    query_string = query_dict.urlencode()
+    
+    context = {
+        'logs': page_obj.object_list,
+        'page_obj': page_obj,
+        'query_string': query_string,
+        
+        'selected_start_date': start_date,
+        'selected_end_date': end_date,
+        'search_query': search_query,
+    }
+    
+    if request.htmx:
+        return render(request, 'data_admin/activity/partials/activity_rows.html', context)
     
     return render(request, TEMPLATE, context)
 

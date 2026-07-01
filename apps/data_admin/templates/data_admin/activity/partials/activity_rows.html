@@ -1,0 +1,56 @@
+{% load humanize %}
+
+{% for log in logs %}
+<tr class="hover:bg-hover transition-colors duration-300">
+    <td class="p-2 truncate">{{ log.created_by.first_name|title|default:"-" }} {{ log.created_by.last_name|title|default:"" }}</td>
+    <td class="p-2 truncate">{{ log.created_at|date:"d M Y, H:i" }}</td>
+    <td class="p-2 truncate">{{ log.module.name|default:"-" }}</td>
+    <td class="p-2 truncate">{{ log.content_type.model|title|default:"-" }}</td>
+    <td class="p-2 truncate">{{ log.object_id|default:"-" }}</td>
+    <td class="p-2 text-center">{{ log.get_action_display|default:"-" }}</td>
+    <td class="p-2 text-center">
+        {% if log.result == 'SUCCESS' %}
+        <span class="text-green-500">{{ log.get_result_display }}</span>
+        {% elif log.result == 'ERROR' %}
+        <span class="text-red-500">{{ log.get_result_display }}</span>
+        {% else %}
+        <span>{{ log.get_result_display|default:"-" }}</span>
+        {% endif %}
+    </td>
+    <td class="p-2 truncate" title="{{ log.description }}">{{ log.description|default:"-"|truncatechars:100 }}</td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="8" class="p-4 text-center text-body">No se encontraron registros de actividad.</td>
+</tr>
+{% endfor %}
+
+<!-- Pagination trigger for HTMX -->
+{% if page_obj.has_next %}
+<tr id="load-more-row-{{ page_obj.number }}">
+    <td colspan="8" class="p-4 border-t border-border">
+        
+        <div class="sticky left-1/2 -translate-x-1/2 w-max">
+            
+            <button hx-get="{{ request.path }}?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}"
+                    hx-target="#load-more-row-{{ page_obj.number }}"
+                    hx-swap="outerHTML"
+                    class="group hover:text-hover text-strong transition-colors cursor-pointer border border-border rounded p-1 bg-page">
+                
+                <div class="flex items-center gap-2 group-[.htmx-request]:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down-icon lucide-circle-chevron-down"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg>
+                    <span>Mostrar más</span>
+                </div>
+
+                <div class="hidden items-center gap-2 group-[.htmx-request]:flex">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-dot-dashed-icon lucide-circle-dot-dashed animate-spin"><path d="M10.1 2.18a9.93 9.93 0 0 1 3.8 0"/><path d="M17.6 3.71a9.95 9.95 0 0 1 2.69 2.7"/><path d="M21.82 10.1a9.93 9.93 0 0 1 0 3.8"/><path d="M20.29 17.6a9.95 9.95 0 0 1-2.7 2.69"/><path d="M13.9 21.82a9.94 9.94 0 0 1-3.8 0"/><path d="M6.4 20.29a9.95 9.95 0 0 1-2.69-2.7"/><path d="M2.18 13.9a9.93 9.93 0 0 1 0-3.8"/><path d="M3.71 6.4a9.95 9.95 0 0 1 2.7-2.69"/><circle cx="12" cy="12" r="1"/></svg>
+                    <span class="text-strong">Cargando...</span>
+                </div>
+
+            </button>
+            
+        </div>
+        
+    </td>
+</tr>
+{% endif %}

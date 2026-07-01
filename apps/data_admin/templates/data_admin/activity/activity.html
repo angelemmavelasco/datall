@@ -29,56 +29,62 @@
 
 {% endblock %}
 
+{% block filters %}
+<form method="GET" action="" id="filters-form" hx-get="{% url 'data_admin:activity' %}" hx-target="#report-container" hx-trigger="change">
+
+    <!-- Búsqueda General -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Búsqueda general</label>
+        <input type="text" name="search_query" value="{{ search_query|default:'' }}"
+            class="border border-border rounded p-1 bg-page text-sm" placeholder="Buscar actividad...">
+    </div>
+
+    <!-- Fechas -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Desde</label>
+        <input type="date" name="start_date" value="{{ selected_start_date|default:'' }}"
+            class="border border-border rounded p-1 bg-page text-sm">
+    </div>
+    
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Hasta</label>
+        <input type="date" name="end_date" value="{{ selected_end_date|default:'' }}"
+            class="border border-border rounded p-1 bg-page text-sm">
+    </div>
+
+    <div class="flex gap-2 flex-col">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+
+</form>
+{% endblock %}
+
 
 {% block content %}
 
-<div class="w-full overflow-x-auto border border-border rounded bg-container">
-    <table class="w-full table-fixed text-left border-collapse">
+<div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative">
+    <table class="w-max min-w-full border-separate border-spacing-0">
         <thead>
-            <tr class="border-b border-border">
-                <th class="w-40 p-1 text-center text-title">Usuario</th>
-                <th class="w-40 p-1 text-center text-title">Ejecución</th>
-                <th class="w-40 p-1 text-center text-title">Módulo</th>
-                <th class="w-40 p-1 text-center text-title">Modelo</th>
-                <th class="w-60 p-1 text-center text-title">Objeto</th>
-                <th class="w-20 p-1 text-center text-title">Acción</th>
-                <th class="w-20 p-1 text-center text-title">Estado</th>
-                <th class="w-60 p-1 text-center text-title">Detalles</th>
+            <tr class="border-b border-border text-xs">
+                <th class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page h-8">Usuario</th>
+                <th class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page h-8">Ejecución</th>
+                <th class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page h-8">Módulo</th>
+                <th class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page h-8">Modelo</th>
+                <th class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page h-8">Objeto</th>
+                <th class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page h-8">Acción</th>
+                <th class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page h-8">Estado</th>
+                <th class="min-w-[250px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page h-8">Detalles</th>
             </tr>
         </thead>
 
-        <tbody>
-            {% for log in logs %}
-            <tr class="hover:bg-hover transition-colors duration-300">
-                <td class="p-2">
-                    <a href="{% url 'data_admin:upload' upload.id %}" target="_blank"
-                        class="flex items-center gap-2 underline text-strong">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="lucide lucide-circle-arrow-out-up-right-icon lucide-circle-arrow-out-up-right">
-                            <path d="M22 12A10 10 0 1 1 12 2" />
-                            <path d="M22 2 12 12" />
-                            <path d="M16 2h6v6" />
-                        </svg>
-                        <span>
-                            {{ upload.filename|default:"-" }}
-                        </span>
-                    </a>
-                </td>
-                <td class="p-2 truncate">{{ user.first_name|title|default:"-" }}</td>
-                <td class="p-2 truncate">{{ user.last_name|title|default:"-" }}</td>
-                <td class="p-2 truncate">{% if user.second_last_name %}{{ user.second_last_name|title|default:"-" }}{%
-                    else %}-{% endif %}</td>
-                <td class="p-2 truncate">{{ user.email|default:"-" }}</td>
-                <td class="p-2 text-center">{% if user.is_active %}Activo{% else %}Inactivo{% endif %}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="8" class="p-2 text-center text-body">No se encontraron importaciones.</td>
-            </tr>
-            {% endfor %}
+        <tbody class="text-sm" id="report-container">
+            {% include "data_admin/activity/partials/activity_rows.html" %}
         </tbody>
-
     </table>
 </div>
 
