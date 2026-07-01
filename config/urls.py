@@ -44,6 +44,7 @@ urlpatterns = [
     path('data_admin/', include('apps.data_admin.urls')),
     path('human_resources/', include('apps.human_resources.urls')),
     path('business_intelligence/', include('apps.business_intelligence.urls')),
+    path('core/', include('apps.core.urls')),
 ]
 
 handler404 = 'apps.core.views.custom_404_view'
