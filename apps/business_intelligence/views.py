@@ -932,7 +932,7 @@ def sales_breakdown(request):
     
     filters = {}
     if routes: filters['routes'] = routes
-    if warehouses: filters['warehouses'] = warehouses
+    if warehouses: filters['route_warehouse_ids'] = warehouses
     if product_classes: filters['product_classes'] = product_classes
     if product_categories: filters['product_categories'] = product_categories
     if months: filters['months'] = months
@@ -983,20 +983,21 @@ def sales_breakdown(request):
 async def export_sales_breakdown_data(request):
     user = await request.auser()
     
+    # Extract query parameters outside the sync_to_async thread
+    warehouses = request.GET.getlist('warehouses')
+    routes = request.GET.getlist('routes')
+    product_classes = request.GET.getlist('product_classes')
+    product_categories = request.GET.getlist('product_categories')
+    months = request.GET.getlist('months')
+    dimension = request.GET.get('dimension', 'customer_productclass_product')
+
     @sync_to_async
-    def generate_csv_sync():
+    def generate_csv_sync(warehouses, routes, product_classes, product_categories, months, dimension):
         allowed_routes = get_allowed_routes_for_user(user)
-        
-        warehouses = request.GET.getlist('warehouses')
-        routes = request.GET.getlist('routes')
-        product_classes = request.GET.getlist('product_classes')
-        product_categories = request.GET.getlist('product_categories')
-        months = request.GET.getlist('months')
-        dimension = request.GET.get('dimension', 'customer_productclass_product')
         
         filters = {}
         if routes: filters['routes'] = routes
-        if warehouses: filters['warehouses'] = warehouses
+        if warehouses: filters['route_warehouse_ids'] = warehouses
         if product_classes: filters['product_classes'] = product_classes
         if product_categories: filters['product_categories'] = product_categories
         if months: filters['months'] = months
@@ -1013,7 +1014,7 @@ async def export_sales_breakdown_data(request):
             'filters': filters if filters else {}
         }
         ActivityLogger.log_read(
-            user=request.user,
+            user=user,
             obj=None,
             module=module,
             description='Exportación de desglose de ventas',
@@ -1022,7 +1023,7 @@ async def export_sales_breakdown_data(request):
         
         return service.get_report_data()
 
-    csv_string = await generate_csv_sync()
+    csv_string = await generate_csv_sync(warehouses, routes, product_classes, product_categories, months, dimension)
     
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="desglose_ventas.csv"'

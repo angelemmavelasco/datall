@@ -259,14 +259,14 @@ class SalesBreakdownService:
     def _get_management_productclass_product(self, page_number):
         qs_with_year = self.queryset.annotate(year=ExtractYear('sale_date'))
         
-        l1_totals = qs_with_year.values('warehouse_id').annotate(total_overall=Sum('net_amount')).order_by('-total_overall')
+        l1_totals = qs_with_year.values('route__warehouse_id').annotate(total_overall=Sum('net_amount')).order_by('-total_overall')
         paginator = Paginator(l1_totals, 50)
         page_obj = paginator.get_page(page_number)
         if not page_obj.object_list: return {}, self.sorted_years, page_obj
             
-        top_l1_ids = [c['warehouse_id'] for c in page_obj.object_list if c['warehouse_id']]
-        data_list = list(qs_with_year.filter(warehouse_id__in=top_l1_ids).values(
-            'warehouse_id', 'product_class_id', 'product_id', 'year'
+        top_l1_ids = [c['route__warehouse_id'] for c in page_obj.object_list if c['route__warehouse_id']]
+        data_list = list(qs_with_year.filter(route__warehouse_id__in=top_l1_ids).values(
+            'route__warehouse_id', 'product_class_id', 'product_id', 'year'
         ).annotate(total=Sum('net_amount'), total_profit=Sum('profit')).order_by())
         
         mgt_names = dict(Warehouse.objects.filter(id__in=top_l1_ids).values_list('id', 'name'))
@@ -277,7 +277,7 @@ class SalesBreakdownService:
         
         pivot_data = {}
         for row in data_list:
-            mgt = mgt_names.get(row['warehouse_id']) or 'Sin Gerencia'
+            mgt = mgt_names.get(row['route__warehouse_id']) or 'Sin Gerencia'
             l = class_names.get(row['product_class_id']) or 'Sin línea'
             p = product_names.get(row['product_id']) or 'Sin producto'
             y, t, pr = row['year'], float(row['total'] or 0), float(row['total_profit'] or 0)
@@ -375,7 +375,7 @@ class SalesBreakdownService:
                 'headers': ['Línea', 'Producto']
             },
             'management_productclass_product': {
-                'fields': ['warehouse__name', 'product_class__name', 'product__id', 'product__name'],
+                'fields': ['route__warehouse__name', 'product_class__name', 'product__id', 'product__name'],
                 'headers': ['Gerencia', 'Línea', 'Producto']
             },
             'product_customer': {
@@ -392,7 +392,7 @@ class SalesBreakdownService:
             year=ExtractYear('sale_date'), 
             total=Sum('net_amount'),
             total_profit=Sum('profit')
-        ).iterator(chunk_size=2000)
+        ).order_by().iterator(chunk_size=2000)
         
         grouped_data = {}
         for row in export_qs:
@@ -418,7 +418,7 @@ class SalesBreakdownService:
             p = f"{p_id} - {p_name}".strip(" -") if p_id or p_name else 'Sin Producto'
             
             l = row_dict.get('product_class__name') or 'Sin Línea'
-            w = row_dict.get('warehouse__name') or 'Sin Gerencia'
+            w = row_dict.get('route__warehouse__name') or 'Sin Gerencia'
             
             out_base = []
             if self.dimension == 'customer_productclass_product':
