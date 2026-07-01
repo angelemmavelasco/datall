@@ -49,7 +49,9 @@ class SaleTransactionCRUD:
             'routes': 'route_id__in',
             'warehouses': 'warehouse_id__in', 
             'regions': 'route__warehouse__region_id__in',
-            'route_warehouse_ids': 'route__warehouse_id__in'
+            'route_warehouse_ids': 'route__warehouse_id__in',
+            'customer_routes': 'customer__route_id__in',
+            'customer_warehouses': 'customer__route__warehouse_id__in'
         }
         
         for param, lookup in fk_fields.items():

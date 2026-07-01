@@ -34,23 +34,66 @@
 {% block filters %}
 <form method="GET" action="" id="filters-form" hx-get="{% url 'business_intelligence:sales_breakdown' %}" hx-target="#report-container" hx-trigger="change">
 
-    <!-- mes -->
+    <!-- mes (Multi-select con búsqueda) -->
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Meses a comparar</label>
-        <select name="months" multiple class="border border-border rounded p-1 bg-page text-sm outline-none w-full h-32">
-            <option value="1" {% if '1' in selected_months %}selected{% endif %}>Enero</option>
-            <option value="2" {% if '2' in selected_months %}selected{% endif %}>Febrero</option>
-            <option value="3" {% if '3' in selected_months %}selected{% endif %}>Marzo</option>
-            <option value="4" {% if '4' in selected_months %}selected{% endif %}>Abril</option>
-            <option value="5" {% if '5' in selected_months %}selected{% endif %}>Mayo</option>
-            <option value="6" {% if '6' in selected_months %}selected{% endif %}>Junio</option>
-            <option value="7" {% if '7' in selected_months %}selected{% endif %}>Julio</option>
-            <option value="8" {% if '8' in selected_months %}selected{% endif %}>Agosto</option>
-            <option value="9" {% if '9' in selected_months %}selected{% endif %}>Septiembre</option>
-            <option value="10" {% if '10' in selected_months %}selected{% endif %}>Octubre</option>
-            <option value="11" {% if '11' in selected_months %}selected{% endif %}>Noviembre</option>
-            <option value="12" {% if '12' in selected_months %}selected{% endif %}>Diciembre</option>
-        </select>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar mes..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'months-list')">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'months-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="months-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="months" value="1" {% if '1' in selected_months %}checked{% endif %}>
+                    <span class="searchable-text">Enero</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="months" value="2" {% if '2' in selected_months %}checked{% endif %}>
+                    <span class="searchable-text">Febrero</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="months" value="3" {% if '3' in selected_months %}checked{% endif %}>
+                    <span class="searchable-text">Marzo</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="months" value="4" {% if '4' in selected_months %}checked{% endif %}>
+                    <span class="searchable-text">Abril</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="months" value="5" {% if '5' in selected_months %}checked{% endif %}>
+                    <span class="searchable-text">Mayo</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="months" value="6" {% if '6' in selected_months %}checked{% endif %}>
+                    <span class="searchable-text">Junio</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="months" value="7" {% if '7' in selected_months %}checked{% endif %}>
+                    <span class="searchable-text">Julio</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="months" value="8" {% if '8' in selected_months %}checked{% endif %}>
+                    <span class="searchable-text">Agosto</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="months" value="9" {% if '9' in selected_months %}checked{% endif %}>
+                    <span class="searchable-text">Septiembre</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="months" value="10" {% if '10' in selected_months %}checked{% endif %}>
+                    <span class="searchable-text">Octubre</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="months" value="11" {% if '11' in selected_months %}checked{% endif %}>
+                    <span class="searchable-text">Noviembre</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="checkbox" name="months" value="12" {% if '12' in selected_months %}checked{% endif %}>
+                    <span class="searchable-text">Diciembre</span>
+                </label>
+            </div>
+        </div>
     </div>
 
     <!-- Dimensión de visualización -->

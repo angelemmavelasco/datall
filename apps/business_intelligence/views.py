@@ -931,8 +931,13 @@ def sales_breakdown(request):
     page_number = request.GET.get('page', 1)
     
     filters = {}
-    if routes: filters['routes'] = routes
-    if warehouses: filters['route_warehouse_ids'] = warehouses
+    if dimension in ['customer_productclass_product', 'productclass_customer_product', 'product_customer']:
+        if routes: filters['customer_routes'] = routes
+        if warehouses: filters['customer_warehouses'] = warehouses
+    else:
+        if routes: filters['routes'] = routes
+        if warehouses: filters['route_warehouse_ids'] = warehouses
+        
     if product_classes: filters['product_classes'] = product_classes
     if product_categories: filters['product_categories'] = product_categories
     if months: filters['months'] = months
@@ -996,8 +1001,13 @@ async def export_sales_breakdown_data(request):
         allowed_routes = get_allowed_routes_for_user(user)
         
         filters = {}
-        if routes: filters['routes'] = routes
-        if warehouses: filters['route_warehouse_ids'] = warehouses
+        if dimension in ['customer_productclass_product', 'productclass_customer_product', 'product_customer']:
+            if routes: filters['customer_routes'] = routes
+            if warehouses: filters['customer_warehouses'] = warehouses
+        else:
+            if routes: filters['routes'] = routes
+            if warehouses: filters['route_warehouse_ids'] = warehouses
+            
         if product_classes: filters['product_classes'] = product_classes
         if product_categories: filters['product_categories'] = product_categories
         if months: filters['months'] = months
