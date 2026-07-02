@@ -154,104 +154,214 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
         <div class="border border-border rounded p-2 bg-container">
             <div class="overflow-x-auto rounded overflow-y-auto">
-                <table class="table-fixed w-full rounded">
+                <table class="table-fixed w-full rounded border-separate border-spacing-0">
                     <thead>
-                        <tr class="border-b border-border">
-                            <th class="w-30 p-2 text-left">Clase</th>
-                            <th class="w-20 p-2 text-right">Venta neta</th>
-                            <th class="w-20 p-2 text-right">Objetivo</th>
-                            <th class="w-20 p-2 text-right">Diferencia</th>
-                            <th class="w-20 p-2 text-right">Alcance</th>
+                        <tr class="">
+                            <th class="w-30 p-2 text-left border-r border-b border-border sticky bg-container left-0 top-0 z-10">Clase</th>
+                            <th class="w-30 p-2 text-right border-b border-border">Venta neta</th>
+                            <th class="w-30 p-2 text-right border-b border-border">Objetivo</th>
+                            <th class="w-30 p-2 text-right border-b border-border">Diferencia</th>
+                            <th class="w-20 p-2 text-right border-b border-border">Alcance</th>
                         </tr>
                     </thead>
 
                     <tbody>
                         <tr>
-                            <td class="p-2">Diamond</td>
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Diamond</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.dmd.net_sales|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.dmd.target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.dmd.difference|floatformat:2|intcomma }}</td>
-                            <td class="p-2 text-right">{{ route.product_class_performance.dmd.scope|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-right font-medium
+                            {% if route.product_class_performance.dmd.scope >= 100 %}
+                                text-emerald-500
+                            {% elif route.product_class_performance.dmd.scope >= 90 %}
+                                text-yellow-500
+                            {% elif route.product_class_performance.dmd.scope >= 80 %}
+                                text-orange-500
+                            {% else %}
+                                text-red-500
+                            {% endif %}
+                            ">{{ route.product_class_performance.dmd.scope|floatformat:2|intcomma }} %</td>
                         </tr>
 
                         <tr>
-                            <td class="p-2">Diamond naturals</td>
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Diamond naturals</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.nat.net_sales|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.nat.target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.nat.difference|floatformat:2|intcomma }}</td>
-                            <td class="p-2 text-right">{{ route.product_class_performance.nat.scope|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-right
+                            {% if route.product_class_performance.nat.scope >= 100 %}
+                                text-emerald-500
+                            {% elif route.product_class_performance.nat.scope >= 90 %}
+                                text-yellow-500
+                            {% elif route.product_class_performance.nat.scope >= 80 %}
+                                text-orange-500
+                            {% else %}
+                                text-red-500
+                            {% endif %}
+                            ">{{ route.product_class_performance.nat.scope|floatformat:2|intcomma }} %</td>
                         </tr>
 
                         <tr>
-                            <td class="p-2">Care</td>
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Care</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.care.net_sales|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.care.target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.care.difference|floatformat:2|intcomma }}</td>
-                            <td class="p-2 text-right">{{ route.product_class_performance.care.scope|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-right
+                            {% if route.product_class_performance.care.scope >= 100 %}
+                                text-emerald-500
+                            {% elif route.product_class_performance.care.scope >= 90 %}
+                                text-yellow-500
+                            {% elif route.product_class_performance.care.scope >= 80 %}
+                                text-orange-500
+                            {% else %}
+                                text-red-500
+                            {% endif %}
+                            ">{{ route.product_class_performance.care.scope|floatformat:2|intcomma }} %</td>
                         </tr>
 
                         <tr>
-                            <td class="p-2">Country value</td>
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Country value</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.cv.net_sales|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.cv.target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.cv.difference|floatformat:2|intcomma }}</td>
-                            <td class="p-2 text-right">{{ route.product_class_performance.cv.scope|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-right
+                            {% if route.product_class_performance.cv.scope >= 100 %}
+                                text-emerald-500
+                            {% elif route.product_class_performance.cv.scope >= 90 %}
+                                text-yellow-500
+                            {% elif route.product_class_performance.cv.scope >= 80 %}
+                                text-orange-500
+                            {% else %}
+                                text-red-500
+                            {% endif %}
+                            ">{{ route.product_class_performance.cv.scope|floatformat:2|intcomma }} %</td>
                         </tr>
 
                         <tr>
-                            <td class="p-2">Taste of the wild</td>
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Taste of the wild</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.tow.net_sales|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.tow.target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.tow.difference|floatformat:2|intcomma }}</td>
-                            <td class="p-2 text-right">{{ route.product_class_performance.tow.scope|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-right
+                            {% if route.product_class_performance.tow.scope >= 100 %}
+                                text-emerald-500
+                            {% elif route.product_class_performance.tow.scope >= 90 %}
+                                text-yellow-500
+                            {% elif route.product_class_performance.tow.scope >= 80 %}
+                                text-orange-500
+                            {% else %}
+                                text-red-500
+                            {% endif %}
+                            ">{{ route.product_class_performance.tow.scope|floatformat:2|intcomma }} %</td>
                         </tr>
 
                         <tr>
-                            <td class="p-2">Msd</td>
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Msd</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.msd.net_sales|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.msd.target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.msd.difference|floatformat:2|intcomma }}</td>
-                            <td class="p-2 text-right">{{ route.product_class_performance.msd.scope|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-right
+                            {% if route.product_class_performance.msd.scope >= 100 %}
+                                text-emerald-500
+                            {% elif route.product_class_performance.msd.scope >= 90 %}
+                                text-yellow-500
+                            {% elif route.product_class_performance.msd.scope >= 80 %}
+                                text-orange-500
+                            {% else %}
+                                text-red-500
+                            {% endif %}
+                            ">{{ route.product_class_performance.msd.scope|floatformat:2|intcomma }} %</td>
                         </tr>
 
                         <tr>
-                            <td class="p-2">Vetoquinol</td>
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Vetoquinol</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.vtq.net_sales|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.vtq.target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.vtq.difference|floatformat:2|intcomma }}</td>
-                            <td class="p-2 text-right">{{ route.product_class_performance.vtq.scope|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-right
+                            {% if route.product_class_performance.vtq.scope >= 100 %}
+                                text-emerald-500
+                            {% elif route.product_class_performance.vtq.scope >= 90 %}
+                                text-yellow-500
+                            {% elif route.product_class_performance.vtq.scope >= 80 %}
+                                text-orange-500
+                            {% else %}
+                                text-red-500
+                            {% endif %}
+                            ">{{ route.product_class_performance.vtq.scope|floatformat:2|intcomma }} %</td>
                         </tr>
 
                         <tr>
-                            <td class="p-2">Zoetis</td>
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Zoetis</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.zts.net_sales|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.zts.target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.zts.difference|floatformat:2|intcomma }}</td>
-                            <td class="p-2 text-right">{{ route.product_class_performance.zts.scope|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-right
+                            {% if route.product_class_performance.zts.scope >= 100 %}
+                                text-emerald-500
+                            {% elif route.product_class_performance.zts.scope >= 90 %}
+                                text-yellow-500
+                            {% elif route.product_class_performance.zts.scope >= 80 %}
+                                text-orange-500
+                            {% else %}
+                                text-red-500
+                            {% endif %}
+                            ">{{ route.product_class_performance.zts.scope|floatformat:2|intcomma }} %</td>
                         </tr>
 
                         <tr>
-                            <td class="p-2">Nutriforce</td>
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Nutriforce</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.ntrf.net_sales|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.ntrf.target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.ntrf.difference|floatformat:2|intcomma }}</td>
-                            <td class="p-2 text-right">{{ route.product_class_performance.ntrf.scope|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-right
+                            {% if route.product_class_performance.ntrf.scope >= 100 %}
+                                text-emerald-500
+                            {% elif route.product_class_performance.ntrf.scope >= 90 %}
+                                text-yellow-500
+                            {% elif route.product_class_performance.ntrf.scope >= 80 %}
+                                text-orange-500
+                            {% else %}
+                                text-red-500
+                            {% endif %}
+                            ">{{ route.product_class_performance.ntrf.scope|floatformat:2|intcomma }} %</td>
                         </tr>
 
                         <tr>
-                            <td class="p-2">Otros</td>
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Otros</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.otr.net_sales|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.otr.target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.otr.difference|floatformat:2|intcomma }}</td>
-                            <td class="p-2 text-right">{{ route.product_class_performance.otr.scope|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-right
+                            {% if route.product_class_performance.otr.scope >= 100 %}
+                                text-emerald-500
+                            {% elif route.product_class_performance.otr.scope >= 90 %}
+                                text-yellow-500
+                            {% elif route.product_class_performance.otr.scope >= 80 %}
+                                text-orange-500
+                            {% else %}
+                                text-red-500
+                            {% endif %}
+                            ">{{ route.product_class_performance.otr.scope|floatformat:2|intcomma }} %</td>
                         </tr>
 
                         <tr class="border-t border-border">
-                            <td class="p-2">Total</td>
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Total</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.total.net_sales|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.total.target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.total.difference|floatformat:2|intcomma }}</td>
-                            <td class="p-2 text-right">{{ route.product_class_performance.total.scope|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-right
+                            {% if route.product_class_performance.total.scope >= 100 %}
+                                text-emerald-500
+                            {% elif route.product_class_performance.total.scope >= 90 %}
+                                text-yellow-500
+                            {% elif route.product_class_performance.total.scope >= 80 %}
+                                text-orange-500
+                            {% else %}
+                                text-red-500
+                            {% endif %}
+                            ">{{ route.product_class_performance.total.scope|floatformat:2|intcomma }} %</td>
                         </tr>
                     </tbody>
                 </table>
@@ -488,7 +598,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                 },
                 legend: {
                     data: ['Venta neta', 'Objetivo', 'Alcance'],
-                    top: '5%',
+                    bottom: '5%',
                     left: 'center',
                     textStyle: { color: titleColor }
                 },
@@ -503,14 +613,12 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                 yAxis: [
                     {
                         type: 'value',
-                        name: 'Monto ($)',
                         axisLabel: { formatter: '$ {value}', color: titleColor },
                         nameTextStyle: { color: titleColor },
                         splitLine: { lineStyle: { opacity: 0.1 } }
                     },
                     {
                         type: 'value',
-                        name: 'Alcance (%)',
                         axisLabel: { formatter: '{value} %', color: titleColor },
                         nameTextStyle: { color: titleColor },
                         splitLine: { show: false }

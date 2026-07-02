@@ -29,13 +29,17 @@ class RoutesKpisService:
     def _safe_decimal(self, val):
         return Decimal(str(val)) if val is not None else Decimal('0.00')
 
-    def _get_applicable_target(self, t):
+    def _get_applicable_target(self, t, start_date=None, end_date=None):
         """
         Devuelve el 100% del target si el periodo (mes/año) 
         tiene algún solapamiento con el rango de fechas establecido.
         """
         target_amount = self._safe_decimal(t.get('target_amount', 0))
-        if not self.date_start and not self.date_end:
+        
+        d_start = start_date if start_date else self.date_start
+        d_end = end_date if end_date else self.date_end
+
+        if not d_start and not d_end:
             return target_amount
 
         period = t.get('period')
@@ -52,8 +56,8 @@ class RoutesKpisService:
         _, last_day = calendar.monthrange(month_start.year, month_start.month)
         month_end = datetime.date(month_start.year, month_start.month, last_day)
 
-        start = self.date_start if self.date_start else month_start
-        end = self.date_end if self.date_end else month_end
+        start = d_start if d_start else month_start
+        end = d_end if d_end else month_end
 
         overlap_start = max(month_start, start)
         overlap_end = min(month_end, end)
@@ -263,16 +267,47 @@ class RoutesKpisService:
         self._build_charts(transactions, targets, customer_types_sales)
 
     def _build_charts(self, transactions, targets, customer_types_sales):
+        is_single_month = False
+        if self.date_start and self.date_end:
+            if self.date_start.year == self.date_end.year and self.date_start.month == self.date_end.month:
+                is_single_month = True
+
+        if is_single_month:
+            chart_start_date = datetime.date(self.date_end.year, 1, 1)
+            chart_end_date = datetime.date.today()
+
+            chart_filters = {}
+            chart_filters['sale_date_start'] = chart_start_date.strftime('%Y-%m-%d')
+            chart_filters['sale_date_end'] = chart_end_date.strftime('%Y-%m-%d')
+
+            target_filters = {}
+            target_filters['period_start'] = chart_start_date.strftime('%Y-%m-%d')
+            target_filters['period_end'] = chart_end_date.strftime('%Y-%m-%d')
+
+            trans_crud = SaleTransactionCRUD()
+            transactions_qs = trans_crud.read(self.routes_qs, **chart_filters)
+            chart_transactions = list(transactions_qs.values('sale_date', 'net_amount', 'customer_id'))
+
+            targets_crud = SaleTargetCRUD()
+            targets_qs = targets_crud.read(self.routes_qs, **target_filters)
+            chart_targets = list(targets_qs.values('period', 'target_amount'))
+        else:
+            chart_transactions = transactions
+            chart_targets = targets
+            chart_start_date = self.date_start
+            chart_end_date = self.date_end
+
         monthly_sales = defaultdict(Decimal)
-        for t in transactions:
-            period_str = t['sale_date'].strftime('%Y-%m')
-            monthly_sales[period_str] += self._safe_decimal(t.get('net_amount', 0))
+        for t in chart_transactions:
+            if t.get('sale_date'):
+                period_str = t['sale_date'].strftime('%Y-%m')
+                monthly_sales[period_str] += self._safe_decimal(t.get('net_amount', 0))
             
         monthly_targets = defaultdict(Decimal)
-        for t in targets:
+        for t in chart_targets:
             if t.get('period'):
                 period_str = t['period'].strftime('%Y-%m')
-                monthly_targets[period_str] += self._get_applicable_target(t)
+                monthly_targets[period_str] += self._get_applicable_target(t, chart_start_date, chart_end_date)
                 
         all_months = sorted(list(set(monthly_sales.keys()) | set(monthly_targets.keys())))
         
@@ -296,9 +331,10 @@ class RoutesKpisService:
             })
 
         cust_by_month = defaultdict(set)
-        for t in transactions:
-            m_str = t['sale_date'].strftime('%Y-%m')
-            cust_by_month[m_str].add(t['customer_id'])
+        for t in chart_transactions:
+            if t.get('sale_date') and t.get('customer_id'):
+                m_str = t['sale_date'].strftime('%Y-%m')
+                cust_by_month[m_str].add(t['customer_id'])
 
         lost_won_data = {
             'months': all_months[1:] if len(all_months) > 1 else [],
