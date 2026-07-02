@@ -94,7 +94,8 @@ def user(request, user_id: int = None):
     if request.method == 'POST':
         raw_data = request.POST.dict()
         selected_groups = request.POST.getlist('groups')
-        update_success = users_service.process_user_update(user_id=user_id, raw_data=raw_data, selected_groups=selected_groups)
+        files_data = request.FILES
+        update_success = users_service.process_user_update(user_id=user_id, raw_data=raw_data, selected_groups=selected_groups, files_data=files_data)
 
         if update_success:
             messages.success(request, 'Usuario actualizado con éxito.')

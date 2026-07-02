@@ -82,7 +82,7 @@ class UsersCRUD:
 
         return self.model.objects.prefetch_related('groups').filter(id=user_id).first()
 
-    def process_user_update(self, user_id: int, raw_data: dict, selected_groups: list = None):
+    def process_user_update(self, user_id: int, raw_data: dict, selected_groups: list = None, files_data: dict = None):
         """
         Process the raw data from a dict and update the user's attributes.
 
@@ -117,6 +117,9 @@ class UsersCRUD:
                 cleaned_data[key] = (value == 'True')
             else:
                 cleaned_data[key] = value
+
+        if files_data and 'photo' in files_data:
+            cleaned_data['photo'] = files_data['photo']
 
         return self.update_user(user_id=user_id, selected_groups=selected_groups, **cleaned_data)
 

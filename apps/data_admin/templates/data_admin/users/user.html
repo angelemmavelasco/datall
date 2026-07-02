@@ -31,7 +31,7 @@
 {% endblock %}
 
 {% block content %}
-<form id="update-user-form" method="POST" action=".">
+<form id="update-user-form" method="POST" action="." enctype="multipart/form-data">
   {% csrf_token %}
   <div class="flex flex-col gap-4">
 
@@ -50,6 +50,8 @@
         <span class="view-el">{{ user.email|default:'No definido' }}</span>
         <input type="email" name="email" value="{{ user.email }}" class="edit-el hidden w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
       </div>
+
+      {% if request.user.is_superuser %}
 
       <span class="text-title">Estado</span>
       <div>
@@ -83,12 +85,16 @@
         </div>
       </div>
 
+      {% endif %}
+
       <span class="text-title">Último ingreso</span>
       <span>{{ user.last_login|date:"d/m/Y H:i"|default:'-' }}</span>
 
       <span class="text-title">Fecha de registro</span>
       <span>{{ user.date_joined|date:"d/m/Y H:i" }}</span>
     </div>
+
+    {% if request.user.is_superuser %}
 
     <p class="text-title text-sm mt-4">Módulos con Acceso</p>
     <hr class="border-border border">
@@ -104,10 +110,26 @@
       </div>
     </div>
 
+    {% endif %}
+
     <p class="text-title text-sm">Información personal</p>
     <hr class="border-border border">
 
     <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+      <span class="text-title">Fotografía</span>
+      <div>
+        <div class="view-el">
+          {% if user.photo %}
+            <img src="{{ user.photo.url }}" alt="Foto" style="width: 80px; height: 80px; min-width: 80px; min-height: 80px; object-fit: cover; object-position: top; padding: 4px;" class="rounded-full bg-page shadow-sm border border-border">
+          {% else %}
+            <span class="text-strong italic">No especificada</span>
+          {% endif %}
+        </div>
+        <div class="edit-el hidden">
+          <input type="file" name="photo" accept="image/*" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-hover file:text-strong hover:file:bg-border cursor-pointer">
+        </div>
+      </div>
+
       <span class="text-title">Nombre (s)</span>
       <div>
         <span class="view-el">{{ user.first_name|title|default:'-' }}</span>
