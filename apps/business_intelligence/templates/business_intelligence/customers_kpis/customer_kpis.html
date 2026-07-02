@@ -186,9 +186,29 @@
       </div>
 
 
-        <span class="text-title">Líder de opinión</span>
-      <div>
-        <span class="view-el">{{ customer.opinion_leader|default:'No' }}</span>
+        <span class="text-title item-center flex gap-2">
+          Líder de opinión
+          <form method="POST" action="" class="flex items-center">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="toggle_opinion_leader">
+            <button type="submit" class="cursor-pointer focus:outline-none flex items-center justify-center">
+              {% if customer.opinion_leader %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-600 transition-colors hover:text-hover lucide lucide-toggle-right-icon lucide-toggle-right"><circle cx="15" cy="12" r="3"/><rect width="20" height="14" x="2" y="5" rx="7"/></svg>
+              {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600 transition-colors hover:text-hover lucide lucide-toggle-left-icon lucide-toggle-left"><circle cx="8" cy="12" r="3"/><rect width="20" height="14" x="2" y="5" rx="7"/></svg>
+              {% endif %}
+            </button>
+          </form>
+        </span>
+      <div class="flex items-center gap-2">
+        <span class="view-el">{{ customer.opinion_leader|yesno:"Sí,No" }}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-megaphone-icon lucide-megaphone"><path d="M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/><path d="M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14"/><path d="M8 6v8"/></svg>
+
+        {% if customer.opinion_leader %}
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-600 lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+        {% else %}
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600 lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+        {% endif %}
       </div>
 
         <span class="text-title">Ruta asignada</span>

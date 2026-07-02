@@ -1592,6 +1592,13 @@
       }
     }
   }
+  .hover\:opacity-80 {
+    &:hover {
+      @media (hover: hover) {
+        opacity: 80%;
+      }
+    }
+  }
   .hover\:file\:bg-border {
     &:hover {
       @media (hover: hover) {

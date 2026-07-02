@@ -15,7 +15,7 @@ from dateutil.relativedelta import relativedelta
 
 
 from django.core.paginator import Paginator
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 
@@ -518,6 +518,23 @@ def customer_kpis(request, customer_id):
         Customer.objects.select_related('customer_type', 'route'), 
         pk=customer_id
     )
+    allowed_routes = get_allowed_routes_for_user(request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'toggle_opinion_leader':
+            crud = CustomerCrud()
+            new_val = not customer_base.opinion_leader
+            try:
+                crud.update(customer_id, allowed_routes, opinion_leader=new_val)
+            except Exception as e:
+                pass
+            
+            query_string = request.GET.urlencode()
+            url = request.path
+            if query_string:
+                url += '?' + query_string
+            return redirect(url)
 
     today = date.today()
     date_start = request.GET.get('date_start')
