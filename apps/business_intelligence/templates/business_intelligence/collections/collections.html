@@ -9,17 +9,84 @@
 {% block filters %}
 <form method="GET" action="" id="params_filters">
 
+    <!-- forma de visualizacion, por asignacion o por emisión -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm flex items-center justify-between w-full gap-2">
+            <span>
+                Forma de visualización
+            </span>
+            <span class="custom-tooltip sidebar-tooltip flex items-center" data-title="
+            La forma de visualización indica como va a ser recabada y mostrada la información de las cuentas por cobrar.
+
+            Visualización por asignación: el resultado se mostrará de acuerdo a la asignación vigente de los clientes con sus respectivas rutas.
+            Por ejemplo: el cliente A pertenecía a la ruta 1 y se generaron cuantas por cobrar. En un determinado momento se reasigna al cliente A a la ruta 2.
+            A pesar de que la ruta 2 no es responsable de la deuda generada, como ahora es un cliente que se le asignó, la deuda se le atribuye a la ruta 2.
+
+            Visualización por emisión: el resultado se mostrará de acuerdo a quien es responsable de la deuda generada basado en quien generó dicha deuda.
+            Por ejemplo: el cliente A pertenecía a la ruta 1 y se generaron cuantas por cobrar. En un determinado momento se reasigna al cliente A a la ruta 2.
+            A pesar de que el cliente ahora pertenece a la ruta 2, la deuda se le sigue atribuyendo a la ruta 1 porque fue quien generó la deuda.
+            ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+                </svg>
+            </span>
+        </label>
+        <div class="border border-border rounded bg-page flex flex-col p-1 gap-1">
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                <input type="radio" name="visualization_mode" value="assignment" {% if selected_visualization_mode != 'emission' %}checked{% endif %}>
+                <span class="text-strong">Por asignación de clientes</span>
+            </label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                <input type="radio" name="visualization_mode" value="emission" {% if selected_visualization_mode == 'emission' %}checked{% endif %}>
+                <span class="text-strong">Por emisión de facturas</span>
+            </label>
+        </div>
+    </div>
+
 
     <!-- Fecha Fin -->
     <div class="flex flex-col gap-1 mb-4">
-        <label class="text-strong text-sm">Fecha de Corte</label>
+        <label class="text-strong text-sm flex items-center justify-between w-full gap-2">
+            <span>
+                Fecha de corte
+            </span>
+            <span class="custom-tooltip sidebar-tooltip flex items-center" data-title="
+            Se mostrará la información de facturas cuya fecha de emisión corresponda a la fecha establecida hacia atrás.
+
+            ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+                </svg>
+            </span>
+        </label>
         <input type="date" name="date_end" value="{{ selected_date_end|default:'' }}"
             class="border border-border rounded p-1 bg-page text-sm">
     </div>
 
     <!-- Clientes -->
     <div class="flex flex-col gap-1 mb-4">
-        <label class="text-strong text-sm">Clientes</label>
+        <label class="text-strong text-sm flex items-center justify-between w-full gap-2">
+            <span>
+                Clientes
+            </span>
+            <span class="custom-tooltip sidebar-tooltip flex items-center" data-title="
+            Se mostrará información de las facturas que hayan sido emitidas hacia los clientes seleccionados.
+
+            ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+                </svg>
+            </span>
+        </label>
         <div class="border border-border rounded bg-page flex flex-col">
             <input type="text" placeholder="Buscar cliente..."
                 class="p-1 border-b border-border bg-page text-sm outline-none w-full"
@@ -43,7 +110,22 @@
 
     <!-- Gerencia -->
     <div class="flex flex-col gap-1 mb-4">
-        <label class="text-strong text-sm">Gerencia</label>
+        <label class="text-strong text-sm flex items-center justify-between w-full gap-2">
+            <span>
+                Gerencia
+            </span>
+            <span class="custom-tooltip sidebar-tooltip flex items-center" data-title="
+            Se mostrará información de las facturas que hayan sido emitidas por las rutas de las gerencias seleccionadas.
+            
+            ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+                </svg>
+            </span>
+        </label>
         <div class="border border-border rounded bg-page flex flex-col">
             <input type="text" placeholder="Buscar gerencia..."
                 class="p-1 border-b border-border bg-page text-sm outline-none w-full"
@@ -67,7 +149,22 @@
 
     <!-- Región -->
     <div class="flex flex-col gap-1 mb-4">
-        <label class="text-strong text-sm">Región</label>
+        <label class="text-strong text-sm flex items-center justify-between w-full gap-2">
+            <span>
+                Región
+            </span>
+            <span class="custom-tooltip sidebar-tooltip flex items-center" data-title="
+            Se mostrará información de las facturas que hayan sido emitidas por rutas de las regiones seleccionadas.
+            
+            ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+                </svg>
+            </span>
+        </label>
         <div class="border border-border rounded bg-page flex flex-col">
             <input type="text" placeholder="Buscar región..."
                 class="p-1 border-b border-border bg-page text-sm outline-none w-full"
@@ -91,7 +188,22 @@
 
     <!-- Rutas -->
     <div class="flex flex-col gap-1 mb-4">
-        <label class="text-strong text-sm">Rutas</label>
+        <label class="text-strong text-sm flex items-center justify-between w-full gap-2">
+            <span>
+                Rutas
+            </span>
+            <span class="custom-tooltip sidebar-tooltip flex items-center" data-title="
+            Se mostrará la información de facturas que hayan sido emitidas por las rutas seleccionadas.
+            
+            ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+                </svg>
+            </span>
+        </label>
         <div class="border border-border rounded bg-page flex flex-col">
             <input type="text" placeholder="Buscar ruta..."
                 class="p-1 border-b border-border bg-page text-sm outline-none w-full"
@@ -201,7 +313,21 @@
 <div class="flex flex-col w-full gap-4">
     <!-- Ban de resultados -->
     <div class="">
-        <p class="text-title text-sm mb-2">Corte al {{ selected_date_end|default:'' }}</p>
+        <p class="text-title text-sm mb-2 flex items-center gap-2">
+            <span>
+                Corte al {{ selected_date_end|default:'' }}
+            </span>
+            <span class="custom-tooltip tooltip-left"
+            data-title="Fecha hasta la cual son recabados los datos, considerando facturas cuya emisión sea igual o anterior al {{ selected_date_end|default:'' }}"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+                </svg>
+            </span>
+        </p>
         <hr class="border-border">
     </div>
 

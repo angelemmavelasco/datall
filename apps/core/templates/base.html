@@ -101,7 +101,7 @@
         border-radius: 4px;
         font-size: 12px;
         width: 250px; 
-        z-index: 40;
+        z-index: 60;
         
         display: none; 
     }
@@ -130,6 +130,13 @@
 
     .custom-tooltip:hover::after {
         display: block;
+    }
+
+    /* Ajuste específico para tooltips en el sidebar (w-64 = 256px, ancho interno 224px) */
+    .sidebar-tooltip::after {
+        width: 200px !important;
+        right: 0 !important; 
+        left: auto !important;
     }
 
     </style>

@@ -50,15 +50,32 @@ class AccountsReceivableCrud:
         elif due_date_end:
             qs = qs.filter(Q(due_date__lte=due_date_end) | Q(due_date__isnull=True))
 
-        if kwargs.get('customers'):
-            customer_list = kwargs['customers']
-        else:
-            customer_list = self.allowed_customers.values_list('id', flat=True) if self.allowed_customers else []
+        visualization_mode = kwargs.get('visualization_mode', 'assignment')
+        req_customers = kwargs.get('customers')
+        req_routes = kwargs.get('routes')
+        req_warehouses = kwargs.get('warehouses')
+        req_regions = kwargs.get('regions')
 
-        qs = qs.filter(
-            customer_id__in=customer_list,
-            customer__route__in=self.allowed_routes 
-        )
+        if visualization_mode == 'emission':
+            qs = qs.filter(route__in=self.allowed_routes)
+
+            if req_customers:
+                qs = qs.filter(customer_id__in=req_customers)
+            if req_routes:
+                qs = qs.filter(route__in=req_routes)
+            if req_warehouses:
+                qs = qs.filter(route__warehouse__in=req_warehouses)
+            if req_regions:
+                qs = qs.filter(route__warehouse__region__in=req_regions)
+        else:
+            if req_customers:
+                qs = qs.filter(customer_id__in=req_customers)
+            else:
+                customer_list = self.allowed_customers.values_list('id', flat=True) if self.allowed_customers is not None else []
+                qs = qs.filter(customer_id__in=customer_list)
+
+            qs = qs.filter(customer__route__in=self.allowed_routes)
+
         return qs
             
 

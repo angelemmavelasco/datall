@@ -255,6 +255,7 @@ def collections(request):
     regions = request.GET.getlist('regions')
     routes = request.GET.getlist('routes')
     customers = request.GET.getlist('customers')
+    visualization_mode = request.GET.get('visualization_mode', 'assignment')
 
     customer_filters = {}
     if routes: customer_filters['routes'] = routes
@@ -266,10 +267,12 @@ def collections(request):
     filters = {}
     if customers:
         filters['customers'] = customers
-    else:
-        filters['customers'] = list(allowed_customers.values_list('id', flat=True))
 
     if date_end: filters['date_end'] = date_end
+    if visualization_mode: filters['visualization_mode'] = visualization_mode
+    if routes: filters['routes'] = routes
+    if warehouses: filters['warehouses'] = warehouses
+    if regions: filters['regions'] = regions
 
     ar_service = Collections(
         allowed_routes=allowed_routes, 
@@ -288,8 +291,6 @@ def collections(request):
     if 'page' in query_dict:
         del query_dict['page']
     query_string = query_dict.urlencode()
-
-    print(kpis)
     
 
 
@@ -311,6 +312,7 @@ def collections(request):
         'selected_routes': routes if routes else list(allowed_routes.values_list('id', flat=True)),
         'selected_regions': regions if regions else list(allowed_regions.values_list('id', flat=True)),
         'selected_date_end': date_end,
+        'selected_visualization_mode': visualization_mode,
 
         # ar data
         'collections': collections_data,
