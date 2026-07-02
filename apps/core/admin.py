@@ -20,7 +20,7 @@ class CustomUserAdmin(UserAdmin):
         ('Additional Personal Info', {
             'fields': (
                 'second_last_name', 'birth_date', 'gender', 'phone',
-                'tax_id', 'unique_personal_id', 'notes'
+                'tax_id', 'unique_personal_id', 'notes', 'photo'
             )
         }),
         ('Address', {

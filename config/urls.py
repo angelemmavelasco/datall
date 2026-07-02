@@ -50,3 +50,7 @@ urlpatterns = [
 handler404 = 'apps.core.views.custom_404_view'
 handler500 = 'apps.core.views.custom_500_view'
 
+from django.conf.urls.static import static
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
