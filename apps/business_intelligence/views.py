@@ -62,7 +62,7 @@ def sales_dashboard(request):
     date_end = request.GET.get('date_end')
     
     if not date_start:
-        date_start = date(today.year, 1, 1).strftime('%Y-%m-%d')
+        date_start = date(today.year, today.month, 1).strftime('%Y-%m-%d')
     if not date_end:
         last_day = calendar.monthrange(today.year, today.month)[1]
         date_end = date(today.year, today.month, last_day).strftime('%Y-%m-%d')
@@ -166,9 +166,9 @@ def routes_kpis(request):
     selected_route_id = request.GET.get('route')
 
     if not date_start:
-        date_start = date(today.year, 1, 1).strftime('%Y-%m-%d')
+        date_start = date(today.year, today.month, 1).strftime('%Y-%m-%d')
     if not date_end:
-        date_end = (date(today.year, today.month, 1) - timedelta(days=1)).strftime('%Y-%m-%d')
+        date_end = (date(today.year, today.month+1, 1) - timedelta(days=1)).strftime('%Y-%m-%d')
     
     if not selected_route_id and allowed_routes.exists():
         selected_route_id = allowed_routes.first().id
@@ -1057,6 +1057,12 @@ def unique_customers(request):
     
     date_start = request.GET.get('date_start')
     date_end = request.GET.get('date_end')
+    today = date.today()
+
+    if not date_start:
+        date_start = date(today.year, today.month, 1).strftime('%Y-%m-%d')
+    if not date_end:
+        date_end = (date(today.year, today.month + 1, 1) - timedelta(days=1)).strftime('%Y-%m-%d')
     
     product_classes = request.GET.getlist('product_class')
     product_categories = request.GET.getlist('product_category')

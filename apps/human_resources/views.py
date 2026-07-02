@@ -470,7 +470,7 @@ def commissions_report(request):
     service = CommissionsReport(allowed_routes=allowed_routes)
 
     filters = {
-        'month': request.GET.get('month', str(datetime.now().month)),
+        'month': request.GET.get('month', str(datetime.now().month-1)),
         'year': request.GET.get('year', str(datetime.now().year)),
         'status': request.GET.getlist('status'),
         'query_text': request.GET.get('query_text', ''),
