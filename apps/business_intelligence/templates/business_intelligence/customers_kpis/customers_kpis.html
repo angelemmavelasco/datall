@@ -259,22 +259,8 @@
     <div class="">
         <div class="flex justify-between items-center">
             <p class="text-title text-sm mb-2">Desglose por cliente</span></p>
-            <span class="custom-tooltip" data-title="
-            Muestra la cobranza al último día seleccionado. ej. Un rango filtrado del 1 de enero de 2026 al 22 de junio de 2026, mostrará la cobranza en su estado al 22 de junio del 2026.
-            
-            Saldo total: la suma del saldo al corriente y el saldo vencido (considera todas las antigüedades).
-
-            Saldo al corriente: representa aquel saldo que está dentro de los plazos de crédito acordados o que todavía no están fuera del plazo de pago establecido en la misma factura.
-
-            Vencido: saldo del cuál no se ha recibido pago y que se encuentra fuera del plazo de crédito establecido. Se divide en 4 antigüedades:
-                ° 1 a 15 días
-                ° 16 a 30 días
-                ° 31 a 60 días
-                ° 60+ días
-
-            Cuentas por cobrar: el conteo de clientes que cuantan con al menos una factura por pagar.
-
-            
+            <span class="custom-tooltip" data-title="La siguiente tabla muestra datos y atributos generales del cliente, así como un comportamiento generalizado del consumo a lo largo del tiempo. Puedes exportar dichos datos al dar clic en 'Descargar datos'.
+            Para ver más detalles de algún cliente, da clic en el dato de la columna 'Cliente'.
             ">
                 
             
@@ -289,21 +275,14 @@
             <thead>
                 <tr class="border-b border-border">
                     <th colspan="3"
-                        class="p-2 text-center border-r border-border sticky top-0 md:left-0 z-35 bg-page h-8">
-                        Identificación</th>
-                    <th colspan="4" class="p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8">
-                        Segmentación</th>
-                    <th colspan="4"
-                        class="seccion-cobranza     p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8">
-                        Cobranza</th>
-                    <th colspan="5"
-                        class="seccion-metricas p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8">
-                        Métricas de consumo</th>
+                        class="p-2 text-center border-r border-border sticky top-0 md:left-0 z-35 bg-page h-8">Identificación</th>
+                    <th colspan="4" class="p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8">Segmentación</th>
+                    <th colspan="4" class="seccion-cobranza p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8">Cobranza</th>
+                    <th colspan="5" class="seccion-metricas p-2 text-center border-r border-border sticky top-0 z-30 bg-page h-8">Métricas de consumo</th>
 
 
                     <!-- metricas de conusmo y filtro -->
-                    <th colspan="3"
-                        class="seccion-metricas p-2 border-r border-border sticky top-0 z-30 bg-page h-8 relative"
+                    <th colspan="3" class="seccion-metricas p-2 border-r border-border sticky top-0 z-30 bg-page h-8 relative"
                         id="th-contrib-filter">
 
                         <div class="flex items-center justify-center w-full h-full">
@@ -428,28 +407,53 @@
                 <tr class="border-b border-border text-xs">
                     <th
                         class="min-w-[240px] max-w-[240px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-0 z-35 bg-page h-8">
-                        Cliente
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Cliente</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='Código de identificación y razón social del cliente. Da clic para ser redirigido a la vista con los detalles del cliente.'>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
                     </th>
 
                     <th
                         class="min-w-[120px] max-w-[120px] w-[120px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-[240px] z-35 bg-page h-8">
-                        Ruta
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Ruta</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='Indica la ruta asignada al cliente.'>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
                     </th>
 
                     <th
                         class="min-w-[120px] max-w-[120px] w-[120px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-[360px] z-35 bg-page h-8">
-                        Gerencia
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Gerencia</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='Indica la gerencia asignada al cliente, la cual depende de a que gerencia pertenece la ruta asignada.'>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
                     </th>
 
                     <th
                         class="min-w-[140px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        <span data-title="indica la segmentación bajo la cual fue registrado el cliente, e indica principalmente el canal de ventas, tipo de productos y logística que manejan." class="w-full custom-tooltip tooltip-left">
-                            Tipo de cliente
-                        </span>
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Tipo de cliente</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='Indica la segmentación bajo la cual fue registrado el cliente, e indica principalmente el canal de ventas, tipo de productos y logística que maneja.'>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
                     </th>
                     <th
                         class="min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        <span data-title="
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Categoría</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='
                         Indica de forma general el consumo del cliente a través de una categorización que toma umbrales de consumo.
                         El cálculo se realiza tomando en cuenta la venta neta a ese cliente en el último trimestre móvil efectivamente cerrado y dividiendo entre el número de meses activo del cliente.
                         Ejemplo: Si consultamos hoy ({{ today }}), el último trimestre móvil cerrado abarca del {{ start_last_q }} al {{ end_last_q }}.
@@ -460,36 +464,105 @@
                         - AA: $25,000 - $99,999.99
                         - Oro: $100,000 - $249,999.99
                         - Diamante: mayor o igual a $250,000
-                        " class="w-full custom-tooltip tooltip-left">
-                            Categoría
-                        </span>
+                                '>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
                     </th>
                     <th
                         class="min-w-[120px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Frecuencia</th>
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Frecuencia</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='
+                                Intervalo de compra promedio entre cada compra del cliente.
+                                Algunas de las consideraciones para el cálculo son:
+                                • Se toma como referencia el folio que identifica a la factura.
+                                • Solo se consideran facturas con montos superiores a $0 (no entran notas de crédito).
+                                • El cálculo se realiza considerando el año anterior completo y el actual hasta la fecha. (si deseas la frecuencia en un rango de fechas especifico, por gerencia que le vendio o clases de productos, entra al detalle del cliente).
+                                • Los umbrales considerados son:
+                                    - Regular: Menos o igual a 30 días
+                                    - Irregular: Más de 30 días y menos o igual a 60 días
+                                    - Atípico: Más de 60 días
+                                    - Nulo: Menos de 2 facturas.
+                                
+                                '>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
+                    </th>
                     <th
                         class="min-w-[140px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Líder de opinión</th>
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Líder de opinión</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='Clientes cuya opinión, reseña o presencia tiene un impacto en más consumidores. Dichos clientes no necesariamente cuentan con un consumo masivo, pero si pueden influir en las decisiones de compra de otros.'>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
+                    </th>
 
                     <th
                         class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Límite de crédito</th>
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Límite de crédito</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='Monto máximo de crédito que la empresa le ha otorgado al cliente. Dicho monto solo puede ser ajustado bajo consulta y aprobación previa.'>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
+                    </th>
                     <th
                         class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Saldo al corriente</th>
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Saldo al corriente</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='Saldo que se encuentra dentro del rango de días de crédito habilitados para el cliente y que no cuenta como saldo vencido.'>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
+                    </th>
                     <th
                         class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Saldo vencido</th>
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Saldo vencido</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='Saldo que excede los días de crédito habilitados para el cliente y que se encuentra en estado de vencimiento.'>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
+                    </th>
                     <th
                         class="seccion-cobranza min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Uso</th>
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Uso</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='Monto total de crédito que se encuentra utilizado al día de hoy. Es representado como porcentaje.'>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
+                    </th>
 
                     <th
                         class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Convenios activos</th>
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Convenios activos</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='Acuerdos comerciales activos que garantizan un consumo periódico por parte del cliente. Para consultar el historial completo, visita la vista de detalles del cliente.'>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
+                    </th>
                     <th
                         class="seccion-metricas min-w-[150px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
-                        Clases de producto</th>
+                        <div class='w-full flex items-center justify-center gap-2'>
+                            <span>Clases de productos</span>
+                            <span class='custom-tooltip tooltip-left'
+                                data-title='Clases de productos que el cliente consume. Solo se toman en cuenta aquellas clases relavantes previamente establecidas, por ejemplo: diamond, tow, nat, care, etc. Por default, solo toma en cuenta el consumo del año previo y el actual hasta la fecha.'>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </span>
+                        </div>
+                    </th>
                     <th
                         class="seccion-metricas min-w-[200px] p-2 text-center text-title border-r border-t  border-b border-border sticky top-8 z-30 bg-page h-8">
                         Promedio año previo</th>

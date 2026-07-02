@@ -559,7 +559,7 @@ def customer_kpis(request, customer_id):
         'warehouses': warehouses
     }
 
-    builder = CustomerProfileBuilder(customer_base, filters=filters)
+    builder = CustomerProfileBuilder(customer_base, allowed_routes=allowed_routes, filters=filters)
     customer_with_kpis = builder.build()
 
     context = {

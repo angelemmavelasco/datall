@@ -73,12 +73,8 @@ class CustomersKpis:
             'trim_total': Sum('net_amount', filter=Q(sale_date__gte=first_day_q, sale_date__lte=last_day_q)),
             'contrib_net': Sum('net_amount', filter=Q(sale_date__gte=start_contrib, sale_date__lte=end_contrib)),
             'contrib_profit': Sum('profit', filter=Q(sale_date__gte=start_contrib, sale_date__lte=end_contrib)),
-            # Frecuencias
-            'freq_min': Min('sale_date', filter=Q(net_amount__gt=0, sale_date__year__gte=current_year - 1)),
-            'freq_max': Max('sale_date', filter=Q(net_amount__gt=0, sale_date__year__gte=current_year - 1)),
-            'freq_docs': Count('doc_id', distinct=True, filter=Q(net_amount__gt=0, sale_date__year__gte=current_year - 1)),
             # Clases
-            'classes_qty': Count('product_class_id', distinct=True, filter=Q(sale_date__year=current_year, product_class_id__in=relevant_product_classes)),
+            'classes_qty': Count('product_class_id', distinct=True, filter=Q(sale_date__gte=date(previous_year, 1, 1), product_class_id__in=relevant_product_classes)),
         }
 
         for m in range(1, 13):
@@ -101,6 +97,16 @@ class CustomersKpis:
         )
         ar_map = {row['customer_id']: row for row in ar_qs}
 
+        freq_dates_qs = SaleTransaction.objects.filter(
+            customer_id__in=customer_ids,
+            sale_date__gte=date(previous_year, 1, 1),
+            net_amount__gt=0
+        ).values('customer_id', 'sale_date').distinct().order_by('customer_id', 'sale_date')
+
+        freq_map = defaultdict(list)
+        for row in freq_dates_qs:
+            freq_map[row['customer_id']].append(row['sale_date'])
+
         months_headers = [date(current_year, m, 1) for m in range(1, 13)]
         global_net = Decimal('0.00')
         global_profit = Decimal('0.00')
@@ -121,16 +127,17 @@ class CustomersKpis:
             customer.category_last_moving_q = MockCategory(get_category(avg_trim))
             customer.previous_moving_quarter_average = avg_trim
 
-            f_min = row.get('freq_min')
-            f_max = row.get('freq_max')
-            f_docs = row.get('freq_docs') or 0
-            if f_docs > 1 and f_min and f_max:
-                avg_diff = (f_max - f_min).days / (f_docs - 1)
-                if avg_diff <= 30: freq_text = "Regular"
-                elif avg_diff <= 60: freq_text = "Irregular"
-                else: freq_text = "Atípico"
-            else:
+            dates_list = freq_map.get(cid, [])
+            if len(dates_list) < 2:
                 freq_text = "Nula"
+            else:
+                intervals = [(dates_list[i] - dates_list[i-1]).days for i in range(1, len(dates_list))]
+                avg_interval = sum(intervals) / len(intervals)
+
+                if avg_interval <= 30: freq_text = "Regular"
+                elif avg_interval <= 60: freq_text = "Irregular"
+                else: freq_text = "Atípico"
+            
             customer.frequency = freq_text
 
             ar = ar_map.get(cid)
@@ -320,8 +327,9 @@ class MockClass:
 
 
 class CustomerProfileBuilder:
-    def __init__(self, customer, filters=None):
+    def __init__(self, customer, allowed_routes, filters=None):
         self.customer = customer
+        self.allowed_routes = allowed_routes
         self.today = date.today()
         self.filters = filters or {}
 
@@ -337,6 +345,23 @@ class CustomerProfileBuilder:
         self.prev_year = self.today.year - 1
         self.first_day_prev_year = date(self.prev_year, 1, 1)
         self.last_day_prev_year = date(self.prev_year, 12, 31)
+
+    def _get_filtered_sales_qs(self, apply_dates=True):
+        from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
+        crud = SaleTransactionCRUD()
+        
+        kwargs = {
+            'customers': [self.customer.id],
+            'warehouses': self.filters.get('warehouses'),
+            'regions': self.filters.get('regions'),
+            'product_classes': self.filters.get('product_classes'),
+            'product_categories': self.filters.get('product_categories'),
+        }
+        if apply_dates:
+            kwargs['sale_date_start'] = self.filters.get('date_start')
+            kwargs['sale_date_end'] = self.filters.get('date_end')
+            
+        return crud.read(allowed_routes=self.allowed_routes, **kwargs)
 
     def build(self):
         """Ejecuta todos los cálculos y retorna el cliente enriquecido."""
@@ -398,11 +423,8 @@ class CustomerProfileBuilder:
         self.customer.annual_consumption_category = get_category(avg_yearly)
 
     def _set_purchase_frequency(self):
-        # distinct() en sale_date agrupa múltiples doc_id del mismo día en un solo registro
-        dates = SaleTransaction.objects.filter(
-            customer=self.customer,
-            net_amount__gt=0
-        ).values_list('sale_date', flat=True).distinct().order_by('sale_date')
+        qs = self._get_filtered_sales_qs(apply_dates=True)
+        dates = qs.filter(net_amount__gt=0).values_list('sale_date', flat=True).distinct().order_by('sale_date')
 
         dates_list = list(dates)
 
@@ -424,10 +446,17 @@ class CustomerProfileBuilder:
         self.customer.purchase_frequency_days = f"cada {int(avg_interval)} días"
 
     def _set_classes_kpis(self):
-        # Histórico de clases consumidas
-        classes_count = SaleTransaction.objects.filter(
-            customer=self.customer,
-            net_amount__gt=0
+        relevant_product_classes = Reference.objects.filter(
+            field_context='relevant_product_classes',
+            key='customer',
+            module__url_name='business_intelligence:customers_kpis'
+        ).values_list('reference', flat=True)
+
+        # Histórico de clases consumidas aplicando filtros y relevancia
+        qs = self._get_filtered_sales_qs(apply_dates=True)
+        classes_count = qs.filter(
+            net_amount__gt=0,
+            product_class_id__in=relevant_product_classes
         ).values('product_class_id').distinct().count()
 
         self.customer.consumed_classes = classes_count
@@ -479,31 +508,7 @@ class CustomerProfileBuilder:
         from django.db.models import Min, Max, Sum
         from django.db.models.functions import TruncMonth
 
-        qs = SaleTransaction.objects.filter(customer=self.customer)
-        
-        date_start = self.filters.get('date_start')
-        date_end = self.filters.get('date_end')
-        
-        if date_start:
-            qs = qs.filter(sale_date__gte=date_start)
-        if date_end:
-            qs = qs.filter(sale_date__lte=date_end)
-            
-        warehouses = self.filters.get('warehouses')
-        if warehouses:
-            qs = qs.filter(route__warehouse_id__in=warehouses)
-            
-        regions = self.filters.get('regions')
-        if regions:
-            qs = qs.filter(route__warehouse__region_id__in=regions)
-            
-        product_classes = self.filters.get('product_classes')
-        if product_classes:
-            qs = qs.filter(product_class_id__in=product_classes)
-            
-        product_categories = self.filters.get('product_categories')
-        if product_categories:
-            qs = qs.filter(product_class__product_category_id__in=product_categories)
+        qs = self._get_filtered_sales_qs(apply_dates=True)
 
         agg = qs.aggregate(min_date=Min('sale_date'), max_date=Max('sale_date'))
         min_date = agg['min_date']
