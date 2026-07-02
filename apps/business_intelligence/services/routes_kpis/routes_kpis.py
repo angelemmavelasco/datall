@@ -68,11 +68,25 @@ class RoutesKpisService:
         return Decimal('0.00')
 
     def _initialize_routes(self):
+        from apps.core.models import RouteAssignment
+        
+        route_ids = [r.id for r in self.routes_qs]
+        active_assignments = RouteAssignment.objects.filter(
+            route_id__in=route_ids,
+            end_date__isnull=True
+        ).select_related('employee__user')
+        
+        photo_dict = {}
+        for assignment in active_assignments:
+            if assignment.employee and assignment.employee.user and assignment.employee.user.photo:
+                photo_dict[assignment.route_id] = assignment.employee.user.photo.url
+                
         for route in self.routes_qs:
             r_id = route.id
             self.routes_data[r_id] = {
                 'id': r_id,
                 'name': route.name,
+                'photo_url': photo_dict.get(r_id),
                 'net_sale': Decimal('0.00'),
                 'sale_target': Decimal('0.00'),
                 'scope_diff': Decimal('0.00'),

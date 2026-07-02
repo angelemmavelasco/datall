@@ -33,25 +33,30 @@
 
 {% block filters %}
 <form method="GET" action="{% url 'business_intelligence:routes_kpis' %}" class="flex flex-col gap-4 text-strong">
-    
+
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Periodo Inicio</label>
-        <input type="date" name="date_start" value="{{ selected_date_start }}" class="p-1 border border-border bg-page rounded text-sm outline-none text-strong placeholder:text-muted focus:border-strong transition-colors w-full">
+        <input type="date" name="date_start" value="{{ selected_date_start }}"
+            class="p-1 border border-border bg-page rounded text-sm outline-none text-strong placeholder:text-muted focus:border-strong transition-colors w-full">
     </div>
 
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Periodo Fin</label>
-        <input type="date" name="date_end" value="{{ selected_date_end }}" class="p-1 border border-border bg-page rounded text-sm outline-none text-strong placeholder:text-muted focus:border-strong transition-colors w-full">
+        <input type="date" name="date_end" value="{{ selected_date_end }}"
+            class="p-1 border border-border bg-page rounded text-sm outline-none text-strong placeholder:text-muted focus:border-strong transition-colors w-full">
     </div>
 
     <!-- Rutas -->
     <div class="flex flex-col gap-1 mb-4">
         <label class="text-strong text-sm">Ruta</label>
         <div class="border border-border rounded bg-page flex flex-col">
-            <input type="text" placeholder="Buscar ruta..." class="p-1 border-b border-border bg-page text-sm outline-none w-full" onkeyup="filterCheckboxes(this, 'routes-list')">
+            <input type="text" placeholder="Buscar ruta..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'routes-list')">
             <div id="routes-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
                 {% for r in filter_routes %}
-                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                <label
+                    class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                     <input type="radio" name="route" value="{{ r.id }}" {% if r.id|stringformat:"s" == selected_route %}checked{% endif %}>
                     <span class="searchable-text">{{ r.id|upper }} - {{ r.name|title }}</span>
                 </label>
@@ -60,37 +65,39 @@
         </div>
     </div>
 
-    <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2">Aplicar filtros</button>
+    <button type="submit"
+        class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2">Aplicar
+        filtros</button>
 </form>
 
 <script>
-function filterCheckboxes(inputElement, listId) {
-    const filter = inputElement.value.toLowerCase();
-    const list = document.getElementById(listId);
-    const labels = list.getElementsByTagName('label');
+    function filterCheckboxes(inputElement, listId) {
+        const filter = inputElement.value.toLowerCase();
+        const list = document.getElementById(listId);
+        const labels = list.getElementsByTagName('label');
 
-    for (let i = 0; i < labels.length; i++) {
-        const span = labels[i].querySelector('.searchable-text');
-        if (span) {
-            const textValue = span.textContent || span.innerText;
-            if (textValue.toLowerCase().indexOf(filter) > -1) {
-                labels[i].style.display = "";
-            } else {
-                labels[i].style.display = "none";
+        for (let i = 0; i < labels.length; i++) {
+            const span = labels[i].querySelector('.searchable-text');
+            if (span) {
+                const textValue = span.textContent || span.innerText;
+                if (textValue.toLowerCase().indexOf(filter) > -1) {
+                    labels[i].style.display = "";
+                } else {
+                    labels[i].style.display = "none";
+                }
             }
         }
     }
-}
 
-function toggleAllCheckboxes(masterCheckbox, listId) {
-    const list = document.getElementById(listId);
-    const checkboxes = list.querySelectorAll('input[type="checkbox"]');
-    checkboxes.forEach(cb => {
-        if (cb.closest('label').style.display !== "none") {
-            cb.checked = masterCheckbox.checked;
-        }
-    });
-}
+    function toggleAllCheckboxes(masterCheckbox, listId) {
+        const list = document.getElementById(listId);
+        const checkboxes = list.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            if (cb.closest('label').style.display !== "none") {
+                cb.checked = masterCheckbox.checked;
+            }
+        });
+    }
 </script>
 {% endblock %}
 
@@ -100,14 +107,21 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 <div class="flex flex-col w-full gap-4 mb-8">
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="border border-border rounded p-2 flex flex-col items-center justify-center bg-container row-span-2 col-span-2 md:col-span-1">
+        <div
+            class="border border-border rounded p-2 flex flex-col items-center justify-center bg-container row-span-2 col-span-2 md:col-span-1">
+            {% if route.photo_url %}
+            <img src="{{ route.photo_url }}" alt="Foto del colaborador"
+                style="width: 100px; height: 100px; min-width: 100px; min-height: 100px; object-fit: cover; object-position: top; padding: 4px;"
+                class="rounded-full bg-white">
+            {% else %}
             <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                class="lucide lucide-circle-user-icon lucide-circle-user">
+                class="lucide lucide-circle-user-icon lucide-circle-user text-muted">
                 <circle cx="12" cy="12" r="10" />
                 <circle cx="12" cy="10" r="3" />
                 <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
             </svg>
+            {% endif %}
         </div>
 
         <div class="p-2 flex flex-col col-span-2 md:col-span-1 items-center justify-center">
@@ -157,7 +171,9 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                 <table class="table-fixed w-full rounded border-separate border-spacing-0">
                     <thead>
                         <tr class="">
-                            <th class="w-30 p-2 text-left border-r border-b border-border sticky bg-container left-0 top-0 z-10">Clase</th>
+                            <th
+                                class="w-30 p-2 text-left border-r border-b border-border sticky bg-container left-0 top-0 z-10">
+                                Clase</th>
                             <th class="w-30 p-2 text-right border-b border-border">Venta neta</th>
                             <th class="w-30 p-2 text-right border-b border-border">Objetivo</th>
                             <th class="w-30 p-2 text-right border-b border-border">Diferencia</th>
@@ -239,7 +255,8 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                         </tr>
 
                         <tr>
-                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Taste of the wild</td>
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border">Taste of the wild
+                            </td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.tow.net_sales|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.tow.target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.product_class_performance.tow.difference|floatformat:2|intcomma }}</td>
@@ -390,9 +407,15 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
             
             ">
-                
-            
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+
+
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                    <path d="M12 17h.01" />
+                </svg>
             </span>
         </div>
         <hr class="border-border">
@@ -470,7 +493,8 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                     </tr>
                     <tr>
                         <td class="p-2 text-center">Saldo al corriente</td>
-                        <td class="p-2 text-center">$ {{ route.collections.current_balance|floatformat:2|intcomma }}</td>
+                        <td class="p-2 text-center">$ {{ route.collections.current_balance|floatformat:2|intcomma }}
+                        </td>
                     </tr>
                     <tr>
                         <td class="p-2 text-center">1 a 15 días</td>
@@ -497,8 +521,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
     <div class="">
         <div class="flex justify-between items-center">
             <p class="text-title text-sm mb-2">Clientes</p>
-            <span class="custom-tooltip"
-            data-title="
+            <span class="custom-tooltip" data-title="
                 Cartera: indica el número total de clientes registrados dada una fecha. Ej. para el rango del 1 de enero de 2026 al 22 de junio de 2026, se mostrarán los clientes registrados hasta el 22 de junio de 2026.
 
                 Clientes nuevos: muestra el número de clientes registrados dentro de un periodo seleccionado. Ej. para el rango del 1 de enero de 2026 al 31 de enero de 2026 se mostrarán los clientes registrados del 1 al 31 de enero de 2026.
@@ -510,7 +533,13 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                 Clientes ganados y perdidos (mensual): se muestra por mes el número de clientes ganados y perdidos. Un cliente perdido es aquel que en el mes anterior tuvo compras y en el mes actual no tuvo compras. Un cliente ganado es aquel que en el mes anterior no tuvo compras y en el mes actual tuvo compras. 
                 ">
 
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                    <path d="M12 17h.01" />
+                </svg>
             </span>
         </div>
         <hr class="border-border">
@@ -567,7 +596,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim();
-        
+
         let rawData = document.getElementById('global-charts-data').textContent;
         let globalCharts = {};
         try {
@@ -575,7 +604,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
             if (typeof globalCharts === 'string') {
                 globalCharts = JSON.parse(globalCharts);
             }
-        } catch(e) {
+        } catch (e) {
             console.error("Error parsing global charts data", e);
         }
 
@@ -650,7 +679,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                 ]
             };
             targetBarChart.setOption(targetBarChartOption);
-            window.addEventListener('resize', function() { targetBarChart.resize(); });
+            window.addEventListener('resize', function () { targetBarChart.resize(); });
         }
 
         // --- lostAndWonBarChart ---
@@ -704,7 +733,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                 ]
             };
             lostAndWonBarChart.setOption(lostAndWonBarChartOption);
-            window.addEventListener('resize', function() { lostAndWonBarChart.resize(); });
+            window.addEventListener('resize', function () { lostAndWonBarChart.resize(); });
         }
 
         // --- clientCategoryChart ---
@@ -718,9 +747,9 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                     left: 'center',
                     textStyle: { fontWeight: 'normal', fontSize: 14, color: titleColor },
                 },
-                tooltip: { 
+                tooltip: {
                     trigger: 'item',
-                    formatter: function(params) {
+                    formatter: function (params) {
                         return params.name + ': $ ' + Number(params.value).toLocaleString() + ' (' + Number(params.percent).toFixed(2) + '%)';
                     }
                 },
@@ -748,7 +777,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                 ]
             };
             clientCategoryChart.setOption(clientCategoryChartOption);
-            window.addEventListener('resize', function() { clientCategoryChart.resize(); });
+            window.addEventListener('resize', function () { clientCategoryChart.resize(); });
         }
     })
 </script>
