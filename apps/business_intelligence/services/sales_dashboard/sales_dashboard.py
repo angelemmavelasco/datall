@@ -1,6 +1,6 @@
 from decimal import Decimal
 from collections import defaultdict
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import calendar
 
 class SalesDashboard:
@@ -110,19 +110,31 @@ class SalesDashboard:
     def calculate_timeline(self):
         daily_data = defaultdict(lambda: {'net_sale': Decimal('0.00'), 'units': Decimal('0.00')})
         
+        is_daily = False
         if self.date_start and self.date_end:
-            current_date = self.date_start.replace(day=1)
-            while current_date <= self.date_end or (current_date.year == self.date_end.year and current_date.month == self.date_end.month):
-                date_str = current_date.strftime('%Y-%m')
-                daily_data[date_str] # Initialize
-                if current_date.month == 12:
-                    current_date = current_date.replace(year=current_date.year + 1, month=1)
-                else:
-                    current_date = current_date.replace(month=current_date.month + 1)
+            if self.date_start.year == self.date_end.year and self.date_start.month == self.date_end.month:
+                is_daily = True
+
+        if self.date_start and self.date_end:
+            if is_daily:
+                current_date = self.date_start
+                while current_date <= self.date_end:
+                    date_str = current_date.strftime('%Y-%m-%d')
+                    daily_data[date_str] # Initialize
+                    current_date += timedelta(days=1)
+            else:
+                current_date = self.date_start.replace(day=1)
+                while current_date <= self.date_end or (current_date.year == self.date_end.year and current_date.month == self.date_end.month):
+                    date_str = current_date.strftime('%Y-%m')
+                    daily_data[date_str] # Initialize
+                    if current_date.month == 12:
+                        current_date = current_date.replace(year=current_date.year + 1, month=1)
+                    else:
+                        current_date = current_date.replace(month=current_date.month + 1)
                     
         for t in self.transactions:
             if t.get('sale_date'):
-                date_str = t['sale_date'].strftime('%Y-%m')
+                date_str = t['sale_date'].strftime('%Y-%m-%d') if is_daily else t['sale_date'].strftime('%Y-%m')
             else:
                 date_str = 'N/A'
             if date_str != 'N/A':

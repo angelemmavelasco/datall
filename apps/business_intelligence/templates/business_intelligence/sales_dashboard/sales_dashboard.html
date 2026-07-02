@@ -291,18 +291,56 @@
             <p class="text-xl text-title">{{ kpis.customers_with_purchases|default:0|floatformat:0|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-muted text-sm text-strong">Margen</p>
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Margen
+                </span>
+                <span class="custom-tooltip flex items-center" data-title="
+                Los umbrales de margen para rutas regulares (no distribuidores, no cuentas clave, etc.) son:
+                - Excelente: 43% o más
+                - Óptimo: 40% - 42.99%
+                - Regular: 37% - 39.99%
+                - Malo: 35% - 36.99%
+                - Muy malo: menos del 35%
+                ">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+                    </svg>
+                </span>
+            </p>
 
             {% if request.user|has_group:"vendedor" %}
-                {% if kpis.margin >= 35 %}
-                <p class="text-xl text-green-700 font-semibold">Óptimo</p>
-                {% elif kpis.margin >= 25 %}
-                <p class="text-xl text-yellow-700 font-semibold">Medio</p>
+                {% if kpis.margin >= 43 %}
+                <p class="text-xl text-green-600 font-semibold">Excelente</p>
+                {% elif kpis.margin >= 40 %}
+                <p class="text-xl text-green-500 font-semibold">Óptimo</p>
+                {% elif kpis.margin >= 37 %}
+                <p class="text-xl text-yellow-500 font-semibold">Regular</p>
+                {% elif kpis.margin >= 35 %}
+                <p class="text-xl text-red-500 font-semibold">Malo</p>
                 {% else %}
-                <p class="text-xl text-red-700 font-semibold">Bajo</p>
+                <p class="text-xl text-red-500 font-semibold">Muy malo</p>
                 {% endif %}
             {% else %}
-                <p class="text-xl text-strong">{{ kpis.margin|floatformat:2|intcomma }}%</p>
+                <p class="text-xl text-strong">
+                    {{ kpis.margin|floatformat:2|intcomma }}%
+                    <span class="text-[12px]">
+                        {% if kpis.margin >= 43 %}
+                            <span class="text-green-600">Excelente</span>
+                        {% elif kpis.margin >= 40 %}
+                            <span class="text-green-500">Óptimo</span>
+                        {% elif kpis.margin >= 37 %}
+                            <span class="text-yellow-500">Regular</span>
+                        {% elif kpis.margin >= 35 %}
+                            <span class="text-red-500">Malo</span>
+                        {% else %}
+                            <span class="text-red-500">Muy malo</span>
+                        {% endif %}
+                    </span>
+                </p>
             {% endif %}
         </div>
     </div>
@@ -324,23 +362,34 @@
         <div class="border border-border rounded p-2 bg-container  min-h-98">
             <p class="text-title text-sm text-center mt-2 mb-2">Venta neta por ruta</p>
 
-            <div class="overflow-x-auto rounded overflow-y-auto h-80">
-                <table class="table-fixed w-full rounded max-h-80">
+            <div class="overflow-auto rounded overflow-y-auto h-80">
+                <table class="table-fixed w-full rounded max-h-80 border-separate border-spacing-0">
                     <thead>
-                        <tr class="border-b border-border">
-                            <th class="w-10 p-2">Ruta</th>
-                            <th class="w-30 p-2 text-center">Venta neta</th>
-                            <th class="w-30 p-2 text-center">Objetivo</th>
-                            <th class="w-30 p-2 text-center">Diferencia</th>
-                            <th class="w-20 p-2 text-center">Alcance</th>
-                            <th class="w-20 p-2 text-center">Margen</th>
+                        <tr class="">
+                            <th class="w-30 p-2 text-center border-b border-r border-border sticky top-0 z-10 bg-container left-0">Ruta</th>
+                            <th class="w-30 p-2 text-center border-b border-border sticky top-0 z-[5px] bg-container">Venta neta</th>
+                            <th class="w-30 p-2 text-center border-b border-border sticky top-0 z-[5px] bg-container">Objetivo</th>
+                            <th class="w-30 p-2 text-center border-b border-border sticky top-0 z-[5px] bg-container">Diferencia</th>
+                            <th class="w-20 p-2 text-center border-b border-border sticky top-0 z-[5px] bg-container">Alcance</th>
+                            <th class="w-20 p-2 text-center border-b border-border sticky top-0 z-[5px] bg-container">Margen</th>
                         </tr>
                     </thead>
 
                     <tbody>
                         {% for route in route_table %}
                         <tr>
-                            <td class="p-2 text-left">{{ route.id }} {{ route.name|title }}</td>
+
+                            <td class="min-w-[240px] max-w-[240px] w-[240px] p-2 border-r border-border sticky left-0 z-[7px] bg-container">
+                                
+                                <a href="{% url 'business_intelligence:routes_kpis' %}?date_start={{ selected_date_start|default:'' }}&date_end={{ selected_date_end|default:'' }}&route={{ route.id }}" target="_blank" class="flex items-center justify-start gap-1 underline text-strong">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="min-w-[14px]">
+                                        <path d="M22 12A10 10 0 1 1 12 2" />
+                                        <path d="M22 2 12 12" />
+                                        <path d="M16 2h6v6" />
+                                    </svg>
+                                    <span class="truncate text-title">{{ route.id|upper }} {{ route.name|title }}</span>
+                                </a>
+                            </td>
                             <td class="p-2 text-right">$ {{ route.total_net_sale|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.total_target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.total_difference|floatformat:2|intcomma }}</td>
@@ -395,16 +444,15 @@
         <div class="border border-border rounded p-2 bg-container">
             <p class="text-title text-sm text-center mt-2 mb-2">Top 50 productos</p>
 
-            <div class="overflow-x-auto rounded overflow-y-auto h-80">
-                <table class="table-fixed w-full rounded max-h-80">
+            <div class="overflow-auto rounded overflow-y-auto h-80">
+                <table class="table-fixed w-full rounded max-h-80 border-separate border-spacing-0">
                     <thead>
-                        <tr class="border-b border-border">
-                            <th class="w-20 p-2 text-center">Clave</th>
-                            <th class="w-40 p-2 text-center">Producto</th>
-                            <th class="w-20 p-2 text-center">Unidades</th>
-                            <th class="w-30 p-2 text-center">Venta neta</th>
-                            <th class="w-30 p-2 text-center">Venta total</th>
-                            <th class="w-20 p-2 text-center">Margen</th>
+                        <tr class="">
+                            <th class="w-40 truncate p-2 text-center z-10 sticky left-0 bg-container top-0 border-r border-border border-b">Producto</th>
+                            <th class="w-20 p-2 text-center sticky top-0  border-b border-border z-[5px] bg-container">Unidades</th>
+                            <th class="w-30 p-2 text-center sticky top-0  border-b border-border z-[5px] bg-container">Venta neta</th>
+                            <th class="w-30 p-2 text-center sticky top-0  border-b border-border z-[5px] bg-container">Venta total</th>
+                            <th class="w-20 p-2 text-center sticky top-0  border-b border-border z-[5px] bg-container">Margen</th>
                         </tr>
                     </thead>
 
@@ -412,25 +460,32 @@
                     <tbody>
                         {% for product in product_table %}
                         <tr>
-                            <td class="p-2">{{ product.id }}</td>
-                            <td class="p-2 text-right">{{ product.name|title }}</td>
+                            <td class="p-2 text-left truncate border-r border-border sticky left-0 z-[7px] bg-container">{{ product.id|upper }} {{ product.name|title }}</td>
                             <td class="p-2 text-right">{{ product.total_units|floatformat:0|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ product.total_net_sale|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ product.total_gross_sale|floatformat:2|intcomma }}</td>
-                            <td class="p-2 flex justify-center items-center
-                                {% if product.total_margin >= 35 %}
-                                text-green-500
-                                {% elif product.total_margin >= 25 %}
+                            <td class="p-2 flex justify-center items-center font-medium
+                                {% if product.total_margin >= 43 %}
+                                text-emerald-600
+                                {% elif product.total_margin >= 40 %}
+                                text-emerald-400
+                                {% elif product.total_margin >= 37 %}
                                 text-yellow-500
+                                {% elif product.total_margin >= 35 %}
+                                text-orange-500
                                 {% else %}
                                 text-red-500
                                 {% endif %}
                                 ">
+                                {% if request.user|has_group:"vendedor" %}
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                     stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
                                     <circle cx="12" cy="12" r="10" />
                                 </svg>
+                                {% else %}
+                                    {{ product.total_margin|floatformat:2|intcomma }}%
+                                {% endif %}
                             </td>
 
                         </tr>
@@ -453,40 +508,56 @@
             <p class="text-title text-sm text-center mt-2 mb-2">Top 50 clientes</p>
 
             <div class="overflow-x-auto rounded overflow-y-auto h-80">
-                <table class="table-fixed w-full rounded max-h-80">
+                <table class="table-fixed w-full rounded max-h-80 border-separate border-spacing-0">
                     <thead>
-                        <tr class="border-b border-border">
-                            <th class="w-10 p-2 text-center">Clave</th>
-                            <th class="w-30 p-2 text-center">Cliente</th>
-                            <th class="w-30 p-2 text-center">Venta neta</th>
-                            <th class="w-30 p-2 text-center">Venta total</th>
-                            <th class="w-20 p-2 text-center">Unidades</th>
-                            <th class="w-20 p-2 text-center">Margen</th>
+                        <tr class="">
+                            <th class="w-40 p-2 text-center border-r border-border border-b sticky top-0 z-10 bg-container left-0">Cliente</th>
+                            <th class="w-30 p-2 text-center border-border border-b sticky top-0 z-[5px] bg-container">Venta neta</th>
+                            <th class="w-30 p-2 text-center border-border border-b sticky top-0 z-[5px] bg-container">Venta total</th>
+                            <th class="w-20 p-2 text-center border-border border-b sticky top-0 z-[5px] bg-container">Unidades</th>
+                            <th class="w-20 p-2 text-center border-border border-b sticky top-0 z-[5px] bg-container">Margen</th>
                         </tr>
                     </thead>
 
                     <tbody>
                         {% for customer in customer_table %}
                         <tr>
-                            <td class="p-2">{{ customer.id }}</td>
-                            <td class="p-2 text-right">{{ customer.name|title }}</td>
+                            <td class=" p-2 border-r border-border sticky z-[7px] bg-container sticky left-0 bg-container">
+                                
+                                <a href="{% url 'business_intelligence:customer_kpis' customer.id %}?date_start={{ selected_date_start|default:'' }}&date_end={{ selected_date_end|default:'' }}" target="_blank" class="flex items-center justify-start gap-1 underline text-strong">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="min-w-[14px]">
+                                        <path d="M22 12A10 10 0 1 1 12 2" />
+                                        <path d="M22 2 12 12" />
+                                        <path d="M16 2h6v6" />
+                                    </svg>
+                                    <span class="truncate text-title">{{ customer.id|upper }} {{ customer.name|title }}</span>
+                                </a>
+                            </td>
                             <td class="p-2 text-right">$ {{ customer.total_net_sale|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ customer.total_gross_sale|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">{{ customer.total_units|floatformat:0|intcomma }}</td>
                             <td class="p-2 flex justify-center items-center
-                                {% if customer.total_margin >= 35 %}
-                                text-green-500
-                                {% elif customer.total_margin >= 25 %}
+                                {% if customer.total_margin >= 43 %}
+                                text-emerald-600
+                                {% elif customer.total_margin >= 40 %}
+                                text-emerald-400
+                                {% elif customer.total_margin >= 37 %}
                                 text-yellow-500
+                                {% elif customer.total_margin >= 35 %}
+                                text-orange-500
                                 {% else %}
                                 text-red-500
                                 {% endif %}
                                 ">
+                                {% if request.user|has_group:"vendedor" %}
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                     stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
                                     <circle cx="12" cy="12" r="10" />
                                 </svg>
+                                {% else %}
+                                    {{ customer.total_margin|floatformat:2|intcomma }}%
+                                {% endif %}
                             </td>
 
                         </tr>

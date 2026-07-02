@@ -19,10 +19,13 @@
     --color-yellow-500: oklch(79.5% 0.184 86.047);
     --color-yellow-600: oklch(68.1% 0.162 75.834);
     --color-yellow-700: oklch(55.4% 0.135 66.442);
+    --color-green-400: oklch(79.2% 0.209 151.711);
     --color-green-500: oklch(72.3% 0.219 149.579);
     --color-green-600: oklch(62.7% 0.194 149.214);
     --color-green-700: oklch(52.7% 0.154 150.069);
     --color-green-950: oklch(26.6% 0.065 152.934);
+    --color-emerald-400: oklch(76.5% 0.177 163.223);
+    --color-emerald-500: oklch(69.6% 0.17 162.48);
     --color-emerald-600: oklch(59.6% 0.145 163.225);
     --color-cyan-600: oklch(60.9% 0.126 221.723);
     --color-sky-400: oklch(74.6% 0.16 232.661);
@@ -367,6 +370,33 @@
   }
   .z-50 {
     z-index: 50;
+  }
+  .z-\[1px\] {
+    z-index: 1px;
+  }
+  .z-\[5px\] {
+    z-index: 5px;
+  }
+  .z-\[7\] {
+    z-index: 7;
+  }
+  .z-\[7px\] {
+    z-index: 7px;
+  }
+  .z-\[10px\] {
+    z-index: 10px;
+  }
+  .z-\[12px\] {
+    z-index: 12px;
+  }
+  .z-\[15px\] {
+    z-index: 15px;
+  }
+  .z-\[25\] {
+    z-index: 25;
+  }
+  .z-\[25px\] {
+    z-index: 25px;
   }
   .col-span-1 {
     grid-column: span 1 / span 1;
@@ -1215,8 +1245,20 @@
   .text-cyan-600 {
     color: var(--color-cyan-600);
   }
+  .text-emerald-400 {
+    color: var(--color-emerald-400);
+  }
+  .text-emerald-500 {
+    color: var(--color-emerald-500);
+  }
+  .text-emerald-600 {
+    color: var(--color-emerald-600);
+  }
   .text-gray-500 {
     color: var(--color-gray-500);
+  }
+  .text-green-400 {
+    color: var(--color-green-400);
   }
   .text-green-500 {
     color: var(--color-green-500);
