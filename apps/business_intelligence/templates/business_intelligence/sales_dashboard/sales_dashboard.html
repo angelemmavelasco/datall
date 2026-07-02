@@ -394,20 +394,28 @@
                             <td class="p-2 text-right">$ {{ route.total_target|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ route.total_difference|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">{{ route.total_scope|floatformat:2|intcomma }} %</td>
-                            <td class="p-2 text-center flex justify-center items-center
-                                {% if route.total_margin >= 35 %}
-                                text-green-700
-                                {% elif route.total_margin >= 25 %}
-                                text-yellow-700
+                            <td class="p-2 flex justify-center items-center font-medium
+                                {% if route.total_margin >= 43 %}
+                                text-emerald-600
+                                {% elif route.total_margin >= 40 %}
+                                text-emerald-400
+                                {% elif route.total_margin >= 37 %}
+                                text-yellow-500
+                                {% elif route.total_margin >= 35 %}
+                                text-orange-500
                                 {% else %}
-                                text-red-700
+                                text-red-500
                                 {% endif %}
                                 ">
+                                {% if request.user|has_group:"vendedor" %}
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                     stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
                                     <circle cx="12" cy="12" r="10" />
                                 </svg>
+                                {% else %}
+                                    {{ route.total_margin|floatformat:2|intcomma }}%
+                                {% endif %}
                             </td>
 
                         </tr>
@@ -536,7 +544,7 @@
                             <td class="p-2 text-right">$ {{ customer.total_net_sale|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ customer.total_gross_sale|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">{{ customer.total_units|floatformat:0|intcomma }}</td>
-                            <td class="p-2 flex justify-center items-center
+                            <td class="p-2 flex justify-center items-center font-medium
                                 {% if customer.total_margin >= 43 %}
                                 text-emerald-600
                                 {% elif customer.total_margin >= 40 %}
@@ -595,6 +603,7 @@
         const yellowColor = '#B5B543'
         const orangeColor = '#B56743'
         const purpleColor = '#A843B5'
+        const isMobile = window.innerWidth < 768;
 
 
 
@@ -620,15 +629,14 @@
         },
         legend: {
             data: ['Venta neta', 'Unidades'],
-            top: 0,
-            left: 0,
+            bottom: 0,
+            left: 'center',
         },
         grid: {
             left: '3%',
             right: '4%',
-            bottom: '3%',
+            bottom: '12%',
             containLabel: true,
-
         },
         toolbox: {
             feature: {
@@ -641,28 +649,46 @@
             data: timelineData.categories,
             splitLine: {
                 show: false
+            },
+            axisLabel: {
+                show: !isMobile
+            },
+            axisTick: {
+                show: !isMobile
             }
         },
         yAxis: [
             {
                 type: 'value',
-                name: 'Venta neta',
+                // name: 'Venta neta',
                 splitLine: {
                     lineStyle: {
                         opacity: 0.10,
                     },
                     show: true
                 },
+                axisLabel: {
+                    show: !isMobile
+                },
+                axisTick: {
+                    show: !isMobile
+                },
                 show: true
             },
             {
                 type: 'value',
-                name: 'Unidades',
+                // name: 'Unidades',
                 splitLine: {
                     lineStyle: {
                         opacity: 0.1,
                     },
                     show: false
+                },
+                axisLabel: {
+                    show: !isMobile
+                },
+                axisTick: {
+                    show: !isMobile
                 },
                 show: true
             }
@@ -726,6 +752,12 @@
                         opacity: 0.10,
                     },
                     show: true
+                },
+                axisLabel: {
+                    show: !isMobile
+                },
+                axisTick: {
+                    show: !isMobile
                 }
             },
             yAxis: {
@@ -837,7 +869,7 @@
                 trigger: 'item'
             },
             legend: {
-                top: '10%',
+                bottom: '5%',
                 left: 'center'
             },
             series: [
@@ -845,7 +877,7 @@
                     name: 'Ventas',
                     type: 'pie',
                     radius: ['45%', '70%'],
-                    center: ['50%', '60%'],
+                    center: ['50%', '50%'],
                     avoidLabelOverlap: false,
                     padAngle: 5,
                     itemStyle: {
