@@ -25,6 +25,7 @@ class User(AbstractUser):
         blank=True,
     )
 
+
     phone = models.CharField(
         max_length=15,
         null=True,
@@ -49,6 +50,12 @@ class User(AbstractUser):
     unique_personal_id = models.CharField(max_length=20, null=True, blank=True)
 
     notes = models.TextField(max_length=500, null=True, blank=True)
+
+    photo = models.FileField(
+        upload_to='users/photos',
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} - {self.username}"

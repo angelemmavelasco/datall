@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 .DS_Store
 DS_Store
+
+media/
 # C extensions
 *.so
 db.sqlite3
