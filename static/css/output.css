@@ -371,6 +371,9 @@
   .z-50 {
     z-index: 50;
   }
+  .z-200 {
+    z-index: 200;
+  }
   .z-\[5px\] {
     z-index: 5px;
   }
@@ -641,8 +644,14 @@
   .max-w-20 {
     max-width: calc(var(--spacing) * 20);
   }
+  .max-w-30 {
+    max-width: calc(var(--spacing) * 30);
+  }
   .max-w-40 {
     max-width: calc(var(--spacing) * 40);
+  }
+  .max-w-50 {
+    max-width: calc(var(--spacing) * 50);
   }
   .max-w-\[120px\] {
     max-width: 120px;
@@ -668,8 +677,14 @@
   .min-w-25 {
     min-width: calc(var(--spacing) * 25);
   }
+  .min-w-30 {
+    min-width: calc(var(--spacing) * 30);
+  }
   .min-w-40 {
     min-width: calc(var(--spacing) * 40);
+  }
+  .min-w-50 {
+    min-width: calc(var(--spacing) * 50);
   }
   .min-w-60 {
     min-width: calc(var(--spacing) * 60);

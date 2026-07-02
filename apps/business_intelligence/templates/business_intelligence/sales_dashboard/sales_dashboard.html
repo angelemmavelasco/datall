@@ -8,7 +8,7 @@
 
 {% block module_actions %}
 
-<button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button>
+{% comment %} <button onclick="window.print()" class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button> {% endcomment %}
 
 <!-- <button onclick="toggleAssistant()" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center justify-center gap-1">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-astroid-icon lucide-astroid"><path d="M12.983 21.186a1 1 0 0 1-1.966 0 10 10 0 0 0-8.203-8.203 1 1 0 0 1 0-1.966 10 10 0 0 0 8.203-8.203 1 1 0 0 1 1.966 0 10 10 0 0 0 8.203 8.203 1 1 0 0 1 0 1.966 10 10 0 0 0-8.203 8.203"/></svg>
@@ -40,7 +40,7 @@
 {% endblock %}
 
 {% block ai_insights_url %}
-    {% url 'data_assistant:data_assistant' %}?report_type=sales_dashboard
+{% url 'data_assistant:data_assistant' %}?report_type=sales_dashboard
 {% endblock %}
 
 
@@ -255,19 +255,79 @@
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-muted text-sm text-strong">Venta neta</p>
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Venta neta
+                </span>
+                <span class="custom-tooltip tooltip-left"
+                    data-title="Venta efectuada en el periodo seleccionado la cual ya contempla notas de crédito y devoluciones">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
             <p class="text-xl text-green-500">$ {{ kpis.net_sale|default:0.00|floatformat:2|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-muted text-sm text-strong">Objetivo</p>
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Objetivo
+                </span>
+                <span class="custom-tooltip tooltip-right"
+                    data-title="Venta neta a la cual se espera llegar al finalizar el periodo seleccionado. Todos los objetivos se plantean de forma mensual.">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
             <p class="text-xl text-blue-500">$ {{ kpis.target|default:0.00|floatformat:2|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-muted text-sm text-strong">Alcance</p>
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Alcance
+                </span>
+                <span class="custom-tooltip tooltip-left"
+                    data-title="Porcentaje que representa la venta neta sobre el objetivo fijado para el periodo seleccionado.">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
             <p class="text-xl text-violet-500">{{ kpis.scope|default:0.00|floatformat:2|intcomma }} %</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col  bg-container">
-            <p class="text-muted text-sm text-strong">Diferencia</p>
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Diferencia
+                </span>
+                <span class="custom-tooltip tooltip-right"
+                    data-title="Venta neta faltante para superar el objetivo del periodo seleccionado.">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
             <p class="text-xl
             {% if kpis.difference >= 0 %}
             text-blue-500
@@ -279,15 +339,60 @@
         </div>
 
         <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-muted text-sm text-strong">Venta total</p>
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Venta total
+                </span>
+                <span class="custom-tooltip tooltip-left"
+                    data-title="Venta efectuada en el periodo seleccionado la cual no contempla notas de crédito y devoluciones">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
             <p class="text-xl text-title">$ {{ kpis.total_sale|default:0.00|floatformat:2|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-muted text-sm text-strong">Unidades</p>
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Unidades
+                </span>
+                <span class="custom-tooltip tooltip-right"
+                    data-title="Unidades surtidas en el periodo seleccionado las cuales ya contemplan notas de crédito y devoluciones.">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
             <p class="text-xl text-title">{{ kpis.units|default:0.00|floatformat:0|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
-            <p class="text-muted text-sm text-strong">Clientes con compras</p>
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Clientes con compras
+                </span>
+                <span class="custom-tooltip tooltip-left"
+                    data-title="Cantidad de clientes que cuentan con al menos una transacción en el periodo seleccionado.">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
             <p class="text-xl text-title">{{ kpis.customers_with_purchases|default:0|floatformat:0|intcomma }}</p>
         </div>
         <div class="border border-border rounded p-2 flex flex-col bg-container">
@@ -295,7 +400,8 @@
                 <span>
                     Margen
                 </span>
-                <span class="custom-tooltip flex items-center" data-title="
+                <span class="custom-tooltip flex items-center" data-title="Resulta de la proporción de la utilidad bruta generada respecto a la venta neta.
+                Ejemplo: Una utilidad bruta de $200 sobre una venta neta de $500 da como resultado un margen del 40%.
                 Los umbrales de margen para rutas regulares (no distribuidores, no cuentas clave, etc.) son:
                 - Excelente: 43% o más
                 - Óptimo: 40% - 42.99%
@@ -303,44 +409,45 @@
                 - Malo: 35% - 36.99%
                 - Muy malo: menos del 35%
                 ">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark">
-                        <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
                     </svg>
                 </span>
             </p>
 
             {% if request.user|has_group:"vendedor" %}
-                {% if kpis.margin >= 43 %}
-                <p class="text-xl text-green-600 font-semibold">Excelente</p>
-                {% elif kpis.margin >= 40 %}
-                <p class="text-xl text-green-500 font-semibold">Óptimo</p>
-                {% elif kpis.margin >= 37 %}
-                <p class="text-xl text-yellow-500 font-semibold">Regular</p>
-                {% elif kpis.margin >= 35 %}
-                <p class="text-xl text-red-500 font-semibold">Malo</p>
-                {% else %}
-                <p class="text-xl text-red-500 font-semibold">Muy malo</p>
-                {% endif %}
+            {% if kpis.margin >= 43 %}
+            <p class="text-xl text-green-600 font-semibold">Excelente</p>
+            {% elif kpis.margin >= 40 %}
+            <p class="text-xl text-green-500 font-semibold">Óptimo</p>
+            {% elif kpis.margin >= 37 %}
+            <p class="text-xl text-yellow-500 font-semibold">Regular</p>
+            {% elif kpis.margin >= 35 %}
+            <p class="text-xl text-red-500 font-semibold">Malo</p>
             {% else %}
-                <p class="text-xl text-strong">
-                    {{ kpis.margin|floatformat:2|intcomma }}%
-                    <span class="text-[12px]">
-                        {% if kpis.margin >= 43 %}
-                            <span class="text-green-600">Excelente</span>
-                        {% elif kpis.margin >= 40 %}
-                            <span class="text-green-500">Óptimo</span>
-                        {% elif kpis.margin >= 37 %}
-                            <span class="text-yellow-500">Regular</span>
-                        {% elif kpis.margin >= 35 %}
-                            <span class="text-red-500">Malo</span>
-                        {% else %}
-                            <span class="text-red-500">Muy malo</span>
-                        {% endif %}
-                    </span>
-                </p>
+            <p class="text-xl text-red-500 font-semibold">Muy malo</p>
+            {% endif %}
+            {% else %}
+            <p class="text-xl text-strong">
+                {{ kpis.margin|floatformat:2|intcomma }}%
+                <span class="text-[12px]">
+                    {% if kpis.margin >= 43 %}
+                    <span class="text-green-600">Excelente</span>
+                    {% elif kpis.margin >= 40 %}
+                    <span class="text-green-500">Óptimo</span>
+                    {% elif kpis.margin >= 37 %}
+                    <span class="text-yellow-500">Regular</span>
+                    {% elif kpis.margin >= 35 %}
+                    <span class="text-red-500">Malo</span>
+                    {% else %}
+                    <span class="text-red-500">Muy malo</span>
+                    {% endif %}
+                </span>
+            </p>
             {% endif %}
         </div>
     </div>
@@ -348,14 +455,40 @@
     <!-- Timeline -->
     <div class="h-100 border border-border rounded bg-container">
         <div id="timelineChart" class="w-full h-full"></div>
+        
     </div>
 
 
     <!-- Ventas or centro de distribución, Barchart y Desglose por ruta, tabla -->
+    <div class="">
+        <p class="text-muted text-sm text-strong flex items-center gap-2 mb-2">
+            <span>
+                Alcance de objetivos
+            </span>
+            <span class="custom-tooltip tooltip-left" data-title="
+            • Venta neta por centro de distribución: muestra el desempeño por centro de distribución (gerencia).
+            Dicho cálculo se hace atribuyendo venta neta y objetivos de las rutas que pertenecen a ese cedis.
+            Ejemplo: la ruta 1 pertenece al cedis A, y durante un periodo dado, tiene una venta por $200 cuyo lugar de emisión es el cedis B. En este caso, el cedis A tendrá una venta de $200 (debido a su ruta 1), y el cedis B no tendrá una venta asociada a esta transacción.
+
+            • Venta neta por ruta: muestra el desempeño individual de cada ruta, esto en cuestión de objetivos, venta neta y margen.
+            A menos que se filtre por lugar de venta, los resultados contemplan el desempeño general de la ruta en todos los cedis.
+
+            ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                    <path d="M12 17h.01" />
+                </svg>
+            </span>
+
+        </p>
+        <hr class="border-border">
+    </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-200 md:h-100 ">
         <div class=" border border-border rounded bg-container  min-h-98" id="warehouseBarChart">
-            <p class="text-title">Venta neta por centro de distribución</p>
 
         </div>
 
@@ -366,12 +499,32 @@
                 <table class="table-fixed w-full rounded max-h-80 border-separate border-spacing-0">
                     <thead>
                         <tr class="">
-                            <th class="w-30 p-2 text-center border-b border-r border-border sticky top-0 z-10 bg-container left-0">Ruta</th>
-                            <th class="w-30 p-2 text-center border-b border-border sticky top-0 z-[5px] bg-container">Venta neta</th>
-                            <th class="w-30 p-2 text-center border-b border-border sticky top-0 z-[5px] bg-container">Objetivo</th>
-                            <th class="w-30 p-2 text-center border-b border-border sticky top-0 z-[5px] bg-container">Diferencia</th>
-                            <th class="w-20 p-2 text-center border-b border-border sticky top-0 z-[5px] bg-container">Alcance</th>
-                            <th class="w-20 p-2 text-center border-b border-border sticky top-0 z-[5px] bg-container">Margen</th>
+                            <th
+                                class="w-30 border-b border-r border-border sticky top-0 z-20 bg-container left-0">
+                                <div class="flex items-center gap-2 w-full justify-center">
+                                    <span>
+                                        Ruta
+                                    </span>
+                                    <span class="custom-tooltip tooltip-left" data-title="
+                                        Da clic en el número y nombre de la ruta para ser redirigido a los kpis de la ruta en el periodo seleccionado.
+                                        
+                                        ">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                                            <path d="M12 17h.01" />
+                                        </svg>
+                                    </span>
+                                </div>
+                            </th>
+                            <th class="w-30 p-2 text-center border-b border-border sticky top-0 z-10 bg-container">Venta neta</th>
+                            <th class="w-30 p-2 text-center border-b border-border sticky top-0 z-10 bg-container">Objetivo</th>
+                            <th class="w-30 p-2 text-center border-b border-border sticky top-0 z-10 bg-container">Diferencia</th>
+                            <th class="w-20 p-2 text-center border-b border-border sticky top-0 z-10 bg-container">Alcance</th>
+                            <th class="w-20 p-2 text-center border-b border-border sticky top-0 z-10 bg-container">Margen</th>
                         </tr>
                     </thead>
 
@@ -379,10 +532,14 @@
                         {% for route in route_table %}
                         <tr>
 
-                            <td class="min-w-[240px] max-w-[240px] w-[240px] p-2 border-r border-border sticky left-0 z-[7px] bg-container">
-                                
-                                <a href="{% url 'business_intelligence:routes_kpis' %}?date_start={{ selected_date_start|default:'' }}&date_end={{ selected_date_end|default:'' }}&route={{ route.id }}" target="_blank" class="flex items-center justify-start gap-1 underline text-strong">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="min-w-[14px]">
+                            <td
+                                class="w-30 min-w-30 max-w-30 p-2 border-r border-border sticky left-0 z-10 bg-container">
+
+                                <a href="{% url 'business_intelligence:routes_kpis' %}?date_start={{ selected_date_start|default:'' }}&date_end={{ selected_date_end|default:'' }}&route={{ route.id }}"
+                                    target="_blank" class="flex items-center justify-start gap-1 underline text-strong">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="min-w-[14px]">
                                         <path d="M22 12A10 10 0 1 1 12 2" />
                                         <path d="M22 2 12 12" />
                                         <path d="M16 2h6v6" />
@@ -414,7 +571,7 @@
                                     <circle cx="12" cy="12" r="10" />
                                 </svg>
                                 {% else %}
-                                    {{ route.total_margin|floatformat:2|intcomma }}%
+                                {{ route.total_margin|floatformat:2|intcomma }}%
                                 {% endif %}
                             </td>
 
@@ -435,6 +592,28 @@
 
 
     <!-- Venta neta vs cuota por clase de producto -->
+    <div class="">
+        <p class="text-muted text-sm text-strong flex items-center gap-2 mb-2">
+            <span>
+                Contribución
+            </span>
+            <span class="custom-tooltip tooltip-left" data-title="
+            • Venta neta por clase de producto: muestra el desempeño de cada clase de producto y su contribución monetaria a la venta neta total del periodo seleccionado.
+            • Venta neta por categoría de producto: muestra el desempeño de cada categoría de producto y su contribución monetaria a la venta neta total del periodo seleccionado.
+            
+            ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                    <path d="M12 17h.01" />
+                </svg>
+            </span>
+
+        </p>
+        <hr class="border-border">
+    </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-200 md:h-100">
         <div class=" border border-border rounded bg-container flex min-h-98 items-center justify-center"
@@ -448,6 +627,32 @@
 
     </div>
 
+    <div class="">
+        <p class="text-muted text-sm text-strong flex items-center gap-2 mb-2">
+            <span>
+                Mejor desempeño
+            </span>
+            <span class="custom-tooltip tooltip-left" data-title="
+            • Top 50 productos: muestra el top 50 de productos ordenados por venta neta.
+            • Top 50 clientes: muestra el top 50 de clientes ordenados por venta neta.
+
+            *Se usan los mismos umbrales de margen que el de rutas y centros de distribución para categorizar.
+
+            ">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                    <path d="M12 17h.01" />
+                </svg>
+            </span>
+
+        </p>
+        <hr class="border-border">
+    </div>
+
+
     <div class="grid  grid-cols-1 md:grid-cols-2 gap-4 h-200 md:h-100">
         <div class="border border-border rounded p-2 bg-container">
             <p class="text-title text-sm text-center mt-2 mb-2">Top 50 productos</p>
@@ -456,11 +661,17 @@
                 <table class="table-fixed w-full rounded max-h-80 border-separate border-spacing-0">
                     <thead>
                         <tr class="">
-                            <th class="w-40 truncate p-2 text-center z-10 sticky left-0 bg-container top-0 border-r border-border border-b">Producto</th>
-                            <th class="w-20 p-2 text-center sticky top-0  border-b border-border z-[5px] bg-container">Unidades</th>
-                            <th class="w-30 p-2 text-center sticky top-0  border-b border-border z-[5px] bg-container">Venta neta</th>
-                            <th class="w-30 p-2 text-center sticky top-0  border-b border-border z-[5px] bg-container">Venta total</th>
-                            <th class="w-20 p-2 text-center sticky top-0  border-b border-border z-[5px] bg-container">Margen</th>
+                            <th
+                                class="w-40 truncate p-2 text-center z-20 sticky left-0 bg-container top-0 border-r border-border border-b">
+                                Producto</th>
+                            <th class="w-20 p-2 text-center sticky top-0  border-b border-border z-10 bg-container">
+                                Unidades</th>
+                            <th class="w-30 p-2 text-center sticky top-0  border-b border-border z-10 bg-container">
+                                Venta neta</th>
+                            <th class="w-30 p-2 text-center sticky top-0  border-b border-border z-10 bg-container">
+                                Venta total</th>
+                            <th class="w-20 p-2 text-center sticky top-0  border-b border-border z-10 bg-container">
+                                Margen</th>
                         </tr>
                     </thead>
 
@@ -468,7 +679,7 @@
                     <tbody>
                         {% for product in product_table %}
                         <tr>
-                            <td class="p-2 text-left truncate border-r border-border sticky left-0 z-[7px] bg-container">{{ product.id|upper }} {{ product.name|title }}</td>
+                            <td class="p-2 text-left truncate border-r border-border sticky left-0 z-10 bg-container">{{ product.id|upper }} {{ product.name|title }}</td>
                             <td class="p-2 text-right">{{ product.total_units|floatformat:0|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ product.total_net_sale|floatformat:2|intcomma }}</td>
                             <td class="p-2 text-right">$ {{ product.total_gross_sale|floatformat:2|intcomma }}</td>
@@ -492,7 +703,7 @@
                                     <circle cx="12" cy="12" r="10" />
                                 </svg>
                                 {% else %}
-                                    {{ product.total_margin|floatformat:2|intcomma }}%
+                                {{ product.total_margin|floatformat:2|intcomma }}%
                                 {% endif %}
                             </td>
 
@@ -519,21 +730,25 @@
                 <table class="table-fixed w-full rounded max-h-80 border-separate border-spacing-0">
                     <thead>
                         <tr class="">
-                            <th class="w-40 p-2 text-center border-r border-border border-b sticky top-0 z-10 bg-container left-0">Cliente</th>
-                            <th class="w-30 p-2 text-center border-border border-b sticky top-0 z-[5px] bg-container">Venta neta</th>
-                            <th class="w-30 p-2 text-center border-border border-b sticky top-0 z-[5px] bg-container">Venta total</th>
-                            <th class="w-20 p-2 text-center border-border border-b sticky top-0 z-[5px] bg-container">Unidades</th>
-                            <th class="w-20 p-2 text-center border-border border-b sticky top-0 z-[5px] bg-container">Margen</th>
+                            <th
+                                class="w-40 p-2 text-center border-r border-border border-b sticky top-0 z-20 bg-container left-0">Cliente</th>
+                            <th class="w-30 p-2 text-center border-border border-b sticky top-0 z-10 bg-container">Venta neta</th>
+                            <th class="w-30 p-2 text-center border-border border-b sticky top-0 z-10 bg-container">Venta total</th>
+                            <th class="w-20 p-2 text-center border-border border-b sticky top-0 z-10 bg-container">Unidades</th>
+                            <th class="w-20 p-2 text-center border-border border-b sticky top-0 z-10 bg-container">Margen</th>
                         </tr>
                     </thead>
 
                     <tbody>
                         {% for customer in customer_table %}
                         <tr>
-                            <td class=" p-2 border-r border-border sticky z-[7px] bg-container sticky left-0 bg-container">
-                                
-                                <a href="{% url 'business_intelligence:customer_kpis' customer.id %}?date_start={{ selected_date_start|default:'' }}&date_end={{ selected_date_end|default:'' }}" target="_blank" class="flex items-center justify-start gap-1 underline text-strong">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="min-w-[14px]">
+                            <td class=" p-2 border-r border-border sticky z-10 bg-container sticky left-0 bg-container">
+
+                                <a href="{% url 'business_intelligence:customer_kpis' customer.id %}?date_start={{ selected_date_start|default:'' }}&date_end={{ selected_date_end|default:'' }}"
+                                    target="_blank" class="flex items-center justify-start gap-1 underline text-strong">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="min-w-[14px]">
                                         <path d="M22 12A10 10 0 1 1 12 2" />
                                         <path d="M22 2 12 12" />
                                         <path d="M16 2h6v6" />
@@ -564,7 +779,7 @@
                                     <circle cx="12" cy="12" r="10" />
                                 </svg>
                                 {% else %}
-                                    {{ customer.total_margin|floatformat:2|intcomma }}%
+                                {{ customer.total_margin|floatformat:2|intcomma }}%
                                 {% endif %}
                             </td>
 
@@ -611,9 +826,9 @@
 
         const timelineData = {{ timeline_data|safe }};
 
-        const timelineChart = echarts.init(document.getElementById('timelineChart'),);
+    const timelineChart = echarts.init(document.getElementById('timelineChart'),);
 
-        const timelineOptions = {
+    const timelineOptions = {
         color: [greenColor, blueColor],
         title: {
             text: 'Evolución de venta neta y unidades',
@@ -711,206 +926,206 @@
         ]
     };
 
-        timelineChart.setOption(timelineOptions);
+    timelineChart.setOption(timelineOptions);
 
     // Warehouse BarChart
 
-        const warehouseData = {{ warehouse_chart_data|safe }};
+    const warehouseData = {{ warehouse_chart_data|safe }};
 
-        const WarehouseBarOption = {
-            color: [greenColor, blueColor],
+    const WarehouseBarOption = {
+        color: [greenColor, blueColor],
+        textStyle: {
+            fontWeight: 'normal',
+            fontSize: 14,
+            color: titleColor
+        },
+        title: {
+            text: 'Venta neta por centro de distribución',
             textStyle: {
                 fontWeight: 'normal',
                 fontSize: 14,
                 color: titleColor
-            },
-            title: {
-                text: 'Venta neta por centro de distribución',
-                textStyle: {
-                    fontWeight: 'normal',
-                    fontSize: 14,
-                    color: titleColor
-                }
-            },
-            toolbox: {
-                feature: {
-                    saveAsImage: {}
-                }
-            },
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: {
-                    type: 'shadow'
-                }
-            },
-            legend: {},
-            xAxis: {
-                type: 'value',
-                boundaryGap: [0, 0.01],
-                splitLine: {
-                    lineStyle: {
-                        opacity: 0.10,
-                    },
-                    show: true
+            }
+        },
+        toolbox: {
+            feature: {
+                saveAsImage: {}
+            }
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow'
+            }
+        },
+        legend: {},
+        xAxis: {
+            type: 'value',
+            boundaryGap: [0, 0.01],
+            splitLine: {
+                lineStyle: {
+                    opacity: 0.10,
                 },
-                axisLabel: {
-                    show: !isMobile
-                },
-                axisTick: {
-                    show: !isMobile
-                }
+                show: true
             },
-            yAxis: {
-                type: 'category',
-                data: warehouseData.categories
+            axisLabel: {
+                show: !isMobile
             },
-            series: [
-                {
-                    name: 'Venta',
-                    type: 'bar',
-                    data: warehouseData.sales,
-                },
-                {
-                    name: 'Objetivo',
-                    type: 'bar',
-                    data: warehouseData.targets,
-                }
-            ]
-        };
-        const warehouseBarChart = echarts.init(document.getElementById('warehouseBarChart'),);
-        warehouseBarChart.setOption(WarehouseBarOption);
+            axisTick: {
+                show: !isMobile
+            }
+        },
+        yAxis: {
+            type: 'category',
+            data: warehouseData.categories
+        },
+        series: [
+            {
+                name: 'Venta',
+                type: 'bar',
+                data: warehouseData.sales,
+            },
+            {
+                name: 'Objetivo',
+                type: 'bar',
+                data: warehouseData.targets,
+            }
+        ]
+    };
+    const warehouseBarChart = echarts.init(document.getElementById('warehouseBarChart'),);
+    warehouseBarChart.setOption(WarehouseBarOption);
 
 
     // Product class bar chart
-        const formatCurrency = (value) => {
-            return new Intl.NumberFormat('es-MX', {
-                style: 'currency',
-                currency: 'MXN'
-            }).format(value);
-        };
+    const formatCurrency = (value) => {
+        return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN'
+        }).format(value);
+    };
 
-        const productClassData = {{ product_class_chart_data|safe }};
+    const productClassData = {{ product_class_chart_data|safe }};
 
-        const ProductClassBarOption = {
-            title: {
-                text: 'Venta neta por clase de producto',
-                textStyle: {
+    const ProductClassBarOption = {
+        title: {
+            text: 'Venta neta por clase de producto',
+            textStyle: {
                 fontWeight: 'normal',
                 fontSize: 14,
                 color: titleColor
-                }
+            }
+        },
+        toolbox: {
+            feature: {
+                saveAsImage: {}
+            }
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow'
             },
-            toolbox: {
-                feature: {
-                    saveAsImage: {}
-                }
-            },
-            tooltip: {
-                    trigger: 'axis',
-                    axisPointer: {
-                        type: 'shadow'
-                    },
-                    formatter: function (params) {
-                        if (!params || params.length === 0) return '';
-                        
-                        let tooltipText = `<strong>${params[0].name}</strong><br/>`;
-                        
-                        params.forEach(item => {
-                            tooltipText += `${item.marker} ${item.seriesName}: <strong>${formatCurrency(item.value)}</strong><br/>`;
-                        });
-                        
-                        return tooltipText;
-                    }
+            formatter: function (params) {
+                if (!params || params.length === 0) return '';
+
+                let tooltipText = `<strong>${params[0].name}</strong><br/>`;
+
+                params.forEach(item => {
+                    tooltipText += `${item.marker} ${item.seriesName}: <strong>${formatCurrency(item.value)}</strong><br/>`;
+                });
+
+                return tooltipText;
+            }
+        },
+        xAxis: {
+            type: 'category',
+            data: productClassData.categories,
+
+        },
+        yAxis: {
+            type: 'value',
+            splitLine: {
+                lineStyle: {
+                    opacity: 0.1
                 },
-            xAxis: {
-                type: 'category',
-                data: productClassData.categories,
+                show: true
+            }
+        },
+        series: [
+            {
+                data: productClassData.sales,
+                type: 'bar',
+            }
+        ]
+    };
 
-            },
-            yAxis: {
-                type: 'value',
-                splitLine: {
-                    lineStyle: {
-                        opacity: 0.1
-                    },
-                    show: true
-                }
-            },
-            series: [
-                {
-                    data: productClassData.sales,
-                    type: 'bar',
-                }
-            ]
-        };
-
-        const productClassBarChart = echarts.init(document.getElementById('productClassBarChart'),);
-        productClassBarChart.setOption(ProductClassBarOption);
+    const productClassBarChart = echarts.init(document.getElementById('productClassBarChart'),);
+    productClassBarChart.setOption(ProductClassBarOption);
 
     // product cattegory pie chart
 
-        const productCategoryData = {{ product_category_chart_data|safe }};
+    const productCategoryData = {{ product_category_chart_data|safe }};
 
-        const productCategoryOption = {
-            title: {
-                text: 'Venta neta por categoría de producto',
-                textStyle: {
-                    fontWeight: 'normal',
-                    fontSize: 14,
-                    color: titleColor
-                }
-            },
-            toolbox: {
-                feature: {
-                    saveAsImage: {}
-                }
-            },
-            tooltip: {
-                trigger: 'item'
-            },
-            legend: {
-                bottom: '5%',
-                left: 'center'
-            },
-            series: [
-                {
-                    name: 'Ventas',
-                    type: 'pie',
-                    radius: ['45%', '70%'],
-                    center: ['50%', '50%'],
-                    avoidLabelOverlap: false,
-                    padAngle: 5,
-                    itemStyle: {
-                        borderRadius: 10
-                    },
+    const productCategoryOption = {
+        title: {
+            text: 'Venta neta por categoría de producto',
+            textStyle: {
+                fontWeight: 'normal',
+                fontSize: 14,
+                color: titleColor
+            }
+        },
+        toolbox: {
+            feature: {
+                saveAsImage: {}
+            }
+        },
+        tooltip: {
+            trigger: 'item'
+        },
+        legend: {
+            bottom: '5%',
+            left: 'center'
+        },
+        series: [
+            {
+                name: 'Ventas',
+                type: 'pie',
+                radius: ['45%', '70%'],
+                center: ['50%', '50%'],
+                avoidLabelOverlap: false,
+                padAngle: 5,
+                itemStyle: {
+                    borderRadius: 10
+                },
+                label: {
+                    show: false,
+                    position: 'center'
+                },
+                emphasis: {
                     label: {
-                        show: false,
-                        position: 'center'
-                    },
-                    emphasis: {
-                        label: {
-                            show: true,
-                            fontSize: 40,
-                            fontWeight: 'bold'
-                        }
-                    },
-                    labelLine: {
-                        show: false
-                    },
-                    data: productCategoryData
-                }
-            ]
-        }
+                        show: true,
+                        fontSize: 40,
+                        fontWeight: 'bold'
+                    }
+                },
+                labelLine: {
+                    show: false
+                },
+                data: productCategoryData
+            }
+        ]
+    }
 
-        const productCategoryChart = echarts.init(document.getElementById('productCategoryChart'),);
-        productCategoryChart.setOption(productCategoryOption);
+    const productCategoryChart = echarts.init(document.getElementById('productCategoryChart'),);
+    productCategoryChart.setOption(productCategoryOption);
 
-        const charts = [
-            timelineChart, 
-            warehouseBarChart, 
-            productClassBarChart, 
-            productCategoryChart
-        ];
+    const charts = [
+        timelineChart,
+        warehouseBarChart,
+        productClassBarChart,
+        productCategoryChart
+    ];
 
         });
 
