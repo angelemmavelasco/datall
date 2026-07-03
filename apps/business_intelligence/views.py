@@ -1152,7 +1152,12 @@ def sale_targets(request):
     today = date.today()
     date_start = request.GET.get('date_start')
     date_end = request.GET.get('date_end')
-
+    
+    # Default to this year if no dates
+    if not date_start:
+        date_start = date(today.year, today.month, 1).strftime('%Y-%m-%d')
+    if not date_end:
+        date_end = (date(today.year, today.month + 1, 1) - timedelta(days=1)).strftime('%Y-%m-%d')
     
     product_classes = request.GET.getlist('product_classes')
     product_categories = request.GET.getlist('product_categories')
@@ -1170,6 +1175,7 @@ def sale_targets(request):
 
     targets_crud = SaleTargetCRUD()
     targets_qs = targets_crud.read(allowed_routes, **filters).order_by('-period', 'route_id')
+    kpis = targets_crud.get_kpis(allowed_routes, **filters)
 
     paginator = Paginator(targets_qs, 100)
     page_number = request.GET.get('page', 1)
@@ -1178,6 +1184,7 @@ def sale_targets(request):
     context = {
         'targets': page_obj.object_list,
         'page_obj': page_obj,
+        'kpis': kpis,
         
         # Filter options
         'filter_warehouses': Warehouse.objects.all(),

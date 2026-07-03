@@ -2,6 +2,9 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from datetime import datetime, date
 from apps.core.models import SaleTarget
+from decimal import Decimal
+from django.db.models import Sum, Count, Q
+from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
 
 class SaleTargetCRUD:
     def __init__(self):
@@ -62,6 +65,46 @@ class SaleTargetCRUD:
                     value = [value]
                 queryset = queryset.filter(**{lookup: value})
         return queryset.select_related('route', 'warehouse', 'product_class')
+        
+    def get_kpis(self, allowed_routes, **kwargs):
+        targets_qs = self.read(allowed_routes, **kwargs)
+        
+        target_aggs = targets_qs.aggregate(
+            total_target=Sum('target_amount'),
+            unique_pc=Count('product_class_id', filter=Q(target_amount__gt=0), distinct=True)
+        )
+        
+        sale_target = Decimal(str(target_aggs.get('total_target') or '0.00'))
+        pc_with_targets = target_aggs.get('unique_pc') or 0
+        
+        avg_by_product_class = Decimal('0.00')
+        if pc_with_targets > 0:
+            avg_by_product_class = sale_target / Decimal(pc_with_targets)
+            
+        trans_kwargs = kwargs.copy()
+        if 'period_start' in trans_kwargs:
+            trans_kwargs['sale_date_start'] = trans_kwargs.pop('period_start')
+        if 'period_end' in trans_kwargs:
+            trans_kwargs['sale_date_end'] = trans_kwargs.pop('period_end')
+            
+        trans_crud = SaleTransactionCRUD()
+        trans_qs = trans_crud.read(allowed_routes, **trans_kwargs)
+        
+        trans_aggs = trans_qs.aggregate(total_net=Sum('net_amount'))
+        net_sale = Decimal(str(trans_aggs.get('total_net') or '0.00'))
+        
+        difference = net_sale - sale_target
+        scope = Decimal('0.00')
+        if sale_target > 0:
+            scope = (net_sale / sale_target) * Decimal('100.00')
+            
+        return {
+            'sale_target': sale_target,
+            'pc_with_targets': pc_with_targets,
+            'avg_by_product_class': avg_by_product_class,
+            'difference': difference,
+            'scope': scope
+        }
     
     def update(self, target_id, **kwargs):
         try:

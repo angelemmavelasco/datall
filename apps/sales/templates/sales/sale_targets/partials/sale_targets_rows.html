@@ -2,9 +2,9 @@
 {% for target in targets %}
 <tr class="hover:bg-hover transition-colors duration-300">
     <td class="p-2 truncate">{{ target.period|date:"M Y"|default:"-" }}</td>
-    <td class="p-2 truncate">{{ target.route_id }} - {{ target.route.name|default:"-" }}</td>
-    <td class="p-2 truncate">{{ target.warehouse_id }} - {{ target.warehouse.name|default:"-" }}</td>
-    <td class="p-2 truncate">{{ target.product_class_id }} - {{ target.product_class.name|default:"-" }}</td>
+    <td class="p-2 truncate">{{ target.route_id }} {{ target.route.name|default:"-"|title }}</td>
+    <td class="p-2 truncate">{{ target.warehouse_id|upper }} {{ target.warehouse.name|default:"-"|title }}</td>
+    <td class="p-2 truncate">{{ target.product_class_id|upper }} {{ target.product_class.name|default:"-"|title }}</td>
     <td class="p-2 truncate text-right">$ {{ target.target_amount|default:"0.00"|floatformat:2|intcomma }}</td>
 </tr>
 {% empty %}

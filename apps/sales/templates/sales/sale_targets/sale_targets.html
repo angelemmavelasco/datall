@@ -6,7 +6,7 @@
 {% block module_name %}Objetivos de venta{% endblock %}
 
 {% block module_actions %}
-    <a href="" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Exportar metas">Exportar</a>
+    <!-- <a href="" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Exportar metas">Exportar</a> -->
 
     <button onclick="toggleFilters()"
         class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
@@ -157,6 +157,98 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 {% endblock %}
 
 {% block content %}
+
+    <div class="mb-4">
+        <p class="text-title text-sm mb-2">Objetivos propuestos del {{ selected_date_start|default:'' }} al {{ selected_date_end|default:'' }}</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Objetivo
+                </span>
+                <span class="custom-tooltip tooltip-left"
+                    data-title="Venta neta a la cual se espera llegar al finalizar el periodo seleccionado. Todos los objetivos se plantean de forma mensual.">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
+            <p class="text-xl text-green-500">$ {{ kpis.sale_target|default:0.00|floatformat:2|intcomma }}</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Clases con objetivos
+                </span>
+                <span class="custom-tooltip tooltip-right"
+                    data-title="De todas las clases de productos existentes, cuantas realmente tienen un objetivo propuesto para el periodo seleccionado">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
+            <p class="text-xl text-blue-500">{{ kpis.pc_with_targets|default:0|floatformat:0|intcomma }}</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Promedio por clase
+                </span>
+                <span class="custom-tooltip tooltip-left"
+                    data-title="Promedio del objetivo propuesto distribuido entre todas las clases de productos considerando solo aquellas cuya cuota sea superior a 0.00.">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
+            <p class="text-xl text-violet-500">$ {{ kpis.avg_by_product_class|default:0.00|floatformat:2|intcomma }}</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col  bg-container">
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Alcance
+                </span>
+                <span class="custom-tooltip tooltip-right"
+                    data-title="Porcentaje que representa la venta neta sobre el objetivo fijado para el periodo seleccionado.">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
+            <p class="text-xl
+            {% if kpis.difference >= 0 %}
+            text-blue-500
+            {% elif kpis.difference < 0 %}
+            text-red-500
+            {% else %}
+            text-title
+            {% endif %}">{{ kpis.scope|default:0.00|floatformat:2|intcomma }} %</p>
+        </div>
+    </div>
+
 
     <div class="w-full overflow-x-auto border border-border rounded bg-container">
         <table class="w-full table-fixed text-left border-collapse">
