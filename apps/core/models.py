@@ -201,7 +201,7 @@ class DataHistory(models.Model):
 class Novelty(models.Model):
     title = models.CharField(max_length=255)
     content = models.TextField()
-    image = models.ImageField(upload_to='novelties', null=True, blank=True)
+    image = models.FileField(upload_to='novelties', null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
