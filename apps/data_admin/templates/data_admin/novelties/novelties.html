@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Novedades{% endblock %}
+
+{% block module_name %}Novedades{% endblock %}
+
+{% block module_actions %}
+
+{% endblock %}
+
+
+{% block filters %}
+
+{% endblock %}
+
+
+{% block content %}
+
+
+<img src="https://media.datall.com.mx/media/app-media/news_ban.jpg" alt="imagen banner news" class="w-full h-40 md:h-56 mb-2 object-cover object-center rounded">
+
+<div class="flex flex-col gap-6 mx-auto max-w-3xl overflow-y-auto max-h-128">
+    {% for novelty in novelties %}
+        <div class="flex flex-col gap-3 bg-container border border-border p-5 rounded-lg shadow-sm hover:border-strong transition-colors">
+            <div class="flex flex-col md:flex-row items-center justify-between border-b border-border pb-2">
+                <h2 class="text-title text-lg font-medium truncate">{{ novelty.title|title }}</h2>
+                <span class="text-xs text-muted font-light">{{ novelty.created_at|date:"d M, Y" }}</span>
+            </div>
+            
+            {% if novelty.image %}
+                <img src="{{ novelty.image.url }}" alt="{{ novelty.title }}" class="w-full max-h-64 object-cover rounded-md mt-2">
+            {% endif %}
+            
+            <div class="novelty-content text-body text-sm leading-relaxed line-clamp-4">
+                {{ novelty.content|linebreaksbr }}
+            </div>
+            <button type="button" class="read-more-btn cursor-pointer text-title text-sm hover:text-hover transition-colors font-medium text-left hidden w-max mt-1" onclick="toggleText(this)">
+                Ver más
+            </button>
+        </div>
+    {% empty %}
+        <div class="flex flex-col items-center justify-center py-20 text-center gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-muted lucide lucide-newspaper"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0V8"/><path d="M15 18h-5"/><path d="M18 14h-8"/><rect width="8" height="4" x="10" y="6" rx="1"/></svg>
+            <p class="text-strong text-lg font-medium">Sin novedades por el momento</p>
+            <p class="text-muted text-sm">Vuelve más tarde para enterarte de los nuevos cambios.</p>
+        </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const contents = document.querySelectorAll('.novelty-content');
+    contents.forEach(content => {
+        // Verifica si el contenido excede el alto visible por el line-clamp
+        if (content.scrollHeight > content.clientHeight) {
+            const btn = content.nextElementSibling;
+            if (btn && btn.classList.contains('read-more-btn')) {
+                btn.classList.remove('hidden');
+            }
+        }
+    });
+});
+
+function toggleText(btn) {
+    const content = btn.previousElementSibling;
+    if (content.classList.contains('line-clamp-4')) {
+        content.classList.remove('line-clamp-4');
+        btn.innerText = 'Ver menos';
+    } else {
+        content.classList.add('line-clamp-4');
+        btn.innerText = 'Ver más';
+    }
+}
+</script>
+{% endblock %}

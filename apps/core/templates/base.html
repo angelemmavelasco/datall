@@ -172,6 +172,12 @@
 
     <!-- overlay for data asisstnat -->
     <div id="assistant-overlay" class="fixed inset-0 z-40 hidden bg-black opacity-60" onclick="closeAssistant()"></div>
+    
+    <!-- overlay for notifications -->
+    <div id="notifications-overlay" class="fixed inset-0 z-40 hidden bg-black opacity-60" onclick="closeNotifications()"></div>
+    
+    <!-- overlay for novelties -->
+    <div id="novelties-overlay" class="fixed inset-0 z-40 hidden bg-black opacity-60" onclick="closeNovelties()"></div>
     <!-- right sidebar for filters-->
 
     <aside id="filter-sidebar"
@@ -194,6 +200,122 @@
             {% block filters %}{% endblock %}
         </div>
     </aside>
+
+    <!-- right sidebar for notifications-->
+    <aside id="notifications-sidebar"
+        class="fixed inset-y-0 right-0 z-50 flex w-80 translate-x-full flex-col overflow-y-auto border-l border-border bg-container p-4 transition-transform duration-300">
+        <div class="flex items-center justify-between border-b border-border pb-2 mb-4">
+            <h3 class="text-title tracking-wider flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell-icon lucide-bell"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+                Notificaciones
+            </h3>
+            <button type="button" onclick="closeNotifications()" class="text-muted hover:text-hover cursor-pointer transition-colors"
+                title="Cerrar notificaciones">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-circle-x-icon lucide-circle-x">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m15 9-6 6" />
+                    <path d="m9 9 6 6" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="flex-1">
+            <ul class="flex flex-col gap-3">
+
+                {% for notification in notifications %}
+
+                <!-- Placeholder notifications -->
+                <li class="border border-border p-3 rounded bg-page hover:border-strong transition-colors cursor-pointer">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs text-strong font-medium">
+                            {{ notification.title|title }}
+                        </span>
+                        <span class="text-[10px] text-muted">
+                            {{ notification.created_at|date:"M d, Y" }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-body leading-relaxed mt-1">
+                        {{ notification.content|truncatewords:20 }}
+                    </p>
+                    <a href="" class="text-xs text-muted hover:text-hover cursor-pointer transition-colors">
+                        Ver más
+                    </a>
+                </li>
+
+                {% empty %}
+                    <li class="">
+                        <div class="flex items-center justify-center mb-1">
+                            <span class="text-xs text-strong font-medium">
+                                No tienes notificaciones
+                            </span>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </aside>
+
+    <!-- right sidebar for novelties-->
+    <aside id="novelties-sidebar"
+        class="fixed inset-y-0 right-0 z-50 flex w-80 translate-x-full flex-col overflow-y-auto border-l border-border bg-container p-4 transition-transform duration-300">
+        <div class="flex items-center justify-between border-b border-border pb-2 mb-4">
+            <h3 class="text-title tracking-wider flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-newspaper-icon lucide-newspaper"><path d="M15 18h-5"/><path d="M18 14h-8"/><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0v-9a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="10" y="6" rx="1"/></svg>
+                Novedades
+            </h3>
+            <button type="button" onclick="closeNovelties()" class="text-muted hover:text-hover cursor-pointer transition-colors"
+                title="Cerrar novedades">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-circle-x-icon lucide-circle-x">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m15 9-6 6" />
+                    <path d="m9 9 6 6" />
+                </svg>
+            </button>
+        </div>
+
+        <a href="{% url 'data_admin:novelties' %}" class="mb-3 text-strong hover:text-hover cursor-pointer transition-colors w-fit">
+            Ver todas
+        </a>
+
+        <div class="flex-1" id="novelties-content">
+            <ul class="flex flex-col gap-3">
+                {% for novelty in recent_novelties %}
+                <li class="border border-border p-3 rounded bg-page hover:border-strong transition-colors cursor-pointer">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs text-strong font-medium">
+                            {{ novelty.title|title }}
+                        </span>
+                        <span class="text-[10px] text-muted">
+                            {{ novelty.created_at|date:"M d, Y" }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-body leading-relaxed mt-1">
+                        {{ novelty.content|truncatewords:30 }}
+                    </p>
+                </li>
+                {% empty %}
+                <li class="border border-border p-3 rounded bg-page hover:border-strong transition-colors cursor-pointer">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs text-strong font-medium">
+                            Próximamente
+                        </span>
+                        <span class="text-[10px] text-muted">
+                            Hoy
+                        </span>
+                    </div>
+                    <p class="text-xs text-body leading-relaxed mt-1">
+                        Aquí aparecerán las novedades y anuncios importantes.
+                    </p>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </aside>
+
 
     <!-- side bar for data assistant -->
     <aside id="assistant-sidebar"
@@ -281,20 +403,21 @@
                     <img src="https://media.datall.com.mx/static/logo.svg" alt="" class="h-7 w-7 object-contain p-1 bg-[#f1f1f1] rounded-sm border border-border">
                 </h1>
 
+                <p class="block truncate text-center">{{ request.user.first_name|title }} {{ request.user.last_name|title }}</p>
+
                 {% if last_data_update %}
-                <p class="text-[10px] text-strong font-light italic">
-                    Última actualización <br>
-                    <span class="text-body">
-                        {{ last_data_update.reference }}
-                    </span>
-                </p>
+                    <p class="text-strong font-light italic">
+                        Última actualización <br>
+                        <span class="text-body">
+                            {{ last_data_update.reference }}
+                        </span>
+                    </p>
                 {% endif %}
 
 
 
+
                 {% for section in sections %}
-
-
 
                 <section class="flex flex-col gap-2">
                     <p class="text-title">{{ section.name|title }}</p>
@@ -349,11 +472,32 @@
                     </div>
 
                     <div class="flex items-center gap-3 border-l border-border pl-3 pb-4 sm:pb-0">
-                        <p class="hidden max-w-40 truncate sm:block">{{ request.user.first_name|title }}
-                            {{ request.user.last_name|title }}</p>
+
+                        <button type="button" onclick="toggleNotifications()" class="inline-flex items-center justify-center gap-1 cursor-pointer text-title transition-colors hover:text-hover" title="Ver notificaciones">
+                            <svg id="toggle-notifications-button" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell-icon lucide-bell"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+                            <span class="hidden md:flex items-center">
+                                Notificaciones
+                            </span>
+
+                        </button>
+
+                        <button type="button" id="toggle-novelties-button" onclick="toggleNovelties()" class="inline-flex items-center justify-center gap-1 cursor-pointer text-title transition-colors hover:text-hover" title="Ver novedades">
+                            <div class="relative flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-newspaper-icon lucide-newspaper"><path d="M15 18h-5"/><path d="M18 14h-8"/><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0v-9a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="10" y="6" rx="1"/></svg>
+                                {% if has_novelties %}
+                                <span class="absolute -top-0.5 -right-1 flex h-2 w-2 items-center justify-center">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-600"></span>
+                                </span>
+                                {% endif %}
+                            </div>
+                            <span class="hidden md:flex items-center">
+                                Novedades
+                            </span>
+                        </button>
 
                         <button type="button" onclick="toggleDarkMode()"
-                            class="inline-flex items-center justify-center cursor-pointer text-title transition-colors hover:text-hover"
+                            class="flex gap-1 items-center justify-center cursor-pointer text-title transition-colors hover:text-hover"
                             title="Cambiar modo oscuro">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -361,12 +505,15 @@
                                 <circle cx="12" cy="12" r="10" />
                                 <path d="M12 2a7 7 0 1 0 10 10" />
                             </svg>
+                            <span class="hidden md:flex items-center">
+                                Tema
+                            </span>
                         </button>
 
                         <form action="{% url 'logout' %}" method="post">
                             {% csrf_token %}
                             <button type="submit"
-                                class="inline-flex items-center justify-center cursor-pointer text-title transition-colors hover:text-hover"
+                                class="flex gap-1 items-center justify-center cursor-pointer text-title transition-colors hover:text-hover"
                                 title="Cerrar sesión">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -375,6 +522,9 @@
                                     <path d="M21 12H9" />
                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                                 </svg>
+                                <span class="hidden md:flex items-center">
+                                    Cerrar sesión
+                                </span>
                             </button>
                         </form>
                     </div>
@@ -477,6 +627,38 @@
         function closeAssistant() {
             const sidebar = document.getElementById('assistant-sidebar');
             const overlay = document.getElementById('assistant-overlay');
+
+            sidebar.classList.add('translate-x-full');
+            overlay.classList.add('hidden');
+        }
+
+        function toggleNotifications() {
+            const sidebar = document.getElementById('notifications-sidebar');
+            const overlay = document.getElementById('notifications-overlay');
+
+            sidebar.classList.toggle('translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        function closeNotifications() {
+            const sidebar = document.getElementById('notifications-sidebar');
+            const overlay = document.getElementById('notifications-overlay');
+
+            sidebar.classList.add('translate-x-full');
+            overlay.classList.add('hidden');
+        }
+
+        function toggleNovelties() {
+            const sidebar = document.getElementById('novelties-sidebar');
+            const overlay = document.getElementById('novelties-overlay');
+
+            sidebar.classList.toggle('translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        function closeNovelties() {
+            const sidebar = document.getElementById('novelties-sidebar');
+            const overlay = document.getElementById('novelties-overlay');
 
             sidebar.classList.add('translate-x-full');
             overlay.classList.add('hidden');

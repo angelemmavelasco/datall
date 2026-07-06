@@ -13,6 +13,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 
+
+from apps.core.models import Novelty
+
 from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
 
 from apps.customers.services.customers_crud.customer_bulk import CustomersBulk
@@ -578,3 +581,23 @@ def references(request):
     }
 
     return render(request, template, context)
+
+
+
+
+@login_required
+def novelties(request):
+    template = 'data_admin/novelties/novelties.html'
+    user = request.user
+
+    novelties_qs = Novelty.objects.all().order_by('-created_at')
+    
+    context = {
+        'novelties': novelties_qs,
+    }
+    
+    return render(request, template, context)
+
+
+# @login_required
+# def novelty(request, pk):
