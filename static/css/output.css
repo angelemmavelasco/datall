@@ -868,6 +868,9 @@
   .resize-none {
     resize: none;
   }
+  .scroll-mt-24 {
+    scroll-margin-top: calc(var(--spacing) * 24);
+  }
   .scrollbar-none {
     scrollbar-width: none;
   }
@@ -1599,6 +1602,13 @@
     --tw-outline-style: none;
     outline-style: none;
   }
+  .group-hover\:text-hover {
+    &:is(:where(.group):hover *) {
+      @media (hover: hover) {
+        color: var(--color-hover);
+      }
+    }
+  }
   .group-focus\:visible {
     &:is(:where(.group):focus *) {
       visibility: visible;
@@ -1899,6 +1909,16 @@
   .md\:flex-row {
     @media (width >= 48rem) {
       flex-direction: row;
+    }
+  }
+  .md\:items-center {
+    @media (width >= 48rem) {
+      align-items: center;
+    }
+  }
+  .md\:justify-between {
+    @media (width >= 48rem) {
+      justify-content: space-between;
     }
   }
   .md\:gap-4 {

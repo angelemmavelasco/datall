@@ -284,18 +284,20 @@
         <div class="flex-1" id="novelties-content">
             <ul class="flex flex-col gap-3">
                 {% for novelty in recent_novelties %}
-                <li class="border border-border p-3 rounded bg-page hover:border-strong transition-colors cursor-pointer">
-                    <div class="flex items-center justify-between mb-1">
-                        <span class="text-xs text-strong font-medium">
-                            {{ novelty.title|title }}
-                        </span>
-                        <span class="text-[10px] text-muted">
-                            {{ novelty.created_at|date:"M d, Y" }}
-                        </span>
-                    </div>
-                    <p class="text-xs text-body leading-relaxed mt-1">
-                        {{ novelty.content|truncatewords:30 }}
-                    </p>
+                <li class="border border-border rounded bg-page hover:border-strong transition-colors cursor-pointer group">
+                    <a href="{% url 'data_admin:novelties' %}#novelty-{{ novelty.id }}" class="block p-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs text-strong font-medium group-hover:text-hover transition-colors text-wrap max-w-50">
+                                {{ novelty.title|title }}
+                            </span>
+                            <span class="text-[10px] text-muted">
+                                {{ novelty.created_at|date:"M d, Y" }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-body leading-relaxed mt-1">
+                            {{ novelty.content|truncatewords:30 }}
+                        </p>
+                    </a>
                 </li>
                 {% empty %}
                 <li class="border border-border p-3 rounded bg-page hover:border-strong transition-colors cursor-pointer">

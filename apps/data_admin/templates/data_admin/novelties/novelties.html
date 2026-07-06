@@ -21,9 +21,9 @@
 
 <div class="flex flex-col gap-6 mx-auto max-w-3xl overflow-y-auto max-h-128">
     {% for novelty in novelties %}
-        <div class="flex flex-col gap-3 bg-container border border-border p-5 rounded-lg shadow-sm hover:border-strong transition-colors">
-            <div class="flex flex-col md:flex-row items-center justify-between border-b border-border pb-2">
-                <h2 class="text-title text-lg font-medium truncate">{{ novelty.title|title }}</h2>
+        <div id="novelty-{{ novelty.id }}" class="flex flex-col gap-3 bg-container border border-border p-5 rounded-lg shadow-sm hover:border-strong transition-colors scroll-mt-24">
+            <div class="flex flex-col md:flex-row items-start md:items-center md:justify-between border-b border-border pb-2">
+                <h2 class="text-title text-lg font-medium text-wrap">{{ novelty.title|title }}</h2>
                 <span class="text-xs text-muted font-light">{{ novelty.created_at|date:"d M, Y" }}</span>
             </div>
             
