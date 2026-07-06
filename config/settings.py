@@ -107,6 +107,8 @@ TEMPLATES = [
 
                 #get allowed modules for users
                 'apps.core.context_processors.module_permissions',
+                #get last update of data
+                'apps.core.context_processors.last_update',
                 # media files
                 'django.template.context_processors.media',                
             ],

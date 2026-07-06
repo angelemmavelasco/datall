@@ -1,4 +1,4 @@
-from apps.core.models import MenuSection, SystemModule
+from apps.core.models import MenuSection, SystemModule, Reference
 from django.db.models import Prefetch
 
 
@@ -30,6 +30,18 @@ def module_permissions(request):
 
     return {
         'sections': sections
+    }
+
+def last_update(request):
+    try:
+        last_data_update = Reference.objects.filter(
+            field_context='last_data_update',
+            key="last_update",
+        ).first()
+    except:
+        last_data_update = None
+    return {
+        'last_data_update': last_data_update
     }
         
 

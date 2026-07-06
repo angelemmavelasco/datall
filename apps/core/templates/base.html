@@ -281,6 +281,15 @@
                     <img src="https://media.datall.com.mx/static/logo.svg" alt="" class="h-7 w-7 object-contain p-1 bg-[#f1f1f1] rounded-sm border border-border">
                 </h1>
 
+                {% if last_data_update %}
+                <p class="text-[10px] text-strong font-light italic">
+                    Última actualización <br>
+                    <span class="text-body">
+                        {{ last_data_update.reference }}
+                    </span>
+                </p>
+                {% endif %}
+
 
 
                 {% for section in sections %}
@@ -300,6 +309,7 @@
                         {% endfor %}
                     </ul>
                 </section>
+
 
 
 
