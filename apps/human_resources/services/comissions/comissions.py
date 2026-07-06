@@ -498,8 +498,11 @@ class CommissionsReport(SaleTransactionCRUD, SaleTargetCRUD):
                     period_start=period_start,
                     period_end=period_end,
                     route=route,
-                    employee=assignment.employee
                 )
+            
+            # Siempre actualizamos el empleado en base a la asignación actual
+            # por si hubo un cambio de personal después del primer cálculo
+            settlement.employee = assignment.employee
             
             settlement.snapshot_profile_name = profile.name
             settlement.snapshot_target = target_total
