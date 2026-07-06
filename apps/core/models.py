@@ -198,7 +198,23 @@ class DataHistory(models.Model):
         return f"{self.action} en {self.content_type} por {self.created_by}"
 
 
+class Novelty(models.Model):
+    title = models.CharField(max_length=255)
+    content = models.TextField(max_length=500)
+    image = models.ImageField(upload_to='novelties', null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        db_table = 'novelties'
+        verbose_name = 'Novelty'
+        verbose_name_plural = 'Novelties'
+        indexes = [
+            models.Index(fields=["created_at"]), 
+        ]
+
+    def __str__(self):
+        return self.title.title()
 
 class Department(models.Model):
     id = models.CharField(

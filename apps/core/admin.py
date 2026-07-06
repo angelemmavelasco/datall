@@ -6,7 +6,7 @@ from apps.core.models import (
     ProductCategory, ProductClass, Product, Reference,
     RouteType, SaleChannel, Route, RouteAssignment,
     CommissionProfile, CommissionTier, RouteCommissionSetup,
-    RouteCommissionException, CommissionSettlement
+    RouteCommissionException, CommissionSettlement, Novelty
 )
 from datetime import date
 from django.db.models import Q
@@ -195,3 +195,19 @@ class RouteCommissionSetupAdmin(admin.ModelAdmin):
     list_display = ('id', 'route', 'profile', 'start_date', 'end_date', 'bonus_type', 'base_bonus_amount')
     search_fields = ('route__name', 'route__id', 'profile__name')
     list_filter = ('start_date', 'end_date', 'bonus_type', 'profile')
+
+@admin.register(Novelty)
+class NoveltyAdmin(admin.ModelAdmin):
+    list_display = ('title', 'is_active', 'created_at')
+    search_fields = ('title', 'content')
+    list_filter = ('is_active', 'created_at')
+    list_editable = ('is_active',)
+    readonly_fields = ('created_at',)
+    fieldsets = (
+        ('Información Principal', {
+            'fields': ('title', 'content', 'image')
+        }),
+        ('Configuración y Estado', {
+            'fields': ('is_active', 'created_at')
+        }),
+    )
