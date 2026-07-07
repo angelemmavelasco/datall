@@ -1,10 +1,11 @@
 {% extends "admin/base.html" %}
 {% load static %}
 
-{% block title %}{{ title }} | Datall Admin{% endblock %}
+{% block title %}Panel de administrador{% endblock %}
 
 {% block extrastyle %}
 {{ block.super }}
+<link rel="icon" type="image/png" href="https://media.datall.com.mx/static/favicon.ico">
 <link rel="stylesheet" type="text/css" href="{% static 'css/admin_theme.css' %}">
 <style>
     /* Forzar tipografía simple similar a Tailwind */
