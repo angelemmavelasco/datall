@@ -1,12 +1,32 @@
-{% if customers %}
+{% if origin_route_id %}
 <div class="flex flex-col gap-2">
-    <p class="text-title text-sm mb-2 font-medium">Selección de Clientes a Transferir/Ajustar</p>
+    <div class="flex justify-between items-center mb-2">
+        <p class="text-title text-sm ">Selección de clientes a transferir/ajustar</p>
+        
+        <!-- Toggle de Filtro -->
+        <div class="flex gap-4 items-center bg-container border border-border rounded p-1">
+            <label class="flex items-center gap-1 text-sm cursor-pointer">
+                <input type="radio" name="customer_filter" value="assigned" class="accent-current" 
+                       {% if filter_type != 'all' %}checked{% endif %}
+                       hx-get="{% url 'sales:sale_targets_calculator' %}?action=load_customers&origin_route={{ origin_route_id }}" 
+                       hx-target="#customer-selector-container">
+                <span class="text-strong">Asignados a ruta</span>
+            </label>
+            <label class="flex items-center gap-1 text-sm cursor-pointer">
+                <input type="radio" name="customer_filter" value="all" class="accent-current" 
+                       {% if filter_type == 'all' %}checked{% endif %}
+                       hx-get="{% url 'sales:sale_targets_calculator' %}?action=load_customers&origin_route={{ origin_route_id }}&filter_type=all" 
+                       hx-target="#customer-selector-container">
+                <span class="text-strong">Todos los clientes</span>
+            </label>
+        </div>
+    </div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Clientes Disponibles -->
         <div class="border border-border rounded bg-page flex flex-col h-64">
             <div class="bg-container border-b border-border p-2">
-                <span class="text-strong text-sm font-medium">Clientes en ruta de origen</span>
+                <span class="text-strong text-sm ">Clientes disponibles {% if filter_type == 'all' %}(Todos){% else %}(En ruta){% endif %}</span>
             </div>
             <div class="p-2 border-b border-border">
                 <input type="text" placeholder="Buscar cliente..." class="w-full bg-page text-sm outline-none text-strong" onkeyup="filterCustomers(this, 'available-customers')">
@@ -16,7 +36,7 @@
                 <label class="flex items-center justify-between text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors border border-transparent hover:border-border customer-item">
                     <div class="flex items-center gap-2">
                         <input type="checkbox" name="selected_customers" value="{{ c.id }}" class="customer-checkbox" onchange="moveCustomer(this)">
-                        <span class="searchable-text text-strong">{{ c.id|upper }} - {{ c.name|title }}</span>
+                        <span class="searchable-text text-strong">{{ c.id|upper }} - {{ c.name|title }} {% if filter_type == 'all' and c.route %}<span class="text-muted text-xs">({{ c.route.name }})</span>{% endif %}</span>
                     </div>
                 </label>
                 {% endfor %}
@@ -26,7 +46,7 @@
         <!-- Clientes Seleccionados -->
         <div class="border border-border rounded bg-page flex flex-col h-64">
             <div class="bg-container border-b border-border p-2">
-                <span class="text-strong text-sm font-medium">Clientes seleccionados para el cálculo</span>
+                <span class="text-strong text-sm ">Clientes seleccionados para el cálculo</span>
             </div>
             <div class="p-2 border-b border-border">
                 <input type="text" placeholder="Buscar cliente..." class="w-full bg-page text-sm outline-none text-strong" onkeyup="filterCustomers(this, 'selected-customers')">

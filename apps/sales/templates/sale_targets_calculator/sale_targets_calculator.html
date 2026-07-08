@@ -12,8 +12,8 @@
 <div class="flex flex-col gap-6">
 
     <!-- Configuración del cálculo -->
-    <div class="bg-container border border-border rounded p-4">
-        <p class="text-title text-lg mb-4 border-b border-border pb-2 font-medium">Configuración de simulación</p>
+    <div class="bg-container border border-border rounded p-2">
+        <p class="text-title text-sm mb-4 border-b border-border pb-2">Configuración de simulación</p>
         
         <form hx-post="{% url 'sales:sale_targets_calculator' %}" hx-target="#calculator-results" id="calculator-form">
             {% csrf_token %}

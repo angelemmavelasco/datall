@@ -1,12 +1,20 @@
 {% if mode == 'adjustment' %}
 <!-- Ajuste a Ruta Única -->
-<div class="flex flex-col gap-1 col-span-1 md:col-span-2">
+<div class="flex flex-col gap-1 col-span-1">
     <label class="text-strong text-sm">Ruta a ajustar</label>
     <select name="origin_route" class="border border-border rounded p-1 bg-page text-sm text-strong w-full outline-none" hx-get="{% url 'sales:sale_targets_calculator' %}?action=load_customers" hx-target="#customer-selector-container">
         <option value="">Selecciona una ruta...</option>
         {% for r in routes %}
         <option value="{{ r.id }}">{{ r.id|upper }} {{ r.name|title }}</option>
         {% endfor %}
+    </select>
+</div>
+
+<div class="flex flex-col gap-1 col-span-1">
+    <label class="text-strong text-sm">Operación a realizar</label>
+    <select name="adjustment_direction" class="border border-border rounded p-1 bg-page text-sm text-strong w-full outline-none">
+        <option value="remove">Restar objetivos (Quitar clientes)</option>
+        <option value="add">Sumar objetivos (Agregar clientes nuevos)</option>
     </select>
 </div>
 {% else %}

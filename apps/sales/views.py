@@ -241,10 +241,20 @@ def sale_targets_calculator(request):
         if action == 'load_customers':
             from apps.core.models import Customer
             route_id = request.GET.get('origin_route')
+            filter_type = request.GET.get('filter_type', 'assigned')
+            
             customers = []
             if route_id:
-                customers = Customer.objects.filter(route_id=route_id).order_by('name')
-            return render(request, 'sale_targets_calculator/partials/customer_selector.html', {'customers': customers})
+                if filter_type == 'all':
+                    # Traemos todos los clientes sin límite
+                    customers = Customer.objects.select_related('route').all().order_by('name')
+                else:
+                    customers = Customer.objects.filter(route_id=route_id).order_by('name')
+            return render(request, 'sale_targets_calculator/partials/customer_selector.html', {
+                'customers': customers,
+                'filter_type': filter_type,
+                'origin_route_id': route_id
+            })
             
         if action == 'calculate':
             from apps.sales.services.sale_targets.calculator import SaleTargetsCalculatorService
@@ -253,6 +263,7 @@ def sale_targets_calculator(request):
             method = request.POST.get('calculation_method')
             origin_route = request.POST.get('origin_route')
             destination_route = request.POST.get('destination_route')
+            adjustment_direction = request.POST.get('adjustment_direction', 'remove')
             target_year = request.POST.get('target_year')
             effective_month = request.POST.get('effective_month')
             eval_customer_start = request.POST.get('eval_customer_start')
@@ -266,7 +277,8 @@ def sale_targets_calculator(request):
                 mode=mode,
                 origin_route_id=origin_route,
                 destination_route_id=destination_route,
-                customer_ids=selected_customers
+                customer_ids=selected_customers,
+                adjustment_direction=adjustment_direction
             )
             
             results = service.calculate_simulation(

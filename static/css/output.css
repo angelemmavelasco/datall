@@ -339,6 +339,9 @@
   .top-8 {
     top: calc(var(--spacing) * 8);
   }
+  .top-\[30\%\] {
+    top: 30%;
+  }
   .top-\[35\%\] {
     top: 35%;
   }
@@ -977,6 +980,9 @@
   .transform {
     transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,);
   }
+  .animate-\[wiggle_1s_ease-in-out_infinite\] {
+    animation: wiggle 1s ease-in-out infinite;
+  }
   .animate-ping {
     animation: var(--animate-ping);
   }
@@ -1262,6 +1268,12 @@
   .bg-container {
     background-color: var(--color-container);
   }
+  .bg-container\/10 {
+    background-color: var(--color-container);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-container) 10%, transparent);
+    }
+  }
   .bg-emerald-600 {
     background-color: var(--color-emerald-600);
   }
@@ -1279,6 +1291,12 @@
   }
   .bg-gray-900 {
     background-color: var(--color-gray-900);
+  }
+  .bg-gray-900\/50 {
+    background-color: color-mix(in srgb, oklch(21% 0.034 264.665) 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-gray-900) 50%, transparent);
+    }
   }
   .bg-green-600 {
     background-color: var(--color-green-600);
@@ -1714,6 +1732,9 @@
   .accent-blue-500 {
     accent-color: var(--color-blue-500);
   }
+  .accent-current {
+    accent-color: currentcolor;
+  }
   .accent-strong {
     accent-color: var(--color-strong);
   }
@@ -1971,6 +1992,16 @@
       }
     }
   }
+  .hover\:bg-neutral-50\/50 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: color-mix(in srgb, oklch(98.5% 0 0) 50%, transparent);
+        @supports (color: color-mix(in lab, red, red)) {
+          background-color: color-mix(in oklab, var(--color-neutral-50) 50%, transparent);
+        }
+      }
+    }
+  }
   .hover\:text-hover {
     &:hover {
       @media (hover: hover) {
@@ -2144,6 +2175,16 @@
       height: calc(var(--spacing) * 100);
     }
   }
+  .md\:max-h-15 {
+    @media (width >= 48rem) {
+      max-height: calc(var(--spacing) * 15);
+    }
+  }
+  .md\:min-h-15 {
+    @media (width >= 48rem) {
+      min-height: calc(var(--spacing) * 15);
+    }
+  }
   .md\:w-96 {
     @media (width >= 48rem) {
       width: calc(var(--spacing) * 96);
@@ -2208,6 +2249,16 @@
   .lg\:pl-50 {
     @media (width >= 64rem) {
       padding-left: calc(var(--spacing) * 50);
+    }
+  }
+  .\[\&\>svg\]\:h-12 {
+    &>svg {
+      height: calc(var(--spacing) * 12);
+    }
+  }
+  .\[\&\>svg\]\:w-12 {
+    &>svg {
+      width: calc(var(--spacing) * 12);
     }
   }
 }

@@ -6,11 +6,12 @@ from apps.core.models import SaleTarget, SaleTransaction, Route, ProductClass, C
 from dateutil.relativedelta import relativedelta
 
 class SaleTargetsCalculatorService:
-    def __init__(self, mode, origin_route_id, destination_route_id=None, customer_ids=None):
+    def __init__(self, mode, origin_route_id, destination_route_id=None, customer_ids=None, adjustment_direction='remove'):
         self.mode = mode
         self.origin_route_id = origin_route_id
         self.destination_route_id = destination_route_id
         self.customer_ids = customer_ids or []
+        self.adjustment_direction = adjustment_direction
         self.errors = []
         
     def _parse_month(self, ym_str):
@@ -178,7 +179,12 @@ class SaleTargetsCalculatorService:
             'classes': []
         }
         
-        sign = -1 if is_origin else 1
+        # If it's a transfer, origin loses (-1) and destination gains (+1).
+        # If it's a single route adjustment, use the adjustment_direction.
+        if self.mode == 'transfer':
+            sign = -1 if is_origin else 1
+        else:
+            sign = 1 if self.adjustment_direction == 'add' else -1
         
         for pc in product_classes:
             pc_data = {

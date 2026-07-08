@@ -14,7 +14,7 @@
 {% if results %}
 <div class="flex flex-col gap-8">
     <div class="flex justify-between items-center border-b border-border pb-2">
-        <p class="text-title text-xl ">Resultados de cálculo</p>
+        <p class="text-title text-sm ">Resultados de cálculo</p>
         <div class="flex gap-2">
             <!-- Los botones de exportar se pueden implementar luego -->
             <!-- <button class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors text-sm">Exportar PDF</button>
@@ -25,7 +25,7 @@
     {% for key, r in results.items %}
     {% if r %}
     <div class="bg-page border border-border rounded p-4">
-        <p class="text-title text-lg mb-4 ">Ruta: {{ r.route_name }} {% if key == 'origin' %}(Origen){% else %}(Destino){% endif %}</p>
+        <p class="text-title text-sm mb-4 ">Ruta: {{ r.route_name }} {% if key == 'origin' %}(Origen){% else %}(Destino){% endif %}</p>
         
         <p class="text-strong text-sm mb-2 ">Desglose de cálculo (Objetivo actual, Crecimiento, Ajuste)</p>
         <div class="w-full overflow-x-auto border border-border rounded bg-container mb-6">
@@ -45,7 +45,7 @@
                         {% for m in cls.months %}
                         <td class="p-2 text-right border-r border-t border-border text-sm">
                             <div class="flex flex-col gap-1 items-end">
-                                <span class="text-strong" title="Cuota Original">$ {{ m.old_target|floatformat:2|intcomma }}</span>
+                                <span class="text-strong" title="Objetivo original">$ {{ m.old_target|floatformat:2|intcomma }}</span>
                                 {% if m.growth != 0 %}
                                 <span class="text-xs {% if m.growth > 0 %}text-green-600{% else %}text-red-600{% endif %}" title="Crecimiento respecto al mes anterior">
                                     {% if m.growth > 0 %}▲{% else %}▼{% endif %} {{ m.growth|floatformat:1 }}%
@@ -75,7 +75,7 @@
         </div>
 
         <!-- TABLA 2: Cuota Final Proyectada -->
-        <p class="text-strong text-sm mb-2 ">Objetivos Planificados (Cuotas Finales)</p>
+        <p class="text-strong text-sm mb-2 ">Objetivos Planificados (Objetivos finales)</p>
         <div class="w-full overflow-x-auto border border-border rounded bg-container">
             <table class="w-full text-left border-spacing-0 border-separate">
                 <thead>
@@ -91,7 +91,7 @@
                     <tr class="hover:bg-hover transition-colors">
                         <td class="p-2 text-left bg-container border-r border-t border-border sticky left-0 text-strong  text-sm">{{ cls.class_name }}</td>
                         {% for m in cls.months %}
-                        <td class="p-2 text-center border-r border-t border-border text-sm">
+                        <td class="p-2 text-right border-r border-t border-border text-sm">
                             <span class=" {% if m.new_target > m.old_target %}text-green-600{% elif m.new_target < m.old_target %}text-red-600{% else %}text-strong{% endif %}">
                                 $ {{ m.new_target|floatformat:2|intcomma }}
                             </span>
