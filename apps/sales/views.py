@@ -1,14 +1,18 @@
+# pyrefly: ignore [missing-import]
 from django.contrib import messages
+# pyrefly: ignore [missing-import]
 from django.shortcuts import render, redirect
 from apps.sales.services.products.products_crud import ProductsCrud
 from django.contrib.auth.decorators import login_required
 from apps.core.models import Reference, ProductClass, Warehouse, Route, ProductCategory
 from django.core.paginator import Paginator
-from django.http import HttpResponse
 import pandas as pd
 import io
 from apps.core.utils import get_allowed_routes_for_user
 from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
+from django.http import HttpResponse
+from asgiref.sync import sync_to_async
+
 
 @login_required
 def products(request):
@@ -221,8 +225,6 @@ def sale_transactions_export(request):
 
 @login_required
 def sale_targets_calculator(request):
-    from apps.core.models import ProductClass, Route
-    
     product_classes = ProductClass.objects.all().order_by('name')
     routes = Route.objects.filter(is_active=True).order_by('id')
     
@@ -246,7 +248,6 @@ def sale_targets_calculator(request):
             customers = []
             if route_id:
                 if filter_type == 'all':
-                    # Traemos todos los clientes sin límite
                     customers = Customer.objects.select_related('route').all().order_by('name')
                 else:
                     customers = Customer.objects.filter(route_id=route_id).order_by('name')
@@ -300,8 +301,6 @@ def sale_targets_calculator(request):
     template = 'sale_targets_calculator/sale_targets_calculator.html'
     return render(request, template, context)
 
-from django.http import HttpResponse
-from asgiref.sync import sync_to_async
 
 @login_required
 async def export_sale_targets_calculator_data(request):
@@ -356,3 +355,6 @@ async def export_sale_targets_calculator_data(request):
     response['Content-Disposition'] = 'attachment; filename="simulacion_cuotas.xlsx"'
     
     return response
+
+
+    

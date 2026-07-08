@@ -1,39 +1,42 @@
 {% if origin_route_id %}
 <div class="flex flex-col gap-2">
-    <div class="flex justify-between items-center mb-2">
-        <p class="text-title text-sm ">Selección de clientes a transferir/ajustar</p>
+
+    <p>Método de selección</p>
         
-        <!-- Toggle de Filtro -->
-        <div class="flex gap-4 items-center bg-container border border-border rounded p-1">
-            <label class="flex items-center gap-1 text-sm cursor-pointer">
-                <input type="radio" name="customer_filter" value="assigned" class="accent-current" 
-                       {% if filter_type != 'all' %}checked{% endif %}
-                       hx-get="{% url 'sales:sale_targets_calculator' %}?action=load_customers&origin_route={{ origin_route_id }}" 
-                       hx-target="#customer-selector-container">
-                <span class="text-strong">Asignados a ruta</span>
-            </label>
-            <label class="flex items-center gap-1 text-sm cursor-pointer">
-                <input type="radio" name="customer_filter" value="all" class="accent-current" 
-                       {% if filter_type == 'all' %}checked{% endif %}
-                       hx-get="{% url 'sales:sale_targets_calculator' %}?action=load_customers&origin_route={{ origin_route_id }}&filter_type=all" 
-                       hx-target="#customer-selector-container">
-                <span class="text-strong">Todos los clientes</span>
-            </label>
-        </div>
+    <div class="flex gap-4 items-center bg-container border border-border rounded p-1">
+        <label class="flex items-center gap-1 cursor-pointer">
+            <input type="radio" name="customer_filter" value="assigned" class="accent-current" 
+                   {% if filter_type != 'all' %}checked{% endif %}
+                   hx-get="{% url 'sales:sale_targets_calculator' %}?action=load_customers&origin_route={{ origin_route_id }}" 
+                   hx-target="#customer-selector-container">
+            <span class="text-strong">Asignados a ruta</span>
+        </label>
+        <label class="flex items-center gap-1 cursor-pointer">
+            <input type="radio" name="customer_filter" value="all" class="accent-current" 
+                   {% if filter_type == 'all' %}checked{% endif %}
+                   hx-get="{% url 'sales:sale_targets_calculator' %}?action=load_customers&origin_route={{ origin_route_id }}&filter_type=all" 
+                   hx-target="#customer-selector-container">
+            <span class="text-strong">Todos los clientes</span>
+        </label>
+    </div>
+
+    <p>Selección masiva</p>
+    <div class="flex flex-col gap-1 items-end">
+        <textarea id="bulk-customer-input" class="w-full border border-border rounded p-1 bg-page text-strong outline-none" name="" placeholder="Ingresa los codigos de clientes separados por comas o saltos de página para una seleccion masiva"></textarea>
+        <button type="button" onclick="bulkSelectCustomers()" class="w-30 border border-border rounded hover:bg-hover transition-colors text-strong rounded p-1 cursor-pointer">Seleccionar</button>
     </div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Clientes Disponibles -->
         <div class="border border-border rounded bg-page flex flex-col h-64">
             <div class="bg-container border-b border-border p-2">
-                <span class="text-strong text-sm ">Clientes disponibles {% if filter_type == 'all' %}(Todos){% else %}(En ruta){% endif %}</span>
+                <span class="text-strong ">Clientes disponibles {% if filter_type == 'all' %}(Todos){% else %}(En ruta){% endif %}</span>
             </div>
             <div class="p-2 border-b border-border">
-                <input type="text" placeholder="Buscar cliente..." class="w-full bg-page text-sm outline-none text-strong" onkeyup="filterCustomers(this, 'available-customers')">
+                <input type="text" placeholder="Buscar cliente..." class="w-full bg-page outline-none text-strong" onkeyup="filterCustomers(this, 'available-customers')">
             </div>
             <div id="available-customers" class="overflow-y-auto p-2 flex flex-col gap-1 flex-grow">
                 {% for c in customers %}
-                <label class="flex items-center justify-between text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors border border-transparent hover:border-border customer-item">
+                <label class="flex items-center justify-between cursor-pointer hover:bg-hover p-1 rounded transition-colors border border-transparent hover:border-border customer-item">
                     <div class="flex items-center gap-2">
                         <input type="checkbox" name="selected_customers" value="{{ c.id }}" class="customer-checkbox" onchange="moveCustomer(this)">
                         <span class="searchable-text text-strong">{{ c.id|upper }} - {{ c.name|title }} {% if filter_type == 'all' and c.route %}<span class="text-muted text-xs">({{ c.route.name }})</span>{% endif %}</span>
@@ -43,22 +46,44 @@
             </div>
         </div>
 
-        <!-- Clientes Seleccionados -->
         <div class="border border-border rounded bg-page flex flex-col h-64">
             <div class="bg-container border-b border-border p-2">
-                <span class="text-strong text-sm ">Clientes seleccionados para el cálculo</span>
+                <span class="text-strong ">Clientes seleccionados para el cálculo</span>
             </div>
             <div class="p-2 border-b border-border">
-                <input type="text" placeholder="Buscar cliente..." class="w-full bg-page text-sm outline-none text-strong" onkeyup="filterCustomers(this, 'selected-customers')">
+                <input type="text" placeholder="Buscar cliente..." class="w-full bg-page outline-none text-strong" onkeyup="filterCustomers(this, 'selected-customers')">
             </div>
             <div id="selected-customers" class="overflow-y-auto p-2 flex flex-col gap-1 flex-grow">
-                <!-- Los clientes seleccionados se moverán aquí mediante JS -->
             </div>
         </div>
     </div>
 </div>
 
 <script>
+    function bulkSelectCustomers() {
+        const textarea = document.getElementById('bulk-customer-input');
+        if (!textarea) return;
+        
+        const rawText = textarea.value;
+        if (!rawText.trim()) return;
+        
+        const inputIds = rawText.split(/[\n,\t]+/).map(id => id.trim().toLowerCase()).filter(id => id);
+        
+        const availableContainer = document.getElementById('available-customers');
+        const checkboxes = availableContainer.querySelectorAll('.customer-checkbox');
+        
+        checkboxes.forEach(cb => {
+            if (inputIds.includes(cb.value.toLowerCase())) {
+                if (!cb.checked) {
+                    cb.checked = true;
+                    moveCustomer(cb);
+                }
+            }
+        });
+        
+        textarea.value = '';
+    }
+
     function filterCustomers(input, containerId) {
         const filter = input.value.toLowerCase();
         const container = document.getElementById(containerId);
@@ -84,5 +109,5 @@
     }
 </script>
 {% else %}
-<p class="text-title text-sm mb-2 text-center">No se encontraron clientes para la ruta seleccionada o no has seleccionado una ruta.</p>
+<p class="text-title mb-2 text-center">No se encontraron clientes para la ruta seleccionada o no has seleccionado una ruta.</p>
 {% endif %}

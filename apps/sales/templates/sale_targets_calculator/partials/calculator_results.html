@@ -12,38 +12,41 @@
 {% endif %}
 
 {% if results %}
+<p class="  mb-6 border-b border-border pb-2 flex justify-between w-full">
+    <span class="text-title text-sm">
+        Resultados de cálculo
+    </span>
+    <button onclick="exportarCalculo()" class="hover:text-hover text-strong transition-colors cursor-pointer">
+        Descargar datos
+    </button>
+</p>
+
+
 <div class="flex flex-col gap-8">
-    <div class="flex justify-between items-center border-b border-border pb-2">
-        <p class="text-title text-sm ">Resultados de cálculo</p>
-        <div class="flex gap-2">
-            <button onclick="exportarCalculo()" class="hover:text-hover text-strong transition-colors cursor-pointer">
-                Descargar datos
-            </button>
-        </div>
-    </div>
 
     {% for key, r in results.items %}
     {% if r %}
     <div class="bg-page border border-border rounded p-4">
-        <p class="text-title text-sm mb-4 ">Ruta: {{ r.route_name }} {% if key == 'origin' %}(Origen){% else %}(Destino){% endif %}</p>
+        <p class="text-title  mb-1 ">Ruta: {{ r.route_name }} {% if key == 'origin' %}(Origen){% else %}(Destino){% endif %}</p>
+
         
-        <p class="text-strong text-sm mb-2 ">Desglose de cálculo (Objetivo actual, Crecimiento, Ajuste)</p>
+        <p class="text-strong  mb-2 ">Desglose de cálculo (Objetivo actual, Crecimiento, Ajuste)</p>
         <div class="w-full overflow-x-auto border border-border rounded bg-container mb-6">
             <table class="w-full text-left border-spacing-0 border-separate">
                 <thead>
                     <tr class="border-b border-border">
-                        <th class="p-2 min-w-[150px] text-left bg-container border-r border-border sticky left-0 z-10  text-title text-sm">Clase de producto</th>
+                        <th class="p-2 min-w-[150px] text-left bg-container border-r border-border sticky left-0 z-10  text-title ">Clase de producto</th>
                         {% for m in r.classes.0.months %}
-                            <th class="p-2 min-w-50 text-center border-r border-border  text-title bg-page text-sm">{{ m.date|date:"M Y"|title }}</th>
+                            <th class="p-2 min-w-50 text-center border-r border-border  text-title bg-page ">{{ m.date|date:"M Y"|title }}</th>
                         {% endfor %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for cls in r.classes %}
                     <tr class="hover:bg-hover transition-colors">
-                        <td class="p-2 text-left bg-container border-r border-t border-border sticky left-0 text-strong  text-sm">{{ cls.class_name }}</td>
+                        <td class="p-2 text-left bg-container border-r border-t border-border sticky left-0 text-strong  ">{{ cls.class_name }}</td>
                         {% for m in cls.months %}
-                        <td class="p-2 text-right border-r border-t border-border text-sm">
+                        <td class="p-2 text-right border-r border-t border-border ">
                             <div class="flex flex-col gap-1 items-end">
                                 <span class="text-strong" title="Objetivo original">$ {{ m.old_target|floatformat:2|intcomma }}</span>
                                 <span class="text-xs {% if m.growth > 0 %}text-green-600{% elif m.growth < 0 %}text-red-600{% else %}text-muted{% endif %}" title="Crecimiento respecto al mes anterior">
@@ -70,24 +73,23 @@
             </table>
         </div>
 
-        <!-- TABLA 2: Cuota Final Proyectada -->
-        <p class="text-strong text-sm mb-2 ">Objetivos Planificados (Objetivos finales)</p>
+        <p class="text-strong  mb-2 ">Objetivos Planificados (Objetivos finales)</p>
         <div class="w-full overflow-x-auto border border-border rounded bg-container">
             <table class="w-full text-left border-spacing-0 border-separate">
                 <thead>
                     <tr class="border-b border-border">
-                        <th class="p-2 min-w-[150px] text-left bg-container border-r border-border sticky left-0 z-10  text-title text-sm">Clase de producto</th>
+                        <th class="p-2 min-w-[150px] text-left bg-container border-r border-border sticky left-0 z-10  text-title ">Clase de producto</th>
                         {% for m in r.classes.0.months %}
-                            <th class="p-2 min-w-50 text-center border-r border-border  text-title bg-page text-sm">{{ m.date|date:"M Y"|title }}</th>
+                            <th class="p-2 min-w-50 text-center border-r border-border  text-title bg-page ">{{ m.date|date:"M Y"|title }}</th>
                         {% endfor %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for cls in r.classes %}
                     <tr class="hover:bg-hover transition-colors">
-                        <td class="p-2 text-left bg-container border-r border-t border-border sticky left-0 text-strong  text-sm">{{ cls.class_name }}</td>
+                        <td class="p-2 text-left bg-container border-r border-t border-border sticky left-0 text-strong  ">{{ cls.class_name }}</td>
                         {% for m in cls.months %}
-                        <td class="p-2 text-right border-r border-t border-border text-sm">
+                        <td class="p-2 text-right border-r border-t border-border ">
                             <span class=" {% if m.new_target > m.old_target %}text-green-600{% elif m.new_target < m.old_target %}text-red-600{% else %}text-strong{% endif %}">
                                 $ {{ m.new_target|floatformat:2|intcomma }}
                             </span>
