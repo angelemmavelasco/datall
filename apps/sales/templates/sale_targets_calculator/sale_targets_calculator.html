@@ -116,4 +116,20 @@
 
 </div>
 
+<script>
+    function exportarCalculo() {
+        const form = document.getElementById('calculator-form');
+        if (!form) return;
+        
+        const formData = new FormData(form);
+        const searchParams = new URLSearchParams();
+        
+        for (const pair of formData.entries()) {
+            searchParams.append(pair[0], pair[1]);
+        }
+        
+        window.location.href = "{% url 'sales:export_sale_targets_calculator_data' %}?" + searchParams.toString();
+    }
+</script>
+
 {% endblock content %}

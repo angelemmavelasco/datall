@@ -299,3 +299,60 @@ def sale_targets_calculator(request):
             
     template = 'sale_targets_calculator/sale_targets_calculator.html'
     return render(request, template, context)
+
+from django.http import HttpResponse
+from asgiref.sync import sync_to_async
+
+@login_required
+async def export_sale_targets_calculator_data(request):
+    mode = request.GET.get('adjustment_mode')
+    method = request.GET.get('calculation_method')
+    origin_route = request.GET.get('origin_route')
+    destination_route = request.GET.get('destination_route')
+    adjustment_direction = request.GET.get('adjustment_direction', 'remove')
+    target_year = request.GET.get('target_year')
+    effective_month = request.GET.get('effective_month')
+    eval_customer_start = request.GET.get('eval_customer_start')
+    eval_customer_end = request.GET.get('eval_customer_end')
+    eval_route_start = request.GET.get('eval_route_start')
+    eval_route_end = request.GET.get('eval_route_end')
+    product_classes_selected = request.GET.getlist('product_classes')
+    selected_customers = request.GET.getlist('selected_customers')
+
+    @sync_to_async
+    def generate_file():
+        from apps.sales.services.sale_targets.calculator import SaleTargetsCalculatorService
+        
+        service = SaleTargetsCalculatorService(
+            mode=mode,
+            origin_route_id=origin_route,
+            destination_route_id=destination_route,
+            customer_ids=selected_customers,
+            adjustment_direction=adjustment_direction
+        )
+        
+        results = service.calculate_simulation(
+            target_year=int(target_year) if target_year else None,
+            effective_month=effective_month,
+            eval_customer_start=eval_customer_start,
+            eval_customer_end=eval_customer_end,
+            eval_route_start=eval_route_start,
+            eval_route_end=eval_route_end,
+            product_class_ids=product_classes_selected,
+            calc_method=method
+        )
+        
+        return service.export_data_report(results)
+
+    excel_file = await generate_file()
+    
+    if not excel_file:
+        return HttpResponse("Error en los parámetros o la simulación", status=400)
+
+    response = HttpResponse(
+        excel_file, 
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="simulacion_cuotas.xlsx"'
+    
+    return response

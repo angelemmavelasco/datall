@@ -16,9 +16,9 @@
     <div class="flex justify-between items-center border-b border-border pb-2">
         <p class="text-title text-sm ">Resultados de cálculo</p>
         <div class="flex gap-2">
-            <!-- Los botones de exportar se pueden implementar luego -->
-            <!-- <button class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors text-sm">Exportar PDF</button>
-            <button class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors text-sm">Exportar Excel</button> -->
+            <button onclick="exportarCalculo()" class="hover:text-hover text-strong transition-colors cursor-pointer">
+                Descargar datos
+            </button>
         </div>
     </div>
 
@@ -46,13 +46,9 @@
                         <td class="p-2 text-right border-r border-t border-border text-sm">
                             <div class="flex flex-col gap-1 items-end">
                                 <span class="text-strong" title="Objetivo original">$ {{ m.old_target|floatformat:2|intcomma }}</span>
-                                {% if m.growth != 0 %}
-                                <span class="text-xs {% if m.growth > 0 %}text-green-600{% else %}text-red-600{% endif %}" title="Crecimiento respecto al mes anterior">
-                                    {% if m.growth > 0 %}▲{% else %}▼{% endif %} {{ m.growth|floatformat:1 }}%
+                                <span class="text-xs {% if m.growth > 0 %}text-green-600{% elif m.growth < 0 %}text-red-600{% else %}text-muted{% endif %}" title="Crecimiento respecto al mes anterior">
+                                    {% if m.growth > 0 %}▲{% elif m.growth < 0 %}▼{% else %}{% endif %} {{ m.growth|floatformat:1 }}%
                                 </span>
-                                {% else %}
-                                <span class="text-xs text-muted">-</span>
-                                {% endif %}
                                 
                                 {% if m.delta != 0 %}
                                 <span class="text-xs  {% if m.delta > 0 %}text-green-600{% else %}text-red-600{% endif %} bg-page px-1 rounded border border-border" title="Monto a sumar/restar">
