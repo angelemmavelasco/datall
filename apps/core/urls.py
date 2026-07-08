@@ -1,6 +1,6 @@
 # pyrefly: ignore [missing-import]
 from django.urls import path
-from .views import CustomPasswordChangeView
+from .views import CustomPasswordChangeView, support
 # pyrefly: ignore [missing-import]
 from django.views.generic import TemplateView
 
@@ -18,4 +18,5 @@ urlpatterns = [
         name='password_change_done'
     ),
 
+    path('support/', support, name='support'),
 ]

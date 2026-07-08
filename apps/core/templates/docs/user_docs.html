@@ -1,0 +1,591 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Soporte{% endblock %}
+
+{% block module_name %}Soporte
+<span class="text-body">Versión 1.1.0</span>
+{% endblock %}
+
+{% block content %}
+
+<div class="flex flex-col md:flex-row gap-2 items-start relative">
+
+    <button type="button" onclick="document.getElementById('docs-menu').classList.toggle('hidden')" class="md:hidden w-full flex justify-between items-center p-3 border border-border rounded bg-container text-title hover:border-strong transition-colors">
+        <span class="flex items-center gap-2 font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            Índice
+        </span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+
+    <aside id="docs-menu" class="hidden md:block md:max-w-[200px] shrink-0 md:sticky md:top-4  md:pr-4 scrollbar-hide">
+        <nav class="flex flex-col gap-6 p-2 h-screen overflow-y-auto">
+            
+            <div>
+                <p class="text-title text-sm font-medium">Primeros pasos</p>
+                <ul class="flex flex-col gap-2 mt-3 text-body text-sm">
+                    <li><a href="#que-es-datall" class="block hover:text-hover transition-colors">¿Qué es datall?</a></li>
+                    <li><a href="#ventajas" class="block hover:text-hover transition-colors">Ventajas</a></li>
+                    <li><a href="#acceso" class="block hover:text-hover transition-colors">Acceso</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <p class="text-title text-sm font-medium">Documentación</p>
+                <ul class="flex flex-col gap-2 mt-3 text-body text-sm">
+                    <li><a href="#soporte" class="block hover:text-hover transition-colors">Soporte</a></li>
+                    <li><a href="#estructura" class="block hover:text-hover transition-colors">Estructura</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <p class="text-title text-sm font-medium">Business intelligence</p>
+                <ul class="flex flex-col gap-2 mt-3 text-body text-sm">
+                    <li><a href="#dashboard-de-ventas" class="block hover:text-hover transition-colors">Dashboard de ventas</a></li>
+                    <li><a href="#kpis-por-rutas" class="block hover:text-hover transition-colors">Kpis por rutas</a></li>
+                    <li><a href="#kpis-por-clientes" class="block hover:text-hover transition-colors">Kpis por clientes</a></li>
+                    <li><a href="#cobranza" class="block hover:text-hover transition-colors">Cobranza</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <p class="text-title text-sm font-medium">Análisis avanzado</p>
+                <ul class="flex flex-col gap-2 mt-3 text-body text-sm">
+                    <!-- <li><a href="#pronosticos" class="block hover:text-hover transition-colors">Pronósticos</a></li> -->
+
+                    <li><a href="#riesgo-comercial" class="block hover:text-hover transition-colors">Riesgo comercial</a></li>
+                </ul>
+            </div>
+
+            <!-- <div>
+                <p class="text-title text-sm font-medium">Reportes especiales</p>
+                <ul class="flex flex-col gap-2 mt-3 text-body text-sm">
+                    <li><a href="#alcance-de-objetivos" class="block hover:text-hover transition-colors">Alcance de objetivos</a></li>
+                    <li><a href="#desglose-anual-de-ventas" class="block hover:text-hover transition-colors">Desglose anual de ventas</a></li>
+                    <li><a href="#desglose-mensual-por-gerencia" class="block hover:text-hover transition-colors">Desglose mensual por gerencia</a></li>
+                    <li><a href="#clientes-unicos" class="block hover:text-hover transition-colors">Clientes únicos</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <p class="text-title text-sm font-medium">Ventas</p>
+                <ul class="flex flex-col gap-2 mt-3 text-body text-sm">
+                    <li><a href="#transacciones" class="block hover:text-hover transition-colors">Transacciones</a></li>
+                    <li><a href="#objetivos-de-venta" class="block hover:text-hover transition-colors">Objetivos de venta</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <p class="text-title text-sm font-medium">Productos</p>
+                <ul class="flex flex-col gap-2 mt-3 text-body text-sm">
+                    <li><a href="#productos" class="block hover:text-hover transition-colors">Productos</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <p class="text-title text-sm font-medium">Recursos humanos</p>
+                <ul class="flex flex-col gap-2 mt-3 text-body text-sm">
+                    <li><a href="#personal" class="block hover:text-hover transition-colors">Personal</a></li>
+                    <li><a href="#mapa-organizacional" class="block hover:text-hover transition-colors">Mapa organizacional</a></li>
+                    <li><a href="#perfiles-de-comision" class="block hover:text-hover transition-colors">Perfiles de comisión</a></li>
+                    <li><a href="#reporte-de-comisiones" class="block hover:text-hover transition-colors">Reporte de comisiones</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <p class="text-title text-sm font-medium">Administración de datos</p>
+                <ul class="flex flex-col gap-2 mt-3 text-body text-sm">
+                    <li><a href="#usuarios" class="block hover:text-hover transition-colors">Usuarios</a></li>
+                    <li><a href="#grupos" class="block hover:text-hover transition-colors">Grupos</a></li>
+                    <li><a href="#referencias" class="block hover:text-hover transition-colors">Referencias</a></li>
+                    <li><a href="#panel-de-administrador" class="block hover:text-hover transition-colors">Panel de administrador</a></li>
+                    <li><a href="#actividad" class="block hover:text-hover transition-colors">Actividad</a></li>
+                    <li><a href="#importaciones" class="block hover:text-hover transition-colors">Importaciones</a></li>
+                    <li><a href="#cambio-de-contrasena" class="block hover:text-hover transition-colors">Cambio de contraseña</a></li>
+                </ul>
+            </div> -->
+        </nav>
+    </aside>
+
+    <main class="flex-1 w-full min-w-0 bg-container border border-border p-2 rounded overflow-y-auto h-screen">
+        <div class="mb-4">
+            <p class="text-title text-xl mb-2">Primeros pasos</p>
+            <hr class="border-border">
+        </div>
+
+        <p id="que-es-datall" class="text-sm text-strong mb-2 scroll-mt-8 text-center">¿Qué es datall?</p>
+
+        <p class="text-body leading-relaxed mb-4">
+            <strong>Datall</strong> es una plataforma integral de Business Intelligence (BI) y gestión, diseñada para centralizar, analizar y visualizar la información estratégica de tu organización. Su objetivo principal es transformar datos operativos en métricas accionables (KPIs), pronósticos y reportes detallados que faciliten la toma de decisiones.
+        </p>
+        <p class="text-body leading-relaxed">
+            A través de sus diferentes módulos, datall permite administrar desde transacciones de ventas y cumplimiento de metas, hasta la estructura de recursos humanos y perfiles de comisión. Todo esto operando sobre un potente motor de procesamiento de datos (ETL) y un estricto modelo de seguridad jerárquico, garantizando que cada usuario acceda única y exclusivamente a la información correspondiente a su rol en el mapa organizacional.
+        </p>
+
+        <p id="ventajas" class="text-sm text-strong mb-2 mt-6 scroll-mt-8 text-center">Ventajas</p>
+        <div class="text-body leading-relaxed pl-4">
+            <ul class="list-disc text-body leading-relaxed space-y-2">
+                <li><strong>Disponibilidad inmediata:</strong> Accede a la información estratégica de la empresa desde cualquier lugar y en cualquier momento, eliminando la dependencia de reportes manuales prolongados.</li>
+                <li><strong>Seguridad y Confidencialidad:</strong> Protege la información sensible. El modelo de acceso garantiza que cada colaborador únicamente visualice los datos y métricas que le corresponden según su rol en la empresa.</li>
+                <li><strong>Toma de decisiones ágil:</strong> Transforma grandes volúmenes de información en indicadores visuales, interactivos y fáciles de interpretar para actuar con rapidez ante cualquier panorama.</li>
+                <li><strong>Confiabilidad total en los datos:</strong> Previene errores humanos; los procesos automatizados del sistema limpian y validan cada registro importado, asegurando reportes precisos en los que puedes confiar.</li>
+                <li><strong>Visión centralizada:</strong> Unifica el seguimiento de ventas, metas, clientes y cálculo de comisiones en una sola plataforma, solucionando el problema de tener la información fragmentada.</li>
+                <li><strong>Proyección a futuro:</strong> No solo evalúa el rendimiento actual e histórico, sino que te permite anticiparte mediante herramientas predictivas y evaluación de riesgos comerciales.</li>
+            </ul>
+        </div>
+
+        <p id="acceso" class="text-sm text-strong mb-2 mt-6 scroll-mt-8 text-center">Acceso</p>
+        <div class="text-body leading-relaxed space-y-4">
+            <p>
+                Por políticas de seguridad y confidencialidad, el acceso a datall está controlado de forma estricta. <strong>Actualmente, las cuentas de usuario son creadas de manera exclusiva por los administradores del sistema.</strong>
+            </p>
+            <p>
+                Cuando debas integrarte a la plataforma, un administrador registrará tu perfil, configurará tus permisos según tu lugar en el mapa organizacional y te entregará tus credenciales iniciales (usuario y contraseña).
+            </p>
+            <p class="font-medium text-strong">Gestión de tu contraseña:</p>
+            <ul class="list-disc pl-4 space-y-2">
+                <li><strong>Cambio de contraseña:</strong> Es importante que personalices tu acceso. Una vez dentro de la plataforma, puedes modificar tu contraseña temporal dirigiéndote a la sección <em>Cambio de contraseña</em> en el menú lateral.</li>
+                <li><strong>Recuperación de contraseña:</strong> Si olvidas tu clave de acceso, puedes restablecerla tú mismo desde la pantalla de inicio de sesión. El sistema te enviará un enlace de recuperación seguro por correo electrónico. <strong>Nota importante:</strong> Para poder utilizar esta función, es indispensable que previamente le proporciones a un administrador una dirección de correo (empresarial o personal) para que la vincule a tu cuenta.</li>
+            </ul>
+        </div>
+
+        <div class="mb-4">
+            <p class="text-title text-xl mb-2 mt-4">Documentación</p>
+            <hr class="border-border">
+        </div>
+
+        <p id="soporte" class="text-sm text-strong mb-2 scroll-mt-8 text-center">Soporte</p>
+        <div class="text-body leading-relaxed space-y-4">
+            <p>
+                Si tienes dudas operativas o te encuentras con algún problema en la plataforma, existen tres canales escalables para recibir ayuda:
+            </p>
+            <ul class="list-decimal pl-5 space-y-2">
+                <li><strong>Esta documentación:</strong> Es tu primer recurso. Explora el índice para encontrar manuales detallados y resolver tus dudas de manera inmediata.</li>
+                <li><strong>Tu líder directo:</strong> Si la documentación no cubre tu consulta, acércate a tu supervisor. Ellos conocen los procesos internos y pueden guiarte operativamente.</li>
+                <li><strong>Administradores del sistema:</strong> Si experimentas un error técnico, un problema con tu cuenta o requieres ayuda especializada, contacta al soporte técnico escribiendo a <a href="mailto:angel.emma.velasco@gmail.com" class="text-strong underline transition-colors">angel.emma.velasco@gmail.com</a>.</li>
+            </ul>
+        </div>
+
+        <p id="estructura" class="text-sm text-strong mb-2 mt-6 scroll-mt-8 text-center">Estructura</p>
+        <div class="text-body leading-relaxed space-y-4">
+            <p>
+                La documentación de datall está diseñada para ser completamente intuitiva y simétrica con la navegación de la plataforma.
+            </p>
+            <p>
+                El índice lateral está dividido por secciones y temas. <strong>Cada módulo y sección que visualizas en el sistema tiene su propia página de soporte.</strong> De esta manera, la búsqueda de ayuda es directa; por ejemplo, si tienes una duda sobre la ventana de <em>Riesgo comercial</em>, encontrarás su manual bajo la categoría de <em>Análisis avanzado</em>.
+            </p>
+        </div>
+
+        <div class="mb-4 mt-10">
+            <p class="text-title text-xl mb-2">Business Intelligence</p>
+            <hr class="border-border">
+        </div>
+        
+        <p id="dashboard-de-ventas" class="text-sm text-strong mb-2 mt-6 scroll-mt-8 text-center">Dashboard de ventas</p>
+        <div class="text-body leading-relaxed space-y-4 mb-8">
+            <p>
+                El <strong>Dashboard de ventas</strong> es el panel de control principal del módulo de Business Intelligence. Ofrece una vista panorámica del rendimiento comercial general, permitiendo evaluar el cumplimiento de objetivos y el comportamiento de las ventas en un periodo determinado.
+            </p>
+            <p class="font-medium text-strong">Filtros dinámicos</p>
+            <p>
+                Para refinar la información, el dashboard cuenta con un panel de filtros avanzado accesible desde el botón <em>Filtrar</em>. Puedes segmentar la información por:
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Fechas:</strong> Rango de inicio y fin del periodo a analizar.</li>
+                <li><strong>Gerencia y Región:</strong> Filtra por el centro de distribución o región a la que pertenecen las rutas.</li>
+                <li><strong>Lugar de venta:</strong> Refiere al centro de distribución físico desde donde se facturó o emitió la transacción.</li>
+                <li><strong>Catálogo:</strong> Clase y categoría de los productos.</li>
+                <li><strong>Rutas:</strong> Selección específica de rutas de venta.</li>
+            </ul>
+            <p class="text-muted">
+                <em>Tip: Todos los selectores permiten buscar escribiendo el texto y seleccionar múltiples opciones rápidamente marcando la casilla principal.</em>
+            </p>
+            <p class="font-medium text-strong mt-4">Indicadores principales (KPIs)</p>
+            <p>
+                La cabecera del dashboard resume la salud comercial de la selección actual mediante tarjetas de KPIs (pasa el ratón sobre el ícono de ayuda en cada uno para ver su definición exacta):
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Venta neta y Objetivo:</strong> Comparativa de la venta real (contemplando devoluciones) frente a la meta fijada.</li>
+                <li><strong>Alcance y Diferencia:</strong> Porcentaje completado del objetivo y monto faltante/superado.</li>
+                <li><strong>Venta total y Unidades:</strong> Venta bruta sin notas de crédito y total de unidades desplazadas.</li>
+                <li><strong>Clientes con compras:</strong> Total de clientes únicos que transaccionaron en el periodo.</li>
+                <li><strong>Margen comercial:</strong> Rentabilidad obtenida (utilidad sobre venta neta), categorizada por colores y niveles de rendimiento (Excelente ≥ 43%, Óptimo, Regular, Malo, Muy malo).</li>
+            </ul>
+            <p class="font-medium text-strong mt-4">Gráficos y herramientas analíticas</p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Línea de tiempo:</strong> Evalúa la evolución y tendencia de las ventas y el volumen de unidades durante el periodo.</li>
+                <li><strong>Alcance de objetivos:</strong> Analiza las ventas consolidadas por gerencia en un gráfico de barras, y revisa el desempeño individual en la tabla de <em>Venta neta por ruta</em>. Puedes dar clic sobre cualquier ruta para abrir directamente sus métricas detalladas.</li>
+                <li><strong>Contribución del catálogo:</strong> Descubre la participación en ventas de cada clase y categoría de producto.</li>
+                <li><strong>Mejor desempeño:</strong> Tablas interactivas con el Top 50 de productos más vendidos y el Top 50 de clientes estrella. Da clic en el nombre de un cliente para visualizar su radiografía comercial e historial de compras.</li>
+            </ul>
+        </div>
+
+        <p id="kpis-por-rutas" class="text-sm text-strong mb-2 mt-6 scroll-mt-8 text-center">Kpis por rutas</p>
+        <div class="text-body leading-relaxed space-y-4 mb-8">
+            <p>
+                El submódulo <strong>KPIs por rutas</strong> ofrece una radiografía a profundidad del desempeño de un vendedor o ruta específica. A diferencia del Dashboard de ventas, que consolida la información global, aquí puedes auditar con precisión cómo se compone el éxito (o fracaso) de una sola ruta de distribución.
+            </p>
+            
+            <p class="font-medium text-strong">Filtros de búsqueda</p>
+            <p>
+                Este módulo requiere seleccionar un solo objetivo a la vez para mantener el enfoque analítico. Sus filtros son:
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Periodo Inicio y Fin:</strong> Rango de fechas exacto para delimitar el análisis de ventas, objetivos, clientes y la cartera activa. <em>Nota importante:</em> Los datos de <strong>Cobranza</strong> siempre se evalúan a la fecha de "Periodo Fin", es decir, muestra cómo estaban las deudas de los clientes exactamente ese día.</li>
+                <li><strong>Ruta:</strong> Una lista interactiva con todas las rutas a las que tienes acceso. Utiliza el cuadro de búsqueda ("Buscar ruta...") para filtrar rápidamente el nombre o ID de la ruta y selecciónala marcando su casilla circular. <em>Sólo puedes analizar una a la vez.</em></li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Perfil del Colaborador y KPIs Generales</p>
+            <p>
+                En la parte superior, identificarás visualmente de quién es la ruta mediante la fotografía del colaborador (si está configurada) junto con el identificador y nombre de la ruta. Debajo de su nombre, verás cuatro indicadores globales:
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Venta neta:</strong> Dinero real ingresado, ya restando las notas de crédito o devoluciones aplicables durante las fechas seleccionadas.</li>
+                <li><strong>Objetivo:</strong> La meta comercial económica asignada a ese vendedor en el periodo seleccionado.</li>
+                <li><strong>Diferencia:</strong> El cálculo exacto en dinero de cuánto sobró o faltó para llegar a la meta.</li>
+                <li><strong>Alcance:</strong> El porcentaje completado de la meta. Un indicador rápido de éxito.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Desempeño de Ventas y Objetivos por Clase</p>
+            <p>
+                Para entender cómo se construyó la Venta Neta, este apartado desglosa las ventas por clases de productos:
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Gráfico comparativo:</strong> Un gráfico mixto que empareja mensualmente una barra azul (Objetivo) con una barra verde (Venta real). Adicionalmente, una línea traza visualmente el porcentaje de Alcance en el periodo, permitiendo ver los picos y caídas a lo largo de los meses.</li>
+                <li><strong>Tabla de desglose de Catálogo:</strong> Muestra exactamente cuánto se vendió y cuánto se esperaba vender por cada clase de producto (Diamond, Zoetis, MSD, etc.). La columna <em>Alcance</em> aplica un semáforo de colores para identificar visualmente el desempeño de cada línea: 
+                <span class="text-emerald-500 font-medium">Verde</span> (Cumplido ≥ 100%), 
+                <span class="text-yellow-500 font-medium">Amarillo</span> (Aceptable ≥ 90%), 
+                <span class="text-orange-500 font-medium">Naranja</span> (En riesgo ≥ 80%) y 
+                <span class="text-red-500 font-medium">Rojo</span> (Crítico < 80%).
+                </li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Cobranza</p>
+            <p>
+                Analiza qué tan eficiente es el retorno de dinero en la ruta, con corte calculado al día indicado en el filtro "Periodo Fin".
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Saldo total:</strong> Todo el dinero que deben los clientes de esa ruta en general.</li>
+                <li><strong>Saldo al corriente:</strong> Las facturas que aún están en tiempo de pagarse sanamente (dentro de sus días de crédito otorgado).</li>
+                <li><strong>Vencido:</strong> Facturas de las que ya caducó el plazo de pago. Es el dinero que se debe recuperar con urgencia.</li>
+                <li><strong>Cuentas por cobrar:</strong> Cuántos clientes de la ruta tienen al menos una deuda activa (sea sana o vencida).</li>
+                <li><strong>Tabla de desglose de antigüedad:</strong> Muestra el Límite de Crédito global asignado a la cartera de la ruta, el porcentaje de uso general de ese crédito (qué tanto crédito han quemado), y fracciona el saldo vencido en plazos de gravedad: deudas de 1 a 15 días, 16 a 30 días, 31 a 60 días, y facturas críticas con más de 60 días de atraso.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Análisis de Clientes (Cobertura y Retención)</p>
+            <p>
+                Evalúa qué tan bien se está atendiendo y expandiendo el territorio asignado.
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Cartera:</strong> Número oficial de clientes registrados y activos en esa ruta.</li>
+                <li><strong>Clientes nuevos:</strong> Cantidad de clientes dados de alta en el sistema estrictamente dentro de las fechas seleccionadas.</li>
+                <li><strong>Clientes con compras:</strong> Número de clientes que facturaron al menos una vez en el periodo.</li>
+                <li><strong>Alcance de cartera:</strong> El porcentaje de la Cartera total que logró comprar. Es el indicador principal de efectividad territorial.</li>
+                <li><strong>Gráfico de Clientes Ganados y Perdidos:</strong> Traza la retención mensual. Considera "Ganado" a un cliente que no te compró el mes pasado pero este mes sí; y "Perdido" al que compró el mes pasado pero este mes dejó de hacerlo.</li>
+                <li><strong>Distribución de ingresos por categoría:</strong> Una gráfica de pastel que refleja qué perfil de clientes (Ej. Clínicas, Estéticas, Petshops) es el que sostiene económicamente a la ruta.</li>
+            </ul>
+        </div>
+
+        <p id="kpis-por-clientes" class="text-sm text-strong mb-2 mt-6 scroll-mt-8 text-center">Kpis por clientes</p>
+        <div class="text-body leading-relaxed space-y-4 mb-8">
+            <p>
+                El submódulo <strong>KPIs por clientes</strong> es una herramienta analítica avanzada diseñada para evaluar y segmentar la cartera completa de clientes de la empresa. Permite visualizar la rentabilidad, hábitos de consumo, salud de cobranza y fidelidad de los clientes, todo a través de una tabla consolidada altamente filtrable y la opción de profundizar en el perfil individual de cada uno.
+            </p>
+
+            <p class="font-medium text-strong mt-4">Panel de Filtros Generales</p>
+            <p>
+                Ubicados a la izquierda de la pantalla, estos filtros determinan <em>qué clientes</em> van a aparecer en tu análisis. Al aplicarlos, la lista completa se reduce únicamente a los clientes que cumplan con los criterios seleccionados.
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Búsqueda (ID o Nombre):</strong> Permite localizar rápidamente a un cliente específico.</li>
+                <li><strong>Líder de opinión:</strong> Filtra clientes marcados como influyentes (Sí/No). Esta etiqueta especial puede ser modificada manualmente desde la vista de detalle individual de un cliente.</li>
+                <li><strong>Registro desde / hasta:</strong> Filtra a los clientes según la fecha exacta en la que fueron dados de alta oficialmente en el sistema.</li>
+                <li><strong>Gerencia, Rutas y Tipos de Cliente:</strong> Filtros de selección múltiple con buscador integrado. Puedes localizar y marcar varias opciones simultáneamente.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Métricas Generales y Filtros de Contribución</p>
+            <p>
+                En la parte superior de los resultados verás un resumen global de la cartera filtrada. El comportamiento de estas métricas, así como de algunas columnas clave de la tabla, se rige por el filtro flotante llamado <strong>Métricas de contribución</strong> (accesible desde el ícono de ajustes sobre las columnas de contribución en la tabla).
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Filtro de Contribución (Desde / Hasta):</strong> Define el periodo de tiempo exacto en el que se evaluará el dinero ingresado. Por defecto analiza el último trimestre móvil. También te permite cambiar el enfoque de los datos monetarios de toda la tabla entre <em>Venta neta</em> o <em>Utilidad</em>.</li>
+                <li><strong>Clientes registrados:</strong> El total de clientes encontrados por los Filtros Generales, pero descartando estrictamente a aquellos que fueron creados después de la fecha "Hasta" de tu filtro de contribución. Mide el tamaño válido de la cartera.</li>
+                <li><strong>Clientes con consumo:</strong> De los clientes registrados, cuenta a los que facturaron al menos una vez (venta > $0) dentro de las fechas de contribución estipuladas.</li>
+                <li><strong>Clientes sin consumo:</strong> La diferencia entre registrados y con consumo. Es un indicador duro para detectar inactividad o fuga de clientes.</li>
+                <li><strong>Venta neta:</strong> Sumatoria monetaria de todos los clientes filtrados durante el periodo de contribución.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">La Tabla de Análisis Consolidado</p>
+            <p>
+                La tabla horizontal divide a cada cliente en múltiples secciones analíticas. <strong>Muy importante:</strong> Varios de estos campos están pre-calculados a periodos históricos fijos y <em>no cambian</em> sin importar las fechas que configures en tu filtro de contribución. Conoce cuáles sí y cuáles no:
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li>
+                    <strong>Identificación:</strong> Muestra el Cliente (da clic en su nombre para ver su Detalle a profundidad), la Ruta a la que pertenece y la Gerencia. <em>No afectados por fechas.</em>
+                </li>
+                <li>
+                    <strong>Segmentación:</strong>
+                    <ul class="list-disc pl-5 mt-1 space-y-1 text-muted">
+                        <li><em>Tipo de cliente:</em> El canal de venta o perfil del negocio.</li>
+                        <li><em>Categoría:</em> Evalúa el nivel del cliente calculando su promedio mensual de compra de su último trimestre móvil activo. (Diamante ≥ $250k, Oro ≥ $100k, AA ≥ $25k, A ≥ $3k, C < $3k). <em>Métrica fija e histórica.</em></li>
+                        <li><em>Frecuencia:</em> Intervalo promedio en días entre cada compra. Calcula el comportamiento desde el año previo y el actual (Regular ≤ 30 días, Irregular ≤ 60 días, Atípico > 60 días, Nula < 2 compras). <em>Métrica fija.</em></li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Cobranza:</strong> Límite de crédito, Saldo al corriente, Saldo vencido y Porcentaje de Uso de crédito. Estos datos siempre reflejan la deuda en el <em>instante actual</em> de consulta. <em>No son afectados por filtros de fechas.</em>
+                </li>
+                <li>
+                    <strong>Métricas de consumo:</strong> Presenta de un vistazo los promedios de venta mensual del año previo (cerrado de enero a diciembre), del año actual a la fecha, y del último trimestre. Permite notar rápidamente si el cliente viene a la baja o a la alza. <em>Tampoco cambia con el filtro de fechas.</em>
+                </li>
+                <li>
+                    <strong>Contribución:</strong> Estas tres columnas <strong>SÍ cambian</strong> estrictamente según el rango que dictes en tu Filtro de Contribución:
+                    <ul class="list-disc pl-5 mt-1 space-y-1 text-muted">
+                        <li><em>Monetaria:</em> Todo el dinero generado por el cliente en el rango de fechas evaluado (ya sea en Venta Neta o Utilidad).</li>
+                        <li><em>Porcentual:</em> Qué tajada del pastel global (100%) representa este único cliente respecto al total de ventas del periodo.</li>
+                        <li><em>Acumulada:</em> Es la sumatoria en cascada de los porcentajes. Si la ordenas de mayor a menor, te revelará con exactitud cuántos clientes necesitas para lograr el 80% de tus ingresos (análisis de Regla de Pareto).</li>
+                    </ul>
+                </li>
+                <li><strong>Desglose mensual:</strong> Muestra el dinero total facturado en cada uno de los meses del año actual.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Perfil a Profundidad del Cliente</p>
+            <p>
+                Al dar clic sobre el nombre del cliente en la tabla, abandonas la vista masiva y entras a un expediente analítico dedicado exclusivamente a él. Esta vista cuenta con <strong>sus propios filtros de fecha e inventario totalmente independientes</strong> del listado anterior.
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li>Permite activar o desactivar su estatus de <em>Líder de Opinión</em> mediante el interruptor interactivo en sus datos de identificación superior.</li>
+                <li>Despliega un gráfico comparativo dinámico de sus facturaciones (mes a mes: año previo vs. año actual).</li>
+                <li>Seccionamiento del catálogo: Visualiza exactamente qué marcas, familias o clases de productos son los que le interesan a este cliente, y cuánto ha gastado en ellas durante el periodo.</li>
+                <li>Desglose exhaustivo de sus facturas al corriente y vencidas para agilizar el cobro, y un panel de convenios comerciales activos.</li>
+                <li>Usando el botón "Filtrar" de esta vista individual, puedes recalcular el perfil completo basándote solo en ciertas divisiones comerciales o regiones, ideal para auditar compras hiper-específicas.</li>
+            </ul>
+        </div>
+
+        <p id="cobranza" class="text-sm text-strong mb-2 mt-6 scroll-mt-8 text-center">Cobranza</p>
+        <div class="text-body leading-relaxed space-y-4 mb-8">
+            <p>
+                El submódulo de <strong>Cobranza</strong> centraliza toda la información relacionada con las cuentas por cobrar. Está diseñado para ofrecer una visibilidad precisa de la salud financiera de la cartera, el nivel de riesgo por uso de créditos y la antigüedad de la deuda, permitiendo estrategias de recuperación mucho más efectivas.
+            </p>
+
+            <p class="font-medium text-strong mt-4">Forma de visualización (El filtro más importante)</p>
+            <p>
+                Antes de aplicar cualquier otro filtro, este submódulo requiere definir cómo se interpretará la responsabilidad de la deuda. Tienes dos enfoques radicalmente distintos:
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Por asignación de clientes:</strong> Atribuye la deuda a la ruta que <em>actualmente</em> atiende al cliente. <em>Ejemplo: Si el Cliente X debía $1,000 generados por la Ruta 1, pero hoy el cliente fue transferido a la Ruta 2, este modo le cobrará la deuda a la Ruta 2 porque ella es la encargada actual de visitarlo.</em> Es muy útil para el personal de cobranza y gestión operativa diaria.</li>
+                <li><strong>Por emisión de facturas:</strong> Atribuye la deuda a la ruta que <em>originalmente facturó</em> la venta. <em>Ejemplo: Siguiendo el caso anterior, la deuda se le seguirá mostrando a la Ruta 1, pues fue quien concretó la venta original.</em> Es vital para auditorías y cálculo justo de comisiones por recuperación.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Panel de Filtros</p>
+            <p>
+                Además del modo de visualización, cuentas con filtros operativos para delimitar el análisis:
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Fecha de corte:</strong> Establece el "Día cero". Todo el cálculo de la deuda, así como el conteo de los días de atraso, se procesarán tomando en cuenta que estás parado exactamente en esta fecha. Funciona como un viaje en el tiempo para ver cómo estaba la cartera el mes pasado.</li>
+                <li><strong>Filtros geográficos e institucionales:</strong> Puedes limitar el análisis buscando Regiones, Gerencias (Cedis), Rutas específicas o incluso buscar un conjunto de Clientes particulares.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Métricas Globales y Antigüedad</p>
+            <p>
+                Al procesar los datos, la pantalla te presentará indicadores clave que resumen la totalidad del filtro aplicado:
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Saldo total:</strong> La sumatoria bruta de todo el dinero adeudado por los clientes filtrados.</li>
+                <li><strong>Saldo al corriente:</strong> La porción del Saldo Total que aún está dentro de los días de crédito permitidos (Deuda sana).</li>
+                <li><strong>Saldo vencido:</strong> La porción del Saldo Total cuyos días de crédito ya expiraron.</li>
+                <li><strong>Cuentas por cobrar:</strong> El número exacto de clientes distintos que conforman esa deuda.</li>
+                <li><strong>Antigüedad de saldos vencidos:</strong> Fragmenta visualmente todo el <em>Saldo vencido</em> en cuatro niveles de gravedad: facturas atrasadas de 1 a 15 días, de 16 a 30 días, de 31 a 60 días, y el rango más crítico, facturas con más de 60 días sin pagarse.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Gráficas de Uso de Crédito</p>
+            <p>
+                Este par de velocímetros interactivos miden el nivel de riesgo y exposición financiera de la empresa frente a los créditos otorgados a los clientes. 
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Uso de crédito de cuentas por cobrar (Izquierda):</strong> Mide qué tanto han agotado su crédito <em>únicamente los clientes que te deben dinero en este momento</em>. Calcula la división entre su Saldo Total y la suma de sus Límites de Crédito.</li>
+                <li><strong>Uso de crédito de toda la cartera (Derecha):</strong> Mide la exposición general. Calcula el Saldo Total dividido entre la suma del Límite de Crédito de <em>absolutamente todos los clientes filtrados</em>, incluyendo a los que tienen saldo cero. Si este indicador está muy alto, significa que toda la zona está al borde del endeudamiento máximo permitido por la empresa.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Desglose por cliente</p>
+            <p>
+                La tabla de la parte inferior aterriza todos los conceptos globales a un nivel individual, mostrando el detalle de cada deudor.
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Crédito y Uso:</strong> Muestra el monto límite autorizado para el cliente y un porcentaje de qué tan saturado está. Cuenta con un semáforo visual para detectar riesgos de un vistazo: <span class="text-green-600 font-medium">Verde</span> (uso saludable, menor a 50%), <span class="text-orange-600 font-medium">Naranja</span> (riesgo medio, 50% al 80%), y <span class="text-red-600 font-medium">Rojo</span> (línea de crédito saturada o excedida, mayor al 80%).</li>
+                <li><strong>Desglose de saldo:</strong> Al igual que en las métricas generales, por cada cliente sabrás cuánto debe en total, cuánto está sano, y en qué rangos de días caen sus montos vencidos.</li>
+                <li><strong>Paginación inteligente:</strong> Si la lista es muy extensa, al llegar al final de la tabla podrás dar clic en el botón "Mostrar más" para cargar progresivamente el resto de la cartera sin recargar la página ni perder tu posición en la tabla.</li>
+            </ul>
+        </div>
+
+        <div class="mb-4 mt-10">
+            <p class="text-title text-xl mb-2">Análisis avanzado</p>
+            <hr class="border-border">
+        </div>
+        
+        <p id="pronosticos" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Pronósticos</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="riesgo-comercial" class="text-sm text-strong mb-2 mt-6 scroll-mt-8 text-center">Riesgo comercial</p>
+        <div class="text-body leading-relaxed space-y-4 mb-8">
+            <p>
+                El submódulo de <strong>Riesgo Comercial</strong> es la herramienta analítica de inteligencia más sofisticada de toda la plataforma. A diferencia de las métricas de ventas puras, este panel no responde a "cuánto se vendió", sino a <em>qué tan saludable, predecible y segura es la venta de una ruta específica</em>. Utiliza algoritmos estadísticos (como el Índice de Gini y el Momentum) para alertar si una ruta está en peligro de colapsar, si depende peligrosamente de unos cuantos clientes, o si su crecimiento aparente es en realidad engañoso debido a picos de ventas sumamente erráticos.
+            </p>
+
+            <p class="font-medium text-strong mt-4">Herramientas Especiales</p>
+            <p>
+                Debido a la densidad de la información, antes de analizar los gráficos manualmente, es vital que aproveches las tres herramientas ubicadas en la esquina superior derecha:
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Asistente de datos:</strong> Al dar clic en este botón, la Inteligencia Artificial analizará en tiempo real toda la matemática compleja de los gráficos y redactará un resumen ejecutivo explicándote con lenguaje natural los hallazgos de riesgo, qué cuadrantes son alarmantes y te brindará recomendaciones estratégicas.</li>
+                <li><strong>Descargar reporte:</strong> Genera automáticamente un documento PDF limpio y formal con todos los gráficos renderizados y las métricas mostradas en pantalla. Ideal para presentar como evidencia en juntas directivas o auditorías a gerentes.</li>
+                <li><strong>Descargar datos:</strong> Extrae un libro de Excel (crudo) con absolutamente todos los clientes de la ruta, sus índices exactos de volatilidad, momentum, tendencias y categorías. Indispensable si necesitas hacer cruces de datos por tu cuenta.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Filtros y Periodo de Cálculo</p>
+            <p>
+                El panel solicita un Rango de Fechas y <strong>sólo una Ruta específica</strong>. Debido al enorme peso estadístico de los cruces de datos, el sistema restringe el análisis a una ruta a la vez. Al aplicar los filtros, los gráficos de dispersión e históricos evaluarán estrictamente el marco de tiempo que hayas definido.
+            </p>
+
+            <p class="font-medium text-strong mt-4">Métricas Globales</p>
+            <p>
+                Las cuatro tarjetas superiores te otorgan el "estado de salud actual". <strong>Muy importante:</strong> Estos cuatro bloques evalúan exclusivamente el comportamiento del <strong>último trimestre completado</strong> (mostrado en letras pequeñas debajo del título). Por su parte, las gráficas inferiores de la pantalla evalúan el <strong>histórico mensual</strong>.<br><br>
+                Esta separación (Trimestral vs. Mensual) tiene un motivo crucial de negocio: el análisis trimestral representa la <em>salud estructural</em> de la ruta, limpiando el ruido natural de los clientes (el comportamiento de "un mes compro mucho, otro mes nada"). En contraste, las gráficas mensuales son mucho más volátiles y sensibles, sirviendo como alertas inmediatas.
+            </p>
+            <ul class="list-disc pl-5 space-y-2 mt-4">
+                <li><strong>Índice de Gini:</strong> Mide la concentración de la riqueza en la cartera. 
+                    <ul class="list-disc pl-5 mt-1 space-y-1 text-muted text-sm border-l-2 border-primary ml-1">
+                        <li><strong>Umbrales:</strong> Se considera normal tener un índice menor al 55%, ya que comercialmente siempre habrá clientes más fuertes que otros. Sin embargo, un Gini <strong>igual o superior al 55%</strong> enciende alertas de peligro, indicando una altísima dependencia de muy pocos clientes para lograr la cuota.</li>
+                    </ul>
+                </li>
+                <li><strong>Alcance de cartera:</strong> Porcentaje de la cartera que efectivamente consumió en el trimestre. Se calcula dividiendo a los clientes activos entre el total de clientes registrados en la ruta.</li>
+                <li><strong>Factor de crecimiento (Momentum):</strong> Compara el promedio del trimestre evaluado contra el histórico de compras.
+                    <ul class="list-disc pl-5 mt-1 space-y-1 text-muted text-sm border-l-2 border-primary ml-1">
+                        <li><strong>Umbrales:</strong> Valores superiores al 100% (o mayores a 1.0 en gráficas) indican que la ruta o el cliente están acelerando sus compras. Menor a esto, indica desaceleración.</li>
+                    </ul>
+                </li>
+                <li><strong>Índice de Riesgo Comercial (IRC):</strong> Es el indicador maestro. Combina la inactividad (clientes que dejaron de comprar) y el Gini (concentración). Al leer su valor trimestral, obedece estrictamente a los siguientes umbrales:
+                    <ul class="list-disc pl-5 mt-1 space-y-1 text-muted text-sm border-l-2 border-primary ml-1">
+                        <li><span class="text-green-600 font-bold">≤ 35%:</span> Bajo riesgo. Es una ruta financieramente saludable, con cartera activa y compras equitativamente distribuidas.</li>
+                        <li><span class="text-orange-500 font-bold">36% a 45%:</span> Riesgo medio. La ruta se encuentra estable o en zona operativa normal, pero requiere monitoreo de sus clientes caídos.</li>
+                        <li><span class="text-red-600 font-bold">> 45%:</span> Riesgo alto (Alerta crítica). La ruta tiene una inactividad muy severa o una dependencia extrema, y está en riesgo de colapsar.</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Análisis e Interpretación de Gráficas</p>
+            <p>
+                Toda la graficación es interactiva. Particularmente en los gráficos de dispersión (los de puntos redondos), puedes <strong>dar clic sobre cualquier punto</strong> para abrir en una pestaña nueva el perfil analítico a profundidad de ese cliente en específico.
+            </p>
+
+            <ul class="list-disc pl-5 space-y-4">
+                <li>
+                    <strong>Evolución del Riesgo Comercial:</strong> Histograma histórico que muestra cómo ha fluctuado el Índice de Gini, los clientes desatendidos y el IRC a lo largo de los meses. Si la tendencia de las líneas es alcista, la ruta va camino a una desestabilización segura.
+                </li>
+                <li>
+                    <strong>Clientes Ganados y Perdidos (Rotación):</strong> Define como <em>Ganado</em> a quien no compró el periodo previo pero este mes sí; y como <em>Perdido</em> a quien venía consumiendo regularmente pero este mes sus compras cayeron a cero. Un cruce de líneas negativo constante (picos de pérdidas mayores a las ganancias) predice una crisis en facturación a corto plazo.
+                </li>
+                <li>
+                    <strong>Alcance y Nuevos Clientes:</strong> Demuestra el esfuerzo en campo. Señala mensualmente los clientes dados de alta y, en el eje derecho, el porcentaje de alcance de la cartera. El cálculo es justo: la cobertura de un mes del pasado se evalúa utilizando únicamente el total de clientes que la ruta tenía asignados <em>en ese instante</em>, ignorando las altas de meses futuros.
+                </li>
+                <li>
+                    <strong>Volatilidad y Volumen (Análisis de Cuadrantes):</strong> Cruza cuánto compra en promedio un cliente en dinero vs qué tan constante/segura es esa compra. La gráfica dibuja líneas automáticas en el 50% exacto de la base (la mediana) para crear cuadrantes limpios. El objetivo ideal es mover a los clientes al cuadrante inferior derecho (Altísimo volumen y Baja volatilidad). Además, los puntos rojos acusan a clientes con su factor de crecimiento a la baja, y los verdes al alza.
+                </li>
+                <li>
+                    <strong>Sesgo y Crecimiento (Previsibilidad de Compra):</strong> Evalúa qué tan fácil es predecir lo que un cliente va a gastar. Un sesgo en negativo significa que el cliente es confiable (recurrente); un sesgo en positivo significa que es errático (compra un mes, desaparece tres, vuelve a comprar de golpe). Los colores son determinantes:
+                    <ul class="list-disc pl-5 mt-2 space-y-1 text-muted text-sm border-l-2 border-primary ml-1">
+                        <li><span class="text-green-600 font-bold">Verde:</span> Su compra es estable y cada vez gasta más.</li>
+                        <li><span class="text-orange-500 font-bold">Naranja:</span> Sus números van al alza, pero sus compras son violentamente inestables; altísimo riesgo de abandono sorpresivo.</li>
+                        <li><span class="text-purple-600 font-bold">Morado:</span> Es un cliente que sigue comprando regularmente sin fallar, pero de poco en poco sus tickets vienen bajando.</li>
+                        <li><span class="text-red-600 font-bold">Rojo:</span> Totalmente inestable y sus montos van en picada directa.</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Composición Física vs Contribución Monetaria:</strong> Estas dos últimas gráficas son el cierre del análisis y deben leerse en conjunto. La gráfica superior ("Composición") te muestra en barras físicas de 100% <em>cuántas personas o cortinas</em> de cada categoría tienes. La gráfica inferior de líneas ("Contribución") te dice qué porcentaje de todo el <em>dinero</em> aporta cada grupo. <br>Es la validación visual de la Ley de Pareto: notarás frecuentemente que las enormes barras grises de clientes tipo "C" (que representan quizá el 80% de tus clientes) apenas mueven la línea del 10% del dinero ingresado, confirmando dónde reside el verdadero capital.
+                </li>
+            </ul>
+        </div>
+<!-- 
+        <div class="mb-4 mt-10">
+            <p class="text-title text-xl mb-2">Reportes especiales</p>
+            <hr class="border-border">
+        </div>
+        
+        <p id="alcance-de-objetivos" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Alcance de objetivos</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="desglose-anual-de-ventas" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Desglose anual de ventas</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="desglose-mensual-por-gerencia" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Desglose mensual por gerencia</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="clientes-unicos" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Clientes únicos</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <div class="mb-4 mt-10">
+            <p class="text-title text-xl mb-2">Ventas</p>
+            <hr class="border-border">
+        </div>
+
+        <p id="transacciones" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Transacciones</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="objetivos-de-venta" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Objetivos de venta</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <div class="mb-4 mt-10">
+            <p class="text-title text-xl mb-2">Productos</p>
+            <hr class="border-border">
+        </div>
+
+        <p id="productos" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Productos</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <div class="mb-4 mt-10">
+            <p class="text-title text-xl mb-2">Recursos humanos</p>
+            <hr class="border-border">
+        </div>
+
+        <p id="personal" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Personal</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="mapa-organizacional" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Mapa organizacional</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="perfiles-de-comision" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Perfiles de comisión</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="reporte-de-comisiones" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Reporte de comisiones</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <div class="mb-4 mt-10">
+            <p class="text-title text-xl mb-2">Administración de datos</p>
+            <hr class="border-border">
+        </div>
+
+        <p id="usuarios" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Usuarios</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="grupos" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Grupos</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="referencias" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Referencias</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="panel-de-administrador" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Panel de administrador</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="actividad" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Actividad</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="importaciones" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Importaciones</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p>
+
+        <p id="cambio-de-contrasena" class="text-sm text-strong mb-2 mt-6 scroll-mt-8">Cambio de contraseña</p>
+        <p class="text-body leading-relaxed mb-4 text-muted">Contenido en desarrollo...</p> -->
+    </main>
+
+</div>
+
+{% endblock content %}

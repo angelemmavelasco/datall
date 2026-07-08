@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.contrib.auth.views import PasswordChangeView
 from django.urls import reverse_lazy
+from django.contrib.auth.decorators import login_required
 
 def custom_csrf_failure(request, reason=""):
     messages.warning(request, "Tu sesión expiró por inactividad. Por favor, vuelve a ingresar.")
@@ -32,3 +33,10 @@ class CustomPasswordChangeView(PasswordChangeView):
 
     def form_valid(self, form):
         return super().form_valid(form)
+
+
+@login_required
+def support(request):
+    template = "docs/user_docs.html"
+    return render(request, template)
+    
