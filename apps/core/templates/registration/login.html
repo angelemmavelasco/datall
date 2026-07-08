@@ -133,11 +133,117 @@
 
     <div class="relative z-10 w-3/4 max-w-md p-2 bg-container rounded border border-border flex flex-col gap-4 justify-center items-center">
 
-        <h1 class="text-3xl flex items-center justify-center gap-0 transition-colors mt-20 mb-6">
-            <span class="text-body tracking-widest hover:text-hover transition-colors cursor-pointer">dat</span>
-            <span class="text-strong tracking-widest hover:text-hover transition-colors cursor-pointer">all</span>
-            <img src="https://media.datall.com.mx/static/logo.svg" alt="" class="h-10 w-10 object-contain p-1 bg-[#f1f1f1] rounded-sm border border-border">
-        </h1>
+        <div class="w-60">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 500" class="w-full h-auto">
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&amp;display=swap');
+                
+                :root {
+                --svg-color-grafica: var(--text-body, black);
+                --svg-color-dat: var(--text-body, black);
+                --svg-color-all: oklch(55.4% 0.046 257.417);
+                
+                /* Grosores ajustados a la nueva escala (60%) */
+                --grosor-linea: 8px;
+                --grosor-nodo: 9px;
+                }
+                
+                .linea-animada {
+                fill: none;
+                stroke-width: var(--grosor-linea);
+                stroke: var(--svg-color-grafica);
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                }
+
+                .nodo {
+                fill: none;
+                stroke: var(--svg-color-grafica);
+                stroke-width: var(--grosor-nodo);
+                opacity: 0;
+                }
+
+                .texto-logo {
+                font-family: 'Quicksand', sans-serif;
+                font-size: 240px;
+                font-weight: 600;
+                }
+                
+                .dat {
+                letter-spacing: 0.05em;
+                fill: var(--svg-color-dat);
+                opacity: 0;
+                animation: dibujarRTL 2.5s ease-out 1s forwards;
+                }
+                
+                .all {
+                letter-spacing: 0.05em;
+                fill: var(--svg-color-all);
+                opacity: 0;
+                animation: aparecerTexto 1s ease-out 0s forwards;
+                }
+
+                @keyframes aparecerTexto {
+                0% {
+                    opacity: 0;
+                    transform: translateY(30px);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+                }
+
+                @keyframes dibujarRTL {
+                0% { 
+                    opacity: 1; 
+                    -webkit-clip-path: inset(0 0 0 100%);
+                    clip-path: inset(0 0 0 100%); 
+                }
+                100% { 
+                    opacity: 1; 
+                    -webkit-clip-path: inset(0 0 0 0);
+                    clip-path: inset(0 0 0 0); 
+                }
+                }
+            </style>
+            
+            <text x="50" y="400" class="texto-logo">
+                <tspan class="dat">dat</tspan><tspan class="all">all</tspan>
+            </text>
+
+            <g transform="translate(800, 0)">
+                
+                <mask id="mask-nodos">
+                <rect width="100%" height="100%" fill="white" />
+                <circle cx="60" cy="400" r="10" fill="black" />
+                <circle cx="120" cy="280" r="10" fill="black" />
+                <circle cx="180" cy="340" r="10" fill="black" />
+                <circle cx="240" cy="220" r="10" fill="black" />
+                </mask>
+
+                <path class="linea-animada" mask="url(#mask-nodos)" d="M 60 400 L 120 280 L 180 340 L 240 220" stroke-dasharray="360" stroke-dashoffset="360">
+                <animate attributeName="stroke-dashoffset" from="360" to="0" begin="1s" dur="2.5s" fill="freeze" />
+                </path>
+
+                <circle class="nodo" cx="60" cy="400" r="13">
+                <animate attributeName="opacity" from="0" to="1" begin="1s" dur="0.2s" fill="freeze" />
+                </circle>
+                <circle class="nodo" cx="120" cy="280" r="13">
+                <animate attributeName="opacity" from="0" to="1" begin="1.9s" dur="0.2s" fill="freeze" />
+                </circle>
+                <circle class="nodo" cx="180" cy="340" r="13">
+                <animate attributeName="opacity" from="0" to="1" begin="2.5s" dur="0.2s" fill="freeze" />
+                </circle>
+                <circle class="nodo" cx="240" cy="220" r="13">
+                <animate attributeName="opacity" from="0" to="1" begin="3.4s" dur="0.2s" fill="freeze" />
+                </circle>
+                
+            </g>
+            </svg>
+
+        </div>
+
 
         <form id="login-form" class="flex flex-col gap-4 w-3/4 items-center justify-center" method="POST" action="{% url 'login' %}">
             {% csrf_token %}
