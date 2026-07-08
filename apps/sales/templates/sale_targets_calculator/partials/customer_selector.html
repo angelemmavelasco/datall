@@ -1,0 +1,68 @@
+{% if customers %}
+<div class="flex flex-col gap-2">
+    <p class="text-title text-sm mb-2 font-medium">Selección de Clientes a Transferir/Ajustar</p>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Clientes Disponibles -->
+        <div class="border border-border rounded bg-page flex flex-col h-64">
+            <div class="bg-container border-b border-border p-2">
+                <span class="text-strong text-sm font-medium">Clientes en ruta de origen</span>
+            </div>
+            <div class="p-2 border-b border-border">
+                <input type="text" placeholder="Buscar cliente..." class="w-full bg-page text-sm outline-none text-strong" onkeyup="filterCustomers(this, 'available-customers')">
+            </div>
+            <div id="available-customers" class="overflow-y-auto p-2 flex flex-col gap-1 flex-grow">
+                {% for c in customers %}
+                <label class="flex items-center justify-between text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors border border-transparent hover:border-border customer-item">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" name="selected_customers" value="{{ c.id }}" class="customer-checkbox" onchange="moveCustomer(this)">
+                        <span class="searchable-text text-strong">{{ c.id|upper }} - {{ c.name|title }}</span>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Clientes Seleccionados -->
+        <div class="border border-border rounded bg-page flex flex-col h-64">
+            <div class="bg-container border-b border-border p-2">
+                <span class="text-strong text-sm font-medium">Clientes seleccionados para el cálculo</span>
+            </div>
+            <div class="p-2 border-b border-border">
+                <input type="text" placeholder="Buscar cliente..." class="w-full bg-page text-sm outline-none text-strong" onkeyup="filterCustomers(this, 'selected-customers')">
+            </div>
+            <div id="selected-customers" class="overflow-y-auto p-2 flex flex-col gap-1 flex-grow">
+                <!-- Los clientes seleccionados se moverán aquí mediante JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filterCustomers(input, containerId) {
+        const filter = input.value.toLowerCase();
+        const container = document.getElementById(containerId);
+        const items = container.getElementsByClassName('customer-item');
+        
+        for (let i = 0; i < items.length; i++) {
+            const text = items[i].querySelector('.searchable-text').textContent || items[i].querySelector('.searchable-text').innerText;
+            if (text.toLowerCase().indexOf(filter) > -1) {
+                items[i].style.display = "";
+            } else {
+                items[i].style.display = "none";
+            }
+        }
+    }
+
+    function moveCustomer(checkbox) {
+        const item = checkbox.closest('.customer-item');
+        if (checkbox.checked) {
+            document.getElementById('selected-customers').appendChild(item);
+        } else {
+            document.getElementById('available-customers').appendChild(item);
+        }
+    }
+</script>
+{% else %}
+<p class="text-title text-sm mb-2 text-center">No se encontraron clientes para la ruta seleccionada o no has seleccionado una ruta.</p>
+{% endif %}

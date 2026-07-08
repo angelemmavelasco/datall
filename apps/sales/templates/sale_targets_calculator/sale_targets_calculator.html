@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load has_group %}
+
+{% block title %}Calculadora de objetivos de ventas{% endblock %}
+
+{% block module_name %}Calculadora de objetivos de ventas{% endblock %}
+
+
+{% block content %}
+
+<div class="flex flex-col gap-6">
+
+    <!-- Configuración del cálculo -->
+    <div class="bg-container border border-border rounded p-4">
+        <p class="text-title text-lg mb-4 border-b border-border pb-2 font-medium">Configuración de simulación</p>
+        
+        <form hx-post="{% url 'sales:sale_targets_calculator' %}" hx-target="#calculator-results" id="calculator-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="calculate">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Tipo de Movimiento -->
+                <div class="flex flex-col gap-1">
+                    <label class="text-strong text-sm">Escenario de ajuste</label>
+                    <select name="adjustment_mode" class="border border-border rounded p-1 bg-page text-sm text-strong w-full outline-none" hx-get="{% url 'sales:sale_targets_calculator' %}?action=toggle_mode" hx-target="#route-selectors" hx-include="[name='adjustment_mode']">
+                        <option value="transfer">Transferencia entre rutas (Afecta a ambas)</option>
+                        <option value="adjustment">Ajuste a ruta única (Solo afecta una ruta)</option>
+                    </select>
+                </div>
+
+                <!-- Método de Cálculo -->
+                <div class="flex flex-col gap-1">
+                    <label class="text-strong text-sm">Método de cálculo</label>
+                    <select name="calculation_method" class="border border-border rounded p-1 bg-page text-sm text-strong w-full outline-none">
+                        <option value="average">Promedio Mensual (Monto fijo)</option>
+                        <option value="contribution">Contribución (Porcentaje sobre ruta)</option>
+                    </select>
+                </div>
+
+                <!-- Selectores de Ruta -->
+                <div id="route-selectors" class="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% include 'sale_targets_calculator/partials/route_selectors.html' %}
+                </div>
+
+                <div class="col-span-1 md:col-span-2 border-t border-border my-2"></div>
+
+                <!-- Año Objetivo -->
+                <div class="flex flex-col gap-1">
+                    <label class="text-strong text-sm">Año objetivo</label>
+                    <input type="number" name="target_year" value="{% now 'Y' %}" class="border border-border rounded p-1 bg-page text-sm text-strong outline-none" required>
+                    <span class="text-xs text-muted">Año donde se modificarán las cuotas</span>
+                </div>
+
+                <!-- Mes de Aplicación -->
+                <div class="flex flex-col gap-1">
+                    <label class="text-strong text-sm">Mes de aplicación</label>
+                    <input type="month" name="effective_month" class="border border-border rounded p-1 bg-page text-sm text-strong outline-none" required>
+                    <span class="text-xs text-muted">A partir de qué mes inician los cambios</span>
+                </div>
+                
+                <div class="col-span-1 md:col-span-2 border-t border-border my-2"></div>
+
+                <!-- Periodo de Evaluación Cliente -->
+                <div class="flex flex-col gap-1">
+                    <label class="text-strong text-sm">Periodo Evaluación Cliente (Inicio - Fin)</label>
+                    <div class="flex gap-2">
+                        <input type="month" name="eval_customer_start" class="border border-border rounded p-1 bg-page text-sm text-strong w-full outline-none" required>
+                        <input type="month" name="eval_customer_end" class="border border-border rounded p-1 bg-page text-sm text-strong w-full outline-none" required>
+                    </div>
+                </div>
+
+                <!-- Periodo de Evaluación Ruta -->
+                <div class="flex flex-col gap-1">
+                    <label class="text-strong text-sm">Periodo Evaluación Ruta (Inicio - Fin)</label>
+                    <div class="flex gap-2">
+                        <input type="month" name="eval_route_start" class="border border-border rounded p-1 bg-page text-sm text-strong w-full outline-none" required>
+                        <input type="month" name="eval_route_end" class="border border-border rounded p-1 bg-page text-sm text-strong w-full outline-none" required>
+                    </div>
+                </div>
+
+                <div class="col-span-1 md:col-span-2 border-t border-border my-2"></div>
+
+                <!-- Clases de Producto -->
+                <div class="col-span-1 md:col-span-2">
+                    <label class="text-strong text-sm block mb-2">Clases de producto afectadas</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-page border border-border p-2 rounded max-h-32 overflow-y-auto">
+                        {% for pc in product_classes %}
+                        <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                            <input type="checkbox" name="product_classes" value="{{ pc.id }}" checked>
+                            <span class="text-strong">{{ pc.name|title }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Selector de Clientes (Estilo Django) -->
+            <div id="customer-selector-container" class="mt-6 border border-border rounded p-4 bg-page">
+                <p class="text-title text-sm mb-2 text-center">Selecciona una ruta origen para cargar los clientes</p>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer px-6">
+                    Simular objetivos
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Contenedor de Resultados -->
+    <div id="calculator-results">
+        <!-- Las tablas de resultados se cargarán aquí vía HTMX -->
+    </div>
+
+</div>
+
+{% endblock content %}

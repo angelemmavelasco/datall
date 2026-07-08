@@ -723,8 +723,6 @@ async def export_commercial_risk_data(request):
 
 
 
-
-
 @login_required
 def target_scope(request):
     template = 'business_intelligence/target_scope/target_scope.html'

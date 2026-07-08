@@ -217,3 +217,73 @@ def sale_transactions_export(request):
     )
     response['Content-Disposition'] = 'attachment; filename=transacciones.xlsx'
     return response
+
+
+@login_required
+def sale_targets_calculator(request):
+    from apps.core.models import ProductClass, Route
+    
+    product_classes = ProductClass.objects.all().order_by('name')
+    routes = Route.objects.filter(is_active=True).order_by('id')
+    
+    context = {
+        'product_classes': product_classes,
+        'routes': routes,
+    }
+    
+    if request.headers.get('HX-Request'):
+        action = request.GET.get('action') or request.POST.get('action')
+        
+        if action == 'toggle_mode':
+            mode = request.GET.get('adjustment_mode')
+            return render(request, 'sale_targets_calculator/partials/route_selectors.html', {'mode': mode, 'routes': routes})
+            
+        if action == 'load_customers':
+            from apps.core.models import Customer
+            route_id = request.GET.get('origin_route')
+            customers = []
+            if route_id:
+                customers = Customer.objects.filter(route_id=route_id).order_by('name')
+            return render(request, 'sale_targets_calculator/partials/customer_selector.html', {'customers': customers})
+            
+        if action == 'calculate':
+            from apps.sales.services.sale_targets.calculator import SaleTargetsCalculatorService
+            
+            mode = request.POST.get('adjustment_mode')
+            method = request.POST.get('calculation_method')
+            origin_route = request.POST.get('origin_route')
+            destination_route = request.POST.get('destination_route')
+            target_year = request.POST.get('target_year')
+            effective_month = request.POST.get('effective_month')
+            eval_customer_start = request.POST.get('eval_customer_start')
+            eval_customer_end = request.POST.get('eval_customer_end')
+            eval_route_start = request.POST.get('eval_route_start')
+            eval_route_end = request.POST.get('eval_route_end')
+            product_classes_selected = request.POST.getlist('product_classes')
+            selected_customers = request.POST.getlist('selected_customers')
+            
+            service = SaleTargetsCalculatorService(
+                mode=mode,
+                origin_route_id=origin_route,
+                destination_route_id=destination_route,
+                customer_ids=selected_customers
+            )
+            
+            results = service.calculate_simulation(
+                target_year=int(target_year) if target_year else None,
+                effective_month=effective_month,
+                eval_customer_start=eval_customer_start,
+                eval_customer_end=eval_customer_end,
+                eval_route_start=eval_route_start,
+                eval_route_end=eval_route_end,
+                product_class_ids=product_classes_selected,
+                calc_method=method
+            )
+            
+            return render(request, 'sale_targets_calculator/partials/calculator_results.html', {
+                'results': results,
+                'errors': service.errors,
+            })
+            
+    template = 'sale_targets_calculator/sale_targets_calculator.html'
+    return render(request, template, context)
