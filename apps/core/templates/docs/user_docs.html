@@ -58,6 +58,13 @@
                 </ul>
             </div>
 
+            <div>
+                <p class="text-title text-sm font-medium">Ventas</p>
+                <ul class="flex flex-col gap-2 mt-3 text-body text-sm">
+                    <li><a href="#calculadora-de-objetivos" class="block hover:text-hover transition-colors">Calculadora de objetivos</a></li>
+                </ul>
+            </div>
+
             <!-- <div>
                 <p class="text-title text-sm font-medium">Reportes especiales</p>
                 <ul class="flex flex-col gap-2 mt-3 text-body text-sm">
@@ -503,6 +510,71 @@
                 <li>
                     <strong>Composición Física vs Contribución Monetaria:</strong> Estas dos últimas gráficas son el cierre del análisis y deben leerse en conjunto. La gráfica superior ("Composición") te muestra en barras físicas de 100% <em>cuántas personas o cortinas</em> de cada categoría tienes. La gráfica inferior de líneas ("Contribución") te dice qué porcentaje de todo el <em>dinero</em> aporta cada grupo. <br>Es la validación visual de la Ley de Pareto: notarás frecuentemente que las enormes barras grises de clientes tipo "C" (que representan quizá el 80% de tus clientes) apenas mueven la línea del 10% del dinero ingresado, confirmando dónde reside el verdadero capital.
                 </li>
+            </ul>
+        </div>
+
+        <div class="mb-4 mt-10">
+            <p class="text-title text-xl mb-2">Ventas</p>
+            <hr class="border-border">
+        </div>
+        
+        <p id="calculadora-de-objetivos" class="text-sm text-strong mb-2 mt-6 scroll-mt-8 text-center">Calculadora de objetivos</p>
+        <div class="text-body leading-relaxed space-y-4 mb-8">
+            <p>
+                La <strong>Calculadora de objetivos</strong> es una herramienta de simulación avanzada que te permite prever y recalcular las metas de venta (cuotas) cuando ocurren movimientos estratégicos en la empresa, como la transferencia de clientes entre rutas o el alta/baja masiva de una cartera. Su propósito es asegurar que las cuotas se ajusten de manera justa y matemática, manteniendo el crecimiento proyectado original.
+            </p>
+
+            <p class="font-medium text-strong mt-4">Escenario de ajuste</p>
+            <p>
+                Lo primero es definir qué tipo de movimiento realizarás:
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Transferencia entre rutas:</strong> Mueve la responsabilidad comercial (y sus cuotas proporcionales) de una <em>Ruta Origen</em> a una <em>Ruta Destino</em>. Altera los objetivos de ambas rutas simultáneamente (resta a la primera, suma a la segunda).</li>
+                <li><strong>Ajuste a ruta única:</strong> Impacta a una sola ruta. Puedes elegir "Restar objetivos" (simulando que le quitas clientes) o "Sumar objetivos" (simulando que le entregas una cartera nueva y quieres subirle la cuota correspondientemente).</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Método de cálculo (Regla de valorización)</p>
+            <p>
+                ¿Cuánto vale exactamente un cliente para la cuota de la ruta? La herramienta ofrece dos métodos estadísticos para determinar el valor en dinero de los clientes seleccionados:
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Promedio Mensual (Monto fijo):</strong> Calcula el promedio de ventas mensuales que tuvieron los clientes seleccionados durante el <em>Periodo de Evaluación del Cliente</em>. Ese monto promedio absoluto en pesos es la base que se sumará o restará a las cuotas.</li>
+                <li><strong>Contribución (Porcentaje sobre ruta):</strong> Es un método relativo. Calcula qué porcentaje del dinero total de la ruta fue aportado por esos clientes. Por ejemplo, si en la historia reciente esos clientes generaron el 15% de las ventas totales de la ruta, el sistema ajustará el 15% del objetivo estipulado de ese mes.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Regla de crecimiento para ruta destino (Solo en Transferencias)</p>
+            <p>
+                Cuando pasas clientes a otra ruta, la cuota a sumar en los meses futuros puede comportarse de dos maneras:
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Exacta (Mantener crecimiento origen):</strong> Los montos exactos que se le restan mes a mes a la ruta origen, son exactamente los mismos que se le suman a la ruta destino. Es una transferencia espejo.</li>
+                <li><strong>Dinámica (Adaptar a curva de crecimiento destino):</strong> El monto base transferido en el primer mes se adapta y multiplica por los factores de crecimiento orgánicos que <em>ya tenía planificados</em> la ruta destino. Esto respeta la aceleración comercial de quien recibe la cartera.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Periodos y Fechas</p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Año objetivo y Mes de aplicación:</strong> Define sobre qué año se hará la simulación y a partir de qué mes inician los cambios de cuota. Los meses anteriores al "Mes de aplicación" quedarán intactos.</li>
+                <li><strong>Periodos de Evaluación (Cliente y Ruta):</strong> Son los rangos históricos de tiempo que el sistema usará como base para calcular el valor del cliente (ej. revisar cuánto compraron en los últimos 6 meses). Se recomiendan periodos representativos (mínimo 3 meses) para evitar picos irregulares.</li>
+                <li><strong>Clases afectadas:</strong> Puedes excluir ciertas líneas de productos si la transferencia o ajuste no debe impactar a todo el catálogo.</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Selección de Clientes</p>
+            <p>
+                Una vez configurado el escenario, el sistema cargará un panel dual para seleccionar la cartera.
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Filtros:</strong> Puedes listar solo a los clientes actualmente asignados a la ruta origen, o buscar en la base de "Todos los clientes".</li>
+                <li><strong>Selección masiva:</strong> Si tienes la lista de los IDs de los clientes en Excel o texto, pégala en el cuadro de selección masiva y da clic en "Seleccionar". El sistema los buscará y moverá automáticamente a la lista de "Seleccionados para el cálculo".</li>
+            </ul>
+
+            <p class="font-medium text-strong mt-4">Resultados y Exportación</p>
+            <p>
+                Al dar clic en "Simular objetivos", se generarán tablas detalladas (para el Origen y el Destino) desglosadas por clase de producto y mes.
+            </p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Desglose de cálculo:</strong> Muestra el "Objetivo original", el "Crecimiento" porcentual intrínseco de ese mes (respecto al anterior), y el "Ajuste" (dinero a sumar o restar).</li>
+                <li><strong>Objetivos Planificados:</strong> Muestra la cuota final resultante mes a mes. En verde si la meta aumentó, en rojo si disminuyó.</li>
+                <li><strong>Descargar datos:</strong> En la parte superior de los resultados, utiliza este botón para extraer a Excel toda la corrida matemática generada, lista para su formalización u hojas de trabajo externas.</li>
             </ul>
         </div>
 <!-- 

@@ -265,6 +265,7 @@ def sale_targets_calculator(request):
             origin_route = request.POST.get('origin_route')
             destination_route = request.POST.get('destination_route')
             adjustment_direction = request.POST.get('adjustment_direction', 'remove')
+            transfer_growth_rule = request.POST.get('transfer_growth_rule', 'exact')
             target_year = request.POST.get('target_year')
             effective_month = request.POST.get('effective_month')
             eval_customer_start = request.POST.get('eval_customer_start')
@@ -279,7 +280,8 @@ def sale_targets_calculator(request):
                 origin_route_id=origin_route,
                 destination_route_id=destination_route,
                 customer_ids=selected_customers,
-                adjustment_direction=adjustment_direction
+                adjustment_direction=adjustment_direction,
+                transfer_growth_rule=transfer_growth_rule
             )
             
             results = service.calculate_simulation(
@@ -309,6 +311,7 @@ async def export_sale_targets_calculator_data(request):
     origin_route = request.GET.get('origin_route')
     destination_route = request.GET.get('destination_route')
     adjustment_direction = request.GET.get('adjustment_direction', 'remove')
+    transfer_growth_rule = request.GET.get('transfer_growth_rule', 'exact')
     target_year = request.GET.get('target_year')
     effective_month = request.GET.get('effective_month')
     eval_customer_start = request.GET.get('eval_customer_start')
@@ -327,7 +330,8 @@ async def export_sale_targets_calculator_data(request):
             origin_route_id=origin_route,
             destination_route_id=destination_route,
             customer_ids=selected_customers,
-            adjustment_direction=adjustment_direction
+            adjustment_direction=adjustment_direction,
+            transfer_growth_rule=transfer_growth_rule
         )
         
         results = service.calculate_simulation(

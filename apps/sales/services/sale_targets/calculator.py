@@ -6,12 +6,13 @@ from apps.core.models import SaleTarget, SaleTransaction, Route, ProductClass, C
 from dateutil.relativedelta import relativedelta
 
 class SaleTargetsCalculatorService:
-    def __init__(self, mode, origin_route_id, destination_route_id=None, customer_ids=None, adjustment_direction='remove'):
+    def __init__(self, mode, origin_route_id, destination_route_id=None, customer_ids=None, adjustment_direction='remove', transfer_growth_rule='exact'):
         self.mode = mode
         self.origin_route_id = origin_route_id
         self.destination_route_id = destination_route_id
         self.customer_ids = customer_ids or []
         self.adjustment_direction = adjustment_direction
+        self.transfer_growth_rule = transfer_growth_rule
         self.errors = []
         
     def _parse_month(self, ym_str):
@@ -58,42 +59,52 @@ class SaleTargetsCalculatorService:
         elif calc_method == 'contribution':
             deltas = self._calculate_contribution_deltas(c_start, c_end, r_start, r_end, product_classes)
 
-        computed_deltas = {}
         origin_targets = targets.get(self.origin_route_id, {})
+        dest_targets = targets.get(self.destination_route_id, {}) if self.destination_route_id else {}
         
-        for pc in product_classes:
-            computed_deltas[pc.id] = {}
-            current_avg_base = Decimal('0.00')
-            
-            for m in range(1, 13):
-                if m < eff_date.month:
-                    computed_deltas[pc.id][m] = Decimal('0.00')
-                else:
-                    if calc_method == 'average':
+        def generate_computed_deltas(route_targets):
+            cdeltas = {}
+            for pc in product_classes:
+                cdeltas[pc.id] = {}
+                current_base = Decimal('0.00')
+                
+                for m in range(1, 13):
+                    if m < eff_date.month:
+                        cdeltas[pc.id][m] = Decimal('0.00')
+                    else:
                         if m == eff_date.month:
-                            current_avg_base = deltas.get(pc.id, Decimal('0.00'))
+                            if calc_method == 'average':
+                                current_base = deltas.get(pc.id, Decimal('0.00'))
+                            elif calc_method == 'contribution':
+                                pct = deltas.get(pc.id, Decimal('0.00'))
+                                current_base = origin_targets.get(pc.id, {}).get(m, Decimal('0.00')) * pct
                         else:
-                            # Apply growth of origin route from m-1 to m
-                            orig_prev = origin_targets.get(pc.id, {}).get(m - 1, Decimal('0.00'))
-                            orig_curr = origin_targets.get(pc.id, {}).get(m, Decimal('0.00'))
+                            prev_val = route_targets.get(pc.id, {}).get(m - 1, Decimal('0.00'))
+                            curr_val = route_targets.get(pc.id, {}).get(m, Decimal('0.00'))
                             
-                            if orig_prev > 0:
-                                growth_factor = orig_curr / orig_prev
-                                current_avg_base = current_avg_base * growth_factor
-                                
-                        computed_deltas[pc.id][m] = current_avg_base
-                        
-                    elif calc_method == 'contribution':
-                        pct = deltas.get(pc.id, Decimal('0.00'))
-                        base_for_pct = origin_targets.get(pc.id, {}).get(m, Decimal('0.00'))
-                        computed_deltas[pc.id][m] = base_for_pct * pct
+                            if prev_val > 0:
+                                growth_factor = curr_val / prev_val
+                                current_base = current_base * growth_factor
+                            else:
+                                if curr_val > 0:
+                                    current_base = current_base * 2 # Fallback if grew from 0
+                                    
+                        cdeltas[pc.id][m] = current_base
+            return cdeltas
+
+        computed_deltas_origin = generate_computed_deltas(origin_targets)
+        
+        if self.mode == 'transfer' and self.transfer_growth_rule == 'dynamic':
+            computed_deltas_dest = generate_computed_deltas(dest_targets)
+        else:
+            computed_deltas_dest = computed_deltas_origin
 
         months = [datetime.date(target_year, m, 1) for m in range(1, 13)]
         
-        origin_result = self._build_route_result(origin_route, product_classes, origin_targets, computed_deltas, months, is_origin=True)
+        origin_result = self._build_route_result(origin_route, product_classes, origin_targets, computed_deltas_origin, months, is_origin=True)
         dest_result = None
         if self.mode == 'transfer':
-            dest_result = self._build_route_result(dest_route, product_classes, targets.get(self.destination_route_id, {}), computed_deltas, months, is_origin=False)
+            dest_result = self._build_route_result(dest_route, product_classes, dest_targets, computed_deltas_dest, months, is_origin=False)
             
         return {
             'origin': origin_result,
@@ -170,7 +181,9 @@ class SaleTargetsCalculatorService:
     def _build_route_result(self, route, product_classes, targets, computed_deltas, months, is_origin):
         result = {
             'route_name': f"{route.id.upper()} {route.name.title()}",
-            'classes': []
+            'classes': [],
+            'month_totals': [{'date': m, 'old_target': Decimal('0.00'), 'delta': Decimal('0.00'), 'new_target': Decimal('0.00')} for m in months],
+            'grand_total': {'old_target': Decimal('0.00'), 'delta': Decimal('0.00'), 'new_target': Decimal('0.00')}
         }
         
         if self.mode == 'transfer':
@@ -181,10 +194,11 @@ class SaleTargetsCalculatorService:
         for pc in product_classes:
             pc_data = {
                 'class_name': pc.name.title(),
-                'months': []
+                'months': [],
+                'totals': {'old_target': Decimal('0.00'), 'delta': Decimal('0.00'), 'new_target': Decimal('0.00')}
             }
             
-            for m in months:
+            for idx, m in enumerate(months):
                 old_target = targets.get(pc.id, {}).get(m.month, Decimal('0.00'))
                 
                 growth = Decimal('0.00')
@@ -200,6 +214,18 @@ class SaleTargetsCalculatorService:
                 new_target = old_target + delta_val
                 if new_target < 0: new_target = Decimal('0.00')
                 
+                pc_data['totals']['old_target'] += old_target
+                pc_data['totals']['delta'] += delta_val
+                pc_data['totals']['new_target'] += new_target
+                
+                result['month_totals'][idx]['old_target'] += old_target
+                result['month_totals'][idx]['delta'] += delta_val
+                result['month_totals'][idx]['new_target'] += new_target
+                
+                result['grand_total']['old_target'] += old_target
+                result['grand_total']['delta'] += delta_val
+                result['grand_total']['new_target'] += new_target
+                
                 pc_data['months'].append({
                     'date': m,
                     'old_target': old_target,
@@ -208,6 +234,18 @@ class SaleTargetsCalculatorService:
                     'new_target': new_target
                 })
             result['classes'].append(pc_data)
+            
+        for idx, mt in enumerate(result['month_totals']):
+            if mt['date'].month > 1:
+                prev = result['month_totals'][idx - 1]['old_target']
+                if prev > 0:
+                    mt['growth'] = ((mt['old_target'] - prev) / prev) * 100
+                elif prev == 0 and mt['old_target'] > 0:
+                    mt['growth'] = Decimal('100.00')
+                else:
+                    mt['growth'] = Decimal('0.00')
+            else:
+                mt['growth'] = Decimal('0.00')
             
         return result
 
@@ -272,6 +310,15 @@ class SaleTargetsCalculatorService:
                 ws.merge_cells(start_row=header_row1, start_column=col_idx, end_row=header_row1, end_column=col_idx+2)
                 col_idx += 3
                 
+            # Total Column header
+            ws.cell(row=header_row1, column=col_idx, value="Total Anual").font = header_font
+            ws.cell(row=header_row1, column=col_idx).fill = header_fill
+            ws.cell(row=header_row1, column=col_idx).alignment = header_alignment
+            for c in range(col_idx, col_idx + 3):
+                ws.cell(row=header_row1, column=c).border = thin_border
+                ws.cell(row=header_row1, column=c).fill = header_fill
+            ws.merge_cells(start_row=header_row1, start_column=col_idx, end_row=header_row1, end_column=col_idx+2)
+                
             header_row2 = header_row1 + 1
             col_idx = 2
             sub_headers = ["Obj. original", "Crecimiento", "Ajuste"]
@@ -283,6 +330,14 @@ class SaleTargetsCalculatorService:
                     cell.alignment = header_alignment
                     cell.border = thin_border
                     col_idx += 1
+            # For the Total Anual column
+            for sub in sub_headers:
+                cell = ws.cell(row=header_row2, column=col_idx, value=sub)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+                cell.border = thin_border
+                col_idx += 1
                     
             for cls in r['classes']:
                 current_row = ws.max_row + 1
@@ -313,12 +368,93 @@ class SaleTargetsCalculatorService:
                     elif delta_val < 0: cell3.font = Font(color="FF0000")
                     col_idx += 1
                     
+                # Class totals
+                t = cls['totals']
+                cell1 = ws.cell(row=current_row, column=col_idx, value=t['old_target'])
+                cell1.border = thin_border
+                cell1.font = Font(bold=True)
+                cell1.number_format = '"$"#,##0.00'
+                col_idx += 1
+                
+                # Growth for the total (overall) doesn't have a strict month-to-month, let's leave it blank or dash
+                cell2 = ws.cell(row=current_row, column=col_idx, value="-")
+                cell2.border = thin_border
+                cell2.alignment = Alignment(horizontal="center")
+                col_idx += 1
+                
+                cell3 = ws.cell(row=current_row, column=col_idx, value=t['delta'])
+                cell3.border = thin_border
+                cell3.font = Font(bold=True)
+                cell3.number_format = '"$"#,##0.00'
+                if t['delta'] > 0: cell3.font = Font(bold=True, color="008000")
+                elif t['delta'] < 0: cell3.font = Font(bold=True, color="FF0000")
+                col_idx += 1
+                
+            # Month Totals row
+            current_row = ws.max_row + 1
+            cell = ws.cell(row=current_row, column=1, value="TOTAL RUTA")
+            cell.font = Font(bold=True)
+            cell.border = thin_border
+            cell.fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
+            
+            col_idx = 2
+            for mt in r['month_totals']:
+                cell1 = ws.cell(row=current_row, column=col_idx, value=mt['old_target'])
+                cell1.border = thin_border
+                cell1.font = Font(bold=True)
+                cell1.number_format = '"$"#,##0.00'
+                cell1.fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
+                col_idx += 1
+                
+                growth_val = float(mt['growth']) / 100 if mt['growth'] else 0.0
+                cell2 = ws.cell(row=current_row, column=col_idx, value=growth_val)
+                cell2.border = thin_border
+                cell2.number_format = '0.0%'
+                cell2.fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
+                if growth_val > 0: cell2.font = Font(bold=True, color="008000")
+                elif growth_val < 0: cell2.font = Font(bold=True, color="FF0000")
+                col_idx += 1
+                
+                delta_val = mt['delta']
+                cell3 = ws.cell(row=current_row, column=col_idx, value=delta_val)
+                cell3.border = thin_border
+                cell3.number_format = '"$"#,##0.00'
+                cell3.fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
+                if delta_val > 0: cell3.font = Font(bold=True, color="008000")
+                elif delta_val < 0: cell3.font = Font(bold=True, color="FF0000")
+                col_idx += 1
+                
+            # Grand total
+            gt = r['grand_total']
+            cell1 = ws.cell(row=current_row, column=col_idx, value=gt['old_target'])
+            cell1.border = thin_border
+            cell1.font = Font(bold=True)
+            cell1.number_format = '"$"#,##0.00'
+            cell1.fill = PatternFill(start_color="E5E7EB", end_color="E5E7EB", fill_type="solid")
+            col_idx += 1
+            
+            cell2 = ws.cell(row=current_row, column=col_idx, value="-")
+            cell2.border = thin_border
+            cell2.alignment = Alignment(horizontal="center")
+            cell2.fill = PatternFill(start_color="E5E7EB", end_color="E5E7EB", fill_type="solid")
+            col_idx += 1
+            
+            cell3 = ws.cell(row=current_row, column=col_idx, value=gt['delta'])
+            cell3.border = thin_border
+            cell3.font = Font(bold=True)
+            cell3.number_format = '"$"#,##0.00'
+            cell3.fill = PatternFill(start_color="E5E7EB", end_color="E5E7EB", fill_type="solid")
+            if gt['delta'] > 0: cell3.font = Font(bold=True, color="008000")
+            elif gt['delta'] < 0: cell3.font = Font(bold=True, color="FF0000")
+            col_idx += 1
+                    
             ws.append([])
             ws.append([])
             ws.append([f"Objetivos Planificados (Objetivos finales): {r['route_name']}"])
             ws.cell(row=ws.max_row, column=1).font = title_font
             ws.append([])
             
+            # New targets table
             header_row3 = ws.max_row + 1
             ws.cell(row=header_row3, column=1, value="Clase de producto").font = header_font
             ws.cell(row=header_row3, column=1).fill = header_fill
@@ -334,6 +470,14 @@ class SaleTargetsCalculatorService:
                 cell.alignment = header_alignment
                 cell.border = thin_border
                 col_idx += 1
+                
+            # Total Anual for new targets
+            cell = ws.cell(row=header_row3, column=col_idx, value="Total Anual")
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+            col_idx += 1
                 
             for cls in r['classes']:
                 current_row = ws.max_row + 1
@@ -351,6 +495,45 @@ class SaleTargetsCalculatorService:
                     elif m['new_target'] < m['old_target']:
                         cell.font = Font(color="FF0000", bold=True)
                     col_idx += 1
+                    
+                # Class total for new targets
+                t = cls['totals']
+                cell = ws.cell(row=current_row, column=col_idx, value=t['new_target'])
+                cell.border = thin_border
+                cell.font = Font(bold=True)
+                cell.number_format = '"$"#,##0.00'
+                if t['new_target'] > t['old_target']: cell.font = Font(bold=True, color="008000")
+                elif t['new_target'] < t['old_target']: cell.font = Font(bold=True, color="FF0000")
+                col_idx += 1
+                
+            # Month Totals row for new targets
+            current_row = ws.max_row + 1
+            cell = ws.cell(row=current_row, column=1, value="TOTAL RUTA")
+            cell.font = Font(bold=True)
+            cell.border = thin_border
+            cell.fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
+            
+            col_idx = 2
+            for mt in r['month_totals']:
+                cell1 = ws.cell(row=current_row, column=col_idx, value=mt['new_target'])
+                cell1.border = thin_border
+                cell1.font = Font(bold=True)
+                cell1.number_format = '"$"#,##0.00'
+                cell1.fill = PatternFill(start_color="F3F4F6", end_color="F3F4F6", fill_type="solid")
+                if mt['new_target'] > mt['old_target']: cell1.font = Font(bold=True, color="008000")
+                elif mt['new_target'] < mt['old_target']: cell1.font = Font(bold=True, color="FF0000")
+                col_idx += 1
+                
+            # Grand total for new targets
+            gt = r['grand_total']
+            cell1 = ws.cell(row=current_row, column=col_idx, value=gt['new_target'])
+            cell1.border = thin_border
+            cell1.font = Font(bold=True)
+            cell1.number_format = '"$"#,##0.00'
+            cell1.fill = PatternFill(start_color="E5E7EB", end_color="E5E7EB", fill_type="solid")
+            if gt['new_target'] > gt['old_target']: cell1.font = Font(bold=True, color="008000")
+            elif gt['new_target'] < gt['old_target']: cell1.font = Font(bold=True, color="FF0000")
+            col_idx += 1
                     
             ws.column_dimensions['A'].width = 25
             for c in range(2, ws.max_column + 1):

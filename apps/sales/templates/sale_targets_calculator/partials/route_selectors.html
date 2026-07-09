@@ -36,4 +36,13 @@
         {% endfor %}
     </select>
 </div>
+
+<div class="flex flex-col gap-1 col-span-1 md:col-span-2 mt-2">
+    <label class="text-strong">Regla de crecimiento para ruta destino</label>
+    <select name="transfer_growth_rule" class="border border-border rounded p-1 bg-page text-strong w-full outline-none">
+        <option value="exact">Mantener crecimiento de ruta origen (Transferencia exacta)</option>
+        <option value="dynamic">Adaptar a curva de crecimiento destino (Transferencia dinámica)</option>
+    </select>
+    <span class="text-xs text-muted">Aplica a partir del mes posterior a la fecha de aplicación</span>
+</div>
 {% endif %}

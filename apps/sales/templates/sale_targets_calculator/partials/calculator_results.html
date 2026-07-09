@@ -39,6 +39,7 @@
                         {% for m in r.classes.0.months %}
                             <th class="p-2 min-w-50 text-center border-r border-border  text-title bg-page ">{{ m.date|date:"M Y"|title }}</th>
                         {% endfor %}
+                        <th class="p-2 min-w-[150px] text-center bg-container border-border text-title">Total Anual</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -63,12 +64,62 @@
                             </div>
                         </td>
                         {% endfor %}
+                        <td class="p-2 text-right border-t border-l border-border bg-container">
+                            <div class="flex flex-col gap-1 items-end">
+                                <span class="text-strong font-medium">$ {{ cls.totals.old_target|floatformat:2|intcomma }}</span>
+                                <span class="text-xs text-muted">-</span>
+                                {% if cls.totals.delta != 0 %}
+                                <span class="text-xs {% if cls.totals.delta > 0 %}text-green-600{% else %}text-red-600{% endif %} bg-page px-1 rounded border border-border">
+                                    {% if cls.totals.delta > 0 %}+{% endif %}$ {{ cls.totals.delta|floatformat:2|intcomma }}
+                                </span>
+                                {% else %}
+                                <span class="text-xs text-muted">-</span>
+                                {% endif %}
+                            </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
                         <td colspan="100%" class="p-4 text-center border-t border-border text-strong">No hay clases seleccionadas.</td>
                     </tr>
                     {% endfor %}
+                    
+                    {% if r.classes %}
+                    <tr class="bg-page">
+                        <td class="p-2 text-left bg-container border-r border-t-2 border-border sticky left-0 text-title font-medium">TOTAL RUTA</td>
+                        {% for mt in r.month_totals %}
+                        <td class="p-2 text-right border-r border-t-2 border-border bg-page">
+                            <div class="flex flex-col gap-1 items-end">
+                                <span class="text-strong font-medium">$ {{ mt.old_target|floatformat:2|intcomma }}</span>
+                                <span class="text-xs {% if mt.growth > 0 %}text-green-600 font-medium{% elif mt.growth < 0 %}text-red-600 font-medium{% else %}text-muted{% endif %}">
+                                    {% if mt.growth > 0 %}▲{% elif mt.growth < 0 %}▼{% else %}{% endif %} {{ mt.growth|floatformat:1 }}%
+                                </span>
+                                {% if mt.delta != 0 %}
+                                <span class="text-xs {% if mt.delta > 0 %}text-green-600 font-medium{% else %}text-red-600 font-medium{% endif %} bg-page px-1 rounded border border-border">
+                                    {% if mt.delta > 0 %}+{% endif %}$ {{ mt.delta|floatformat:2|intcomma }}
+                                </span>
+                                {% else %}
+                                <span class="text-xs text-muted">-</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% endfor %}
+                        
+                        <td class="p-2 text-right border-t-2 border-l border-border bg-container">
+                            <div class="flex flex-col gap-1 items-end">
+                                <span class="text-strong font-medium">$ {{ r.grand_total.old_target|floatformat:2|intcomma }}</span>
+                                <span class="text-xs text-muted">-</span>
+                                {% if r.grand_total.delta != 0 %}
+                                <span class="text-xs {% if r.grand_total.delta > 0 %}text-green-600 font-medium{% else %}text-red-600 font-medium{% endif %} bg-page px-1 rounded border border-border">
+                                    {% if r.grand_total.delta > 0 %}+{% endif %}$ {{ r.grand_total.delta|floatformat:2|intcomma }}
+                                </span>
+                                {% else %}
+                                <span class="text-xs text-muted">-</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
@@ -82,6 +133,7 @@
                         {% for m in r.classes.0.months %}
                             <th class="p-2 min-w-50 text-center border-r border-border  text-title bg-page ">{{ m.date|date:"M Y"|title }}</th>
                         {% endfor %}
+                        <th class="p-2 min-w-[150px] text-center bg-container border-border text-title">Total Anual</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -95,8 +147,32 @@
                             </span>
                         </td>
                         {% endfor %}
+                        <td class="p-2 text-right border-t border-l border-border bg-container">
+                            <span class="font-medium {% if cls.totals.new_target > cls.totals.old_target %}text-green-600{% elif cls.totals.new_target < cls.totals.old_target %}text-red-600{% else %}text-strong{% endif %}">
+                                $ {{ cls.totals.new_target|floatformat:2|intcomma }}
+                            </span>
+                        </td>
                     </tr>
                     {% endfor %}
+                    
+                    {% if r.classes %}
+                    <tr class="bg-page">
+                        <td class="p-2 text-left bg-container border-r border-t-2 border-border sticky left-0 text-title font-medium">TOTAL RUTA</td>
+                        {% for mt in r.month_totals %}
+                        <td class="p-2 text-right border-r border-t-2 border-border">
+                            <span class="font-medium {% if mt.new_target > mt.old_target %}text-green-600{% elif mt.new_target < mt.old_target %}text-red-600{% else %}text-strong{% endif %}">
+                                $ {{ mt.new_target|floatformat:2|intcomma }}
+                            </span>
+                        </td>
+                        {% endfor %}
+                        
+                        <td class="p-2 text-right border-t-2 border-l border-border bg-container">
+                            <span class="font-medium {% if r.grand_total.new_target > r.grand_total.old_target %}text-green-600{% elif r.grand_total.new_target < r.grand_total.old_target %}text-red-600{% else %}text-strong{% endif %}">
+                                $ {{ r.grand_total.new_target|floatformat:2|intcomma }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
