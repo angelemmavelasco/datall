@@ -1,4 +1,3 @@
-# apps/sales/services/sale_targets/calculator.py
 import datetime
 from decimal import Decimal
 from django.db.models import Sum, Q
@@ -6,7 +5,22 @@ from apps.core.models import SaleTarget, SaleTransaction, Route, ProductClass, C
 from dateutil.relativedelta import relativedelta
 
 class SaleTargetsCalculatorService:
+    """
+    Service class to calculate sales target simulations when transferring or adjusting routes.
+    """
+
     def __init__(self, mode, origin_route_id, destination_route_id=None, customer_ids=None, adjustment_direction='remove', transfer_growth_rule='exact'):
+        """
+        Initialize the calculator service with simulation parameters.
+
+        Args:
+            mode (str): Mode of the simulation, either 'transfer' (bewteen two routes) or 'adjustment' (by adding or removing from all customers).
+            origin_route_id (str): ID of the origin route where the customers currently belong.
+            destination_route_id (str, optional): ID of the destination route for transfers. Defaults to None.
+            customer_ids (list, optional): List of customer IDs to be adjusted or transferred. Defaults to None.
+            adjustment_direction (str, optional): Direction of adjustment, 'add' or 'remove'. Defaults to 'remove'.
+            transfer_growth_rule (str, optional): Growth rule for transfers, 'exact' or 'dynamic'. Defaults to 'exact'.
+        """
         self.mode = mode
         self.origin_route_id = origin_route_id
         self.destination_route_id = destination_route_id
@@ -16,6 +30,15 @@ class SaleTargetsCalculatorService:
         self.errors = []
         
     def _parse_month(self, ym_str):
+        """
+        Parse a year-month string into a date object.
+
+        Args:
+            ym_str (str): The year-month string in 'YYYY-MM' format.
+
+        Returns:
+            datetime.date: Date object representing the first day of the parsed month, or None if invalid.
+        """
         if not ym_str: return None
         try:
             return datetime.datetime.strptime(ym_str, '%Y-%m').date()
@@ -23,9 +46,35 @@ class SaleTargetsCalculatorService:
             return None
 
     def _months_diff(self, start_date, end_date):
+        """
+        Calculate the difference in months between two dates.
+
+        Args:
+            start_date (datetime.date): The start date.
+            end_date (datetime.date): The end date.
+
+        Returns:
+            int: The difference in months, inclusive of the boundary months.
+        """
         return (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month) + 1
 
     def calculate_simulation(self, target_year, effective_month, eval_customer_start, eval_customer_end, eval_route_start, eval_route_end, product_class_ids, calc_method):
+        """
+        Run the target adjustment simulation for origin and optionally destination routes.
+
+        Args:
+            target_year (int): The target calendar year for the simulation.
+            effective_month (str): The month from which the adjustment is effective ('YYYY-MM').
+            eval_customer_start (str): The start month of the customer evaluation period ('YYYY-MM').
+            eval_customer_end (str): The end month of the customer evaluation period ('YYYY-MM').
+            eval_route_start (str): The start month of the route evaluation period ('YYYY-MM').
+            eval_route_end (str): The end month of the route evaluation period ('YYYY-MM').
+            product_class_ids (list): List of product class IDs to consider.
+            calc_method (str): The calculation method, either 'average' or 'contribution'.
+
+        Returns:
+            dict: Simulation results containing origin and destination details, and customer portfolio summary, or None.
+        """
         if not self.origin_route_id or not self.customer_ids:
             self.errors.append("Falta seleccionar ruta origen o clientes.")
             return None
@@ -37,15 +86,24 @@ class SaleTargetsCalculatorService:
         eff_date = self._parse_month(effective_month)
         c_start = self._parse_month(eval_customer_start)
         c_end = self._parse_month(eval_customer_end)
-        r_start = self._parse_month(eval_route_start)
-        r_end = self._parse_month(eval_route_end)
+        
+        r_start = None
+        r_end = None
+        if calc_method == 'contribution':
+            r_start = self._parse_month(eval_route_start)
+            r_end = self._parse_month(eval_route_end)
 
-        if not all([eff_date, c_start, c_end, r_start, r_end]):
+        if not all([eff_date, c_start, c_end]):
             self.errors.append("Las fechas ingresadas no tienen un formato válido.")
             return None
             
+        if calc_method == 'contribution' and not all([r_start, r_end]):
+            self.errors.append("Las fechas de evaluación de ruta no tienen un formato válido.")
+            return None
+            
         c_end = c_end + relativedelta(day=31)
-        r_end = r_end + relativedelta(day=31)
+        if r_end:
+            r_end = r_end + relativedelta(day=31)
             
         product_classes = ProductClass.objects.filter(id__in=product_class_ids)
         origin_route = Route.objects.filter(id=self.origin_route_id).first()
@@ -87,7 +145,7 @@ class SaleTargetsCalculatorService:
                                 current_base = current_base * growth_factor
                             else:
                                 if curr_val > 0:
-                                    current_base = current_base * 2 # Fallback if grew from 0
+                                    current_base = current_base * 2
                                     
                         cdeltas[pc.id][m] = current_base
             return cdeltas
@@ -113,6 +171,12 @@ class SaleTargetsCalculatorService:
         }
 
     def _calculate_customer_summary(self):
+        """
+        Calculate the net changes in customer portfolio assignments for origin and destination routes.
+
+        Returns:
+            dict: Portfolio counts containing current, affected, final, and is_addition details.
+        """
         origin_current = Customer.objects.filter(route_id=self.origin_route_id).count()
         customers_in_origin = Customer.objects.filter(id__in=self.customer_ids, route_id=self.origin_route_id).count()
         total_selected = len(self.customer_ids)
@@ -159,6 +223,17 @@ class SaleTargetsCalculatorService:
         return summary
 
     def _get_route_targets(self, route_ids, target_year, product_classes):
+        """
+        Fetch the original target values for the given routes and year.
+
+        Args:
+            route_ids (list): List of route IDs.
+            target_year (int): Calendar year.
+            product_classes (QuerySet): QuerySet of ProductClass objects.
+
+        Returns:
+            dict: Nested dictionary mapping route_id -> product_class_id -> month -> target_amount.
+        """
         start_y = datetime.date(target_year, 1, 1)
         end_y = datetime.date(target_year, 12, 31)
         
@@ -180,6 +255,17 @@ class SaleTargetsCalculatorService:
         return targets
 
     def _calculate_average_deltas(self, start_date, end_date, product_classes):
+        """
+        Calculate the average monthly sales for the selected customers during the evaluation period.
+
+        Args:
+            start_date (datetime.date): Start date of the evaluation period.
+            end_date (datetime.date): End date of the evaluation period.
+            product_classes (QuerySet): QuerySet of ProductClass objects.
+
+        Returns:
+            dict: Dictionary mapping product_class_id to the average monthly sales amount (Decimal).
+        """
         months_count = self._months_diff(start_date, end_date)
         if months_count <= 0: months_count = 1
         
@@ -199,6 +285,19 @@ class SaleTargetsCalculatorService:
         return deltas
 
     def _calculate_contribution_deltas(self, c_start, c_end, r_start, r_end, product_classes):
+        """
+        Calculate the sales contribution ratio of the selected customers relative to the origin route.
+
+        Args:
+            c_start (datetime.date): Start date for customer sales evaluation.
+            c_end (datetime.date): End date for customer sales evaluation.
+            r_start (datetime.date): Start date for route sales evaluation.
+            r_end (datetime.date): End date for route sales evaluation.
+            product_classes (QuerySet): QuerySet of ProductClass objects.
+
+        Returns:
+            dict: Dictionary mapping product_class_id to the contribution percentage (Decimal).
+        """
         c_sales = SaleTransaction.objects.filter(
             customer_id__in=self.customer_ids,
             product_class__in=product_classes,
@@ -226,6 +325,20 @@ class SaleTargetsCalculatorService:
         return deltas
 
     def _build_route_result(self, route, product_classes, targets, computed_deltas, months, is_origin):
+        """
+        Build the simulation targets breakdown and totals for a single route.
+
+        Args:
+            route (Route): The Route model instance.
+            product_classes (QuerySet): QuerySet of ProductClass objects.
+            targets (dict): Nested dict containing original target amounts.
+            computed_deltas (dict): Nested dict containing calculated adjustments per month/class.
+            months (list): List of datetime.date objects for each month of the target year.
+            is_origin (bool): True if compiling the origin route results, False otherwise.
+
+        Returns:
+            dict: Structured dictionary with route targets, monthly/annual totals, and growth percentages.
+        """
         result = {
             'route_name': f"{route.id.upper()} {route.name.title()}",
             'classes': [],
@@ -297,6 +410,15 @@ class SaleTargetsCalculatorService:
         return result
 
     def export_data_report(self, results):
+        """
+        Generate a multi-sheet Excel report of the simulation targets and portfolio changes.
+
+        Args:
+            results (dict): The dictionary compiled by calculate_simulation.
+
+        Returns:
+            bytes: The binary content of the generated .xlsx workbook, or None.
+        """
         if not results:
             return None
             
@@ -306,7 +428,7 @@ class SaleTargetsCalculatorService:
         import io
         
         wb = openpyxl.Workbook()
-        wb.remove(wb.active) # Remove default sheet
+        wb.remove(wb.active)
         
         header_font = Font(bold=True, color="FFFFFF")
         header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
@@ -376,7 +498,6 @@ class SaleTargetsCalculatorService:
                 ws.merge_cells(start_row=header_row1, start_column=col_idx, end_row=header_row1, end_column=col_idx+2)
                 col_idx += 3
                 
-            # Total Column header
             ws.cell(row=header_row1, column=col_idx, value="Total Anual").font = header_font
             ws.cell(row=header_row1, column=col_idx).fill = header_fill
             ws.cell(row=header_row1, column=col_idx).alignment = header_alignment
@@ -396,7 +517,6 @@ class SaleTargetsCalculatorService:
                     cell.alignment = header_alignment
                     cell.border = thin_border
                     col_idx += 1
-            # For the Total Anual column
             for sub in sub_headers:
                 cell = ws.cell(row=header_row2, column=col_idx, value=sub)
                 cell.font = header_font
@@ -434,7 +554,6 @@ class SaleTargetsCalculatorService:
                     elif delta_val < 0: cell3.font = Font(color="FF0000")
                     col_idx += 1
                     
-                # Class totals
                 t = cls['totals']
                 cell1 = ws.cell(row=current_row, column=col_idx, value=t['old_target'])
                 cell1.border = thin_border
@@ -442,7 +561,6 @@ class SaleTargetsCalculatorService:
                 cell1.number_format = '"$"#,##0.00'
                 col_idx += 1
                 
-                # Growth for the total (overall) doesn't have a strict month-to-month, let's leave it blank or dash
                 cell2 = ws.cell(row=current_row, column=col_idx, value="-")
                 cell2.border = thin_border
                 cell2.alignment = Alignment(horizontal="center")
@@ -456,7 +574,6 @@ class SaleTargetsCalculatorService:
                 elif t['delta'] < 0: cell3.font = Font(bold=True, color="FF0000")
                 col_idx += 1
                 
-            # Month Totals row
             current_row = ws.max_row + 1
             cell = ws.cell(row=current_row, column=1, value="TOTAL RUTA")
             cell.font = Font(bold=True)
@@ -490,7 +607,6 @@ class SaleTargetsCalculatorService:
                 elif delta_val < 0: cell3.font = Font(bold=True, color="FF0000")
                 col_idx += 1
                 
-            # Grand total
             gt = r['grand_total']
             cell1 = ws.cell(row=current_row, column=col_idx, value=gt['old_target'])
             cell1.border = thin_border
@@ -520,7 +636,6 @@ class SaleTargetsCalculatorService:
             ws.cell(row=ws.max_row, column=1).font = title_font
             ws.append([])
             
-            # New targets table
             header_row3 = ws.max_row + 1
             ws.cell(row=header_row3, column=1, value="Clase de producto").font = header_font
             ws.cell(row=header_row3, column=1).fill = header_fill
@@ -537,7 +652,6 @@ class SaleTargetsCalculatorService:
                 cell.border = thin_border
                 col_idx += 1
                 
-            # Total Anual for new targets
             cell = ws.cell(row=header_row3, column=col_idx, value="Total Anual")
             cell.font = header_font
             cell.fill = header_fill
@@ -562,7 +676,6 @@ class SaleTargetsCalculatorService:
                         cell.font = Font(color="FF0000", bold=True)
                     col_idx += 1
                     
-                # Class total for new targets
                 t = cls['totals']
                 cell = ws.cell(row=current_row, column=col_idx, value=t['new_target'])
                 cell.border = thin_border
@@ -572,7 +685,6 @@ class SaleTargetsCalculatorService:
                 elif t['new_target'] < t['old_target']: cell.font = Font(bold=True, color="FF0000")
                 col_idx += 1
                 
-            # Month Totals row for new targets
             current_row = ws.max_row + 1
             cell = ws.cell(row=current_row, column=1, value="TOTAL RUTA")
             cell.font = Font(bold=True)
@@ -590,7 +702,6 @@ class SaleTargetsCalculatorService:
                 elif mt['new_target'] < mt['old_target']: cell1.font = Font(bold=True, color="FF0000")
                 col_idx += 1
                 
-            # Grand total for new targets
             gt = r['grand_total']
             cell1 = ws.cell(row=current_row, column=col_idx, value=gt['new_target'])
             cell1.border = thin_border
@@ -601,7 +712,6 @@ class SaleTargetsCalculatorService:
             elif gt['new_target'] < gt['old_target']: cell1.font = Font(bold=True, color="FF0000")
             col_idx += 1
             
-            # --- Customer Lists ---
             from apps.core.models import Customer
             
             ws.append([])
@@ -671,4 +781,3 @@ class SaleTargetsCalculatorService:
         wb.save(output)
         output.seek(0)
         return output.getvalue()
-

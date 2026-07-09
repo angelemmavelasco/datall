@@ -6,6 +6,12 @@
 
 {% block module_name %}Calculadora de objetivos de ventas{% endblock %}
 
+{% block module_actions %}
+
+a
+
+{% endblock content %}
+
 
 {% block content %}
 
@@ -32,7 +38,7 @@
                 <!-- Método de Cálculo -->
                 <div class="flex flex-col gap-1">
                     <label class="text-strong">Método de cálculo</label>
-                    <select name="calculation_method" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none">
+                    <select id="calculation-method-select" name="calculation_method" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none" onchange="toggleRouteEvalInputs()">
                         <option value="average">Promedio Mensual (Monto fijo)</option>
                         <option value="contribution">Contribución (Porcentaje sobre ruta)</option>
                     </select>
@@ -71,11 +77,11 @@
                 </div>
 
                 <!-- Periodo de Evaluación Ruta -->
-                <div class="flex flex-col gap-1">
+                <div id="route-eval-container" class="flex flex-col gap-1" style="display: none;">
                     <label class="text-strong">Periodo Evaluación Ruta (Inicio - Fin)</label>
                     <div class="flex gap-2">
-                        <input type="month" name="eval_route_start" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none" required>
-                        <input type="month" name="eval_route_end" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none" required>
+                        <input type="month" id="eval_route_start" name="eval_route_start" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none">
+                        <input type="month" id="eval_route_end" name="eval_route_end" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none">
                     </div>
                 </div>
 
@@ -127,6 +133,26 @@
         
         window.location.href = "{% url 'sales:export_sale_targets_calculator_data' %}?" + searchParams.toString();
     }
+
+    function toggleRouteEvalInputs() {
+        const methodSelect = document.getElementById('calculation-method-select');
+        const container = document.getElementById('route-eval-container');
+        const startInput = document.getElementById('eval_route_start');
+        const endInput = document.getElementById('eval_route_end');
+
+        if (methodSelect && methodSelect.value === 'contribution') {
+            container.style.display = 'flex';
+            startInput.required = true;
+            endInput.required = true;
+        } else {
+            container.style.display = 'none';
+            startInput.required = false;
+            endInput.required = false;
+        }
+    }
+    
+    // Ejecutar al cargar la página por si tiene un valor por defecto
+    document.addEventListener('DOMContentLoaded', toggleRouteEvalInputs);
 </script>
 
 {% endblock content %}
