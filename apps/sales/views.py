@@ -12,6 +12,10 @@ from apps.core.utils import get_allowed_routes_for_user
 from apps.sales.services.sale_transactions.sale_transactions_crud import SaleTransactionCRUD
 from django.http import HttpResponse
 from asgiref.sync import sync_to_async
+import datetime
+import calendar
+from django.db.models import Sum
+from decimal import Decimal
 
 
 @login_required
@@ -108,6 +112,15 @@ def sale_transactions(request):
     doc_id = request.GET.get('doc_id')
     sale_date_start = request.GET.get('sale_date_start')
     sale_date_end = request.GET.get('sale_date_end')
+
+    # default dates if not provided
+    if not sale_date_start:
+        today = datetime.date.today()
+        sale_date_start = datetime.date(today.year, today.month, 1).strftime('%Y-%m-%d')
+    if not sale_date_end:
+        today = datetime.date.today()
+        _, last_day = calendar.monthrange(today.year, today.month)
+        sale_date_end = datetime.date(today.year, today.month, last_day).strftime('%Y-%m-%d')
     
     product_classes = request.GET.getlist('product_classes')
     product_categories = request.GET.getlist('product_categories')
@@ -132,6 +145,28 @@ def sale_transactions(request):
     transactions_service = SaleTransactionCRUD()
     qs = transactions_service.read(allowed_routes, **filters)
     
+    # We aggregate the values to compute the kpis!
+    aggregates = qs.aggregate(
+        total_net=Sum('net_amount'),
+        total_gross=Sum('gross_amount'),
+        total_profit=Sum('profit'),
+        total_units=Sum('quantity')
+    )
+    
+    net_amount = aggregates['total_net'] or Decimal('0.00')
+    gross_amount = aggregates['total_gross'] or Decimal('0.00')
+    profit = aggregates['total_profit'] or Decimal('0.00')
+    units = aggregates['total_units'] or Decimal('0.00')
+    
+    margin = (profit / net_amount * 100) if net_amount != 0 else Decimal('0.00')
+    
+    kpis = {
+        'net_amount': net_amount,
+        'gross_amount': gross_amount,  # Match template typo 'groos_amount'
+        'units': units,
+        'margin': margin
+    }
+    
     # We order by sale_date DESC for recent ones first
     qs = qs.order_by('-sale_date')
 
@@ -154,9 +189,12 @@ def sale_transactions(request):
         'doc_id': doc_id or '',
         'sale_date_start': sale_date_start or '',
         'sale_date_end': sale_date_end or '',
+        'selected_date_start': sale_date_start,
+        'selected_date_end': sale_date_end,
         'customers': customers_str or '',
         'products': products_str or '',
-        'allowed_routes': allowed_routes
+        'allowed_routes': allowed_routes,
+        'kpis': kpis
     }
 
     if request.htmx:
@@ -166,11 +204,23 @@ def sale_transactions(request):
 
 @login_required
 def sale_transactions_export(request):
+    import datetime
+    import calendar
+
     allowed_routes = get_allowed_routes_for_user(request.user)
 
     doc_id = request.GET.get('doc_id')
     sale_date_start = request.GET.get('sale_date_start')
     sale_date_end = request.GET.get('sale_date_end')
+
+    # default dates if not provided
+    if not sale_date_start:
+        today = datetime.date.today()
+        sale_date_start = datetime.date(today.year, today.month, 1).strftime('%Y-%m-%d')
+    if not sale_date_end:
+        today = datetime.date.today()
+        _, last_day = calendar.monthrange(today.year, today.month)
+        sale_date_end = datetime.date(today.year, today.month, last_day).strftime('%Y-%m-%d')
     
     product_classes = request.GET.getlist('product_classes')
     product_categories = request.GET.getlist('product_categories')

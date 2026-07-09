@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block title %}Transacciones{% endblock %}
 
@@ -172,6 +173,85 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 {% endblock %}
 
 {% block content %}
+    <div class="mb-4">
+        <p class="text-title text-sm mb-2">Transacciones de venta del {{ selected_date_start|default:'' }} al {{ selected_date_end|default:'' }}</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Venta neta
+                </span>
+                <span class="custom-tooltip tooltip-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
+            <p class="text-xl text-green-500">$ {{ kpis.net_amount|default:0.00|floatformat:2|intcomma }}</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Venta total
+                </span>
+                <span class="custom-tooltip tooltip-right">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
+            <p class="text-xl text-blue-500">$ {{ kpis.gross_amount|default:0|floatformat:2|intcomma }}</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Unidades
+                </span>
+                <span class="custom-tooltip tooltip-left">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
+            <p class="text-xl text-violet-500">{{ kpis.units|default:0|floatformat:0|intcomma }}</p>
+        </div>
+        <div class="border border-border rounded p-2 flex flex-col  bg-container">
+            <p class="text-muted text-sm text-strong flex items-center gap-2">
+                <span>
+                    Margen
+                </span>
+                <span class="custom-tooltip tooltip-right">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                    </svg>
+                </span>
+
+            </p>
+            <p class="text-xl text-title">{{ kpis.margin|default:0.00|floatformat:2|intcomma }} %</p>
+        </div>
+    </div>
 
     <div class="w-full overflow-x-auto border border-border rounded bg-container">
         <table class="w-full table-fixed text-left border-collapse">
