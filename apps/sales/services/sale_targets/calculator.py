@@ -108,8 +108,55 @@ class SaleTargetsCalculatorService:
             
         return {
             'origin': origin_result,
-            'destination': dest_result
+            'destination': dest_result,
+            'customer_summary': self._calculate_customer_summary()
         }
+
+    def _calculate_customer_summary(self):
+        origin_current = Customer.objects.filter(route_id=self.origin_route_id).count()
+        customers_in_origin = Customer.objects.filter(id__in=self.customer_ids, route_id=self.origin_route_id).count()
+        total_selected = len(self.customer_ids)
+        
+        summary = {}
+        
+        if self.mode == 'transfer':
+            dest_current = Customer.objects.filter(route_id=self.destination_route_id).count()
+            customers_in_dest = Customer.objects.filter(id__in=self.customer_ids, route_id=self.destination_route_id).count()
+            
+            origin_removed = customers_in_origin
+            dest_added = total_selected - customers_in_dest
+            
+            summary['origin'] = {
+                'current': origin_current,
+                'affected': origin_removed,
+                'is_addition': False,
+                'final': origin_current - origin_removed
+            }
+            summary['destination'] = {
+                'current': dest_current,
+                'affected': dest_added,
+                'is_addition': True,
+                'final': dest_current + dest_added
+            }
+        else:
+            if self.adjustment_direction == 'add':
+                origin_added = total_selected - customers_in_origin
+                summary['origin'] = {
+                    'current': origin_current,
+                    'affected': origin_added,
+                    'is_addition': True,
+                    'final': origin_current + origin_added
+                }
+            else:
+                origin_removed = customers_in_origin
+                summary['origin'] = {
+                    'current': origin_current,
+                    'affected': origin_removed,
+                    'is_addition': False,
+                    'final': origin_current - origin_removed
+                }
+                
+        return summary
 
     def _get_route_targets(self, route_ids, target_year, product_classes):
         start_y = datetime.date(target_year, 1, 1)
@@ -271,6 +318,8 @@ class SaleTargetsCalculatorService:
         title_font = Font(bold=True, size=14)
         
         for key, r in results.items():
+            if key == 'customer_summary':
+                continue
             if not r:
                 continue
                 
@@ -279,8 +328,25 @@ class SaleTargetsCalculatorService:
             sheet_title = sheet_title.translate(str.maketrans('', '', '\\/*?:[]'))[:31]
             ws = wb.create_sheet(title=sheet_title)
             
-            ws.append([f"Desglose de cálculo: {r['route_name']}"])
+            ws.append([f"Cálculo de Cuotas de Venta: {r['route_name']}"])
             ws.cell(row=ws.max_row, column=1).font = title_font
+            ws.append([])
+            
+            summary = results.get('customer_summary', {}).get(key, {})
+            if summary:
+                ws.append(["Resumen de cartera de clientes"])
+                ws.cell(row=ws.max_row, column=1).font = Font(bold=True)
+                ws.append(["Cartera actual:", f"{summary.get('current')} clientes"])
+                
+                affected_label = "Nuevos clientes a integrar:" if summary.get('is_addition') else "Clientes a transferir/remover:"
+                affected_sign = "+" if summary.get('is_addition') else "-"
+                ws.append([affected_label, f"{affected_sign}{summary.get('affected')} clientes"])
+                
+                ws.append(["Cartera proyectada:", f"{summary.get('final')} clientes"])
+                ws.append([])
+                
+            ws.append([f"Desglose de cálculo (Objetivo actual, Crecimiento, Ajuste)"])
+            ws.cell(row=ws.max_row, column=1).font = Font(bold=True, size=12)
             ws.append([])
             
             if not r['classes']:
@@ -534,10 +600,72 @@ class SaleTargetsCalculatorService:
             if gt['new_target'] > gt['old_target']: cell1.font = Font(bold=True, color="008000")
             elif gt['new_target'] < gt['old_target']: cell1.font = Font(bold=True, color="FF0000")
             col_idx += 1
+            
+            # --- Customer Lists ---
+            from apps.core.models import Customer
+            
+            ws.append([])
+            ws.append([])
+            ws.append(["Clientes actuales en la ruta"])
+            ws.cell(row=ws.max_row, column=1).font = title_font
+            ws.append([])
+            
+            header_row_curr = ws.max_row + 1
+            headers_curr = ["ID Cliente", "Nombre", "Tipo de Cliente", "Límite de Crédito"]
+            for c_idx, h in enumerate(headers_curr, 1):
+                cell = ws.cell(row=header_row_curr, column=c_idx, value=h)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.border = thin_border
+                
+            route_id = self.origin_route_id if key == 'origin' else self.destination_route_id
+            current_customers = Customer.objects.select_related('customer_type').filter(route_id=route_id).order_by('name')
+            
+            if not current_customers:
+                ws.append(["Sin clientes asignados"])
+            else:
+                for cust in current_customers:
+                    r_idx = ws.max_row + 1
+                    cell1 = ws.cell(row=r_idx, column=1, value=cust.id)
+                    cell2 = ws.cell(row=r_idx, column=2, value=cust.name)
+                    cell3 = ws.cell(row=r_idx, column=3, value=cust.customer_type.name if cust.customer_type else "")
+                    cell4 = ws.cell(row=r_idx, column=4, value=cust.credit_limit)
+                    cell4.number_format = '"$"#,##0.00'
+                    for c in [cell1, cell2, cell3, cell4]:
+                        c.border = thin_border
+                        
+            ws.append([])
+            ws.append([])
+            ws.append(["Clientes considerados en el cálculo (Seleccionados)"])
+            ws.cell(row=ws.max_row, column=1).font = title_font
+            ws.append([])
+            
+            header_row_cons = ws.max_row + 1
+            headers_cons = ["ID Cliente", "Nombre", "Ruta Actual", "Tipo de Cliente"]
+            for c_idx, h in enumerate(headers_cons, 1):
+                cell = ws.cell(row=header_row_cons, column=c_idx, value=h)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.border = thin_border
+                
+            considered_customers = Customer.objects.select_related('customer_type', 'route').filter(id__in=self.customer_ids).order_by('name')
+            
+            if not considered_customers:
+                ws.append(["No se seleccionaron clientes"])
+            else:
+                for cust in considered_customers:
+                    r_idx = ws.max_row + 1
+                    cell1 = ws.cell(row=r_idx, column=1, value=cust.id)
+                    cell2 = ws.cell(row=r_idx, column=2, value=cust.name)
+                    cell3 = ws.cell(row=r_idx, column=3, value=cust.route.id.upper() if cust.route else "Sin ruta")
+                    cell4 = ws.cell(row=r_idx, column=4, value=cust.customer_type.name if cust.customer_type else "")
+                    for c in [cell1, cell2, cell3, cell4]:
+                        c.border = thin_border
                     
-            ws.column_dimensions['A'].width = 25
-            for c in range(2, ws.max_column + 1):
-                ws.column_dimensions[get_column_letter(c)].width = 15
+            ws.column_dimensions['A'].width = 30
+            ws.column_dimensions['B'].width = 35
+            for c in range(3, ws.max_column + 1):
+                ws.column_dimensions[get_column_letter(c)].width = 18
                 
         output = io.BytesIO()
         wb.save(output)

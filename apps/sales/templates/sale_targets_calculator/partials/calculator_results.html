@@ -21,6 +21,51 @@
     </button>
 </p>
 
+{% if results.customer_summary %}
+<div class="mb-6 bg-page border border-border rounded p-4">
+    <p class="text-title font-medium mb-3">Resumen de cartera de clientes</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-container border border-border rounded p-3">
+            <p class="text-strong font-medium border-b border-border pb-2 mb-2">Ruta Origen</p>
+            <div class="flex justify-between items-center text-sm mb-1">
+                <span class="text-muted">Cartera actual:</span>
+                <span class="text-strong font-medium">{{ results.customer_summary.origin.current }} clientes</span>
+            </div>
+            <div class="flex justify-between items-center text-sm mb-1">
+                <span class="text-muted">{% if results.customer_summary.origin.is_addition %}Nuevos clientes a integrar:{% else %}Clientes a transferir/remover:{% endif %}</span>
+                <span class="{% if results.customer_summary.origin.is_addition %}text-green-600{% else %}text-red-600{% endif %} font-medium">
+                    {% if results.customer_summary.origin.is_addition %}+{% else %}-{% endif %}
+                    {{ results.customer_summary.origin.affected }} clientes
+                </span>
+            </div>
+            <div class="flex justify-between items-center text-sm pt-2 mt-2 border-t border-border">
+                <span class="text-strong">Cartera proyectada:</span>
+                <span class="text-strong font-medium">{{ results.customer_summary.origin.final }} clientes</span>
+            </div>
+        </div>
+        
+        {% if results.customer_summary.destination %}
+        <div class="bg-container border border-border rounded p-3">
+            <p class="text-strong font-medium border-b border-border pb-2 mb-2">Ruta Destino</p>
+            <div class="flex justify-between items-center text-sm mb-1">
+                <span class="text-muted">Cartera actual:</span>
+                <span class="text-strong font-medium">{{ results.customer_summary.destination.current }} clientes</span>
+            </div>
+            <div class="flex justify-between items-center text-sm mb-1">
+                <span class="text-muted">Nuevos clientes a integrar:</span>
+                <span class="text-green-600 font-medium">
+                    + {{ results.customer_summary.destination.affected }} clientes
+                </span>
+            </div>
+            <div class="flex justify-between items-center text-sm pt-2 mt-2 border-t border-border">
+                <span class="text-strong">Cartera proyectada:</span>
+                <span class="text-strong font-medium">{{ results.customer_summary.destination.final }} clientes</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 
 <div class="flex flex-col gap-8">
 
