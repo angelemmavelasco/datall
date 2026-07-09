@@ -67,19 +67,33 @@
         const rawText = textarea.value;
         if (!rawText.trim()) return;
         
-        const inputIds = rawText.split(/[\n,\t]+/).map(id => id.trim().toLowerCase()).filter(id => id);
+        const inputIds = rawText.split(/[\n,\t\r]+/).map(id => id.trim().toLowerCase()).filter(id => id);
         
         const availableContainer = document.getElementById('available-customers');
-        const checkboxes = availableContainer.querySelectorAll('.customer-checkbox');
+        const selectedContainer = document.getElementById('selected-customers');
         
-        checkboxes.forEach(cb => {
-            if (inputIds.includes(cb.value.toLowerCase())) {
+        const availableCheckboxes = Array.from(availableContainer.querySelectorAll('.customer-checkbox'));
+        const selectedCheckboxes = Array.from(selectedContainer.querySelectorAll('.customer-checkbox'));
+        
+        const allCheckboxes = availableCheckboxes.concat(selectedCheckboxes);
+        
+        let foundCount = 0;
+        
+        inputIds.forEach(inputId => {
+            const cb = allCheckboxes.find(c => c.value.trim().toLowerCase() === inputId);
+            if (cb) {
+                foundCount++;
                 if (!cb.checked) {
                     cb.checked = true;
                     moveCustomer(cb);
                 }
             }
         });
+        
+        if (foundCount < inputIds.length) {
+            const notFound = inputIds.length - foundCount;
+            alert(`Se procesaron ${inputIds.length} IDs.\nSe seleccionaron con éxito ${foundCount} clientes.\nNo se encontraron ${notFound} clientes en la lista actual.\n\nNota: Si estás intentando agregar clientes que no pertenecen actualmente a la ruta, asegúrate de marcar primero la opción "Todos los clientes" en la parte superior para que el sistema pueda encontrarlos.`);
+        }
         
         textarea.value = '';
     }
