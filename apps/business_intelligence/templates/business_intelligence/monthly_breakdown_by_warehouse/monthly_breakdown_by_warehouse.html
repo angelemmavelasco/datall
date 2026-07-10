@@ -139,14 +139,20 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                         <thead>
                             <tr>
                                 <th colspan="2" class="sticky left-0 z-10 p-2 bg-container border-r border-border text-center">
-                                    <a href="{% url 'business_intelligence:routes_kpis' %}?date_start=&date_end=&route={{ route.route_id }}" target="_blank" class="flex items-center justify-center gap-1 underline text-strong">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M22 12A10 10 0 1 1 12 2" />
-                                            <path d="M22 2 12 12" />
-                                            <path d="M16 2h6v6" />
-                                        </svg>
-                                        <span class="">{{ route.route_id|upper }} {{ route.route_name|title }}</span>
-                                    </a>
+                                    {% if route.route_id == 'TOTAL' %}
+                                        <span class="flex items-center justify-center gap-1 text-strong font-bold">
+                                            <span>{{ route.route_id|title }} {{ route.route_name|title }}</span>
+                                        </span>
+                                    {% else %}
+                                        <a href="{% url 'business_intelligence:routes_kpis' %}?date_start=&date_end=&route={{ route.route_id }}" target="_blank" class="flex items-center justify-center gap-1 underline text-strong">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M22 12A10 10 0 1 1 12 2" />
+                                                <path d="M22 2 12 12" />
+                                                <path d="M16 2h6v6" />
+                                            </svg>
+                                            <span class="">{{ route.route_id|upper }} {{ route.route_name|title }}</span>
+                                        </a>
+                                    {% endif %}
                                 </th>
                                 <th colspan="4" class="p-1 border border-border text-center text-title">Enero {{ selected_year }}</th>
                                 <th colspan="4" class="p-1 border border-border text-center text-title">Febrero {{ selected_year }}</th>
@@ -179,7 +185,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                             {% for product_class in route.product_classes %}
                                 <tr class="hover:bg-hover transition-colors duration-300">
                                     <td class="sticky left-0 z-10 p-2 bg-container border-r border-border text-center">
-                                        {{ route.route_id|upper }}
+                                        {{ route.route_id|title }}
                                     </td>
                                     <td class="sticky left-24 z-10 p-2 bg-container border-r border-border   truncate">
                                         {{ product_class.name|title }}
@@ -200,7 +206,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
 
                             <tr class="border border-border">
                                 <td class="sticky left-0 z-10 p-2 bg-container border-r border-border text-center">
-                                    {{ route.route_id|upper }}
+                                    {{ route.route_id|title }}
                                 </td>
                                 <td class="sticky left-24 z-10 p-2 bg-container border-r border-border">
                                     {{ route.total.name|title }}
@@ -219,7 +225,7 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                                 {% for result in route.results %}
                                     <tr class="hover:bg-hover transition-colors duration-300">
                                         <td class="sticky left-0 z-10 p-2 bg-container border-r border-border text-center">
-                                            {{ route.route_id|upper }}
+                                            {{ route.route_id|title }}
                                         </td>
                                         <td class="sticky left-24 z-10 p-2 bg-container border-r border-border   capitalize">
                                             {{ result.name }}

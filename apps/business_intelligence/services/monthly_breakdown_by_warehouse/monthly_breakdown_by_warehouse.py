@@ -68,7 +68,7 @@ class MonthlyBreakdownByWarehouse:
             total_profit=Sum('profit'),
             total_net=Sum('net_amount')
         )
-        data = defaultdict(Decimal)
+        data = defaultdict(lambda: {'margin': Decimal('0.00'), 'profit': Decimal('0.00'), 'net': Decimal('0.00')})
         for row in margin_qs:
             t_profit = row['total_profit'] or Decimal('0.00')
             t_net = row['total_net'] or Decimal('0.00')
@@ -77,7 +77,11 @@ class MonthlyBreakdownByWarehouse:
             else:
                 margin = Decimal('0.00')
                 
-            data[(row['route_id'], row['month'])] = margin
+            data[(row['route_id'], row['month'])] = {
+                'margin': margin,
+                'profit': t_profit,
+                'net': t_net
+            }
         return data
 
     def _get_monthly_new_customers(self):
@@ -176,6 +180,12 @@ class MonthlyBreakdownByWarehouse:
 
         results_names = ['margen', 'clientes nuevos', 'cuentas por cobrar', 'cuentas por cobrar $', 'promociones', 'convenios']
 
+        # warehouse summary accumulators
+        w_pc_data = {pc: {m: {'target': Decimal('0.00'), 'net_sale': Decimal('0.00')} for m in range(1, 13)} for pc in pc_names}
+        w_total_data = {m: {'target': Decimal('0.00'), 'net_sale': Decimal('0.00')} for m in range(1, 13)}
+        w_results_data = {res: {m: 0 for m in range(1, 13)} for res in results_names}
+        w_margin_acc = {m: {'profit': Decimal('0.00'), 'net': Decimal('0.00')} for m in range(1, 13)}
+
         for route in self.routes_qs:
             route_id = route.id
             temp_route = {
@@ -205,6 +215,9 @@ class MonthlyBreakdownByWarehouse:
 
                     route_monthly_totals[month]['target'] += t
                     route_monthly_totals[month]['net_sale'] += s
+                    
+                    w_pc_data[pc_name][month]['target'] += t
+                    w_pc_data[pc_name][month]['net_sale'] += s
 
                 temp_route['product_classes'].append(temp_pc)
 
@@ -220,29 +233,106 @@ class MonthlyBreakdownByWarehouse:
                     'diff': diff,
                     'scope': scope
                 })
+                
+                w_total_data[month]['target'] += t
+                w_total_data[month]['net_sale'] += s
 
             for res_name in results_names:
                 temp_res = {'name': res_name, 'monthly_data': []}
                 for month in range(1, 13):
                     val = 0
                     if res_name == 'margen':
-                        val = f"{margins[(route_id, month)]:,.2f} %"
+                        m_data = margins[(route_id, month)]
+                        if isinstance(m_data, Decimal):
+                            m_data = {'margin': m_data, 'profit': Decimal('0.00'), 'net': Decimal('0.00')}
+                        val = f"{m_data['margin']:,.2f} %"
+                        w_margin_acc[month]['profit'] += m_data['profit']
+                        w_margin_acc[month]['net'] += m_data['net']
                     elif res_name == 'clientes nuevos':
                         val = new_customers[(route_id, month)]
+                        w_results_data[res_name][month] += val
                     elif res_name == 'cuentas por cobrar':
                         val = ar_counts[(route_id, month)]
+                        w_results_data[res_name][month] += val
                     elif res_name == 'cuentas por cobrar $':
-                        val = f"$ {ar_amounts[(route_id, month)]:,.2f}"
+                        val_num = ar_amounts[(route_id, month)]
+                        val = f"$ {val_num:,.2f}"
+                        w_results_data[res_name][month] += val_num
                     elif res_name == 'promociones':
-                        val = f"{promotions[(route_id, month)]:,.2f}"
+                        val_num = promotions[(route_id, month)]
+                        val = f"{val_num:,.2f}"
+                        w_results_data[res_name][month] += val_num
                     elif res_name == 'convenios':
                         val = agreements[(route_id, month)]
+                        w_results_data[res_name][month] += val
                     
                     temp_res['monthly_data'].append({'value': val})
                 temp_route['results'].append(temp_res)
             
             temp_warehouse['routes'].append(temp_route)
         
+        # Build warehouse summary route
+        warehouse_summary = {
+            'route_id': 'TOTAL',
+            'route_name': warehouse_name,
+            'product_classes': [],
+            'total': {'name': 'total', 'monthly_data': []},
+            'results': []
+        }
+
+        for pc_name in pc_names:
+            temp_pc = {'name': pc_name, 'monthly_data': []}
+            for month in range(1, 13):
+                t = w_pc_data[pc_name][month]['target']
+                s = w_pc_data[pc_name][month]['net_sale']
+                diff = s - t
+                scope = (s / t * Decimal('100')) if t > 0 else (Decimal('100') if s > 0 else Decimal('0'))
+                temp_pc['monthly_data'].append({
+                    'target': t,
+                    'net_sale': s,
+                    'diff': diff,
+                    'scope': scope
+                })
+            warehouse_summary['product_classes'].append(temp_pc)
+
+        for month in range(1, 13):
+            t = w_total_data[month]['target']
+            s = w_total_data[month]['net_sale']
+            diff = s - t
+            scope = (s / t * Decimal('100')) if t > 0 else (Decimal('100') if s > 0 else Decimal('0'))
+            warehouse_summary['total']['monthly_data'].append({
+                'target': t,
+                'net_sale': s,
+                'diff': diff,
+                'scope': scope
+            })
+            
+        for res_name in results_names:
+            temp_res = {'name': res_name, 'monthly_data': []}
+            for month in range(1, 13):
+                if res_name == 'margen':
+                    t_profit = w_margin_acc[month]['profit']
+                    t_net = w_margin_acc[month]['net']
+                    if t_net > 0:
+                        margin = (t_profit / t_net) * Decimal('100.00')
+                    else:
+                        margin = Decimal('0.00')
+                    val = f"{margin:,.2f} %"
+                elif res_name == 'clientes nuevos':
+                    val = w_results_data[res_name][month]
+                elif res_name == 'cuentas por cobrar':
+                    val = w_results_data[res_name][month]
+                elif res_name == 'cuentas por cobrar $':
+                    val = f"$ {w_results_data[res_name][month]:,.2f}"
+                elif res_name == 'promociones':
+                    val = f"{w_results_data[res_name][month]:,.2f}"
+                elif res_name == 'convenios':
+                    val = w_results_data[res_name][month]
+                temp_res['monthly_data'].append({'value': val})
+            warehouse_summary['results'].append(temp_res)
+
+        temp_warehouse['routes'].insert(0, warehouse_summary)
+
         return [temp_warehouse]
 
 
