@@ -395,7 +395,7 @@
     <!--  left sidebar for navigation-->
 
     <aside id="sidebar"
-        class="fixed inset-y-0 left-0 z-50 flex w-50 -translate-x-full flex-col overflow-y-auto border-r border-border bg-container p-4 transition-transform duration-300 lg:translate-x-0">
+        class="fixed inset-y-0 left-0 z-50 flex w-50 -translate-x-full flex-col overflow-y-auto border-r border-border bg-container px-4 pb-4 pb-4 pt-0 transition-transform duration-300 lg:translate-x-0">
         <div class="flex flex-col gap-6 pb-20">
             <nav class="flex flex-col gap-5" aria-label="Navegacion principal">
 
@@ -510,6 +510,21 @@
 
                 </div>
 
+                <div class="flex flex-col items-center justify-center -mt-4 mb-2">
+                    {% if request.user.photo %}
+                    <img src="{{ request.user.photo.url }}" alt="Foto de perfil"
+                        style="width: 80px; height: 80px; min-width: 80px; min-height: 80px; object-fit: cover; object-position: top; padding: 4px;"
+                        class="rounded-full bg-white border border-border">
+                    {% else %}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-user-icon lucide-circle-user text-muted">
+                        <circle cx="12" cy="12" r="10" />
+                        <circle cx="12" cy="10" r="3" />
+                        <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
+                    </svg>
+                    {% endif %}
+                </div>
 
                 <p class="block truncate text-center">
                     <span class="text-title">
