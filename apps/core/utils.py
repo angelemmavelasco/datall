@@ -1,4 +1,4 @@
-from apps.core.models import Reference, Route, RouteAssignment, Employee
+from apps.core.models import Reference, Route, RouteAssignment, Warehouse
 from django.db.models import Q
 
 
@@ -85,3 +85,42 @@ def get_allowed_routes_for_user(user):
     ).values_list('route_id', flat=True)
     
     return Route.objects.filter(id__in=assigned_routes).distinct()
+
+
+def get_allowed_warehouses_for_user(user):
+    """
+    Returns a QuerySet of warehouses to which the user has access, based on their global group or their allowed routes.
+    """
+
+    #validate user access
+    if user.is_superuser:
+        return Warehouse.objects.all()
+    
+    #validate user group access
+    user_group_names = [name.strip() for name in user.groups.values_list('name', flat=True)]
+    
+    # if user has no groups, return none
+    if not user_group_names:
+        return Warehouse.objects.none()
+
+    group_query = Q()
+    for name in user_group_names:
+        group_query |= Q(key__iexact=name)
+
+    has_global_access = Reference.objects.filter(
+        group_query,
+        field_context='allowed_routes'
+    ).filter(
+        Q(reference__iexact='1') | 
+        Q(reference__iexact='true') | 
+        Q(reference__icontains='1')
+    ).exists()
+
+    if has_global_access or user.groups.filter(name__iexact='acceso global').exists():
+        return Warehouse.objects.all()
+
+    allowed_routes = get_allowed_routes_for_user(user)
+    allowed_warehouse_ids = allowed_routes.exclude(warehouse__isnull=True).values_list('warehouse_id', flat=True)
+    
+    return Warehouse.objects.filter(id__in=allowed_warehouse_ids).distinct()
+
