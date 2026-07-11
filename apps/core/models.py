@@ -699,7 +699,7 @@ class CommercialBenefit(models.Model):
     benefit_type = models.CharField(max_length=15, choices=BenefitType.choices)
     
     # if prodiuct
-    image = models.FieldFile(upload_to='benefits', null=True, blank=True)
+    image = models.FileField(upload_to='benefits', null=True, blank=True)
     stock = models.IntegerField(default=0, help_text="Solo aplica para artículos físicos")
     warehouse = models.ForeignKey(
         'Warehouse',
