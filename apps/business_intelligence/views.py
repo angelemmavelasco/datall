@@ -520,6 +520,10 @@ def customer_kpis(request, customer_id):
     )
     allowed_routes = get_allowed_routes_for_user(request.user)
 
+    if not allowed_routes.filter(id=customer_base.route_id).exists():
+        from django.conf import settings
+        return render(request, settings.ACCESS_DENIED_TEMPLATE)
+
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'toggle_opinion_leader':
