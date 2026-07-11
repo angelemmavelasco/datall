@@ -144,6 +144,10 @@
                     <th class="p-2 min-w-[120px] text-center border-r border-border text-title bg-page">Objetivo global</th>
                     <th class="p-2 min-w-[120px] text-center border-r border-border text-title bg-page">Ventas globales</th>
                     <th class="p-2 min-w-[120px] text-center border-r border-border text-title bg-page">Penalización aplicable</th>
+                    <th class="p-2 min-w-[120px] text-center border-r border-border text-title bg-page">Costo beneficio</th>
+                    <th class="p-2 min-w-[120px] text-center border-r border-border text-title bg-page">Utilidad generada</th>
+                    <th class="p-2 min-w-[120px] text-center border-r border-border text-title bg-page">Utilidad final</th>
+                    <th class="p-2 min-w-[120px] text-center border-r border-border text-title bg-page">Margen</th>
                     <th class="p-2 min-50 max-w-50 text-center text-title bg-page ">Observaciones</th>
                 </tr>
             </thead>
@@ -166,6 +170,10 @@
                   <td class="p-2 text-center border-r border-t border-border text-strong">$ {{ period.expected_global_target|default:0|floatformat:2|intcomma }}</td>
                   <td class="p-2 text-center border-r border-t border-border text-strong">$ {{ period.achieved_global_sales|default:0|floatformat:2|intcomma }}</td>
                   <td class="p-2 text-center border-r border-t border-border text-strong">$ {{ period.penalty_amount_applied|default:0|floatformat:2|intcomma }}</td>
+                  <td class="p-2 text-center border-r border-t border-border text-strong">$ {{ period.amortized_benefit_cost|default:0|floatformat:2|intcomma }}</td>
+                  <td class="p-2 text-center border-r border-t border-border text-strong">$ {{ period.gross_profit|default:0|floatformat:2|intcomma }}</td>
+                  <td class="p-2 text-center border-r border-t border-border text-strong">$ {{ period.period_profit|default:0|floatformat:2|intcomma }}</td>
+                  <td class="p-2 text-center border-r border-t border-border text-strong">{{ period.period_margin|default:0|floatformat:2 }}%</td>
                   <td class="p-2 text-center border-t border-border text-strong truncate">{{ period.observations|default:'-' }}</td>
                 </tr>
               {% empty %}

@@ -132,6 +132,10 @@ class CustomerAgreementService:
         
         for period in eval_periods:
             period.penalty_amount_applied = agreement.penalty_amount if period.penalty_applied else Decimal('0.00')
+            if period.penalty_applied:
+                period.gross_profit = period.period_profit
+            else:
+                period.gross_profit = period.period_profit + period.amortized_benefit_cost
         
         period_results = AgreementPeriodClassResult.objects.filter(
             evaluation_period__agreement=agreement
@@ -368,7 +372,13 @@ class CustomerAgreementService:
                 sale_date__lte=period.end_date
             )
             
-            total_net = sales.aggregate(Sum('net_amount'))['net_amount__sum'] or Decimal('0.00')
+            agg = sales.aggregate(
+                total_net=Sum('net_amount'),
+                total_profit=Sum('profit')
+            )
+            total_net = agg['total_net'] or Decimal('0.00')
+            total_profit = agg['total_profit'] or Decimal('0.00')
+            
             period.achieved_global_sales = total_net
             
             achieved_mandatory = True
@@ -397,6 +407,16 @@ class CustomerAgreementService:
                     period.status = AgreementEvaluationPeriod.StatusChoices.FAILED
                     period.penalty_applied = True
                     period.observations = "Meta global o metas obligatorias no alcanzadas."
+                    
+            if period.penalty_applied:
+                period.period_profit = total_profit
+            else:
+                period.period_profit = total_profit - period.amortized_benefit_cost
+                
+            if total_net > 0:
+                period.period_margin = (period.period_profit / total_net) * Decimal('100.00')
+            else:
+                period.period_margin = Decimal('0.00')
                 
             period.save()
             
