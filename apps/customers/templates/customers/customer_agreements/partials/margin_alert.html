@@ -23,7 +23,7 @@
         <div>
             <p class="text-xs text-gray-500  tracking-wider  mb-1">Métricas de Requisito</p>
             <ul class="list-disc ml-4">
-                <li>Margen mínimo exigido: {{ min_margin|default:"N/A"|floatformat:2 }}%</li>
+                <li>Margen mínimo exigido: {{ min_margin|default:0|floatformat:2 }}%</li>
                 <li>Margen neto simulado: {{ simulated_margin|floatformat:2|intcomma }}%</li>
                 <li>Margen promedio mensual simulado: {{ avg_monthly_margin|floatformat:2|intcomma }}%</li>
             </ul>
