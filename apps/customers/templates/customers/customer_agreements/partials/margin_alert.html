@@ -1,0 +1,18 @@
+<div class="mt-4 p-4 border rounded bg-red-100 border-red-400 text-red-700">
+    <p class="font-semibold text-lg flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        Alerta: Margen Financiero Bajo
+    </p>
+    <p class="mt-2 text-sm">
+        El convenio calculado reduce la rentabilidad por debajo del límite permitido para este cliente y las clases seleccionadas.
+    </p>
+    <ul class="list-disc ml-6 mt-1 text-sm font-semibold">
+        <li>Margen mínimo exigido: {{ min_margin|floatformat:2 }}%</li>
+        <li>Margen simulado (con beneficio): {{ simulated_margin|floatformat:2 }}%</li>
+    </ul>
+    
+    <label class="flex items-center gap-2 mt-4 cursor-pointer text-sm font-semibold">
+        <input type="checkbox" name="accept_margin_warning" class="accent-red-600" required>
+        <span>He revisado esta alerta y autorizo crear el convenio bajo estas condiciones (Esto quedará registrado en el historial).</span>
+    </label>
+</div>

@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Nuevo convenio comercial{% endblock %}
+
+{% block module_name %}Nuevo convenio comercial{% endblock %}
+
+{% block module_actions %}
+    <button type="submit" form="create-agreement-form" id="btn-save" class="hover:text-hover text-green-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+      <span>
+        Confirmar
+      </span>
+    </button>
+
+    <a href="{% url 'customers:customer_agreements' %}" class="hover:text-hover text-red-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+      <span>
+        Cancelar
+      </span>
+    </a>
+{% endblock %}
+
+{% block content %}
+
+  <form id="create-agreement-form" method="POST" action="{% url 'customers:save_customer_agreement' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="flex flex-col gap-4">
+
+      <p class="text-title text-sm">Datos del Convenio</p>
+      <hr class="border-border border">
+
+      <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Cliente</span>
+        <div>
+          <select name="customer_id" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
+            <option value="">Seleccione...</option>
+            {% for customer in allowed_customers %}
+            <option value="{{ customer.id }}">{{ customer.name|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <span class="text-title">Nombre del Convenio</span>
+        <div>
+          <input type="text" name="agreement_name" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
+        </div>
+        
+        <span class="text-title">Folio / Documento Relacionado (Opcional)</span>
+        <div>
+          <input type="text" name="doc_id" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
+        </div>
+
+        <span class="text-title">Tipo de Convenio</span>
+        <div>
+          <select name="agreement_type" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
+            {% for value, label in agreement_types %}
+            <option value="{{ value }}">{{ label|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <span class="text-title">Fecha de Inicio</span>
+        <div>
+          <input type="date" name="start_date" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
+        </div>
+
+        <span class="text-title">Fecha de Fin (Opcional)</span>
+        <div>
+          <input type="date" name="end_date" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
+        </div>
+        
+        <span class="text-title">Documento Adjunto (PDF/Imagen)</span>
+        <div>
+          <input type="file" name="related_doc" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
+        </div>
+      </div>
+
+      <p class="text-title text-sm">Beneficio Comercial y Evaluación Financiera</p>
+      <hr class="border-border border">
+
+      <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Beneficio a Otorgar</span>
+        <div>
+          <select id="benefit_id" name="benefit_id" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
+            <option value="">Seleccione...</option>
+            {% for benefit in benefits %}
+            <option value="{{ benefit.id }}">{{ benefit.name|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <span class="text-title">Periodo Base para Margen (Inicio - Fin)</span>
+        <div class="flex gap-2">
+            <input type="month" id="eval_customer_start" name="eval_customer_start" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
+            <input type="month" id="eval_customer_end" name="eval_customer_end" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
+        </div>
+        
+        <div class="col-span-2 flex justify-end mt-2">
+            <button type="button" 
+                    hx-post="{% url 'customers:validate_customer_agreement' %}"
+                    hx-include="#create-agreement-form"
+                    hx-target="#margin-alert-container"
+                    class="bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer rounded px-4 py-1 flex gap-2 items-center text-sm">
+                Validar Margen Financiero
+            </button>
+        </div>
+      </div>
+      
+      <!-- Contenedor para alerta de margen -->
+      <div id="margin-alert-container"></div>
+
+      <p class="text-title text-sm">Metas y Crecimiento</p>
+      <hr class="border-border border">
+
+      <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Meta Global (Cuota General)</span>
+        <div>
+          <input type="number" step="0.01" name="global_target_amount" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
+        </div>
+
+        <span class="text-title">Periodicidad de Evaluación</span>
+        <div>
+          <select name="target_freq_id" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
+            <option value="">Seleccione...</option>
+            {% for freq in periodicities %}
+            <option value="{{ freq.id }}">{{ freq.name|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <span class="text-title">Penalización por Incumplimiento ($)</span>
+        <div>
+          <input type="number" step="0.01" name="penalty_amount" value="0" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
+        </div>
+        
+        <span class="text-title">Frecuencia de Penalización</span>
+        <div>
+          <select name="penalty_freq_id" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
+            <option value="">No aplica...</option>
+            {% for freq in periodicities %}
+            <option value="{{ freq.id }}">{{ freq.name|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <span class="text-title">Crecimiento (Valor fijo o %)</span>
+        <div>
+          <input type="number" step="0.01" name="growth_value" value="0" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
+        </div>
+        
+        <span class="text-title">Frecuencia de Crecimiento</span>
+        <div>
+          <select name="growth_freq_id" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
+            <option value="">No aplica...</option>
+            {% for freq in periodicities %}
+            <option value="{{ freq.id }}">{{ freq.name|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      
+      <div class="flex justify-between items-center mt-4">
+        <p class="text-title text-sm">Metas por Clase de Producto (AgreementClassTarget)</p>
+        <button type="button"
+                hx-get="{% url 'customers:add_class_target_row' %}"
+                hx-vals='js:{index: document.querySelectorAll("#class-targets-body tr").length}'
+                hx-target="#class-targets-body"
+                hx-swap="beforeend"
+                class="bg-container border border-border text-strong hover:bg-hover px-2 py-1 rounded transition-colors text-sm">
+            + Agregar Clase
+        </button>
+      </div>
+      <hr class="border-border border mb-2">
+      
+      <div class="bg-container p-2 rounded">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="text-title text-sm border-b border-border">
+                    <th class="py-1">Clase de Producto</th>
+                    <th class="py-1">Meta Requerida</th>
+                    <th class="py-1">¿Es Obligatorio?</th>
+                    <th class="py-1">Acción</th>
+                </tr>
+            </thead>
+            <tbody id="class-targets-body">
+                <!-- HTMX rows will be appended here -->
+            </tbody>
+        </table>
+      </div>
+
+    </div>
+  </form>
+
+{% endblock %}

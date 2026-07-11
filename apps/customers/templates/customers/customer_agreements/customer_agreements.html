@@ -12,6 +12,13 @@
     Descargar datos
 </a>
 
+<button type="button" 
+   hx-post="{% url 'customers:evaluate_agreements_action' %}"
+   hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+   class="hover:text-hover text-strong transition-colors cursor-pointer inline-block">
+    Actualizar datos
+</button>
+
 <a href="#" 
    class="hover:text-hover text-strong transition-colors cursor-pointer inline-block">
     Nuevo convenio
