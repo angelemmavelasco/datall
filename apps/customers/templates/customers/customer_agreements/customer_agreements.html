@@ -271,5 +271,53 @@
 
 {% block content %}
 
+    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+        <table class="w-full table-fixed text-left border-collapse">
+            <thead>
+            <tr class="border-b border-border">
+                <th class="w-20 p-1 text-center text-title">Folio</th>
+                <th class="w-40 p-1 text-center text-title">Cliente</th>
+                <th class="w-20 p-1 text-center text-title">Ruta</th>
+                <th class="w-40 p-1 text-center text-title">Beneficio</th>
+                <th class="w-20 p-1 text-center text-title">Tipo</th>
+                <th class="w-40 p-1 text-center text-title">Vigencia</th>
+                <th class="w-40 p-1 text-center text-title">Objetivo</th>
+                <th class="w-20 p-1 text-center text-title">Periodicidad</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            {% for agreement in agreements %}
+            <tr class="hover:bg-hover transition-colors duration-300">
+                <td class="p-2">
+                    <a href="#" target="_blank" class="flex items-center gap-2 underline text-strong">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
+                        <span>
+                            {{ agreement.doc_id|default:"-" }}
+                        </span>
+                    </a>
+                </td>
+                <td class="p-2 truncate text-center">{{ agreement.customer.id|upper }} {{ agreement.customer.name|title }}</td>
+                <td class="p-2 truncate text-center">{{ agreement.route.id|upper }}</td>
+                <td class="p-2 truncate text-left">{% if agreement.benefit %}{{ agreement.benefit.name|default:"-"|title }}{% else %}-{% endif %}</td>
+                <td class="p-2 truncate text-center">{{ agreement.get_agreement_type_display|default:"-"|title }}</td>
+                <td class="p-2 text-center">{{ agreement.start_date|date:"d/m/Y" }} - {{ agreement.end_date|date:"d/m/Y" }}</td>
+                <td class="p-2 truncate text-right">$ {{ agreement.global_target_amount|default:0|floatformat:0|intcomma }}</td>
+                <td class="p-2 truncate text-center">{{ agreement.target_freq.name|default:"-"|title }}</td>
+                
+
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" class="p-2 text-center">No hay datos para mostrar</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+
+
 {% endblock %}
 

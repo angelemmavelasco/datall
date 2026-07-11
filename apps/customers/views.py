@@ -30,6 +30,26 @@ def customer_agreements(request):
     regions = request.GET.getlist('regions', [])
     
     filters = {}
+    if status:
+        filters['status'] = status
+    if created_start:
+        filters['created_start'] = created_start
+    if created_end:
+        filters['created_end'] = created_end
+    if finished_start:
+        filters['finished_start'] = finished_start
+    if finished_end:
+        filters['finished_end'] = finished_end
+    if routes:
+        filters['routes'] = routes
+    if warehouses:
+        filters['warehouses'] = warehouses
+    if regions:
+        filters['regions'] = regions
+
+
+    service = CustomerAgreementService()
+    agreements = service.read(allowed_routes, **filters)
 
     context = {
         'filter_routes': allowed_routes,
@@ -46,6 +66,8 @@ def customer_agreements(request):
         'selected_warehouses': warehouses,
         'selected_regions': regions,
 
+        # agreements
+        'agreements': agreements,
     }
     return render(request, template, context)
 

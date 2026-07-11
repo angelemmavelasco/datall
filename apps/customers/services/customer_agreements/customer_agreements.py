@@ -69,12 +69,85 @@ class CustomerAgreementService:
     def __init__(self):
         self.sale_crud = SaleTransactionCRUD()
 
+    def read(self, allowed_routes, **kwargs):
+        queryset = CustomerAgreement.objects.filter(route__in=allowed_routes)
+
+        if kwargs.get('status'):
+            status_list = kwargs['status']
+            if not isinstance(status_list, (list, tuple, set)):
+                status_list = [status_list]
+            
+            today = date.today()
+            q_status = Q()
+            
+            if 'active' in status_list:
+                q_status |= Q(start_date__lte=today) & (Q(end_date__isnull=True) | Q(end_date__gte=today))
+            if 'inactive' in status_list:
+                q_status |= Q(start_date__gt=today) | (Q(end_date__isnull=False) & Q(end_date__lt=today))
+                
+            if q_status:
+                queryset = queryset.filter(q_status)
+
+        if kwargs.get('created_start'):
+            queryset = queryset.filter(start_date__gte=kwargs['created_start'])
+        if kwargs.get('created_end'):
+            queryset = queryset.filter(start_date__lte=kwargs['created_end'])
+
+        if kwargs.get('finished_start'):
+            queryset = queryset.filter(end_date__gte=kwargs['finished_start'])
+        if kwargs.get('finished_end'):
+            queryset = queryset.filter(end_date__lte=kwargs['finished_end'])
+
+        fk_fields = {
+            'routes': 'route_id__in',
+            'warehouses': 'route__warehouse_id__in',
+            'regions': 'route__warehouse__region_id__in',
+            'customers': 'customer_id__in'
+        }
+        
+        for param, lookup in fk_fields.items():
+            value = kwargs.get(param)
+            if value:
+                if not isinstance(value, (list, tuple, set)):
+                    value = [value]
+                queryset = queryset.filter(**{lookup: value})
+                
+        return queryset.select_related('customer', 'route', 'benefit', 'target_freq').distinct()
+        
+    def read_details(self, agreement_id):
+        agreement = CustomerAgreement.objects.select_related(
+            'customer', 'route', 'benefit', 'target_freq', 'penalty_freq', 'growth_freq'
+        ).prefetch_related(
+            'class_targets__product_class'
+        ).get(id=agreement_id)
+        
+        customer = agreement.customer
+        
+        class_margins = CustomerClassMargin.objects.filter(customer=customer).select_related('product_class')
+        
+        eval_periods = AgreementEvaluationPeriod.objects.filter(agreement=agreement).order_by('period_number')
+        
+        period_results = AgreementPeriodClassResult.objects.filter(
+            evaluation_period__agreement=agreement
+        ).select_related('product_class', 'evaluation_period')
+        
+        return {
+            'customer': {
+                'data': customer,
+                'class_margin': class_margins,
+                'agreement': agreement,
+                'eval_periods': eval_periods,
+                'period_results': period_results
+            }
+        }
+        
+
     def validate_agreement_margin(self, customer_id, benefit_id, product_class_ids, eval_start, eval_end, agreement_start_date, agreement_end_date, target_freq_id):
         """
         Calcula margen real histórico, simula impacto de amortización y cruza contra mínimo exigido 
         usando evaluación bicondicional.
         """
-        
+
         start_date = parse_month_input(eval_start)
         end_date = parse_month_input(eval_end, is_end=True)
         agr_start = parse_month_input(agreement_start_date)
