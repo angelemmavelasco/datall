@@ -723,10 +723,6 @@ class CommercialBenefit(models.Model):
         default=0, 
         help_text="Costo del artículo o impacto total para la empresa"
     )
-    amortization_periods = models.IntegerField(
-        default=1, 
-        help_text="En cuántos periodos se divide este costo para el cálculo de utilidad real"
-    )
 
     is_active = models.BooleanField(default=True)
 

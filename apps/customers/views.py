@@ -69,38 +69,47 @@ def create_customer_agreement(request):
     }
     
     if request.method == 'POST':
-        # Handled in a separate endpoint or here. Let's do it in a separate endpoint `save_customer_agreement`
         pass
 
     return render(request, template, context)
 
 @login_required
 def validate_customer_agreement(request):
+    print('margin validation')
     if request.method == 'POST':
         customer_id = request.POST.get('customer_id')
         benefit_id = request.POST.get('benefit_id')
         eval_start = request.POST.get('eval_customer_start')
         eval_end = request.POST.get('eval_customer_end')
+        agreement_start = request.POST.get('start_date')
+        agreement_end = request.POST.get('end_date')
+        target_freq_id = request.POST.get('target_freq_id')
         
         # classes
-        product_class_ids = request.POST.getlist('product_classes[]')
+        product_class_ids = request.POST.getlist('participating_classes[]')
         
-        if not (customer_id and benefit_id and eval_start and eval_end):
-            return HttpResponse("Faltan datos para la validación.", status=400)
+        if not (customer_id and benefit_id and eval_start and eval_end and agreement_start and agreement_end and target_freq_id):
+            print('faltan datos')
+            return HttpResponse("Faltan datos para la validación (asegúrese de ingresar fechas y periodicidad).", status=400)
             
         service = CustomerAgreementService()
-        is_valid, simulated_margin, max_req_margin = service.validate_agreement_margin(
-            customer_id, benefit_id, product_class_ids, eval_start, eval_end
+        is_valid, simulated_margin, max_req_margin, is_volatility_alert, data = service.validate_agreement_margin(
+            customer_id, benefit_id, product_class_ids, eval_start, eval_end, agreement_start, agreement_end, target_freq_id
         )
+        print(is_valid)
         
-        if not is_valid:
-            context = {
-                'simulated_margin': simulated_margin,
-                'min_margin': max_req_margin
-            }
-            return render(request, 'customers/customer_agreements/partials/margin_alert.html', context)
-            
-        return HttpResponse('<div id="margin-alert-container"></div>') # Clear alert if valid
+        context = {
+            'is_valid': is_valid,
+            'simulated_margin': simulated_margin,
+            'min_margin': max_req_margin,
+            'is_volatility_alert': is_volatility_alert,
+            'avg_monthly_margin': data.get('avg_monthly_margin'),
+            'total_profit': data.get('total_profit'),
+            'total_net': data.get('total_net'),
+            'past_cost': data.get('past_cost'),
+            'cme': data.get('cme')
+        }
+        return render(request, 'customers/customer_agreements/partials/margin_alert.html', context)
         
 @login_required
 def save_customer_agreement(request):
@@ -114,7 +123,7 @@ def save_customer_agreement(request):
             'agreement_type': request.POST.get('agreement_type'),
             'start_date': request.POST.get('start_date'),
             'end_date': request.POST.get('end_date') or None,
-            'global_target_amount': request.POST.get('global_target_amount'),
+            'global_target_amount': request.POST.get('global_target_amount') or 0,
             'target_freq_id': request.POST.get('target_freq_id'),
             'penalty_freq_id': request.POST.get('penalty_freq_id') or None,
             'growth_freq_id': request.POST.get('growth_freq_id') or None,
@@ -125,17 +134,17 @@ def save_customer_agreement(request):
         
         margin_warning_accepted = request.POST.get('accept_margin_warning') == 'on'
         
-        product_class_ids = request.POST.getlist('product_classes[]')
-        required_targets = request.POST.getlist('required_targets[]')
-        is_mandatory_list = request.POST.getlist('is_mandatory[]') # might be missing if checkbox unchecked. Better handled below.
+        participating_class_ids = request.POST.getlist('participating_classes[]')
         
         targets_data = []
-        for i, pc_id in enumerate(product_class_ids):
-            # Checkbox logic: if the name is dynamic like `is_mandatory_0`, `is_mandatory_1`, etc.
-            is_mandatory = request.POST.get(f'is_mandatory_{i}') == 'on'
+        for pc_id in participating_class_ids:
+            is_mandatory = request.POST.get(f'is_mandatory_{pc_id}') == 'on'
+            raw_target = request.POST.get(f'required_target_{pc_id}')
+            required_target = raw_target if raw_target else 0
+            
             targets_data.append({
                 'product_class_id': pc_id,
-                'required_target': required_targets[i] if i < len(required_targets) else 0,
+                'required_target': required_target,
                 'is_mandatory': is_mandatory
             })
             
@@ -146,17 +155,6 @@ def save_customer_agreement(request):
             return HttpResponse('<script>window.location.href="/customers/customer_agreements/";</script>')
         except Exception as e:
             return HttpResponse(f"Error al guardar: {str(e)}", status=400)
-
-
-@login_required
-def add_class_target_row(request):
-    product_classes = ProductClass.objects.all().order_by('name')
-    row_index = request.GET.get('index', 0)
-    context = {
-        'product_classes': product_classes,
-        'index': row_index
-    }
-    return render(request, 'customers/customer_agreements/partials/form_class_targets.html', context)
 
 
 @login_required

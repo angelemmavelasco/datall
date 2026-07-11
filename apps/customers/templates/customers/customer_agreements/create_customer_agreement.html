@@ -32,13 +32,24 @@
 
       <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
         <span class="text-title">Cliente</span>
-        <div>
-          <select name="customer_id" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
-            <option value="">Seleccione...</option>
-            {% for customer in allowed_customers %}
-            <option value="{{ customer.id }}">{{ customer.name|title }}</option>
-            {% endfor %}
-          </select>
+        <div class="relative w-full custom-select-dropdown">
+          <div class="w-full bg-page border border-border rounded px-2 py-1 text-body cursor-pointer flex justify-between items-center h-8" onclick="toggleDropdown(this)">
+            <span class="selected-text truncate">Seleccione...</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down shrink-0"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+          <div class="dropdown-content absolute z-10 w-full mt-1 border border-border rounded bg-page flex-col hidden shadow-lg">
+            <input type="text" placeholder="Buscar cliente..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'customer-list')">
+            <div id="customer-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for customer in allowed_customers %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="radio" name="customer_id" value="{{ customer.id }}" required class="accent-strong" onchange="updateSelectedText(this)">
+                    <span class="searchable-text">{{ customer.id|upper }} {{ customer.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+          </div>
         </div>
 
         <span class="text-title">Nombre del Convenio</span>
@@ -62,12 +73,12 @@
         
         <span class="text-title">Fecha de Inicio</span>
         <div>
-          <input type="date" name="start_date" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
+          <input type="month" name="start_date" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
         </div>
 
-        <span class="text-title">Fecha de Fin (Opcional)</span>
+        <span class="text-title">Fecha de Fin</span>
         <div>
-          <input type="date" name="end_date" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
+          <input type="month" name="end_date" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
         </div>
         
         <span class="text-title">Documento Adjunto (PDF/Imagen)</span>
@@ -81,13 +92,24 @@
 
       <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
         <span class="text-title">Beneficio a Otorgar</span>
-        <div>
-          <select id="benefit_id" name="benefit_id" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
-            <option value="">Seleccione...</option>
-            {% for benefit in benefits %}
-            <option value="{{ benefit.id }}">{{ benefit.name|title }}</option>
-            {% endfor %}
-          </select>
+        <div class="relative w-full custom-select-dropdown">
+          <div class="w-full bg-page border border-border rounded px-2 py-1 text-body cursor-pointer flex justify-between items-center h-8" onclick="toggleDropdown(this)">
+            <span class="selected-text truncate">Seleccione...</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down shrink-0"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+          <div class="dropdown-content absolute z-10 w-full mt-1 border border-border rounded bg-page flex-col hidden shadow-lg">
+            <input type="text" placeholder="Buscar beneficio..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
+                onkeyup="filterCheckboxes(this, 'benefit-list')">
+            <div id="benefit-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
+                {% for benefit in benefits %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    <input type="radio" id="benefit_id_{{ benefit.id }}" name="benefit_id" value="{{ benefit.id }}" required class="accent-strong" onchange="updateSelectedText(this)">
+                    <span class="searchable-text">{{ benefit.name|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+          </div>
         </div>
 
         <span class="text-title">Periodo Base para Margen (Inicio - Fin)</span>
@@ -98,10 +120,11 @@
         
         <div class="col-span-2 flex justify-end mt-2">
             <button type="button" 
+                    id="validate-margin-btn"
                     hx-post="{% url 'customers:validate_customer_agreement' %}"
                     hx-include="#create-agreement-form"
                     hx-target="#margin-alert-container"
-                    class="bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer rounded px-4 py-1 flex gap-2 items-center text-sm">
+                    class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-50 mt-2 mb-2">
                 Validar Margen Financiero
             </button>
         </div>
@@ -110,11 +133,11 @@
       <!-- Contenedor para alerta de margen -->
       <div id="margin-alert-container"></div>
 
-      <p class="text-title text-sm">Metas y Crecimiento</p>
+      <p class="text-title text-sm">Objetivos y Crecimiento</p>
       <hr class="border-border border">
 
       <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
-        <span class="text-title">Meta Global (Cuota General)</span>
+        <span class="text-title">Objetivo Global</span>
         <div>
           <input type="number" step="0.01" name="global_target_amount" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
         </div>
@@ -160,36 +183,186 @@
         </div>
       </div>
       
-      <div class="flex justify-between items-center mt-4">
-        <p class="text-title text-sm">Metas por Clase de Producto (AgreementClassTarget)</p>
-        <button type="button"
-                hx-get="{% url 'customers:add_class_target_row' %}"
-                hx-vals='js:{index: document.querySelectorAll("#class-targets-body tr").length}'
-                hx-target="#class-targets-body"
-                hx-swap="beforeend"
-                class="bg-container border border-border text-strong hover:bg-hover px-2 py-1 rounded transition-colors text-sm">
-            + Agregar Clase
-        </button>
-      </div>
-      <hr class="border-border border mb-2">
-      
-      <div class="bg-container p-2 rounded">
-        <table class="w-full text-left border-collapse">
-            <thead>
-                <tr class="text-title text-sm border-b border-border">
-                    <th class="py-1">Clase de Producto</th>
-                    <th class="py-1">Meta Requerida</th>
-                    <th class="py-1">¿Es Obligatorio?</th>
-                    <th class="py-1">Acción</th>
-                </tr>
-            </thead>
-            <tbody id="class-targets-body">
-                <!-- HTMX rows will be appended here -->
-            </tbody>
-        </table>
-      </div>
+      <div class="flex flex-col mt-4">
+        <div class="flex justify-between items-center mb-2">
+            <p class="text-title text-sm">Objetivos por Clase de Producto</p>
+        </div>
+        <hr class="border-border border mb-2">
+        
+        <div class="flex justify-between items-center mb-2 gap-4">
+            <input type="text" id="classSearchInput" onkeyup="filterClassTable()" placeholder="Buscar clase..." class="w-1/2 bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
+        </div>
+        
+        <div id="target-validation-error" class="hidden mb-2 p-2 bg-red-100 border border-red-400 text-red-700 text-sm rounded font-semibold">
+            Error: La suma de las objetivos por clase supera la objetivo Global.
+        </div>
 
-    </div>
+        <div class="bg-container rounded max-h-64 overflow-y-auto block border border-border">
+          <table class="w-full text-left border-collapse" id="classTargetsTable">
+              <thead class="sticky top-0 bg-container shadow-sm z-10">
+                  <tr class="text-title  border-b border-border">
+                      <th class="p-2">Clase de Producto</th>
+                      <th class="p-2 text-center flex items-center justify-center gap-2">
+                          Participa
+                          <input type="checkbox" onchange="selectAllParticipating(this.checked)" class="accent-strong cursor-pointer" title="Seleccionar/Deseleccionar todas">
+                      </th>
+                      <th class="p-2 text-center">
+                          <div class="flex items-center justify-center gap-2">
+                              Requerida
+                              <input type="checkbox" onchange="selectAllMandatory(this.checked)" class="accent-strong cursor-pointer" title="Seleccionar/Deseleccionar todas">
+                          </div>
+                      </th>
+                      <th class="p-2">objetivo ($)</th>
+                  </tr>
+              </thead>
+              <tbody id="class-targets-body">
+                  {% for pc in product_classes %}
+                  <tr class="border-b border-border class-row hover:bg-hover/50">
+                      <td class="p-2 text-body class-name-cell">{{ pc.name|title }}</td>
+                      <td class="p-2 text-center">
+                          <input type="checkbox" name="participating_classes[]" value="{{ pc.id }}" class="accent-strong participate-checkbox cursor-pointer" onchange="validateClassTargets()">
+                      </td>
+                      <td class="p-2 text-center">
+                          <input type="checkbox" name="is_mandatory_{{ pc.id }}" class="accent-strong mandatory-checkbox cursor-pointer">
+                      </td>
+                      <td class="p-2">
+                          <input type="number" step="0.01" name="required_target_{{ pc.id }}" value="0" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none target-input" onkeyup="validateClassTargets()" onchange="validateClassTargets()">
+                      </td>
+                  </tr>
+                  {% endfor %}
+              </tbody>
+          </table>
+        </div>
+      </div>
   </form>
+
+<script>
+    function filterClassTable() {
+        const filter = document.getElementById("classSearchInput").value.toLowerCase();
+        const rows = document.querySelectorAll("#class-targets-body .class-row");
+        
+        rows.forEach(row => {
+            const nameCell = row.querySelector(".class-name-cell");
+            if (nameCell) {
+                const text = nameCell.textContent || nameCell.innerText;
+                if (text.toLowerCase().indexOf(filter) > -1) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            }
+        });
+    }
+
+    function selectAllParticipating(check) {
+        document.querySelectorAll(".participate-checkbox").forEach(cb => {
+            cb.checked = check;
+        });
+        validateClassTargets();
+    }
+    
+    function selectAllMandatory(check) {
+        document.querySelectorAll(".mandatory-checkbox").forEach(cb => {
+            cb.checked = check;
+        });
+    }
+
+    function validateClassTargets() {
+        const globalTargetInput = document.querySelector("input[name='global_target_amount']");
+        const globalTarget = parseFloat(globalTargetInput.value) || 0;
+        
+        let classTargetSum = 0;
+        
+        const rows = document.querySelectorAll("#class-targets-body .class-row");
+        rows.forEach(row => {
+            const participate = row.querySelector(".participate-checkbox").checked;
+            if (participate) {
+                const targetInput = row.querySelector(".target-input");
+                classTargetSum += parseFloat(targetInput.value) || 0;
+            }
+        });
+        
+        const errorDiv = document.getElementById("target-validation-error");
+        const submitBtn = document.getElementById("btn-save");
+        const validateBtn = document.getElementById("validate-margin-btn");
+        
+        if (classTargetSum > globalTarget) {
+            errorDiv.classList.remove("hidden");
+            if (submitBtn) submitBtn.disabled = true;
+            if (validateBtn) validateBtn.disabled = true;
+        } else {
+            errorDiv.classList.add("hidden");
+            if (submitBtn) submitBtn.disabled = false;
+            if (validateBtn) validateBtn.disabled = false;
+        }
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        const globalTargetInput = document.querySelector("input[name='global_target_amount']");
+        if (globalTargetInput) {
+            globalTargetInput.addEventListener("keyup", validateClassTargets);
+            globalTargetInput.addEventListener("change", validateClassTargets);
+        }
+    });
+    function filterCheckboxes(inputElement, listId) {
+        const filter = inputElement.value.toLowerCase();
+        const list = document.getElementById(listId);
+        if (!list) return;
+        const labels = list.getElementsByTagName('label');
+
+        for (let i = 0; i < labels.length; i++) {
+            const span = labels[i].querySelector('.searchable-text');
+            if (span) {
+                const textValue = span.textContent || span.innerText;
+                if (textValue.toLowerCase().indexOf(filter) > -1) {
+                    labels[i].style.display = "";
+                } else {
+                    labels[i].style.display = "none";
+                }
+            }
+        }
+    }
+
+    function toggleDropdown(element) {
+        const content = element.nextElementSibling;
+        const isHidden = content.classList.contains('hidden');
+        
+        document.querySelectorAll('.dropdown-content').forEach(el => {
+            el.classList.add('hidden');
+            el.classList.remove('flex');
+        });
+        
+        if (isHidden) {
+            content.classList.remove('hidden');
+            content.classList.add('flex');
+            const searchInput = content.querySelector('input[type="text"]');
+            if (searchInput) {
+                searchInput.value = '';
+                filterCheckboxes(searchInput, searchInput.nextElementSibling.id);
+                searchInput.focus();
+            }
+        }
+    }
+
+    function updateSelectedText(radioInput) {
+        const text = radioInput.nextElementSibling.textContent;
+        const container = radioInput.closest('.custom-select-dropdown');
+        const selectedTextSpan = container.querySelector('.selected-text');
+        selectedTextSpan.textContent = text;
+        
+        const content = container.querySelector('.dropdown-content');
+        content.classList.add('hidden');
+        content.classList.remove('flex');
+    }
+
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.custom-select-dropdown')) {
+            document.querySelectorAll('.dropdown-content').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('flex');
+            });
+        }
+    });
+</script>
 
 {% endblock %}

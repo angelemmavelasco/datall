@@ -6,7 +6,9 @@ from apps.core.models import (
     ProductCategory, ProductClass, Product, Reference,
     RouteType, SaleChannel, Route, RouteAssignment,
     CommissionProfile, CommissionTier, RouteCommissionSetup,
-    RouteCommissionException, CommissionSettlement, Novelty
+    RouteCommissionException, CommissionSettlement, Novelty,
+    CustomerClassMargin, CommercialBenefit, CustomerAgreement, 
+    AgreementClassTarget, AgreementEvaluationPeriod, AgreementPeriodClassResult
 )
 from datetime import date
 from django.db.models import Q
@@ -211,3 +213,48 @@ class NoveltyAdmin(admin.ModelAdmin):
             'fields': ('is_active', 'created_at')
         }),
     )
+
+@admin.register(CustomerClassMargin)
+class CustomerClassMarginAdmin(admin.ModelAdmin):
+    list_display = ('customer', 'product_class', 'min_margin_percentage')
+    search_fields = ('customer__name', 'product_class__name')
+    list_filter = ('product_class',)
+
+@admin.register(CommercialBenefit)
+class CommercialBenefitAdmin(admin.ModelAdmin):
+    list_display = ('name', 'benefit_type', 'is_active', 'cost')
+    search_fields = ('name', 'description')
+    list_filter = ('benefit_type', 'is_active')
+
+class AgreementClassTargetInline(admin.TabularInline):
+    model = AgreementClassTarget
+    extra = 1
+
+class AgreementEvaluationPeriodInline(admin.TabularInline):
+    model = AgreementEvaluationPeriod
+    extra = 0
+    show_change_link = True
+
+@admin.register(CustomerAgreement)
+class CustomerAgreementAdmin(admin.ModelAdmin):
+    list_display = ('doc_id', 'agreement_name', 'customer', 'route', 'agreement_type', 'start_date', 'end_date', 'global_target_amount')
+    search_fields = ('doc_id', 'agreement_name', 'customer__name', 'route__name')
+    list_filter = ('agreement_type', 'start_date', 'end_date')
+    inlines = [AgreementClassTargetInline, AgreementEvaluationPeriodInline]
+
+class AgreementPeriodClassResultInline(admin.TabularInline):
+    model = AgreementPeriodClassResult
+    extra = 0
+
+@admin.register(AgreementEvaluationPeriod)
+class AgreementEvaluationPeriodAdmin(admin.ModelAdmin):
+    list_display = ('agreement', 'period_number', 'start_date', 'end_date', 'status', 'expected_global_target', 'achieved_global_sales')
+    search_fields = ('agreement__agreement_name', 'agreement__doc_id')
+    list_filter = ('status', 'start_date', 'end_date', 'penalty_applied')
+    inlines = [AgreementPeriodClassResultInline]
+
+@admin.register(AgreementPeriodClassResult)
+class AgreementPeriodClassResultAdmin(admin.ModelAdmin):
+    list_display = ('evaluation_period', 'product_class', 'expected_class_target', 'achieved_class_sales')
+    search_fields = ('evaluation_period__agreement__agreement_name', 'product_class__name')
+    list_filter = ('product_class',)
