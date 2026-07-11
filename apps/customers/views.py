@@ -1,4 +1,5 @@
 from django.shortcuts import render, HttpResponse
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from apps.core.utils import get_allowed_routes_for_user, get_allowed_warehouses_for_user
 from apps.core.models import Region, Customer, CommercialBenefit, Periodicity, ProductClass, CustomerAgreement
@@ -6,6 +7,7 @@ from apps.customers.services.customer_agreements.customer_agreements import Cust
 
 from datetime import datetime, date
 import uuid
+from django.conf import settings
 
 @login_required
 def customer_agreements(request):
@@ -76,7 +78,7 @@ def create_customer_agreement(request):
     allowed_routes = get_allowed_routes_for_user(request.user)
     allowed_customers = Customer.objects.filter(route__in=allowed_routes).order_by('name')
     benefits = CommercialBenefit.objects.filter(is_active=True).order_by('name')
-    periodicities = Periodicity.objects.all()
+    periodicities = Periodicity.objects.all().order_by('id')
     product_classes = ProductClass.objects.all().order_by('name')
     agreement_types = CustomerAgreement.TypesChoices.choices
     
@@ -184,7 +186,31 @@ def evaluate_agreements_action(request):
     if request.method == 'POST':
         service = CustomerAgreementService()
         try:
-            service.evaluate_all_pending_periods()
+            periods_count, agreements_count = service.evaluate_all_pending_periods()
+            messages.success(request, f'Evaluación completada: Se actualizaron {periods_count} periodos correspondientes a {agreements_count} convenios.')
+
             return HttpResponse('<script>window.location.reload();</script>')
         except Exception as e:
             return HttpResponse(f"Error en evaluación: {str(e)}", status=400)
+
+
+
+@login_required
+def customer_agreement_details(request, pk):
+    template = 'customers/customer_agreements/customer_agreement_details.html'
+    context = {}
+    
+    allowed_routes = get_allowed_routes_for_user(request.user)
+    
+    try:
+        agreement = CustomerAgreementService().read_details(pk, allowed_routes)
+        
+        if agreement is None:
+            return render(request, settings.ACCESS_DENIED_TEMPLATE)
+            
+        context['agreement'] = agreement
+        
+    except CustomerAgreement.DoesNotExist:
+        return render(request, settings.PAGE_NOT_FOUND_TEMPLATE)
+    
+    return render(request, template, context)

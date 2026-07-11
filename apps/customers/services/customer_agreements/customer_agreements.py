@@ -1,7 +1,7 @@
 import re
 import calendar
 from decimal import Decimal
-from datetime import date
+from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from django.db import transaction
 from django.db.models import Sum, Q
@@ -114,18 +114,24 @@ class CustomerAgreementService:
                 
         return queryset.select_related('customer', 'route', 'benefit', 'target_freq').distinct()
         
-    def read_details(self, agreement_id):
+    def read_details(self, agreement_id, allowed_routes):
         agreement = CustomerAgreement.objects.select_related(
             'customer', 'route', 'benefit', 'target_freq', 'penalty_freq', 'growth_freq'
         ).prefetch_related(
             'class_targets__product_class'
         ).get(id=agreement_id)
         
+        if not allowed_routes.filter(id=agreement.route_id).exists():
+            return None
+        
         customer = agreement.customer
         
         class_margins = CustomerClassMargin.objects.filter(customer=customer).select_related('product_class')
         
-        eval_periods = AgreementEvaluationPeriod.objects.filter(agreement=agreement).order_by('period_number')
+        eval_periods = list(AgreementEvaluationPeriod.objects.filter(agreement=agreement).order_by('period_number'))
+        
+        for period in eval_periods:
+            period.penalty_amount_applied = agreement.penalty_amount if period.penalty_applied else Decimal('0.00')
         
         period_results = AgreementPeriodClassResult.objects.filter(
             evaluation_period__agreement=agreement
@@ -276,26 +282,42 @@ class CustomerAgreementService:
         current_start = start_date
         period_num = 1
         
+        growth_multiplier = Decimal('1.00')
+        next_growth_date = None
+        delta_growth = None
+        
+        if agreement.growth_freq_id and agreement.growth_value > 0:
+            g_val, g_unit = parse_periodicity(agreement.growth_freq_id)
+            delta_growth = get_relativedelta_for_period(g_val, g_unit)
+            next_growth_date = start_date + delta_growth
+        
         while end_date and current_start <= end_date:
+            while next_growth_date and current_start >= next_growth_date:
+                growth_multiplier *= (Decimal('1') + (agreement.growth_value / Decimal('100')))
+                next_growth_date += delta_growth
+                
             current_end = current_start + delta - relativedelta(days=1)
             if current_end > end_date:
                 current_end = end_date
+                
+            period_global_target = (agreement.global_target_amount * growth_multiplier).quantize(Decimal('0.01'))
                 
             period = AgreementEvaluationPeriod.objects.create(
                 agreement=agreement,
                 period_number=period_num,
                 start_date=current_start,
                 end_date=current_end,
-                expected_global_target=agreement.global_target_amount, # In reality growth might apply here for multi-year upfront
+                expected_global_target=period_global_target,
                 status=AgreementEvaluationPeriod.StatusChoices.PENDING,
                 amortized_benefit_cost=amortized_cost
             )
             
             for ct in agreement.class_targets.all():
+                class_target_amount = (ct.required_target * growth_multiplier).quantize(Decimal('0.01'))
                 AgreementPeriodClassResult.objects.create(
                     evaluation_period=period,
                     product_class=ct.product_class,
-                    expected_class_target=ct.required_target
+                    expected_class_target=class_target_amount
                 )
                 
             current_start = current_start + delta
@@ -321,17 +343,24 @@ class CustomerAgreementService:
     @transaction.atomic
     def evaluate_all_pending_periods(self):
         """
-        Evaluates all pending periods where end_date has passed.
+        Evaluates all periods where end_date is within the last 45 days or in the future.
         Updates status and applies penalties.
         """
+
         today = date.today()
-        pending_periods = AgreementEvaluationPeriod.objects.filter(
-            status=AgreementEvaluationPeriod.StatusChoices.PENDING,
-            end_date__lt=today
+        limit_date = today - timedelta(days=45)
+        
+        periods = AgreementEvaluationPeriod.objects.filter(
+            agreement__start_date__lte=today
+        ).filter(
+            Q(agreement__end_date__isnull=True) | Q(agreement__end_date__gte=limit_date)
         ).select_related('agreement')
         
-        for period in pending_periods:
+        agreements_affected = set()
+        
+        for period in periods:
             agreement = period.agreement
+            agreements_affected.add(agreement.id)
             
             sales = SaleTransaction.objects.filter(
                 customer=agreement.customer,
@@ -357,9 +386,18 @@ class CustomerAgreementService:
             
             if achieved_global and achieved_mandatory:
                 period.status = AgreementEvaluationPeriod.StatusChoices.ACHIEVED
+                period.penalty_applied = False
+                period.observations = ""
             else:
-                period.status = AgreementEvaluationPeriod.StatusChoices.FAILED
-                period.penalty_applied = True
-                period.observations = "Meta global o metas obligatorias no alcanzadas."
+                if today <= period.end_date:
+                    period.status = AgreementEvaluationPeriod.StatusChoices.PENDING
+                    period.penalty_applied = False
+                    period.observations = "En progreso. Aún no se alcanza la meta."
+                else:
+                    period.status = AgreementEvaluationPeriod.StatusChoices.FAILED
+                    period.penalty_applied = True
+                    period.observations = "Meta global o metas obligatorias no alcanzadas."
                 
             period.save()
+            
+        return len(periods), len(agreements_affected)

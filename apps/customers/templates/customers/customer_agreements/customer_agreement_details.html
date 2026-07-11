@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Detalles de convenio comercial{% endblock %}
+
+{% block module_name %}Detalles de convenio comercial{% endblock %}
+
+{% block module_actions %}
+{% endblock %}
+
+{% block content %}
+
+<div class="flex flex-col gap-4">
+
+    <p class="text-title text-sm">Atributos del convenio</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+      <span class="text-title">Id documento</span>
+      <div>
+        <span class="view-el">{{ agreement.customer.agreement.doc_id|default:'-' }}</span>
+      </div>
+
+      <span class="text-title">Nombre</span>
+      <div>
+        <span class="view-el">{{ agreement.customer.agreement.agreement_name|title }}</span>
+      </div>
+
+      <span class="text-title">Tipo</span>
+      <div>
+        <span class="view-el">{{ agreement.customer.agreement.get_agreement_type_display|title }}</span>
+      </div>
+
+      <span class="text-title">Cliente</span>
+      <div>
+        <span class="view-el">{{ agreement.customer.data.id }} - {{ agreement.customer.data.name|title }}</span>
+      </div>
+
+      <span class="text-title">Ruta asignada</span>
+      <div>
+        <span class="view-el">{{ agreement.customer.agreement.route.id }} {{ agreement.customer.agreement.route.name|title }}</span>
+      </div>
+
+      <span class="text-title">Beneficio comercial</span>
+      <div>
+        <span class="view-el">{{ agreement.customer.agreement.benefit.name|title }}</span>
+      </div>
+
+      <span class="text-title">Documento relacionado</span>
+      <div>
+        {% if agreement.customer.agreement.related_doc %}
+        <a href="{{ agreement.customer.agreement.related_doc.url }}" target="_blank" class="view-el text-strong hover:text-hover transition-colors cursor-pointer flex gap-1 underline">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-down-icon lucide-circle-arrow-down"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="m8 12 4 4 4-4"/></svg>
+          <span class="">Ver documento</span>
+        </a>
+        {% else %}
+        <span class="view-el text-muted">-</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <p class="text-title text-sm">Condiciones y objetivos</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+      <span class="text-title col-span-2 border border-border p-2 text-center">Plazos y evaluación</span>
+
+      <span class="text-title">Vigencia</span>
+      <div>
+        <span class="view-el">{{ agreement.customer.agreement.start_date|date:"d M Y" }} al {{ agreement.customer.agreement.end_date|date:"d M Y"|default:'Indefinido' }}</span>
+      </div>
+
+      <span class="text-title">Periodicidad de evaluación</span>
+      <div>
+        <span class="view-el">{{ agreement.customer.agreement.target_freq.name|title }}</span>
+      </div>
+
+      <span class="text-title">Periodicidad de penalización</span>
+      <div>
+        <span class="view-el">{{ agreement.customer.agreement.penalty_freq.name|default:'-'|title }}</span>
+      </div>
+
+      <span class="text-title col-span-2 border border-border p-2 text-center">Objetivos financieros</span>
+
+      <span class="text-title">Objetivo global ({{ agreement.customer.agreement.target_freq.name|title }})</span>
+      <div>
+        <span class="view-el">$ {{ agreement.customer.agreement.global_target_amount|floatformat:2|intcomma }}</span>
+      </div>
+
+      <span class="text-title">Penalización</span>
+      <div>
+        <span class="view-el">$ {{ agreement.customer.agreement.penalty_amount|floatformat:2|intcomma }}</span>
+      </div>
+    </div>
+
+    <p class="text-title text-sm">Objetivos por clase de producto (solo participantes)</p>
+    <hr class="border-border border">
+
+    <div class="w-full overflow-x-auto border border-border rounded bg-container">
+          <table class="w-full text-left border-spacing-0 border-separate">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="p-2 min-w-25 text-left bg-container border-r border-border sticky left-0 z-10 text-title">Clase de producto</th>
+                    <th class="p-2 min-w-[120px] text-center text-title bg-page">Obligatorio</th>
+                    <th class="p-2 min-w-[120px] text-center border-r border-border text-title bg-page">Objetivo requerido</th>
+                </tr>
+            </thead>
+            <tbody>
+              {% for target in agreement.customer.agreement.class_targets.all %}
+                <tr class="hover:bg-hover transition-colors">
+                  <td class="p-2 text-left bg-container border-r border-t border-border sticky left-0 text-strong">{{ target.product_class.name|title }}</td>
+                  <td class="p-2 text-center border-t border-border text-strong">{{ target.is_mandatory|yesno:"Sí,No" }}</td>
+                  <td class="p-2 text-center border-r border-t border-border text-strong">$ {{ target.required_target|floatformat:2|intcomma }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="100%" class="p-4 text-center border-t border-border text-strong">No hay objetivos específicas por clase.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+      </div>
+
+    
+    <div class="flex justify-between items-center">
+        <p class="text-title text-sm">Periodos de evaluación</p>
+        <a
+        href="{% url 'business_intelligence:customer_kpis' agreement.customer.data.id %}?date_start={{ agreement.customer.agreement.start_date|date:'Y-m-d' }}{% if agreement.customer.agreement.end_date %}&date_end={{ agreement.customer.agreement.end_date|date:'Y-m-d' }}{% endif %}{% for ct in agreement.customer.agreement.class_targets.all %}&product_class={{ ct.product_class.id }}{% endfor %}"
+        target="_blank" class="text-strong hover:text-hover transition-colors cursor-pointer flex gap-1 underline">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
+          <span class="">Ver desglose de consumos</span>
+        </a>
+    </div>
+
+    <hr class="border-border border">
+
+    <div class="w-full overflow-x-auto border border-border rounded bg-container max-h-100">
+          <table class="w-full text-left border-spacing-0 border-separate">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="p-2 min-w-[50px] text-center bg-container border-r border-border sticky left-0 z-10 text-title">#</th>
+                    <th class="p-2 min-w-50 w-50 text-center border-r border-border text-title bg-page">Periodo</th>
+                    <th class="p-2 min-w-[120px] text-center border-r border-border text-title bg-page">Estado</th>
+                    <th class="p-2 min-w-[120px] text-center border-r border-border text-title bg-page">Objetivo global</th>
+                    <th class="p-2 min-w-[120px] text-center border-r border-border text-title bg-page">Ventas globales</th>
+                    <th class="p-2 min-w-[120px] text-center border-r border-border text-title bg-page">Penalización aplicable</th>
+                    <th class="p-2 min-50 max-w-50 text-center text-title bg-page ">Observaciones</th>
+                </tr>
+            </thead>
+            <tbody>
+              {% for period in agreement.customer.eval_periods %}
+                <tr class="hover:bg-hover transition-colors">
+                  <td class="p-2 text-center bg-container border-r border-t border-border sticky left-0 text-strong">{{ period.period_number }}</td>
+                  <td class="p-2 text-center border-r border-t border-border text-strong">{{ period.start_date|date:"d M Y" }} - {{ period.end_date|date:"d M Y" }}</td>
+                  <td class="p-2 text-center border-r border-t border-border text-strong">
+                    {% if period.status == 'pending' %}
+                        <span class="text-yellow-600">{{ period.get_status_display|title }}</span>
+                    {% elif period.status == 'achieved' %}
+                        <span class="text-green-600">{{ period.get_status_display|title }}</span>
+                    {% elif period.status == 'not_achieved' %}
+                        <span class="text-red-600">{{ period.get_status_display|title }}</span>
+                    {% else %}
+                        <span>{{ period.get_status_display|title }}</span>
+                    {% endif %}
+                  </td>
+                  <td class="p-2 text-center border-r border-t border-border text-strong">$ {{ period.expected_global_target|default:0|floatformat:2|intcomma }}</td>
+                  <td class="p-2 text-center border-r border-t border-border text-strong">$ {{ period.achieved_global_sales|default:0|floatformat:2|intcomma }}</td>
+                  <td class="p-2 text-center border-r border-t border-border text-strong">$ {{ period.penalty_amount_applied|default:0|floatformat:2|intcomma }}</td>
+                  <td class="p-2 text-center border-t border-border text-strong truncate">{{ period.observations|default:'-' }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="100%" class="p-4 text-center border-t border-border text-strong">No hay periodos generados.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+      </div>
+
+</div>
+
+{% endblock %}

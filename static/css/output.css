@@ -749,6 +749,9 @@
   .min-w-\[14px\] {
     min-width: 14px;
   }
+  .min-w-\[50px\] {
+    min-width: 50px;
+  }
   .min-w-\[80px\] {
     min-width: 80px;
   }

@@ -15,11 +15,20 @@
 <button type="button" 
    hx-post="{% url 'customers:evaluate_agreements_action' %}"
    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-   class="hover:text-hover text-strong transition-colors cursor-pointer inline-block">
-    Actualizar datos
+   hx-swap="outerHTML"
+   class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-1 group">
+   
+   <span class="htmx-indicator flex items-center gap-1 text-blue-600">
+       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><path d="M10.1 2.18a9.93 9.93 0 0 1 3.8 0"/><path d="M17.6 3.71a9.95 9.95 0 0 1 2.69 2.7"/><path d="M21.82 10.1a9.93 9.93 0 0 1 0 3.8"/><path d="M20.29 17.6a9.95 9.95 0 0 1-2.7 2.69"/><path d="M13.9 21.82a9.94 9.94 0 0 1-3.8 0"/><path d="M6.4 20.29a9.95 9.95 0 0 1-2.69-2.7"/><path d="M2.18 13.9a9.93 9.93 0 0 1 0-3.8"/><path d="M3.71 6.4a9.95 9.95 0 0 1 2.7-2.69"/><circle cx="12" cy="12" r="1"/></svg>
+       <span class="animate-pulse">Actualizando datos...</span>
+   </span>
+   
+   <span class="flex items-center gap-1 group-[.htmx-request]:hidden">
+       Actualizar datos
+   </span> 
 </button>
 
-<a href="#" 
+<a href="{% url 'customers:create_customer_agreement' %}" target="_blank"
    class="hover:text-hover text-strong transition-colors cursor-pointer inline-block">
     Nuevo convenio
 </a>
@@ -290,7 +299,7 @@
             {% for agreement in agreements %}
             <tr class="hover:bg-hover transition-colors duration-300">
                 <td class="p-2">
-                    <a href="#" target="_blank" class="flex items-center gap-2 underline text-strong">
+                    <a href="{% url 'customers:customer_agreement_details' agreement.id %}" target="_blank" class="flex items-center gap-2 underline text-strong">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
                         <span>
                             {{ agreement.doc_id|default:"-" }}
