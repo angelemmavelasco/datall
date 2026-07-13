@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 
 from apps.human_resources.services.employees import employees_crud
+from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
 from apps.core.models import (
     Position, Warehouse, Employee, 
     PayrollType, Periodicity, TaxSystem,
@@ -19,7 +20,7 @@ from apps.core.models import (
     )
 from apps.core.utils import get_allowed_routes_for_user
 
-from apps.human_resources.services.comissions.comissions import Comissions, CommissionExceptions, CommissionsReport
+from apps.human_resources.services.comissions.comissions import Comissions, CommissionExceptions, CommissionsReport, RouteCommissionException
 
 User = get_user_model()
 
@@ -41,6 +42,14 @@ def employees(request):
         'current_filters': current_filters,
     }
     
+    module = SystemModule.objects.filter(url_name='human_resources:employees').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description='visualización del directorio de colaboradores',
+        metadata={'filters': current_filters if current_filters else {}}
+    )
+    
     return render(request, TEMPLATE, context)
 
 @login_required
@@ -53,11 +62,19 @@ def employee(request, user_id: int = None):
     user_obj = employees_service.get_user_with_employee_history(user_id=user_id)
     
     if not user_obj:
-        messages.error(request, 'El empleado no existe.')
+        messages.error(request, 'El colaborador no existe.')
         return redirect('human_resources:employees')
         
     context['user'] = user_obj
     context['employee_history'] = user_obj.employees.all()
+    
+    module = SystemModule.objects.filter(url_name='human_resources:employees').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        obj=user_obj,
+        description=f'visualización de perfil de colaborador: {user_obj.first_name} {user_obj.last_name}'
+    )
     
     return render(request, TEMPLATE, context)
 
@@ -91,18 +108,39 @@ def employee_create(request):
         new_employee = employees_service.process_employee_create(raw_data=raw_data)
         
         if new_employee:
-            messages.success(request, 'Posición asignada con éxito al empleado.')
+            module = SystemModule.objects.filter(url_name='human_resources:employees').first()
+            ActivityLogger.log_create(
+                user=request.user,
+                module=module,
+                obj=new_employee,
+                description=f'creación de registro de colaborador: {new_employee.user.first_name} {new_employee.user.last_name}'
+            )
+            messages.success(request, 'Posición asignada con éxito al colaborador.')
             return redirect('human_resources:employee', user_id=new_employee.user_id)
         else:
             messages.error(request, 'Error al crear: Verifica que los campos obligatorios estén completos.')
             context['employee_data'] = raw_data
             return render(request, TEMPLATE, context)
             
+    module = SystemModule.objects.filter(url_name='human_resources:employees').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description='visualización del formulario para crear colaborador'
+    )
+    
     return render(request, TEMPLATE, context)
 
 @login_required
 def org_chart(request):
     TEMPLATE = 'human_resources/org_chart/org_chart.html'
+    
+    module = SystemModule.objects.filter(url_name='human_resources:org_chart').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description='visualización del organigrama de la empresa'
+    )
     
     return render(request, TEMPLATE)
 
@@ -180,11 +218,19 @@ def commissions(request):
         'filters': filters, 
     }
     
+    ActivityLogger.log_read(
+        user=user,
+        module=module,
+        description='visualización del listado de esquemas de comisiones',
+        metadata={'filters': filters}
+    )
+    
     return render(request, template, context)
 
 
 @login_required
 def commission_profile_detail(request, cp_id: int):
+    module = SystemModule.objects.filter(url_name='human_resources:commissions').first()
     user = request.user
     template = 'human_resources/payroll/commission_profile_detail.html'
     allowed_routes = get_allowed_routes_for_user(user).order_by('id')
@@ -241,6 +287,14 @@ def commission_profile_detail(request, cp_id: int):
         service = Comissions()
         try:
             service.commission_profile_update(profile.id, profile_data, tiers_data, configs_data)
+            
+            ActivityLogger.log_update(
+                user=user,
+                module=module,
+                obj=profile,
+                description=f'actualización de esquema de comisiones: {profile.name}'
+            )
+            
             messages.success(request, 'El perfil de comisiones se actualizó correctamente.')
             return redirect('human_resources:commission_profile_detail', cp_id=profile.id)
         except ValueError as e:
@@ -274,6 +328,13 @@ def commission_profile_detail(request, cp_id: int):
         'configs_list': configs_list,
     }
     
+    ActivityLogger.log_read(
+        user=user,
+        module=module,
+        obj=profile,
+        description=f'visualización de detalle de esquema de comisiones: {profile.name}'
+    )
+    
     return render(request, template, context)
 
 
@@ -282,6 +343,7 @@ def commission_profile_create(request):
     user = request.user
     template = 'human_resources/payroll/commission_profile_create.html'
     allowed_routes = get_allowed_routes_for_user(user).order_by('id')
+    module = SystemModule.objects.filter(url_name='human_resources:commissions').first()
     
     if request.method == 'POST':
         #general info
@@ -333,7 +395,15 @@ def commission_profile_create(request):
 
         service = Comissions()
         try:
-            service.commission_profile_create(profile_data, tiers_data, configs_data)
+            profile = service.commission_profile_create(profile_data, tiers_data, configs_data)
+            
+            ActivityLogger.log_create(
+                user=request.user,
+                module=module,
+                obj=profile,
+                description=f'creación de esquema de comisiones: {profile.name}'
+            )
+            
             messages.success(request, 'El perfil de comisiones y sus asignaciones se guardaron correctamente.')
             return redirect('human_resources:commissions') 
         except ValueError as e:
@@ -345,6 +415,12 @@ def commission_profile_create(request):
         'routes': allowed_routes,
         'commission_types': RouteCommissionSetup.BONUS_CHOICES,
     }
+    
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description='visualización del formulario para crear un esquema de comisiones'
+    )
     
     return render(request, template, context)
     
@@ -378,6 +454,13 @@ def commission_exceptions(request):
         'filters': filters,
     }
     
+    ActivityLogger.log_read(
+        user=user,
+        module=module,
+        description='visualización de excepciones de comisiones',
+        metadata={'filters': filters}
+    )
+    
     return render(request, template, context)
 
 @login_required
@@ -385,6 +468,7 @@ def commission_exception_create(request):
     user = request.user
     template = 'human_resources/payroll/commission_exception_create.html'
     allowed_routes = get_allowed_routes_for_user(user).order_by('id')
+    module = SystemModule.objects.filter(url_name='human_resources:commissions').first()
 
     if request.method == 'POST':
         route_ids = request.POST.getlist('route_ids')
@@ -405,12 +489,26 @@ def commission_exception_create(request):
 
         service = CommissionExceptions(allowed_routes=allowed_routes)
         created_count = service.create_multiple(route_ids, exception_data)
+        
+        ActivityLogger.log_create(
+            user=user,
+            module=module,
+            description=f'creación masiva de excepciones de comisiones ({created_count} asignaciones)',
+            changes={'route_ids': route_ids, 'exception_data': exception_data}
+        )
+        
         messages.success(request, f'Se registraron correctamente {created_count} excepciones.')
         return redirect('human_resources:commission_exceptions')
 
     context = {
         'routes': allowed_routes,
     }
+    
+    ActivityLogger.log_read(
+        user=user,
+        module=module,
+        description='visualización del formulario para crear excepciones de comisiones'
+    )
     
     return render(request, template, context)
     
@@ -419,6 +517,7 @@ def commission_exception_detail(request, ce_id):
     user = request.user
     template = 'human_resources/payroll/commission_exception_detail.html'
     allowed_routes = get_allowed_routes_for_user(user).order_by('id')
+    module = SystemModule.objects.filter(url_name='human_resources:commissions').first()
 
     service = CommissionExceptions(allowed_routes=allowed_routes)
 
@@ -445,6 +544,15 @@ def commission_exception_detail(request, ce_id):
 
         try:
             service.update(ce_id, **update_data)
+            
+            ActivityLogger.log_update(
+                user=user,
+                module=module,
+                obj=exception,
+                description=f'actualización de excepción de comisiones de ruta {exception.route_id}',
+                changes=update_data
+            )
+            
             messages.success(request, 'Excepción actualizada correctamente.')
             return redirect('human_resources:commission_exception_detail', ce_id=ce_id)
         except Exception as e:
@@ -453,6 +561,13 @@ def commission_exception_detail(request, ce_id):
     context = {
         'exception': exception,
     }
+
+    ActivityLogger.log_read(
+        user=user,
+        module=module,
+        obj=exception,
+        description=f'visualización de detalle de excepción de comisiones de ruta {exception.route_id}'
+    )
 
     return render(request, template, context)
     
@@ -468,6 +583,7 @@ def commissions_report(request):
     template = 'human_resources/payroll/commissions_report.html'
     allowed_routes = get_allowed_routes_for_user(user).order_by('id')
     service = CommissionsReport(allowed_routes=allowed_routes)
+    module = SystemModule.objects.filter(url_name='human_resources:commissions_report').first()
 
     filters = {
         'month': request.GET.get('month', str(datetime.now().month-1)),
@@ -487,6 +603,13 @@ def commissions_report(request):
         'available_years': available_years,
     }
     
+    ActivityLogger.log_read(
+        user=user,
+        module=module,
+        description='visualización del reporte de comisiones',
+        metadata={'filters': filters}
+    )
+    
     return render(request, template, context)
 
 @login_required
@@ -495,6 +618,7 @@ def commissions_action(request):
     user = request.user
     allowed_routes = get_allowed_routes_for_user(user).order_by('id')
     service = CommissionsReport(allowed_routes=allowed_routes)
+    module = SystemModule.objects.filter(url_name='human_resources:commissions_report').first()
     
     emails = [ref.reference for ref in Reference.objects.filter(
         module__url_name='human_resources:commissions_report',
@@ -529,6 +653,12 @@ def commissions_action(request):
             try:
                 count = service.create_multiple(routes_to_process, month, year)
                 if count > 0:
+                    ActivityLogger.log_create(
+                        user=user,
+                        module=module,
+                        description=f'cálculo de comisiones del periodo {month}/{year} ({count} procesados)',
+                        changes={'routes_processed': list(routes_to_process)}
+                    )
                     messages.success(request, f'Se procesaron {count} cálculos correctamente.')
                 else:
                     messages.info(request, 'No se realizó ningún cálculo. Revisa que las rutas tengan perfil configurado o no estén cerradas.')
@@ -543,6 +673,12 @@ def commissions_action(request):
                 count = service.close_settlements(selected_routes, month, year)
                 
                 if count > 0:
+                    ActivityLogger.log_update(
+                        user=user,
+                        module=module,
+                        description=f'cierre de cálculos de comisiones del periodo {month}/{year} ({count} cerrados)',
+                        changes={'routes_closed': selected_routes}
+                    )
                     messages.success(request, f'{count} cálculos de comisiones cerrados. Ya no podrán ser recalculados.')
                 else:
                     messages.info(request, 'No se cerró ningún cálculo (es probable que las rutas seleccionadas ya tuvieran cálculos cerrados o no tengan en este periodo).')
@@ -555,6 +691,12 @@ def commissions_action(request):
         else:
             response = service.export_report_data(selected_routes, month, year)
             if response:
+                ActivityLogger.log_download(
+                    user=user,
+                    module=module,
+                    description=f'descarga de reporte de comisiones del periodo {month}/{year} ({len(selected_routes)} rutas)',
+                    metadata={'routes_exported': selected_routes}
+                )
                 return response
             messages.info(request, 'No se encontraron datos para descargar con la selección actual.')
 
@@ -564,6 +706,12 @@ def commissions_action(request):
         else:
             count = service.send_commission_report(selected_routes, month, year, report_type='draft', emails=emails)
             if count > 0:
+                ActivityLogger.log_download(
+                    user=user,
+                    module=module,
+                    description=f'envío de reporte borrador de comisiones por correo electrónico del periodo {month}/{year} ({count} rutas enviadas a {", ".join(emails)})',
+                    metadata={'routes_sent': selected_routes}
+                )
                 messages.success(request, f'Se envió el correo con {count} borradores exitosamente.')
             else:
                 messages.info(request, 'Ninguna de las rutas seleccionadas está en estado Borrador.')
@@ -574,6 +722,12 @@ def commissions_action(request):
         else:
             count = service.send_commission_report(selected_routes, month, year, report_type='closed',emails=emails)
             if count > 0:
+                ActivityLogger.log_download(
+                    user=user,
+                    module=module,
+                    description=f'envío de reporte cerrado de comisiones por correo electrónico del periodo {month}/{year} ({count} rutas enviadas a {", ".join(emails)})',
+                    metadata={'routes_sent': selected_routes}
+                )
                 messages.success(request, f'Se envió el correo con {count} cálculos cerrados exitosamente.')
             else:
                 messages.info(request, 'Ninguna de las rutas seleccionadas está en estado Cerrado.')
@@ -591,7 +745,16 @@ def commission_report_detail(request, pk):
     template = 'human_resources/payroll/commission_report_detail.html'
     allowed_routes = get_allowed_routes_for_user(user).order_by('id')
     service = CommissionsReport(allowed_routes=allowed_routes)
+    module = SystemModule.objects.filter(url_name='human_resources:commissions_report').first()
     
     context = service.get_settlement_detail(pk)
+    
+    settlement = context.get('settlement')
+    ActivityLogger.log_read(
+        user=user,
+        module=module,
+        obj=settlement,
+        description=f"visualización de detalle del reporte de comisiones de ruta {settlement.route_id} ({settlement.period_start.strftime('%m/%Y')})" if settlement else 'visualización de detalle del reporte de comisiones'
+    )
     
     return render(request, template, context)
