@@ -109,6 +109,8 @@ TEMPLATES = [
                 'apps.core.context_processors.module_permissions',
                 #get last update of data
                 'apps.core.context_processors.last_update',
+                #get last app version
+                'apps.core.context_processors.get_app_version',
                 #get recent novelties (last week)
                 'apps.core.context_processors.recent_novelties',
                 # media files

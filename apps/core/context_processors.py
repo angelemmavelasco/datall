@@ -62,5 +62,14 @@ def recent_novelties(request):
         'recent_novelties': recent,
         'has_novelties': has_novelties
     }
+
+def get_app_version(request):
+    version = Reference.objects.filter(
+        field_context='app_version',
+        key="version",
+    ).first()
+    return {
+        'app_version': version.reference
+    }
         
 
