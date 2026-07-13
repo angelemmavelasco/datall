@@ -4,7 +4,8 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from apps.sales.services.products.products_crud import ProductsCrud
 from django.contrib.auth.decorators import login_required
-from apps.core.models import Reference, ProductClass, Warehouse, Route, ProductCategory
+from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
+from apps.core.models import Reference, ProductClass, Warehouse, Route, ProductCategory, SystemModule
 from django.core.paginator import Paginator
 import pandas as pd
 import io
@@ -46,6 +47,14 @@ def products(request):
 
     if request.htmx:
         template = 'sales/products/partials/product_rows.html'
+    else:
+        module = SystemModule.objects.filter(url_name='sales:products').first()
+        ActivityLogger.log_read(
+            user=request.user,
+            module=module,
+            description='visualización del listado de productos',
+            metadata={'filters': filters}
+        )
         
     return render(request, template, context)
 
@@ -81,6 +90,15 @@ def products_export(request):
         df.to_excel(writer, index=False, sheet_name='Productos')
 
     output.seek(0)
+    
+    module = SystemModule.objects.filter(url_name='sales:products').first()
+    ActivityLogger.log_download(
+        user=request.user,
+        module=module,
+        description='descarga del listado de productos en Excel',
+        metadata={'filters': filters}
+    )
+
     response = HttpResponse(
         output,
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -97,6 +115,14 @@ def product(request, product_id: str):
     context = {
         'product': product
     }
+
+    module = SystemModule.objects.filter(url_name='sales:products').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        obj=product,
+        description=f'visualización de detalle del producto {product.name}' if product else 'visualización de detalle de producto'
+    )
 
     return render(request, TEMPLATE, context)
 
@@ -199,6 +225,14 @@ def sale_transactions(request):
 
     if request.htmx:
         template = 'sales/sale_transactions/partials/sale_transaction_rows.html'
+    else:
+        module = SystemModule.objects.filter(url_name='sales:sale_transactions').first()
+        ActivityLogger.log_read(
+            user=request.user,
+            module=module,
+            description='visualización del listado de transacciones de venta',
+            metadata={'filters': filters}
+        )
 
     return render(request, template, context)
 
@@ -265,6 +299,15 @@ def sale_transactions_export(request):
         df.to_excel(writer, index=False, sheet_name='Transacciones')
 
     output.seek(0)
+    
+    module = SystemModule.objects.filter(url_name='sales:sale_transactions').first()
+    ActivityLogger.log_download(
+        user=request.user,
+        module=module,
+        description='descarga del listado de transacciones de venta en Excel',
+        metadata={'filters': filters}
+    )
+    
     response = HttpResponse(
         output,
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -345,12 +388,28 @@ def sale_targets_calculator(request):
                 calc_method=method
             )
             
+            module = SystemModule.objects.filter(url_name='sales:sale_targets_calculator').first()
+            ActivityLogger.log_read(
+                user=request.user,
+                module=module,
+                description='cálculo de simulación de objetivos de venta',
+                metadata={'method': method, 'mode': mode, 'target_year': target_year}
+            )
+            
             return render(request, 'sale_targets_calculator/partials/calculator_results.html', {
                 'results': results,
                 'errors': service.errors,
             })
             
     template = 'sale_targets_calculator/sale_targets_calculator.html'
+    
+    module = SystemModule.objects.filter(url_name='sales:sale_targets_calculator').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description='visualización de calculadora de objetivos de venta'
+    )
+    
     return render(request, template, context)
 
 
@@ -395,6 +454,14 @@ async def export_sale_targets_calculator_data(request):
             calc_method=method
         )
         
+        module = SystemModule.objects.filter(url_name='sales:sale_targets_calculator').first()
+        ActivityLogger.log_download(
+            user=request.user,
+            module=module,
+            description='descarga de resultados de simulación de objetivos de venta en Excel',
+            metadata={'method': method, 'mode': mode, 'target_year': target_year}
+        )
+        
         return service.export_data_report(results)
 
     excel_file = await generate_file()
@@ -406,7 +473,7 @@ async def export_sale_targets_calculator_data(request):
         excel_file, 
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = 'attachment; filename="simulacion_cuotas.xlsx"'
+    response['Content-Disposition'] = 'attachment; filename="simulacion_objetivos.xlsx"'
     
     return response
 
