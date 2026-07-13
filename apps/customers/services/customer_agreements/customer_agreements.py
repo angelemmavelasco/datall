@@ -490,7 +490,14 @@ class CustomerAgreementService:
                 period.period_profit = total_profit - period.amortized_benefit_cost
                 
             if total_net > 0:
-                period.period_margin = (period.period_profit / total_net) * Decimal('100.00')
+                calc_margin = (period.period_profit / total_net) * Decimal('100.00')
+                # Evitar overflow en base de datos (max_digits=5, decimal_places=2)
+                if calc_margin > Decimal('999.99'):
+                    period.period_margin = Decimal('999.99')
+                elif calc_margin < Decimal('-999.99'):
+                    period.period_margin = Decimal('-999.99')
+                else:
+                    period.period_margin = calc_margin
             else:
                 period.period_margin = Decimal('0.00')
                 
