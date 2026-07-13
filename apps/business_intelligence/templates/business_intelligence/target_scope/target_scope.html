@@ -319,16 +319,16 @@ Al pasar el cursor verás el detalle de objetivo, venta y diferencia de cada una
                         
                         <td class="p-2 text-center border  border-border
                         {% if r.scope >= 100 %}text-green-600
-                        {% elif r.scope >= 90 %}text-green-600
-                        {% elif r.scope >= 80 %}text-amber-600
+                        {% elif r.scope >= 90 %}text-yellow-500
+                        {% elif r.scope >= 80 %}text-orange-600
                         {% else %}text-red-600
                         {% endif %}
                         ">{{ r.scope|floatformat:2 }} %</td>
 
                         <td class="p-2 text-right border  border-border
                         {% if r.scope_forecast >= 100 %}text-green-600
-                        {% elif r.scope_forecast >= 90 %}text-green-600
-                        {% elif r.scope_forecast >= 80 %}text-amber-600
+                        {% elif r.scope_forecast >= 90 %}text-yellow-500
+                        {% elif r.scope_forecast >= 80 %}text-orange-600
                         {% else %}text-red-600
                         {% endif %}
                         ">{{ r.scope_forecast|floatformat:2|intcomma }} %</td>
@@ -339,7 +339,7 @@ Al pasar el cursor verás el detalle de objetivo, venta y diferencia de cada una
                         {% for c in r.route_product_classes_breakdown %}
                             <td class="p-2 text-center border  border-border {% if forloop.last %}border-0{% endif %}
                                 {% if c.scope >= 100 %}text-green-600
-                                {% elif c.scope >= 90 %}text-green-600
+                                {% elif c.scope >= 90 %}text-yellow-500
                                 {% elif c.scope >= 80 %}text-amber-600
                                 {% else %}text-red-600
                                 {% endif %}
