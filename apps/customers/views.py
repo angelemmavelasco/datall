@@ -328,9 +328,12 @@ def save_customer_agreement(request):
 @login_required
 def evaluate_agreements_action(request):
     if request.method == 'POST':
+        print('evluation action')
         service = CustomerAgreementService()
         try:
             periods_count, agreements_count = service.evaluate_all_pending_periods()
+            print('periods_count', periods_count)
+            print('agreements_count', agreements_count)
             messages.success(request, f'Evaluación completada: Se actualizaron {periods_count} periodos correspondientes a {agreements_count} convenios.')
 
             return HttpResponse('<script>window.location.reload();</script>')

@@ -390,36 +390,80 @@ class CustomerAgreementService:
             agreement__start_date__lte=today
         ).filter(
             Q(agreement__end_date__isnull=True) | Q(agreement__end_date__gte=limit_date)
-        ).select_related('agreement')
+        ).filter(
+            Q(status=AgreementEvaluationPeriod.StatusChoices.PENDING) | Q(end_date__gte=limit_date)
+        ).select_related('agreement').prefetch_related(
+            'agreement__class_targets',
+            'class_results'
+        )
+        
+        if not periods:
+            return 0, 0
+            
+        customer_ids = set()
+        min_date = None
+        max_date = None
+        
+        for period in periods:
+            customer_ids.add(period.agreement.customer_id)
+            if min_date is None or period.start_date < min_date:
+                min_date = period.start_date
+            if max_date is None or period.end_date > max_date:
+                max_date = period.end_date
+                
+        # Fetch all relevant sales in a single query
+        sales_data = SaleTransaction.objects.filter(
+            customer_id__in=customer_ids,
+            sale_date__gte=min_date,
+            sale_date__lte=max_date
+        ).values('customer_id', 'sale_date', 'product_class_id', 'net_amount', 'profit')
+        
+        sales_by_customer = {}
+        for row in sales_data:
+            cid = row['customer_id']
+            if cid not in sales_by_customer:
+                sales_by_customer[cid] = []
+            sales_by_customer[cid].append(row)
         
         agreements_affected = set()
+        periods_to_update = []
+        class_results_to_update = []
         
         for period in periods:
             agreement = period.agreement
             agreements_affected.add(agreement.id)
             
-            sales = SaleTransaction.objects.filter(
-                customer=agreement.customer,
-                sale_date__gte=period.start_date,
-                sale_date__lte=period.end_date
-            )
+            customer_sales = sales_by_customer.get(agreement.customer_id, [])
+            period_sales = [
+                s for s in customer_sales
+                if period.start_date <= s['sale_date'] <= period.end_date
+            ]
             
-            agg = sales.aggregate(
-                total_net=Sum('net_amount'),
-                total_profit=Sum('profit')
-            )
-            total_net = agg['total_net'] or Decimal('0.00')
-            total_profit = agg['total_profit'] or Decimal('0.00')
+            total_net = sum((s['net_amount'] or Decimal('0.00')) for s in period_sales)
+            total_profit = sum((s['profit'] or Decimal('0.00')) for s in period_sales)
             
             period.achieved_global_sales = total_net
             
+            sales_by_class = {}
+            for s in period_sales:
+                cls_id = s['product_class_id']
+                net = s['net_amount'] or Decimal('0.00')
+                sales_by_class[cls_id] = sales_by_class.get(cls_id, Decimal('0.00')) + net
+            
+            targets_by_class = {
+                target.product_class_id: target
+                for target in agreement.class_targets.all()
+            }
+            
             achieved_mandatory = True
             for class_result in period.class_results.all():
-                class_net = sales.filter(product_class=class_result.product_class).aggregate(Sum('net_amount'))['net_amount__sum'] or Decimal('0.00')
-                class_result.achieved_class_sales = class_net
-                class_result.save()
+                class_id = class_result.product_class_id
+                class_net = sales_by_class.get(class_id, Decimal('0.00'))
                 
-                target = agreement.class_targets.filter(product_class=class_result.product_class).first()
+                class_result.achieved_class_sales = class_net
+                class_results_to_update.append(class_result)
+                
+                target = targets_by_class.get(class_id)
                 if target and target.is_mandatory:
                     if class_net < class_result.expected_class_target:
                         achieved_mandatory = False
@@ -450,6 +494,14 @@ class CustomerAgreementService:
             else:
                 period.period_margin = Decimal('0.00')
                 
-            period.save()
+            periods_to_update.append(period)
+            
+        if class_results_to_update:
+            AgreementPeriodClassResult.objects.bulk_update(class_results_to_update, ['achieved_class_sales'])
+            
+        if periods_to_update:
+            AgreementEvaluationPeriod.objects.bulk_update(periods_to_update, [
+                'achieved_global_sales', 'status', 'penalty_applied', 'observations', 'period_profit', 'period_margin'
+            ])
             
         return len(periods), len(agreements_affected)
