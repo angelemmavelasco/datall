@@ -9,6 +9,8 @@ import time
 #main service
 from .prompts.view_rules import PROMPTS_REGISTRY
 from .services.data_assistant.data_assistant import DataAssistant
+from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
+from apps.core.models import SystemModule
 
 # Create your views here.
 async def data_assistant(request):
@@ -59,4 +61,17 @@ async def data_assistant(request):
 
     print(f"exe time: {execution_time}")
     
+    @sync_to_async
+    def log_assistant_usage():
+        module = SystemModule.objects.filter(url_name='data_assistant:data_assistant').first()
+        ActivityLogger.log_read(
+            user=user,
+            module=module,
+            description=f'ejecución de análisis con asistente IA para reporte: {report_type}'
+        )
+    
+    await log_assistant_usage()
+    
     return HttpResponse(styled_html)
+
+    
