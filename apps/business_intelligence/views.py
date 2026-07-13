@@ -250,7 +250,7 @@ def collections(request):
         allowed_regions = Region.objects.all().values('id', 'name').order_by('id')
 
     # request filters
-    today = date.today()
+    today = date.today().strftime('%Y-%m-%d')
     date_end = request.GET.get('date_end', today)
     warehouses = request.GET.getlist('warehouses')
     regions = request.GET.getlist('regions')
