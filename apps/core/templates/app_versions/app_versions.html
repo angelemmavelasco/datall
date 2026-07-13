@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Versiones{% endblock %}
+
+{% block module_name %}Historial de versiones{% endblock %}
+
+{% block content %}
+
+<ul class="flex flex-col gap-4">
+
+    {% for version in app_versions %}
+
+        <li class="rounded border border-border p-2 text-body">
+            <p>
+                <span class="text-title font-bold">
+                    Versión {{ version.version_number }}, {{ version.title|title }}
+                </span><br>
+                
+                Fecha de publicación: {{ version.release_date|naturalday }} <br>
+                Actualización {{ version.get_release_type_display|lower }}
+                {% if version.is_published %}
+                    <span class="text-green-600">publicada</span>
+                {% else %}
+                    <span class="text-amber-600">borrador</span>
+                {% endif %}
+            </p>
+
+            <hr class="border border-border my-1">
+            <p class="text-strong">
+                {{ version.description|linebreaksbr }}
+            </p>
+        </li>
+
+    {% empty %}
+
+    <p class="text-center">No hay datos para mostrar</p>
+
+    {% endfor %}
+
+</ul>
+
+
+{% endblock content %}
+

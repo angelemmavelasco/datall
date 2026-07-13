@@ -6,7 +6,7 @@ from django.contrib.auth.views import PasswordChangeView
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import login_required
 from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
-from apps.core.models import SystemModule
+from apps.core.models import SystemModule, AppVersion
 
 def custom_csrf_failure(request, reason=""):
     messages.warning(request, "Tu sesión expiró por inactividad. Por favor, vuelve a ingresar.")
@@ -49,4 +49,26 @@ def support(request):
     
     template = "docs/user_docs.html"
     return render(request, template)
+
+@login_required
+def app_versions(request):
+    template = "app_versions/app_versions.html"
+
+    app_versions = AppVersion.objects.filter(is_published=True).order_by('-release_date')
+    print(app_versions)
+
+    context = {
+        'app_versions': app_versions
+    }
+
+
+
+    module = SystemModule.objects.filter(url_name='core:app_versions').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description="visualización de las versiones de la aplicación."
+    )
+    
+    return render(request, template, context)
     
