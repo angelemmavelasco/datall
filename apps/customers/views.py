@@ -1,11 +1,13 @@
-from django.shortcuts import render, HttpResponse
+from django.shortcuts import render, HttpResponse, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from apps.core.utils import get_allowed_routes_for_user, get_allowed_warehouses_for_user
 from apps.core.models import Region, Customer, CommercialBenefit, Periodicity, ProductClass, CustomerAgreement
 from apps.customers.services.customer_agreements.customer_agreements import CustomerAgreementService
+from apps.customers.services.customers_crud.customers_crud import CustomerCrud
 
 from datetime import datetime, date
+from decimal import Decimal
 import uuid
 from django.conf import settings
 
@@ -76,7 +78,7 @@ def customer_agreements(request):
 @login_required
 def create_customer_agreement(request):
     allowed_routes = get_allowed_routes_for_user(request.user)
-    allowed_customers = Customer.objects.filter(route__in=allowed_routes).order_by('name')
+    allowed_customers = Customer.objects.none()
     benefits = CommercialBenefit.objects.filter(is_active=True).order_by('name')
     periodicities = Periodicity.objects.all().order_by('id')
     product_classes = ProductClass.objects.all().order_by('name')
@@ -96,6 +98,137 @@ def create_customer_agreement(request):
         pass
 
     return render(request, template, context)
+
+@login_required
+def search_customers_htmx(request):
+    """
+    Search customers by name or ID using HTMX to populate the customer dropdown
+    in the create_customer_agreement form.
+    """
+    allowed_routes = get_allowed_routes_for_user(request.user)
+    query = request.GET.get('q', '').strip()
+    
+    if not query:
+        customers = Customer.objects.none()
+    else:
+        crud = CustomerCrud()
+        customers = crud.read(allowed_routes, query_text=query).order_by('name')[:50]
+        
+    return render(request, 'customers/customer_agreements/partials/customer_search_results.html', {
+        'allowed_customers': customers
+    })
+
+@login_required
+def preview_customer_agreement(request):
+    if request.method == 'POST':
+        customer_id = request.POST.get('customer_id')
+        benefit_id = request.POST.get('benefit_id')
+        agreement_name = request.POST.get('agreement_name')
+        agreement_type = request.POST.get('agreement_type')
+        start_date = request.POST.get('start_date')
+        end_date = request.POST.get('end_date')
+        try:
+            global_target_amount = Decimal(request.POST.get('global_target_amount') or '0')
+        except:
+            global_target_amount = Decimal('0')
+            
+        target_freq_id = request.POST.get('target_freq_id')
+        
+        try:
+            penalty_amount = Decimal(request.POST.get('penalty_amount') or '0')
+        except:
+            penalty_amount = Decimal('0')
+            
+        penalty_freq_id = request.POST.get('penalty_freq_id')
+        
+        try:
+            growth_value = Decimal(request.POST.get('growth_value') or '0')
+        except:
+            growth_value = Decimal('0')
+            
+        growth_freq_id = request.POST.get('growth_freq_id')
+        
+        customer = Customer.objects.get(id=customer_id) if customer_id else None
+        benefit = CommercialBenefit.objects.get(id=benefit_id) if benefit_id else None
+        
+        target_freq = Periodicity.objects.get(id=target_freq_id) if target_freq_id else None
+        penalty_freq = Periodicity.objects.get(id=penalty_freq_id) if penalty_freq_id else None
+        growth_freq = Periodicity.objects.get(id=growth_freq_id) if growth_freq_id else None
+        
+        agr_type_dict = dict(CustomerAgreement.TypesChoices.choices)
+        agreement_type_display = agr_type_dict.get(agreement_type, agreement_type)
+        
+        # Calculate duration and periods
+        from apps.customers.services.customer_agreements.customer_agreements import parse_month_input, get_periods_count, get_relativedelta_for_period, parse_periodicity
+        from dateutil.relativedelta import relativedelta
+        from datetime import timedelta
+        
+        agr_start = parse_month_input(start_date)
+        agr_end = parse_month_input(end_date, is_end=True)
+        agr_delta = relativedelta(agr_end + timedelta(days=1), agr_start)
+        duration_months = agr_delta.years * 12 + agr_delta.months
+        
+        total_periods = get_periods_count(agr_start, agr_end, target_freq_id)
+        
+        val, unit = parse_periodicity(target_freq_id)
+        periodicity_months = val if unit == 'm' else (val * 12 if unit == 'y' else 1)
+        
+        has_partial_periods = False
+        if duration_months % periodicity_months != 0:
+            has_partial_periods = True
+            
+        # Parse classes
+        participating_classes_ids = request.POST.getlist('participating_classes[]')
+        classes_data = []
+        mandatory_classes_count = 0
+        participating_classes_count = len(participating_classes_ids)
+        mandatory_target_sum = Decimal('0')
+        
+        for pc_id in participating_classes_ids:
+            pc = ProductClass.objects.get(id=pc_id)
+            is_mandatory = request.POST.get(f'is_mandatory_{pc_id}') == 'on'
+            req_target_str = request.POST.get(f'required_target_{pc_id}', '0')
+            try:
+                req_target = Decimal(req_target_str)
+            except:
+                req_target = Decimal('0')
+                
+            if is_mandatory:
+                mandatory_classes_count += 1
+                mandatory_target_sum += req_target
+                
+            classes_data.append({
+                'product_class': pc,
+                'is_mandatory': is_mandatory,
+                'required_target': req_target
+            })
+            
+        context = {
+            'customer': customer,
+            'benefit': benefit,
+            'agreement_name': agreement_name,
+            'agreement_type_display': agreement_type_display,
+            'start_date': start_date,
+            'end_date': end_date,
+            'global_target_amount': global_target_amount,
+            'target_freq': target_freq,
+            'penalty_amount': penalty_amount,
+            'penalty_freq': penalty_freq,
+            'growth_value': growth_value,
+            'growth_freq': growth_freq,
+            'duration_months': duration_months,
+            'total_periods': total_periods,
+            'has_partial_periods': has_partial_periods,
+            'periodicity_months': periodicity_months,
+            'classes_data': classes_data,
+            'mandatory_classes_count': mandatory_classes_count,
+            'participating_classes_count': participating_classes_count,
+            'non_mandatory_count': participating_classes_count - mandatory_classes_count,
+            'mandatory_target_sum': mandatory_target_sum
+        }
+        
+        return render(request, 'customers/customer_agreements/partials/preview_agreement_section.html', context)
+    return HttpResponse("")
 
 @login_required
 def validate_customer_agreement(request):
@@ -127,11 +260,18 @@ def validate_customer_agreement(request):
             'simulated_margin': simulated_margin,
             'min_margin': max_req_margin,
             'is_volatility_alert': is_volatility_alert,
-            'avg_monthly_margin': data.get('avg_monthly_margin'),
+            'avg_period_margin': data.get('avg_period_margin'),
+            'historic_margin': data.get('historic_margin'),
+            'avg_hist_period_margin': data.get('avg_hist_period_margin'),
+            'benefit_cost': data.get('benefit_cost'),
+            'simulated_total_periods': data.get('simulated_total_periods'),
             'total_profit': data.get('total_profit'),
             'total_net': data.get('total_net'),
             'past_cost': data.get('past_cost'),
-            'cme': data.get('cme')
+            'cme': data.get('cme'),
+            'has_partial_periods': data.get('has_partial_periods'),
+            'duration_months': data.get('duration_months'),
+            'periodicity_months': data.get('periodicity_months')
         }
         return render(request, 'customers/customer_agreements/partials/margin_alert.html', context)
         
@@ -176,9 +316,13 @@ def save_customer_agreement(request):
         
         try:
             agreement = service.create_customer_agreement(request.user, data, targets_data, margin_warning_accepted)
-            return HttpResponse('<script>window.location.href="/customers/customer_agreements/";</script>')
+            messages.success(request, f'Convenio "{agreement.agreement_name}" guardado exitosamente.')
+            return redirect('customers:customer_agreements')
         except Exception as e:
-            return HttpResponse(f"Error al guardar: {str(e)}", status=400)
+            import traceback
+            traceback.print_exc()
+            messages.error(request, f"Error al guardar el convenio: {str(e)}")
+            return redirect('customers:create_customer_agreement')
 
 
 @login_required
@@ -214,3 +358,5 @@ def customer_agreement_details(request, pk):
         return render(request, settings.PAGE_NOT_FOUND_TEMPLATE)
     
     return render(request, template, context)
+
+

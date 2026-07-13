@@ -191,26 +191,51 @@ class CustomerAgreementService:
         
         total_periods = get_periods_count(agr_start, agr_end, target_freq_id)
         cme = benefit.cost / total_periods
-        past_cost = cme * hist_months
-
-        # A) Margen Neto Acumulado Simulado
-        simulated_net_margin = ((total_profit - past_cost) / total_net) * Decimal('100.0')
-
-        # B) Margen Promedio Mensual Simulado
-        monthly_sales = sales.annotate(month=TruncMonth('sale_date')).values('month').annotate(
-            m_net=Sum('net_amount'),
-            m_profit=Sum('profit')
-        )
         
-        monthly_margins = []
-        for ms in monthly_sales:
-            m_net = ms['m_net'] or Decimal('0.00')
-            m_profit = ms['m_profit'] or Decimal('0.00')
-            if m_net > 0:
-                m_margin = ((m_profit - cme) / m_net) * Decimal('100.0')
-                monthly_margins.append(m_margin)
+        # Check partial periods
+        agr_delta = relativedelta(agr_end + timedelta(days=1), agr_start)
+        agr_duration_months = agr_delta.years * 12 + agr_delta.months
+        
+        val, unit = parse_periodicity(target_freq_id)
+        delta = get_relativedelta_for_period(val, unit)
+        
+        periodicity_months = val if unit == 'm' else (val * 12 if unit == 'y' else 1)
+        has_partial_periods = False
+        if agr_duration_months % periodicity_months != 0:
+            has_partial_periods = True
+            
+        hist_periods_count = get_periods_count(start_date, end_date, target_freq_id)
+        past_cost = cme * hist_periods_count
+
+        # A) Margen Neto Acumulado Simulado y Real
+        simulated_net_margin = ((total_profit - past_cost) / total_net) * Decimal('100.0')
+        historic_margin = (total_profit / total_net) * Decimal('100.0') if total_net > 0 else Decimal('0.00')
+
+        # B) Margen Promedio Simulado por Periodo (Dinámico)
+        current_start = start_date
+        period_margins = []
+        hist_period_margins = []
+        
+        while current_start <= end_date:
+            current_end = current_start + delta - relativedelta(days=1)
+            if current_end > end_date:
+                current_end = end_date
                 
-        avg_monthly_margin = sum(monthly_margins) / len(monthly_margins) if monthly_margins else Decimal('0.00')
+            period_sales = sales.filter(sale_date__gte=current_start, sale_date__lte=current_end)
+            p_agg = period_sales.aggregate(p_net=Sum('net_amount'), p_profit=Sum('profit'))
+            p_net = p_agg['p_net'] or Decimal('0.00')
+            p_profit = p_agg['p_profit'] or Decimal('0.00')
+            
+            if p_net > 0:
+                p_margin = ((p_profit - cme) / p_net) * Decimal('100.0')
+                p_hist = (p_profit / p_net) * Decimal('100.0')
+                period_margins.append(p_margin)
+                hist_period_margins.append(p_hist)
+                
+            current_start = current_start + delta
+                
+        avg_period_margin = sum(period_margins) / len(period_margins) if period_margins else Decimal('0.00')
+        avg_hist_period_margin = sum(hist_period_margins) / len(hist_period_margins) if hist_period_margins else Decimal('0.00')
 
         min_margins = CustomerClassMargin.objects.filter(
             customer_id=customer_id
@@ -219,11 +244,18 @@ class CustomerAgreementService:
             min_margins = min_margins.filter(product_class_id__in=product_class_ids)
             
         result_data = {
-            'avg_monthly_margin': avg_monthly_margin,
+            'avg_period_margin': avg_period_margin,
             'total_profit': total_profit,
             'total_net': total_net,
             'past_cost': past_cost,
-            'cme': cme
+            'cme': cme,
+            'has_partial_periods': has_partial_periods,
+            'duration_months': agr_duration_months,
+            'periodicity_months': periodicity_months,
+            'historic_margin': historic_margin,
+            'avg_hist_period_margin': avg_hist_period_margin,
+            'benefit_cost': benefit.cost,
+            'simulated_total_periods': total_periods
         }
 
         if not min_margins.exists():
@@ -232,7 +264,7 @@ class CustomerAgreementService:
         max_required_margin = max(m.min_margin_percentage for m in min_margins)
         
         if simulated_net_margin < max_required_margin:
-            if avg_monthly_margin >= max_required_margin:
+            if avg_period_margin >= max_required_margin:
                 return False, simulated_net_margin, max_required_margin, True, result_data # Alerta volatilidad
             return False, simulated_net_margin, max_required_margin, False, result_data
             

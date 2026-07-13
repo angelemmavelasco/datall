@@ -6,10 +6,16 @@
 {% block module_name %}Nuevo convenio comercial{% endblock %}
 
 {% block module_actions %}
-    <button type="submit" form="create-agreement-form" id="btn-save" class="hover:text-hover text-green-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+    <button type="button" 
+            id="btn-preview" 
+            hx-post="{% url 'customers:preview_customer_agreement' %}"
+            hx-include="#create-agreement-form"
+            hx-target="#preview-container"
+            class="hover:text-hover text-blue-700 transition-colors cursor-pointer shrink-0 flex gap-2 items-center"
+            onclick="setTimeout(() => { document.getElementById('preview-container').scrollIntoView({behavior: 'smooth'}) }, 200)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       <span>
-        Confirmar
+        Mostrar previo
       </span>
     </button>
 
@@ -39,15 +45,13 @@
           </div>
           <div class="dropdown-content absolute z-10 w-full mt-1 border border-border rounded bg-page flex-col hidden shadow-lg">
             <input type="text" placeholder="Buscar cliente..."
-                class="p-1 border-b border-border bg-page text-sm outline-none w-full"
-                onkeyup="filterCheckboxes(this, 'customer-list')">
+                name="q"
+                hx-get="{% url 'customers:search_customers_htmx' %}"
+                hx-trigger="keyup changed delay:500ms, search"
+                hx-target="#customer-list"
+                class="p-1 border-b border-border bg-page  outline-none w-full">
             <div id="customer-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1">
-                {% for customer in allowed_customers %}
-                <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
-                    <input type="radio" name="customer_id" value="{{ customer.id }}" required class="accent-strong" onchange="updateSelectedText(this)">
-                    <span class="searchable-text">{{ customer.id|upper }} {{ customer.name|title }}</span>
-                </label>
-                {% endfor %}
+                <div class=" text-muted p-2 text-center">Escribe para buscar...</div>
             </div>
           </div>
         </div>
@@ -87,11 +91,37 @@
         </div>
       </div>
 
-      <p class="text-title text-sm">Beneficio Comercial y Evaluación Financiera</p>
+      <div class="flex justify-start gap-1 items-center">
+        <p class="text-title text-sm">Beneficio Comercial y Evaluación Financiera</p>
+        <span class="custom-tooltip tooltip-right"
+        data-title="
+        Aquí se define el beneficio que se le otorga al cliente y se realiza una evaluación financiera del convenio.
+
+        La función de este apartado es conocer si el convenio es beneficioso para la empresa y si es viable su realización, todo a partir de la evaluación del margen de rentabilidad del cliente según un periodo seleccionado.
+        
+        "
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" 
+          width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        
+        </span>
+      </div>
       <hr class="border-border border">
 
       <div class="grid grid-cols-2 gap-2 items-center bg-container p-2 rounded">
-        <span class="text-title">Beneficio a Otorgar</span>
+        <div class="text-title flex items-center gap-1 justify-start">
+          Beneficio a otorgar
+          <span class="custom-tooltip tooltip-left"
+
+          data-title="
+          Selecciona el beneficio que se está conveniando. Los tipos de beneficios pueden ser un artículo (producto o servicio), descuento fijo (%) o descuento variable (%)
+          ">
+
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+          </span>
+
+        </div>
         <div class="relative w-full custom-select-dropdown">
           <div class="w-full bg-page border border-border rounded px-2 py-1 text-body cursor-pointer flex justify-between items-center h-8" onclick="toggleDropdown(this)">
             <span class="selected-text truncate">Seleccione...</span>
@@ -112,8 +142,20 @@
           </div>
         </div>
 
-        <span class="text-title">Periodo Base para Margen (Inicio - Fin)</span>
-        <div class="flex gap-2">
+        <div class="text-title flex items-center justify-start gap-1">
+          <span>    
+            Periodo de evaluación
+          </span>
+          <span class="custom-tooltip tooltip-left"
+          data-title="
+          Selecciona un periodo para ejecutar una consulta y evaluación al margen del cliente, esto es crucial para considerar si el convenio comercial realmente es redituable o si el costo del beneficio considerado reduce el margen por debajo del límite establecido para este cliente.
+          "
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+
+          </span>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2 w-full">
             <input type="month" id="eval_customer_start" name="eval_customer_start" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
             <input type="month" id="eval_customer_end" name="eval_customer_end" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
         </div>
@@ -126,14 +168,14 @@
                     hx-post="{% url 'customers:validate_customer_agreement' %}"
                     hx-include="#create-agreement-form"
                     hx-target="#margin-alert-container"
-                    class="bg-container border border-border text-strong p-2 rounded transition-colors w-50 flex items-center justify-center gap-1 group opacity-50 cursor-not-allowed pointer-events-none">
+                    class="bg-container border border-border text-strong p-2 rounded transition-colors w-fit flex items-center justify-center gap-1 group opacity-50 cursor-not-allowed pointer-events-none">
                 
                 <span class="htmx-indicator flex items-center justify-center gap-1 text-blue-600">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><path d="M10.1 2.18a9.93 9.93 0 0 1 3.8 0"/><path d="M17.6 3.71a9.95 9.95 0 0 1 2.69 2.7"/><path d="M21.82 10.1a9.93 9.93 0 0 1 0 3.8"/><path d="M20.29 17.6a9.95 9.95 0 0 1-2.7 2.69"/><path d="M13.9 21.82a9.94 9.94 0 0 1-3.8 0"/><path d="M6.4 20.29a9.95 9.95 0 0 1-2.69-2.7"/><path d="M2.18 13.9a9.93 9.93 0 0 1 0-3.8"/><path d="M3.71 6.4a9.95 9.95 0 0 1 2.7-2.69"/><circle cx="12" cy="12" r="1"/></svg>
                     <span class="animate-pulse">Validando margen...</span>
                 </span>
                 
-                <span class="flex items-center gap-1 group-[.htmx-request]:hidden">
+                <span class="flex items-center gap-1 group-[.htmx-request]:hidden ">
                     Validar margen
                 </span> 
             </button>
@@ -193,17 +235,23 @@
         </div>
       </div>
       
-      <div class="flex flex-col mt-4">
+      <div class="flex flex-col mt-4 gap-2">
         <div class="flex justify-between items-center mb-2">
             <p class="text-title text-sm">Objetivos por Clase de Producto</p>
         </div>
         <hr class="border-border border mb-2">
+
+        <ul class="text-xs text-title mb-2 list-disc pl-4 space-y-2 md:space-y-1">
+          <li><span class="text-body">Clase requerida:</span> Si una clase es obligatoria para la cuota global, su objetivo debe ser mayor a cero.</li>
+          <li><span class="text-body">Vínculo Requerida / Participa:</span> Toda clase con un objetivo mayor a cero debe estar marcada como "Participa" y "Requerida" al mismo tiempo.</li>
+          <li><span class="text-body">Solo Participa (Objetivo cero):</span> La clase no es obligatoria de forma individual, pero cualquier venta que sume en ella ayudará a cumplir la meta global.</li>
+        </ul>
         
         <div class="flex justify-between items-center mb-2 gap-4">
             <input type="text" id="classSearchInput" onkeyup="filterClassTable()" placeholder="Buscar clase..." class="w-1/2 bg-page border border-border rounded px-2 py-1 text-body focus:outline-none">
         </div>
         
-        <div id="target-validation-error" class="hidden mb-2 p-2 bg-red-100 border border-red-400 text-red-700 text-sm rounded font-semibold">
+        <div id="target-validation-error" class="hidden mb-2 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
             Error: La suma de las objetivos por clase supera la objetivo Global.
         </div>
 
@@ -212,9 +260,11 @@
               <thead class="sticky top-0 bg-container shadow-sm z-10">
                   <tr class="text-title  border-b border-border">
                       <th class="p-2">Clase de Producto</th>
-                      <th class="p-2 text-center flex items-center justify-center gap-2">
+                      <th class="p-2 text-center">
+                        <div class="flex items-center justify-center gap-2">
                           Participa
                           <input type="checkbox" onchange="selectAllParticipating(this.checked)" class="accent-strong cursor-pointer" title="Seleccionar/Deseleccionar todas">
+                        </div>
                       </th>
                       <th class="p-2 text-center">
                           <div class="flex items-center justify-center gap-2">
@@ -222,7 +272,7 @@
                               <input type="checkbox" onchange="selectAllMandatory(this.checked)" class="accent-strong cursor-pointer" title="Seleccionar/Deseleccionar todas">
                           </div>
                       </th>
-                      <th class="p-2">objetivo ($)</th>
+                      <th class="p-2">Objetivo ($)</th>
                   </tr>
               </thead>
               <tbody id="class-targets-body">
@@ -245,6 +295,9 @@
         </div>
       </div>
   </form>
+
+  <!-- Contenedor para el resumen previo antes de guardar -->
+  <div id="preview-container" class="mt-4"></div>
 
 <script>
     function filterClassTable() {
@@ -282,21 +335,32 @@
         const globalTarget = parseFloat(globalTargetInput.value) || 0;
         
         let classTargetSum = 0;
+        let hasMandatoryWithoutTarget = false;
         
         const rows = document.querySelectorAll("#class-targets-body .class-row");
         rows.forEach(row => {
-            const participate = row.querySelector(".participate-checkbox").checked;
-            if (participate) {
-                const targetInput = row.querySelector(".target-input");
-                classTargetSum += parseFloat(targetInput.value) || 0;
+            const participate = row.querySelector(".participate-checkbox");
+            const mandatory = row.querySelector(".mandatory-checkbox");
+            const targetInput = row.querySelector(".target-input");
+            let val = parseFloat(targetInput.value) || 0;
+
+            if (participate.checked) {
+                classTargetSum += val;
+            }
+            
+            if (mandatory.checked && val <= 0) {
+                hasMandatoryWithoutTarget = true;
+                targetInput.classList.add('border-red-500');
+            } else {
+                targetInput.classList.remove('border-red-500');
             }
         });
         
         const errorDiv = document.getElementById("target-validation-error");
-        const submitBtn = document.getElementById("btn-save");
+        const submitBtn = document.getElementById("btn-preview");
         const validateBtn = document.getElementById("validate-margin-btn");
         
-        const hasCustomer = document.querySelector('input[name="customer_id"]:checked') !== null;
+        const hasCustomer = document.querySelector('input[name="customer_id"]:checked') !== null; 
         const hasBenefit = document.querySelector('input[name="benefit_id"]:checked') !== null;
         const hasEvalStart = document.querySelector('input[name="eval_customer_start"]').value !== '';
         const hasEvalEnd = document.querySelector('input[name="eval_customer_end"]').value !== '';
@@ -306,6 +370,16 @@
         const isMarginReady = hasCustomer && hasBenefit && hasEvalStart && hasEvalEnd && hasStart && hasEnd && hasFreq;
 
         if (classTargetSum > globalTarget) {
+            errorDiv.innerHTML = "Error: La suma de los objetivos por clase supera el objetivo Global.";
+            errorDiv.classList.remove("hidden");
+            if (submitBtn) submitBtn.disabled = true;
+            if (validateBtn) {
+                validateBtn.disabled = true;
+                validateBtn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                validateBtn.classList.remove('hover:bg-hover', 'cursor-pointer');
+            }
+        } else if (hasMandatoryWithoutTarget) {
+            errorDiv.innerHTML = "Error: Ha marcado una clase como requerida pero el objetivo es 0.";
             errorDiv.classList.remove("hidden");
             if (submitBtn) submitBtn.disabled = true;
             if (validateBtn) {
@@ -346,8 +420,35 @@
             }
         });
         
-        document.querySelectorAll('input[name="customer_id"]').forEach(el => el.addEventListener("change", validateClassTargets));
         document.querySelectorAll('input[name="benefit_id"]').forEach(el => el.addEventListener("change", validateClassTargets));
+
+        // Auto-enforce logic for class rows
+        document.querySelectorAll("#class-targets-body .class-row").forEach(row => {
+            const participate = row.querySelector(".participate-checkbox");
+            const mandatory = row.querySelector(".mandatory-checkbox");
+            const targetInput = row.querySelector(".target-input");
+
+            targetInput.addEventListener("keyup", () => {
+                let val = parseFloat(targetInput.value) || 0;
+                if (val > 0) {
+                    mandatory.checked = true;
+                    participate.checked = true;
+                }
+                validateClassTargets();
+            });
+
+            mandatory.addEventListener("change", () => {
+                if (mandatory.checked) {
+                    participate.checked = true;
+                    if ((parseFloat(targetInput.value) || 0) <= 0) {
+                        targetInput.focus();
+                    }
+                } else {
+                    targetInput.value = "0";
+                }
+                validateClassTargets();
+            });
+        });
 
         validateClassTargets(); // initial state check
     });

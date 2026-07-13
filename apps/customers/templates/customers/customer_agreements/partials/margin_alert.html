@@ -19,21 +19,34 @@
     </p>
 {% endif %}
 
-    <div class="grid grid-cols-2 gap-4 mt-4 text-sm font-medium bg-white/50 p-3 rounded text-black">
+{% if has_partial_periods %}
+    <p class="mt-4 text-sm text-yellow-800 bg-yellow-100 p-3 rounded border border-yellow-300">
+        <strong>Atención:</strong> La duración elegida no encaja de forma exacta con los periodos de revisión. El contrato dura {{ duration }} meses y la revisión es cada {{ periodicity }} meses. El último periodo será parcial, lo que concentra el mismo costo amortizado en menos tiempo para ese ciclo.
+    </p>
+{% endif %}
+
+    <div class="grid grid-cols-3 gap-4 mt-4 text-sm font-medium bg-white/50 p-3 rounded text-black">
         <div>
-            <p class="text-xs text-gray-500  tracking-wider  mb-1">Métricas de Requisito</p>
+            <p class="text-xs text-gray-500 tracking-wider mb-1">Métricas de Requisito</p>
             <ul class="list-disc ml-4">
                 <li>Margen mínimo exigido: {{ min_margin|default:0|floatformat:2 }}%</li>
-                <li>Margen neto simulado: {{ simulated_margin|floatformat:2|intcomma }}%</li>
-                <li>Margen promedio mensual simulado: {{ avg_monthly_margin|floatformat:2|intcomma }}%</li>
+                <li>Margen total del periodo: {{ historic_margin|floatformat:2|intcomma }}%</li>
+                <li>Margen promedio del periodo: {{ avg_hist_period_margin|floatformat:2|intcomma }}%</li>
             </ul>
         </div>
         <div>
-            <p class="text-xs text-gray-500  tracking-wider  mb-1">Impacto del Beneficio</p>
+            <p class="text-xs text-gray-500 tracking-wider mb-1">Impacto del Beneficio</p>
             <ul class="list-disc ml-4">
-                <li>Costo mensual equivalente: ${{ cme|floatformat:2|intcomma }}</li>
-                <li>Impacto total en histórico: ${{ past_cost|floatformat:2|intcomma }}</li>
-                <li>Venta neta evaluada: ${{ total_net|floatformat:2|intcomma }}</li>
+                <li>Costo total del beneficio: ${{ benefit_cost|floatformat:2|intcomma }}</li>
+                <li>Número de periodos: {{ simulated_total_periods }}</li>
+                <li>Amortización: ${{ cme|floatformat:2|intcomma }}</li>
+            </ul>
+        </div>
+        <div>
+            <p class="text-xs text-gray-500 tracking-wider mb-1">Métricas Simuladas</p>
+            <ul class="list-disc ml-4">
+                <li>Margen promedio simulado: {{ avg_period_margin|floatformat:2|intcomma }}%</li>
+                <li>Margen neto simulado: {{ simulated_margin|floatformat:2|intcomma }}%</li>
             </ul>
         </div>
     </div>

@@ -284,7 +284,7 @@
         <table class="w-full table-fixed text-left border-collapse">
             <thead>
             <tr class="border-b border-border">
-                <th class="w-20 p-1 text-center text-title">Folio</th>
+                <th class="w-30 p-1 text-center text-title">Folio</th>
                 <th class="w-40 p-1 text-center text-title">Cliente</th>
                 <th class="w-20 p-1 text-center text-title">Ruta</th>
                 <th class="w-40 p-1 text-center text-title">Beneficio</th>
@@ -306,7 +306,7 @@
                         </span>
                     </a>
                 </td>
-                <td class="p-2 truncate text-center">{{ agreement.customer.id|upper }} {{ agreement.customer.name|title }}</td>
+                <td class="p-2 truncate text-left">{{ agreement.customer.id|upper }} {{ agreement.customer.name|title }}</td>
                 <td class="p-2 truncate text-center">{{ agreement.route.id|upper }}</td>
                 <td class="p-2 truncate text-left">{% if agreement.benefit %}{{ agreement.benefit.name|default:"-"|title }}{% else %}-{% endif %}</td>
                 <td class="p-2 truncate text-center">{{ agreement.get_agreement_type_display|default:"-"|title }}</td>
