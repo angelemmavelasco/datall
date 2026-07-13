@@ -2,11 +2,15 @@ from django.shortcuts import render, HttpResponse, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from apps.core.utils import get_allowed_routes_for_user, get_allowed_warehouses_for_user
-from apps.core.models import Region, Customer, CommercialBenefit, Periodicity, ProductClass, CustomerAgreement
+from apps.core.models import Region, Customer, CommercialBenefit, Periodicity, ProductClass, CustomerAgreement, SystemModule
 from apps.customers.services.customer_agreements.customer_agreements import CustomerAgreementService
 from apps.customers.services.customers_crud.customers_crud import CustomerCrud
+from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
+from apps.customers.services.customer_agreements.customer_agreements import parse_month_input, get_periods_count, get_relativedelta_for_period, parse_periodicity
+from dateutil.relativedelta import relativedelta
+from datetime import timedelta
 
-from datetime import datetime, date
+from datetime import datetime, date,timedelta
 from decimal import Decimal
 import uuid
 from django.conf import settings
@@ -73,6 +77,15 @@ def customer_agreements(request):
         # agreements
         'agreements': agreements,
     }
+    
+    module = SystemModule.objects.filter(url_name='customers:customer_agreements').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description='visualización del módulo de convenios comerciales',
+        metadata={'filters': filters if filters else {}}
+    )
+    
     return render(request, template, context)
 
 @login_required
@@ -97,6 +110,13 @@ def create_customer_agreement(request):
     if request.method == 'POST':
         pass
 
+    module = SystemModule.objects.filter(url_name='customers:customer_agreements').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description='visualización del formulario para crear un convenio comercial'
+    )
+
     return render(request, template, context)
 
 @login_required
@@ -113,6 +133,13 @@ def search_customers_htmx(request):
     else:
         crud = CustomerCrud()
         customers = crud.read(allowed_routes, query_text=query).order_by('name')[:50]
+        
+    module = SystemModule.objects.filter(url_name='customers:customer_agreements').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description=f'búsqueda de clientes para convenio: "{query}"'
+    )
         
     return render(request, 'customers/customer_agreements/partials/customer_search_results.html', {
         'allowed_customers': customers
@@ -158,10 +185,7 @@ def preview_customer_agreement(request):
         agr_type_dict = dict(CustomerAgreement.TypesChoices.choices)
         agreement_type_display = agr_type_dict.get(agreement_type, agreement_type)
         
-        # Calculate duration and periods
-        from apps.customers.services.customer_agreements.customer_agreements import parse_month_input, get_periods_count, get_relativedelta_for_period, parse_periodicity
-        from dateutil.relativedelta import relativedelta
-        from datetime import timedelta
+        #calculate duration and periods
         
         agr_start = parse_month_input(start_date)
         agr_end = parse_month_input(end_date, is_end=True)
@@ -227,6 +251,13 @@ def preview_customer_agreement(request):
             'mandatory_target_sum': mandatory_target_sum
         }
         
+        module = SystemModule.objects.filter(url_name='customers:customer_agreements').first()
+        ActivityLogger.log_read(
+            user=request.user,
+            module=module,
+            description=f'visualización de proyección de convenio para cliente {customer_id}'
+        )
+        
         return render(request, 'customers/customer_agreements/partials/preview_agreement_section.html', context)
     return HttpResponse("")
 
@@ -254,6 +285,13 @@ def validate_customer_agreement(request):
             customer_id, benefit_id, product_class_ids, eval_start, eval_end, agreement_start, agreement_end, target_freq_id
         )
         print(is_valid)
+        
+        module = SystemModule.objects.filter(url_name='customers:customer_agreements').first()
+        ActivityLogger.log_read(
+            user=request.user,
+            module=module,
+            description=f'validación de margen de convenio para cliente {customer_id}'
+        )
         
         context = {
             'is_valid': is_valid,
@@ -316,6 +354,15 @@ def save_customer_agreement(request):
         
         try:
             agreement = service.create_customer_agreement(request.user, data, targets_data, margin_warning_accepted)
+            
+            module = SystemModule.objects.filter(url_name='customers:customer_agreements').first()
+            ActivityLogger.log_create(
+                user=request.user,
+                module=module,
+                obj=agreement,
+                description=f'creación de convenio comercial: {agreement.agreement_name}'
+            )
+            
             messages.success(request, f'Convenio "{agreement.agreement_name}" guardado exitosamente.')
             return redirect('customers:customer_agreements')
         except Exception as e:
@@ -334,6 +381,14 @@ def evaluate_agreements_action(request):
             periods_count, agreements_count = service.evaluate_all_pending_periods()
             print('periods_count', periods_count)
             print('agreements_count', agreements_count)
+            
+            module = SystemModule.objects.filter(url_name='customers:customer_agreements').first()
+            ActivityLogger.log_update(
+                user=request.user,
+                module=module,
+                description=f'evaluación masiva de {periods_count} periodos en {agreements_count} convenios comerciales'
+            )
+            
             messages.success(request, f'Evaluación completada: Se actualizaron {periods_count} periodos correspondientes a {agreements_count} convenios.')
 
             return HttpResponse('<script>window.location.reload();</script>')
@@ -356,6 +411,14 @@ def customer_agreement_details(request, pk):
         
         if agreement is None:
             return render(request, settings.ACCESS_DENIED_TEMPLATE)
+            
+        module = SystemModule.objects.filter(url_name='customers:customer_agreements').first()
+        ActivityLogger.log_read(
+            user=request.user,
+            module=module,
+            obj=agreement,
+            description=f'visualización de detalles de convenio {pk}'
+        )
             
         context['agreement'] = agreement
         
