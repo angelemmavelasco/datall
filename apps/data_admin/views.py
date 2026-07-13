@@ -187,7 +187,7 @@ def user_create(request):
     ActivityLogger.log_read(
         user=request.user, 
         module=module, 
-        description=f'visualizacion de la creacion del usuario'
+        description=f'visualizacion de vista de creacion de usuario'
     )
     return render(request, TEMPLATE, context)
 
@@ -339,6 +339,14 @@ def uploads(request):
         'filter_actions': [{'id': a[0], 'name': a[1]} for a in DataHistory.Action.choices if a[0] in [DataHistory.Action.IMPORT, DataHistory.Action.EXPORT]],
     }
     
+    module = SystemModule.objects.filter(url_name='data_admin:uploads').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description='visualización del historial de subidas y descargas',
+        metadata={'filters': filters if filters else {}}
+    )
+
     if request.htmx:
         return render(request, 'data_admin/uploads/partials/uploads_rows.html', context)
     
@@ -554,6 +562,12 @@ def references(request):
         context = {
             'email': settings.SUPPORT_FROM_EMAIL,
         }
+        module = SystemModule.objects.filter(url_name='data_admin:references').first()
+        ActivityLogger.log_read(
+            user=user,
+            module=module,
+            description='Acceso denegado: intento de visualizar el módulo de referencias'
+        )
         return render(request, settings.ACCESS_DENIED_TEMPLATE, context)
     from apps.core.models import Reference
     all_refs = Reference.objects.select_related('module', 'content_type').all().order_by('module__name', 'content_type__model', 'key')
@@ -580,6 +594,13 @@ def references(request):
         'route_permissions': route_permissions,
     }
 
+    module = SystemModule.objects.filter(url_name='data_admin:references').first()
+    ActivityLogger.log_read(
+        user=user,
+        module=module,
+        description='visualización del módulo de referencias de la aplicación'
+    )
+
     return render(request, template, context)
 
 
@@ -595,6 +616,13 @@ def novelties(request):
     context = {
         'novelties': novelties_qs,
     }
+    
+    module = SystemModule.objects.filter(url_name='data_admin:novelties').first()
+    ActivityLogger.log_read(
+        user=user,
+        module=module,
+        description='visualización del módulo de novedades y actualizaciones'
+    )
     
     return render(request, template, context)
 
