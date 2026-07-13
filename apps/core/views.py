@@ -5,6 +5,8 @@ from django.http import HttpResponse
 from django.contrib.auth.views import PasswordChangeView
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import login_required
+from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
+from apps.core.models import SystemModule
 
 def custom_csrf_failure(request, reason=""):
     messages.warning(request, "Tu sesión expiró por inactividad. Por favor, vuelve a ingresar.")
@@ -37,6 +39,14 @@ class CustomPasswordChangeView(PasswordChangeView):
 
 @login_required
 def support(request):
+    
+    module = SystemModule.objects.filter(url_name='core:support').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description="visualización del manual de usuario / soporte."
+    )
+    
     template = "docs/user_docs.html"
     return render(request, template)
     
