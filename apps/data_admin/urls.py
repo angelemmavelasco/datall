@@ -14,6 +14,7 @@ urlpatterns = [
 
 
     path('activity/', activity, name='activity'),
+    path('activity/<int:pk>/', activity_details, name='activity_details'),
 
     path('references/', references, name='references'),
 

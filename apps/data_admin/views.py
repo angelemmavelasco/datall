@@ -16,7 +16,7 @@ from django.core.paginator import Paginator
 
 from apps.core.models import Novelty
 
-from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
+from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud, ActivityLogger
 
 from apps.customers.services.customers_crud.customer_bulk import CustomersBulk
 
@@ -550,6 +550,31 @@ def activity(request):
         return render(request, 'data_admin/activity/partials/activity_rows.html', context)
     
     return render(request, TEMPLATE, context)
+
+@login_required
+def activity_details(request, pk):
+    template = 'data_admin/activity/activity_details.html'
+    
+    crud = DataHistoryCrud()
+    history = crud.get_history(history_id=pk)
+    
+    if not history:
+        messages.error(request, "El registro de actividad no existe o no se pudo cargar.")
+        return redirect('data_admin:activity')
+        
+    context = {
+        'history': history,
+    }
+    
+    module = SystemModule.objects.filter(url_name='data_admin:activity_details').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        obj=history,
+        description=f'visualización de detalle de actividad de sistema {history.id}'
+    )
+    
+    return render(request, template, context)
 
 
 
