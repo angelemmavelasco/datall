@@ -201,7 +201,7 @@ class CustomerAgreementService:
         
         periodicity_months = val if unit == 'm' else (val * 12 if unit == 'y' else 1)
         has_partial_periods = False
-        if agr_duration_months % periodicity_months != 0:
+        if hist_months % periodicity_months != 0:
             has_partial_periods = True
             
         hist_periods_count = get_periods_count(start_date, end_date, target_freq_id)
@@ -250,7 +250,7 @@ class CustomerAgreementService:
             'past_cost': past_cost,
             'cme': cme,
             'has_partial_periods': has_partial_periods,
-            'duration_months': agr_duration_months,
+            'duration_months': hist_months,
             'periodicity_months': periodicity_months,
             'historic_margin': historic_margin,
             'avg_hist_period_margin': avg_hist_period_margin,

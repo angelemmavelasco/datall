@@ -21,7 +21,7 @@
 
 {% if has_partial_periods %}
     <p class="mt-4 text-sm text-yellow-800 bg-yellow-100 p-3 rounded border border-yellow-300">
-        <strong>Atención:</strong> La duración elegida no encaja de forma exacta con los periodos de revisión. El contrato dura {{ duration }} meses y la revisión es cada {{ periodicity }} meses. El último periodo será parcial, lo que concentra el mismo costo amortizado en menos tiempo para ese ciclo.
+        <strong>Atención:</strong> La duración elegida no encaja de forma exacta con los periodos de revisión. El periodo de validación dura {{ duration_months }} meses y la revisión es cada {{ periodicity_months }} meses. El último periodo será parcial, lo que concentra el mismo costo amortizado en menos tiempo para ese ciclo.
     </p>
 {% endif %}
 
