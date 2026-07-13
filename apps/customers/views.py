@@ -328,7 +328,7 @@ def save_customer_agreement(request):
 @login_required
 def evaluate_agreements_action(request):
     if request.method == 'POST':
-        print('evluation action')
+        print('evaluation action')
         service = CustomerAgreementService()
         try:
             periods_count, agreements_count = service.evaluate_all_pending_periods()
@@ -338,6 +338,8 @@ def evaluate_agreements_action(request):
 
             return HttpResponse('<script>window.location.reload();</script>')
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return HttpResponse(f"Error en evaluación: {str(e)}", status=400)
 
 
