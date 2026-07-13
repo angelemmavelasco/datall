@@ -198,6 +198,58 @@ class DataHistory(models.Model):
         return f"{self.action} en {self.content_type} por {self.created_by}"
 
 
+class AppVersion(models.Model):
+    class VersionType(models.TextChoices):
+        MAJOR = 'MAJOR', 'Mayor'
+        MINOR = 'MINOR', 'Menor'
+        PATCH = 'PATCH', 'Parche'
+
+    version_number = models.CharField(
+        max_length=50, 
+        unique=True, 
+        verbose_name="Version number",
+        help_text="Example: 1.0.0, 2.1.4-beta"
+    )
+    release_type = models.CharField(
+        max_length=10,
+        choices=VersionType.choices,
+        default=VersionType.PATCH,
+        verbose_name="Release type"
+    )
+    
+    release_date = models.DateField(
+        verbose_name="Release date",
+        help_text="Release date"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    title = models.CharField(
+        max_length=200, 
+        blank=True, 
+        verbose_name="Short Title", 
+        help_text="Example: Security update or UI redesign"
+    )
+
+    description = models.TextField(
+        verbose_name="Details",
+        help_text="Describe the changes detailed. You can use Markdown format."
+    )
+
+    is_published = models.BooleanField(
+        default=False, 
+        verbose_name="Published",
+        help_text="If checked, it will be displayed in the public documentation."
+    )
+
+    class Meta:
+        ordering = ['-release_date', '-id']
+        verbose_name = "App Version"
+        verbose_name_plural = "App Versions"
+
+    def __str__(self):
+        return f"v{self.version_number} ({self.release_date})"
+
 class Novelty(models.Model):
     title = models.CharField(max_length=255)
     content = models.TextField()

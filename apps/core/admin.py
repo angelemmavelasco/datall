@@ -8,7 +8,8 @@ from apps.core.models import (
     CommissionProfile, CommissionTier, RouteCommissionSetup,
     RouteCommissionException, CommissionSettlement, Novelty,
     CustomerClassMargin, CommercialBenefit, CustomerAgreement, 
-    AgreementClassTarget, AgreementEvaluationPeriod, AgreementPeriodClassResult
+    AgreementClassTarget, AgreementEvaluationPeriod, AgreementPeriodClassResult,
+    AppVersion
 )
 from datetime import date
 from django.db.models import Q
@@ -213,6 +214,13 @@ class NoveltyAdmin(admin.ModelAdmin):
             'fields': ('is_active', 'created_at')
         }),
     )
+
+@admin.register(AppVersion)
+class AppVersionAdmin(admin.ModelAdmin):
+    list_display = ('version_number', 'release_date', 'release_type', 'is_published', 'title')
+    search_fields = ('version_number', 'title', 'description')
+    list_filter = ('release_type', 'is_published', 'release_date')
+    list_editable = ('is_published',)
 
 @admin.register(CustomerClassMargin)
 class CustomerClassMarginAdmin(admin.ModelAdmin):
