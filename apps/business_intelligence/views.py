@@ -19,6 +19,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 
+from django.conf import settings
+
 
 from apps.business_intelligence.services.sales_dashboard.sales_dashboard import SalesDashboard
 from apps.business_intelligence.services.customers_kpis.customers_kpis import CustomersKpis, CustomerProfileBuilder
@@ -44,12 +46,9 @@ from apps.data_admin.services.data_history.data_history_crud import ActivityLogg
 
 @login_required
 def sales_dashboard(request):
+
     template = 'business_intelligence/sales_dashboard/sales_dashboard.html'
-    print(request.user)
-    print(request.user.groups.all())
     allowed_routes = get_allowed_routes_for_user(request.user)
-    print(allowed_routes)
-    
 
     warehouses = request.GET.getlist('warehouses')
     sale_warehouses = request.GET.getlist('sale_warehouses')
@@ -140,6 +139,7 @@ def sales_dashboard(request):
         'selected_date_end': date_end,
     }
 
+    # logger
     module = SystemModule.objects.filter(url_name='business_intelligence:sales_dashboard').first()
     metadata = filters if filters else None
     ActivityLogger.log_read(
@@ -157,7 +157,6 @@ def sales_dashboard(request):
 @login_required
 def routes_kpis(request):
     template = 'business_intelligence/routes_kpis/routes_kpis.html'
-    
     allowed_routes = get_allowed_routes_for_user(request.user)
     
     today = date.today()
@@ -192,21 +191,24 @@ def routes_kpis(request):
         'selected_route': str(selected_route_id) if selected_route_id else '',
     }
 
+
+    # logger
     module = SystemModule.objects.filter(url_name='business_intelligence:routes_kpis').first()
     metadata = {}
+    filters = {}
     if date_start:
-        metadata['date_start'] = date_start
+        filters['date_start'] = date_start
     if date_end:
-        metadata['date_end'] = date_end
+        filters['date_end'] = date_end
     if selected_route_id:
-        metadata['selected_route'] = selected_route_id
+        filters['selected_route'] = selected_route_id
 
     ActivityLogger.log_read(
         user=request.user,
         module=module,
         description='visualización de kpis de rutas',
         metadata={
-            'filters': metadata if metadata else {}
+            'filters': filters if filters else {}
         }
     )
 
@@ -229,7 +231,6 @@ def products_kpis(request):
 def collections(request):
     user = request.user
     template = 'business_intelligence/collections/collections.html'
-    
     allowed_routes = get_allowed_routes_for_user(user)
 
     #valiodate which warehouses the user has access to
@@ -318,6 +319,17 @@ def collections(request):
         'collections': collections_data,
         'kpis': kpis
     }
+
+    module = SystemModule.objects.filter(url_name='business_intelligence:collections').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        obj=None,
+        description='visualización del dashboard de cobranza',
+        metadata={
+            'filters': filters if filters else {}
+        }
+    )
 
     if request.htmx:
         return render(request, 'business_intelligence/collections/partials/collections_rows.html', context)
@@ -513,6 +525,7 @@ async def export_customers_kpis_data(request):
 @login_required
 def customer_kpis(request, customer_id):
     template = 'business_intelligence/customers_kpis/customer_kpis.html'
+    module = SystemModule.objects.filter(url_name='business_intelligence:customers_kpis').first()
 
     customer_base = get_object_or_404(
         Customer.objects.select_related('customer_type', 'route'), 
@@ -521,7 +534,11 @@ def customer_kpis(request, customer_id):
     allowed_routes = get_allowed_routes_for_user(request.user)
 
     if not allowed_routes.filter(id=customer_base.route_id).exists():
-        from django.conf import settings
+        ActivityLogger.log_error(
+            user=request.user,
+            module=module,
+            error_details=f'Acceso denegado: Intento de visualizar KPIs del cliente {customer_id}'
+        )
         return render(request, settings.ACCESS_DENIED_TEMPLATE)
 
     if request.method == 'POST':
@@ -531,6 +548,13 @@ def customer_kpis(request, customer_id):
             new_val = not customer_base.opinion_leader
             try:
                 crud.update(customer_id, allowed_routes, opinion_leader=new_val)
+                ActivityLogger.log_update(
+                    user=request.user,
+                    obj=customer_base,
+                    module=module,
+                    description='actualización de estatus de líder de opinión',
+                    changes={'opinion_leader': new_val}
+                )
             except Exception as e:
                 pass
             
@@ -597,7 +621,7 @@ def customer_kpis(request, customer_id):
         user=request.user,
         obj=customer_with_kpis,
         module=module,
-        description=f'Visualización de KPIs del cliente {customer_with_kpis.name.title()}',    
+        description=f'visualización de KPIs del cliente {customer_with_kpis.name.title()}',    
         metadata={
             'filters': metadata if metadata else {}
         }
@@ -661,7 +685,7 @@ def commercial_risk(request):
         user=request.user,
         obj=None,
         module=module,
-        description='Visualización de riesgo comercial',
+        description='visualización de riesgo comercial',
         metadata={
             'filters': metadata if metadata else {}
         }
@@ -791,7 +815,6 @@ def target_scope(request):
     return render(request, template, context)
 
 
-
 @login_required
 async def export_target_scope_data(request):
     
@@ -824,6 +847,19 @@ async def export_target_scope_data(request):
 
     service = TargetScopeService(allowed_routes, filters)
     excel_data = await sync_to_async(service.export_report_data)()
+
+    @sync_to_async
+    def log_export_action():
+        module = SystemModule.objects.filter(url_name='business_intelligence:target_scope').first()
+        ActivityLogger.log_download(
+            user=user,
+            obj=None,
+            module=module,
+            description='exportación de alcance de objetivos',
+            metadata={'filters': filters if filters else {}}
+        )
+    
+    await log_export_action()
 
     response = HttpResponse(
         excel_data, 
@@ -1203,6 +1239,14 @@ def sale_targets(request):
         'selected_warehouses': warehouses,
     }
 
+    module = SystemModule.objects.filter(url_name='business_intelligence:sale_targets').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description='visualización de objetivos de venta',
+        metadata={'filters': filters if filters else {}}
+    )
+
     if request.htmx:
         return render(request, 'sales/sale_targets/partials/sale_targets_rows.html', context)
 
@@ -1263,47 +1307,13 @@ def sale_targets_export(request):
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename=objetivos_venta.xlsx'
     wb.save(response)
+
+    module = SystemModule.objects.filter(url_name='business_intelligence:sale_targets').first()
+    ActivityLogger.log_download(
+        user=request.user,
+        module=module,
+        description='exportación de objetivos de venta',
+        metadata={'filters': filters if filters else {}}
+    )
+
     return response
-
-
-
-summary = {
-    # solo se muestra la info de la gerenci qeu se selecciono
-    'gerencia': 'warehouse.name (de la cual se tiene el filtro activo)',
-    'metricas_promedio_mensuales': {
-        'venta_promedio': 0,
-        'alcance_promedio': 0,
-        'margen_promedio': 0,
-        'clientes_nuevos_promedio': 0,
-        'cuentas_por_cobrar_promedio': 0,
-        'convenios_promedio': 0,
-
-    },
-   'metricas_mensuales': {
-        'route.id - route.name': {
-            'enero': {
-                'alcance': 0,
-                'margen': 0,
-                'cuentas_por_cobrar': 0,
-                'convenios': 0,
-                'venta': 0,
-                'desempeño_por_clase': {
-                    'diamond': {
-                        'objetivo': 0,
-                        'venta': 0,
-                        'alcance': 0,
-                    },
-                    'diamond naturals': {
-                        'objetivo': 0,
-                        'venta': 0,
-                        'alcance': 0,
-                    }, 
-                    # ... y asi con todas las clase de productos. Ojo, se deben mostrar todas las clases auqnue tengan objetivo o venta 0
-                }
-                # ... y asi con todos los meses (hasta la fecha, es decir, a menos que el usuario seleccione años previos, solo se muestran los datos hasta el mes en curso)
-
-            }
-        }
-   } 
-
-}

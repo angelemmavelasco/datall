@@ -204,6 +204,26 @@ class ActivityLogger:
         )
 
     @classmethod
+    def log_update(
+        cls, *,
+        user = None,
+        obj=None,
+        module = None,
+        description='actualización de registro',
+        changes=None,
+        result=DataHistory.Result.SUCCESS
+    ):
+        return cls._create_log(
+            action=DataHistory.Action.UPDATE, 
+            user=user, 
+            module=module, 
+            obj=obj, 
+            description=description,
+            changes=changes,
+            result=result
+        )
+
+    @classmethod
     def log_error(
         cls, * ,
         user = None,
