@@ -31,7 +31,7 @@
           <select name="content_type_id" class="w-full bg-page border border-border rounded px-2 py-1 text-body focus:outline-none" required>
             <option value="">Seleccione un modelo...</option>
             {% for ct in content_types %}
-              <option value="{{ ct.id }}">{{ ct.model|title }}</option>
+              <option value="{{ ct.id }}">{{ ct.nombre_es }}</option>
             {% endfor %}
           </select>
         </div>

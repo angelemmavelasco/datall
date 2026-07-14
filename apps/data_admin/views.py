@@ -14,13 +14,16 @@ from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 
 
-from apps.core.models import Novelty
+from apps.core.models import Novelty, DataHistory
 
 from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud, ActivityLogger
 
 from apps.customers.services.customers_crud.customer_bulk import CustomersBulk
 
 from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
+
+from django.db.models import Case, When, Value, CharField
+
 
 
 @login_required
@@ -299,7 +302,7 @@ def group_create(request):
 def uploads(request):
     TEMPLATE = 'data_admin/uploads/uploads.html'
     
-    # Filters
+    #filters
     query_text = request.GET.get('query_text')
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
@@ -357,9 +360,6 @@ def uploads(request):
 @login_required
 def upload_create(request):
     TEMPLATE = 'data_admin/uploads/upload_create.html'
-    
-    from apps.core.models import DataHistory
-    from apps.data_admin.services.data_history.data_history_crud import DataHistoryCrud
 
     if request.method == 'POST':
         content_type_id = request.POST.get('content_type_id')
@@ -500,7 +500,19 @@ def upload_create(request):
             messages.warning(request, msg)
             return redirect('data_admin:upload_create')
 
-    content_types = ContentType.objects.all().order_by('model')
+    
+
+    content_types = ContentType.objects.filter(
+        model__in=['product', 'customer', 'saletransaction', 'accountsreceivable']
+    ).annotate(
+        nombre_es=Case(
+            When(model='product', then=Value('Productos')),
+            When(model='customer', then=Value('Clientes')),
+            When(model='saletransaction', then=Value('Transacciones de Venta')),
+            When(model='accountsreceivable', then=Value('Cuentas por Cobrar')),
+            output_field=CharField(),
+        )
+    ).order_by('nombre_es')
 
     context = {
         'content_types': content_types,
