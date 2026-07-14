@@ -10,13 +10,14 @@
         <input type="hidden" name="action" id="action-type" value="">
         <input type="hidden" name="action_month" id="action-month" value="{{ filters.month }}">
         <input type="hidden" name="action_year" id="action-year" value="{{ filters.year }}">
+        <input type="hidden" name="custom_emails" id="custom-emails-hidden" value="">
 
         <button type="button" onclick="submitAction('recalculate')" id="btn-recalculate" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-1 group">
             <div class="hidden action-icon text-blue-500 hover:text-hover transition-colors flex items-center gap-1">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-equal-icon lucide-circle-equal"><circle cx="12" cy="12" r="10"/><path d="M7 10h10"/><path d="M7 14h10"/></svg>
                 <span class="font-medium">Recalcular</span>
             </div>
-            <span class="action-icon-to-hide">Recalcular</span>
+            <!-- <span class="action-icon-to-hide">Recalcular</span> -->
         </button>
 
         <button type="button" onclick="submitAction('close')" id="btn-close" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-1">
@@ -24,7 +25,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
                 <span class="font-medium">Cerrar cálculo</span>
             </div>
-            <span class="action-icon-to-hide">Cerrar cálculo</span>
+            <!-- <span class="action-icon-to-hide">Cerrar cálculo</span> -->
         </button>
 
         <button type="button" onclick="submitAction('export_data')" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2">
@@ -239,6 +240,26 @@
         </table>
     </div>
 </div>
+
+<dialog id="emails-modal" class="bg-page border border-border rounded shadow-lg p-4 w-96 backdrop:bg-black/50 text-strong m-auto">
+    <div class="flex flex-col gap-4">
+        <div class="flex justify-between items-center">
+            <h3 class="text-title font-medium">Compartir reporte</h3>
+            <button type="button" onclick="document.getElementById('emails-modal').close()" class="text-muted hover:text-hover cursor-pointer flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+        <div class="flex flex-col gap-2">
+            <label for="modal-emails-input" class="text-sm">Correos (separados por coma)</label>
+            <input type="text" id="modal-emails-input" class="bg-container border border-border rounded p-2 text-sm outline-none w-full placeholder:text-muted" placeholder="ejemplo@correo.com, otro@correo.com">
+        </div>
+        <div class="flex justify-end gap-2 mt-2">
+            <button type="button" onclick="document.getElementById('emails-modal').close()" class="px-3 py-1 rounded border border-border text-sm hover:bg-hover transition-colors cursor-pointer">Cancelar</button>
+            <button type="button" onclick="confirmShareAction()" class="px-3 py-1 rounded bg-container border border-border text-sm hover:bg-hover transition-colors cursor-pointer font-medium">Enviar</button>
+        </div>
+    </div>
+</dialog>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -317,6 +338,19 @@
     function submitShareAction() {
         const action = document.getElementById('share-state-select').value;
         if (action) {
+            document.getElementById('emails-modal').showModal();
+        }
+    }
+
+    function confirmShareAction() {
+        const action = document.getElementById('share-state-select').value;
+        const customEmailsInput = document.getElementById('modal-emails-input');
+        
+        if (action) {
+            if (customEmailsInput) {
+                document.getElementById('custom-emails-hidden').value = customEmailsInput.value;
+            }
+            document.getElementById('emails-modal').close();
             submitAction(action);
         }
     }

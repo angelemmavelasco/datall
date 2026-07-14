@@ -9,7 +9,8 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.contrib.auth import get_user_model
-
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 from apps.human_resources.services.employees import employees_crud
 from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
 from apps.core.models import (
@@ -619,13 +620,22 @@ def commissions_action(request):
     allowed_routes = get_allowed_routes_for_user(user).order_by('id')
     service = CommissionsReport(allowed_routes=allowed_routes)
     module = SystemModule.objects.filter(url_name='human_resources:commissions_report').first()
+    custom_emails_raw = request.POST.get('custom_emails', '')
+    emails = []
+    invalid_emails = []
     
-    emails = [ref.reference for ref in Reference.objects.filter(
-        module__url_name='human_resources:commissions_report',
-        field_context = 'email_to',
-        key = 'human_resources',
-    )]
-
+    if custom_emails_raw:
+        for e in custom_emails_raw.split(','):
+            e = e.strip()
+            if e:
+                try:
+                    validate_email(e)
+                    emails.append(e)
+                except ValidationError:
+                    invalid_emails.append(e)
+                    
+    # Eliminada la validación suelta de invalid_emails aquí para evitar superposición
+    
     action = request.POST.get('action')
     selected_routes = request.POST.getlist('selected_routes')
     month = request.POST.get('action_month')
@@ -636,6 +646,12 @@ def commissions_action(request):
     if not month or not year:
         messages.error(request, 'Faltan parámetros de fecha para realizar la acción.')
         return redirect(base_url)
+
+    if action in ['send_draft', 'send_closed']:
+        if invalid_emails and not emails:
+            messages.error(request, 'Debes proporcionar al menos un correo válido. Revisa el formato e intenta nuevamente.')
+            query_string = urlencode({'month': month, 'year': year})
+            return redirect(f"{base_url}?{query_string}")
 
     if action == 'recalculate':
         existing_settlements = CommissionSettlement.objects.filter(
@@ -712,7 +728,10 @@ def commissions_action(request):
                     description=f'envío de reporte borrador de comisiones por correo electrónico del periodo {month}/{year} ({count} rutas enviadas a {", ".join(emails)})',
                     metadata={'routes_sent': selected_routes}
                 )
-                messages.success(request, f'Se envió el correo con {count} borradores exitosamente.')
+                msg = f'Se envió el correo con {count} borradores exitosamente.'
+                if invalid_emails:
+                    msg += f' (Se omitieron los siguientes correos por formato inválido: {", ".join(invalid_emails)})'
+                messages.success(request, msg)
             else:
                 messages.info(request, 'Ninguna de las rutas seleccionadas está en estado Borrador.')
 
@@ -728,7 +747,10 @@ def commissions_action(request):
                     description=f'envío de reporte cerrado de comisiones por correo electrónico del periodo {month}/{year} ({count} rutas enviadas a {", ".join(emails)})',
                     metadata={'routes_sent': selected_routes}
                 )
-                messages.success(request, f'Se envió el correo con {count} cálculos cerrados exitosamente.')
+                msg = f'Se envió el correo con {count} cálculos cerrados exitosamente.'
+                if invalid_emails:
+                    msg += f' (Se omitieron los siguientes correos por formato inválido: {", ".join(invalid_emails)})'
+                messages.success(request, msg)
             else:
                 messages.info(request, 'Ninguna de las rutas seleccionadas está en estado Cerrado.')
 
