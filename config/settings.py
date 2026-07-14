@@ -60,6 +60,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 CSRF_FAILURE_VIEW = 'apps.core.views.custom_csrf_failure'
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -125,6 +126,16 @@ LOGIN_REDIRECT_URL = '/business_intelligence/sales_dashboard'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [(os.getenv("REDIS_HOST", "127.0.0.1"), int(os.getenv("REDIS_PORT", 6379)))],
+        },
+    },
+}
 
 AUTH_USER_MODEL = 'core.User'
 
