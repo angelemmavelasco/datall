@@ -1,4 +1,4 @@
-from apps.core.models import MenuSection, SystemModule, Reference, Novelty
+from apps.core.models import MenuSection, SystemModule, Reference, Novelty, AppVersion
 from django.db.models import Prefetch
 from django.utils import timezone
 from datetime import timedelta
@@ -64,12 +64,13 @@ def recent_novelties(request):
     }
 
 def get_app_version(request):
-    version = Reference.objects.filter(
-        field_context='app_version',
-        key="version",
-    ).first()
+    
+
+    version = AppVersion.objects.filter(
+        is_published=True
+    ).order_by('-release_date', '-version_number').first()
     return {
-        'app_version': version.reference
+        'app_version': version.version_number if version else None
     }
         
 
