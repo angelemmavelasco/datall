@@ -408,6 +408,7 @@ def customer_agreement_details(request, pk):
     
     try:
         agreement = CustomerAgreementService().read_details(pk, allowed_routes)
+        agreement_obj = CustomerAgreement.objects.filter(id=pk).first()
         
         if agreement is None:
             return render(request, settings.ACCESS_DENIED_TEMPLATE)
@@ -416,8 +417,8 @@ def customer_agreement_details(request, pk):
         ActivityLogger.log_read(
             user=request.user,
             module=module,
-            obj=agreement,
-            description=f'visualización de detalles de convenio {pk}'
+            obj=agreement_obj,
+            description=f'visualización de detalles de convenio {agreement_obj.doc_id}'
         )
             
         context['agreement'] = agreement
