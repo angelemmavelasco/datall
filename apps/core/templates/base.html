@@ -705,7 +705,7 @@
         <footer
             class="bottom-0 left-0 w-full z-40 border-t border-border bg-page flex items-center justify-center text-title p-2">
             <ul class="flex gap-2 md:gap-4 flex-col md:flex-row">
-                <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
+                <li class="flex items-center gap-1 justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copyright-icon lucide-copyright"><circle cx="12" cy="12" r="10"/><path d="M14.83 14.83a4 4 0 1 1 0-5.66"/></svg>
                     Datall 2026. Todos los derechos reservados.
                 </li>
@@ -717,9 +717,11 @@
                     </a>
                 </li>
 
-                <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
+                <li class="hover:text-hover transition-colors cursor-pointer">
+                    <a href="{% url 'core:app_versions' %}" target="_blank" class="flex items-center gap-1 justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-stack-icon lucide-file-stack"><path d="M11 21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1"/><path d="M16 16a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1"/><path d="M21 6a2 2 0 0 0-.586-1.414l-2-2A2 2 0 0 0 17 2h-3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1z"/></svg>
                         Versión {{ app_version }}
+                    </a>
                 </li>
             </ul>
         </footer>
