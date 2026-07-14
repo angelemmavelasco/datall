@@ -96,7 +96,7 @@
                             <div class="flex flex-col gap-1 items-end">
                                 <span class="text-strong" title="Objetivo original">$ {{ m.old_target|floatformat:2|intcomma }}</span>
                                 <span class="text-xs {% if m.growth > 0 %}text-green-600{% elif m.growth < 0 %}text-red-600{% else %}text-muted{% endif %}" title="Crecimiento respecto al mes anterior">
-                                    {% if m.growth > 0 %}▲{% elif m.growth < 0 %}▼{% else %}{% endif %} {{ m.growth|floatformat:1 }}%
+                                    {% if m.growth > 0 %}▲{% elif m.growth < 0 %}▼{% else %}{% endif %} {{ m.growth|floatformat:4 }}%
                                 </span>
                                 
                                 {% if m.delta != 0 %}
@@ -137,7 +137,7 @@
                             <div class="flex flex-col gap-1 items-end">
                                 <span class="text-strong font-medium">$ {{ mt.old_target|floatformat:2|intcomma }}</span>
                                 <span class="text-xs {% if mt.growth > 0 %}text-green-600 font-medium{% elif mt.growth < 0 %}text-red-600 font-medium{% else %}text-muted{% endif %}">
-                                    {% if mt.growth > 0 %}▲{% elif mt.growth < 0 %}▼{% else %}{% endif %} {{ mt.growth|floatformat:1 }}%
+                                    {% if mt.growth > 0 %}▲{% elif mt.growth < 0 %}▼{% else %}{% endif %} {{ mt.growth|floatformat:4 }}%
                                 </span>
                                 {% if mt.delta != 0 %}
                                 <span class="text-xs {% if mt.delta > 0 %}text-green-600 font-medium{% else %}text-red-600 font-medium{% endif %} bg-page px-1 rounded border border-border">
