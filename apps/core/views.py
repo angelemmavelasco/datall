@@ -54,7 +54,7 @@ def support(request):
 def app_versions(request):
     template = "app_versions/app_versions.html"
 
-    app_versions = AppVersion.objects.filter(is_published=True).order_by('-release_date')
+    app_versions = AppVersion.objects.filter(is_published=True).order_by('-release_date', '-version_number')
     print(app_versions)
 
     context = {
