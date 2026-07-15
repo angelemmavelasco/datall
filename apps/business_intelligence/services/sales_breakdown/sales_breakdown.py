@@ -363,12 +363,12 @@ class SalesBreakdownService:
         
         dimension_config = {
             'customer_productclass_product': {
-                'fields': ['customer__id', 'customer__name', 'product_class__name', 'product__id', 'product__name'],
-                'headers': ['Cliente', 'Línea', 'Producto']
+                'fields': ['customer__id', 'customer__name', 'customer__route_id', 'product_class__name', 'product__id', 'product__name'],
+                'headers': ['ID cliente', 'Nombre Cliente', 'Ruta', 'Línea', 'Producto']
             },
             'productclass_customer_product': {
-                'fields': ['product_class__name', 'customer__id', 'customer__name', 'product__id', 'product__name'],
-                'headers': ['Línea', 'Cliente', 'Producto']
+                'fields': ['product_class__name', 'customer__id', 'customer__name', 'customer__route_id', 'product__id', 'product__name'],
+                'headers': ['Línea', 'ID cliente', 'Nombre Cliente', 'Ruta', 'Producto']
             },
             'productclass_product': {
                 'fields': ['product_class__name', 'product__id', 'product__name'],
@@ -379,8 +379,8 @@ class SalesBreakdownService:
                 'headers': ['Gerencia', 'Línea', 'Producto']
             },
             'product_customer': {
-                'fields': ['product__id', 'product__name', 'customer__id', 'customer__name'],
-                'headers': ['Producto', 'Cliente']
+                'fields': ['product__id', 'product__name', 'customer__id', 'customer__name', 'customer__route_id'],
+                'headers': ['Producto', 'ID cliente', 'Nombre Cliente', 'Ruta']
             }
         }
         
@@ -411,7 +411,11 @@ class SalesBreakdownService:
             
             c_id = row_dict.get('customer__id')
             c_name = row_dict.get('customer__name')
-            c = f"{c_id} - {c_name}".strip(" -") if c_id or c_name else 'Sin Cliente'
+            c_route = row_dict.get('customer__route_id')
+            
+            c_id_str = str(c_id) if c_id else 'Sin ID'
+            c_name_str = str(c_name) if c_name else 'Sin Cliente'
+            c_route_str = str(c_route) if c_route else 'Sin Ruta'
             
             p_id = row_dict.get('product__id')
             p_name = row_dict.get('product__name')
@@ -422,17 +426,17 @@ class SalesBreakdownService:
             
             out_base = []
             if self.dimension == 'customer_productclass_product':
-                out_base.extend([c, l, p])
+                out_base.extend([c_id_str, c_name_str, c_route_str, l, p])
             elif self.dimension == 'productclass_customer_product':
-                out_base.extend([l, c, p])
+                out_base.extend([l, c_id_str, c_name_str, c_route_str, p])
             elif self.dimension == 'productclass_product':
                 out_base.extend([l, p])
             elif self.dimension == 'management_productclass_product':
                 out_base.extend([w, l, p])
             elif self.dimension == 'product_customer':
-                out_base.extend([p, c])
+                out_base.extend([p, c_id_str, c_name_str, c_route_str])
             else:
-                out_base.extend([c, l, p])
+                out_base.extend([c_id_str, c_name_str, c_route_str, l, p])
 
             flattened_totals = self._flatten_annual_totals(totals_dict)
             
