@@ -5,12 +5,14 @@ import markdown
 from asgiref.sync import sync_to_async
 from datetime import datetime, date
 import time
+from django.contrib.auth.decorators import login_required
 
 #main service
 from .prompts.view_rules import PROMPTS_REGISTRY
 from .services.data_assistant.data_assistant import DataAssistant
 from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
 from apps.core.models import SystemModule
+from .services.datall_assistant.datall_assistant_service import DatallAssistantService
 
 # Create your views here.
 async def data_assistant(request):
@@ -74,4 +76,21 @@ async def data_assistant(request):
     
     return HttpResponse(styled_html)
 
+
+@login_required
+def datall_assistant(request):
+    thread_id = request.GET.get('thread')
+    chat_messages = []
     
+    if thread_id:
+        from .services.datall_assistant.datall_assistant_service import DatallAssistantService
+        service = DatallAssistantService(user=request.user, thread_id=thread_id)
+        for msg in service.history:
+            if msg.get('role') in ['user', 'assistant'] and msg.get('content'):
+                chat_messages.append(msg)
+
+    template = 'datall_assistant/datall_assistant.html'
+    context = {
+        'chat_messages': chat_messages
+    }
+    return render(request, template, context)

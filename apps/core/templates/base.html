@@ -544,6 +544,29 @@
                     </p>
                 {% endif %}
 
+                {% if request.user.is_superuser %}
+
+                <section class="flex flex-col gap-2">
+                    <p class="text-title">Workspace</p>
+                    <ul class="ml-3 flex flex-col gap-1.5 border-l border-border pl-4 text-body">
+
+                        <li><a href='{% url "data_assistant:datall_assistant" %}' class="block py-1 hover:text-hover transition-colors">
+                                Asistente datall
+                            </a>
+                        </li>
+
+                        <li class="custom-tooltip tooltip-left"
+                        data-title="Organiza tus ideas con este apartado de notas que le da estructura a lo que piensas"
+                        ><a href="" class="block py-1 hover:text-hover transition-colors">
+                                aDoc
+                            </a>
+                        </li>
+
+                    </ul>
+                </section>
+
+                {% endif %}
+
 
 
 
