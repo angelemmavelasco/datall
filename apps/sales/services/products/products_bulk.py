@@ -99,7 +99,7 @@ class ProductsBulk:
                 for col in valid_columns:
                     val = row[col]
                     str_val = str(val).strip().lower()
-                    if val is not None and str_val not in ['nan', '', 'none', 'nat']:
+                    if val is not None and str_val not in ['nan', '', 'none']:
                         data[col] = val
                 
                 data['id'] = cid
