@@ -1,0 +1,12 @@
+{
+    "venvPath": "/Users/angelvelasco/Developer/datall",
+    "venv": ".venv",
+    "pythonPath": "/Users/angelvelasco/Developer/datall/.venv/bin/python",
+    "pythonVersion": "3.12",
+    "extraPaths": [
+        "/Users/angelvelasco/Developer/datall",
+        "/Users/angelvelasco/Developer/datall/apps"
+    ],
+    "typeCheckingMode": "basic",
+    "reportMissingTypeStubs": false
+}
