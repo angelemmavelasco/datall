@@ -106,8 +106,10 @@ class JournalEntryLine(models.Model):
 
     def clean(self):
         """validates that line has either debit or credit, but not both"""
-        if self.entry_id and self.entry.is_posted:
-            raise ValidationError('No se pueden editar líneas de un asiento ya aplicado')
+        if self.pk and self.entry_id:
+            # Prevent editing lines if the entry was ALREADY posted in the database
+            if JournalEntry.objects.filter(pk=self.entry_id, is_posted=True).exists():
+                raise ValidationError('No se pueden editar líneas de un asiento ya aplicado.')
         if self.debit < 0 or self.credit < 0:
             raise ValidationError('Los valores de débito y crédito deben ser positivos')
         if self.debit > 0 and self.credit > 0:

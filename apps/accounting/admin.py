@@ -14,10 +14,11 @@ class AccountAdmin(admin.ModelAdmin):
 
     def formatted_balance(self, obj):
         color = 'green' if obj.balance >= 0 else 'red'
+        amount = f"${abs(obj.balance):,.2f}"
         return format_html(
-            '<span style="color: {}; font-weight: bold;">${:,.2f}</span>',
+            '<span style="color: {}; font-weight: bold;">{}</span>',
             color,
-            abs(obj.balance)
+            amount
         )
     formatted_balance.short_description = 'Saldo'
 
@@ -58,7 +59,7 @@ class JournalEntryAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         if obj and obj.is_posted:
             return ['date', 'reference', 'description', 'is_posted']
-        return super().get_readonly_fields(request, obj)
+        return ['is_posted']
 
     def post_entries(self, request, queryset):
         """Acción masiva para aplicar asientos contables seleccionados."""
