@@ -950,6 +950,12 @@ class Sale(models.Model):
         PENDING = "pending", "Pendiente"
         CANCELED = "canceled", "Cancelada"
 
+    class PaymentStatusChoices(models.TextChoices):
+        PENDING = "pending", "Pendiente de pago"
+        PAID = "paid", "Pagada"
+        PARTIALLY_PAID = "partially_paid", "Parcialmente pagada"
+        CANCELED = "canceled", "Cancelada"
+
     class PaymentFormChoices(models.TextChoices):
         EFECTIVO = "01", "01 Efectivo"
         CHEQUE_NOMINATIVO = "02", "02 Cheque nominativo"
@@ -980,10 +986,16 @@ class Sale(models.Model):
 
     doc_id = models.CharField(max_length=255, unique=True, db_index=True, help_text='Referencia unica de la venta, conformado por la fecha de emisión y la secuencia de ventas del día. Ejemplo: 20260720_123')
     sale_date = models.DateTimeField(db_index=True)
-    status = models.CharField(
+    sale_status = models.CharField(
         max_length=20,
         choices=StatusChoices.choices,
         default=StatusChoices.COMPLETED,
+        db_index=True,
+    )
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PaymentStatusChoices.choices,
+        default=PaymentStatusChoices.PENDING,
         db_index=True,
     )
     customer = models.ForeignKey(
