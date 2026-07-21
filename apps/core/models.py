@@ -941,6 +941,134 @@ class AccountsReceivable(models.Model):
 
 
 
+class Sale(models.Model):
+    """
+    Sale header, indicates the general information about the sale, e.g. date, customer, seller, etc.
+    """
+    class StatusChoices(models.TextChoices):
+        COMPLETED = "completed", "Completada"
+        PENDING = "pending", "Pendiente"
+        CANCELED = "canceled", "Cancelada"
+
+    class PaymentFormChoices(models.TextChoices):
+        EFECTIVO = "01", "01 Efectivo"
+        CHEQUE_NOMINATIVO = "02", "02 Cheque nominativo"
+        TRANSFERENCIA = "03", "03 Transferencia electrónica de fondos"
+        TARJETA_CREDITO = "04", "04 Tarjeta de crédito"
+        MONEDERO_ELECTRONICO = "05", "05 Monedero electrónico"
+        DINERO_ELECTRONICO = "06", "06 Dinero electrónico"
+        VALES_DESPENSA = "08", "08 Vales de despensa"
+        DACION_EN_PAGO = "12", "12 Dación en pago"
+        PAGO_POR_SUBROGACION = "13", "13 Pago por subrogación"
+        PAGO_POR_CONSIGNACION = "14", "14 Pago por consignación"
+        CONDONACION = "15", "15 Condonación"
+        COMPENSACION = "17", "17 Compensación"
+        NOVACION = "23", "23 Novación"
+        CONFUSION = "24", "24 Confusión"
+        REMISION_DEUDA = "25", "25 Remisión de deuda"
+        PRESCRIPCION_CADUCIDAD = "26", "26 Prescripción o caducidad"
+        A_SATISFACCION_ACREEDOR = "27", "27 A satisfacción del acreedor"
+        TARJETA_DEBITO = "28", "28 Tarjeta de débito"
+        TARJETA_SERVICIOS = "29", "29 Tarjeta de servicios"
+        APLICACION_ANTICIPOS = "30", "30 Aplicación de anticipos"
+        INTERMEDIARIO_PAGO = "31", "31 Intermediario pago"
+        POR_DEFINIR = "99", "99 Por definir"
+
+    class PaymentMethodChoices(models.TextChoices):
+        PUE = "PUE", "PUE Pago en una sola exhibición"
+        PPD = "PPD", "PPD Pago en parcialidades o diferido"
+
+    doc_id = models.CharField(max_length=255, unique=True, db_index=True, help_text='Referencia unica de la venta, conformado por la fecha de emisión y la secuencia de ventas del día. Ejemplo: 20260720_123')
+    sale_date = models.DateTimeField(db_index=True)
+    status = models.CharField(
+        max_length=20,
+        choices=StatusChoices.choices,
+        default=StatusChoices.COMPLETED,
+        db_index=True,
+    )
+    customer = models.ForeignKey(
+        "Customer",
+        on_delete=models.PROTECT,
+        related_name="sales",
+        db_index=True,
+    )
+    route = models.ForeignKey(
+        "Route",
+        on_delete=models.PROTECT,
+        related_name="sales",
+        null=True,
+        blank=True,
+        db_index=True,
+    )
+    warehouse = models.ForeignKey(
+        "Warehouse",
+        on_delete=models.PROTECT,
+        related_name="sales",
+        null=True,
+        blank=True,
+        db_index=True,
+    )
+    currency = models.CharField(max_length=3, default="MXN")
+    currency_exchange_rate = models.DecimalField(max_digits=10, decimal_places=4, default=1.0000)
+    payment_form = models.CharField(max_length=2, choices=PaymentFormChoices.choices, default=PaymentFormChoices.POR_DEFINIR)
+    payment_method = models.CharField(max_length=3, choices=PaymentMethodChoices.choices, default=PaymentMethodChoices.PUE)
+
+    subtotal = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    discount = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    taxes = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    total = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+    invoice = models.ForeignKey(
+        "Invoice",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sales",
+    )
+
+    class Meta:
+        db_table = 'sales'
+        verbose_name = 'Sale'
+        verbose_name_plural = 'Sales'
+
+    def __str__(self):
+        return f'{self.doc_id}: total ${self.total}'
+
+class SaleLine(models.Model):
+    """
+    Indicate a breakdown of the header, this is sold item by item.
+    """
+
+    sale = models.ForeignKey('Sale', on_delete=models.CASCADE, related_name='lines')
+    product = models.ForeignKey('Product', on_delete=models.PROTECT, related_name='sales_lines')
+    quantity = models.DecimalField(max_digits=18, decimal_places=4, default=0)
+    unit_price = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    discount = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    subtotal = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    total = models.DecimalField(max_digits=18, decimal_places=6, default=0)
+    description_override = models.TextField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'sales_lines'
+        verbose_name = 'Sale line'
+        verbose_name_plural = 'Sale lines'
+
+    def __str__(self):
+        return f'{self.sale.id}: {self.product.sku} - {self.quantity}'
+
+class SaleLineTax(models.Model):
+    """
+    Indicate taxes applied to each sale line.
+    """
+    class TaxType(models.TextChoices):
+        IVA = "IVA", "IVA"
+        ISR = "ISR", "ISR"
+        IEPS = "IEPS", "IEPS"
+    pass
+
 
 # transactions and targets
 
