@@ -61,8 +61,8 @@ class User(AbstractUser):
         return f"{self.first_name} {self.last_name} - {self.username}"
 
     class Meta:
-        verbose_name = 'User'
-        verbose_name_plural = 'Users'
+        verbose_name = 'Usuario'
+        verbose_name_plural = 'Usuarios'
         db_table = 'users'
 
 
@@ -77,6 +77,8 @@ class MenuSection(models.Model):
     class Meta:
         ordering = ['order']
         db_table = 'menu_sections'
+        verbose_name = 'Sección de menú'
+        verbose_name_plural = 'Secciones de menú'  
         
     def __str__(self):
         return self.name
@@ -100,7 +102,9 @@ class SystemModule(models.Model):
     class Meta:
         ordering = ['section__order', 'order']
         db_table = 'system_modules'
-
+        verbose_name = 'Módulo del sistema'
+        verbose_name_plural = 'Módulos del sistema'  
+        
     def __str__(self):
         return f"{self.section.name} -> {self.name}"
 
@@ -177,8 +181,8 @@ class DataHistory(models.Model):
 
     class Meta:
         db_table = 'data_history'
-        verbose_name = 'Data History'
-        verbose_name_plural = 'Data Histories'
+        verbose_name = 'Historial de datos'
+        verbose_name_plural = 'Historiales de datos'
         indexes = [
             models.Index(fields=["content_type", "object_id"]),
         ]
@@ -244,8 +248,8 @@ class AppVersion(models.Model):
 
     class Meta:
         ordering = ['-release_date', '-id']
-        verbose_name = "App Version"
-        verbose_name_plural = "App Versions"
+        verbose_name = "Versión de la aplicación"
+        verbose_name_plural = "Versiones de la aplicación"
 
     def __str__(self):
         return f"v{self.version_number} ({self.release_date})"
@@ -259,8 +263,8 @@ class Novelty(models.Model):
 
     class Meta:
         db_table = 'novelties'
-        verbose_name = 'Novelty'
-        verbose_name_plural = 'Novelties'
+        verbose_name = 'Novedad'
+        verbose_name_plural = 'Novedades'
         indexes = [
             models.Index(fields=["created_at"]), 
         ]
@@ -283,8 +287,8 @@ class Department(models.Model):
 
     class Meta:
         db_table = "departments"
-        verbose_name = "Department"
-        verbose_name_plural = "Departments"
+        verbose_name = "Departamento"
+        verbose_name_plural = "Departamentos"
 
     def __str__(self):
         return f"{self.id.upper()} {self.name.title()}"
@@ -296,8 +300,8 @@ class TaxSystem(models.Model):
     description = models.TextField(max_length=500, null=True, blank=True)
 
     class Meta:
-        verbose_name = 'Tax system'
-        verbose_name_plural = 'Tax systems'
+        verbose_name = 'Régimen fiscal'
+        verbose_name_plural = 'Regímenes fiscales'
         db_table = 'tax_systems'
 
     def __str__(self):
@@ -318,8 +322,8 @@ class PayrollType(models.Model):
     description = models.TextField(max_length=500, blank=True, null=True)
 
     class Meta:
-        verbose_name = "Payroll type"
-        verbose_name_plural = "Payroll types"
+        verbose_name = "Tipo de compensación"
+        verbose_name_plural = "Tipos de compensaciones"
         db_table = 'payroll_types'
 
     def __str__(self):
@@ -331,8 +335,8 @@ class Periodicity(models.Model):
     name = models.CharField(max_length=255)
 
     class Meta:
-        verbose_name = "Periodicity"
-        verbose_name_plural = "Periodicities"
+        verbose_name = "Periodicidad"
+        verbose_name_plural = "Periodicidades"
         ordering = ["id"]
         db_table = "periodicities"
 
@@ -348,8 +352,8 @@ class Position(models.Model):
     reports_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='positions')
 
     class Meta:
-        verbose_name = 'Position'
-        verbose_name_plural = 'Positions'
+        verbose_name = 'Puesto'
+        verbose_name_plural = 'Puestos'
         db_table = 'positions'
 
     def __str__(self):
@@ -372,8 +376,8 @@ class Region(models.Model):
     )
 
     class Meta:
-        verbose_name = 'Region'
-        verbose_name_plural = 'Regions'
+        verbose_name = 'Región'
+        verbose_name_plural = 'Regiones'
         db_table = 'regions'
 
     def __str__(self):
@@ -398,8 +402,8 @@ class Warehouse(models.Model):
     region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, blank=True, related_name='warehouses')
 
     class Meta:
-        verbose_name = 'Warehouse'
-        verbose_name_plural = 'Warehouses'
+        verbose_name = 'Gerencia'
+        verbose_name_plural = 'Gerencias'
         db_table = 'warehouses'
 
     def __str__(self):
@@ -425,8 +429,8 @@ class Employee(models.Model):
     contract = models.FileField(upload_to='employees/contracts/', null=True, blank=True)
 
     class Meta:
-        verbose_name = 'Employee'
-        verbose_name_plural = 'Employees'
+        verbose_name = 'Colaborador'
+        verbose_name_plural = 'Colaboradores'
         db_table = 'employees'
 
     def __str__(self):
@@ -475,8 +479,8 @@ class ProductCategory(models.Model):
     description = models.TextField(max_length=500, default='', blank=True)
 
     class Meta:
-        verbose_name = 'Product category'
-        verbose_name_plural = 'Product categories'
+        verbose_name = 'Categoría de producto'
+        verbose_name_plural = 'Categorías de producto'
         db_table = 'product_categories'
 
     def __str__(self):
@@ -489,8 +493,8 @@ class ProductClass(models.Model):
     product_category = models.ForeignKey(ProductCategory, on_delete=models.PROTECT, related_name='product_classes', null=True, blank=True)
 
     class Meta:
-        verbose_name = 'Product class'
-        verbose_name_plural = 'Product classes'
+        verbose_name = 'Clase de producto'
+        verbose_name_plural = 'Clases de producto'
         db_table = 'product_classes'
 
     def save(self, *args, **kwargs):
@@ -513,8 +517,8 @@ class Product(models.Model):
     unit_of_measure = models.CharField(max_length=255, null=True, blank=True)
 
     class Meta:
-        verbose_name = 'Product'
-        verbose_name_plural = 'Products'
+        verbose_name = 'Producto'
+        verbose_name_plural = 'Productos'
         db_table = 'products'
 
     def __str__(self):
@@ -531,8 +535,8 @@ class RouteType(models.Model):
 
     class Meta:
         db_table = "route_types"
-        verbose_name = "Route type"
-        verbose_name_plural = "Route types"
+        verbose_name = "Tipo de ruta"
+        verbose_name_plural = "Tipos de ruta"
 
     def __str__(self):
         name = (self.name or '').title()
@@ -546,8 +550,8 @@ class SaleChannel(models.Model):
 
     class Meta:
         db_table = "sale_channels"
-        verbose_name = "Sale channel"
-        verbose_name_plural = "Sale channels"
+        verbose_name = "Canal de venta"
+        verbose_name_plural = "Canales de venta"
 
     def __str__(self):
         name = (self.name or '').title()
@@ -586,8 +590,8 @@ class Route(models.Model):
 
     class Meta:
         db_table = "routes"
-        verbose_name = "Route"
-        verbose_name_plural = "Routes"
+        verbose_name = "Ruta"
+        verbose_name_plural = "Rutas"
 
     def __str__(self):
         name = (self.name or '').title()
@@ -615,8 +619,8 @@ class RouteAssignment(models.Model):
 
     class Meta:
         db_table = "route_assignments"
-        verbose_name = "Route assignment"
-        verbose_name_plural = "Route assignments"
+        verbose_name = "Asignación de ruta"
+        verbose_name_plural = "Asignaciones de rutas"
         constraints = [
             # avoid duplicate assignments at the same day
             models.UniqueConstraint(
@@ -665,8 +669,8 @@ class CustomerType(models.Model):
 
     class Meta:
         db_table = 'customer_types'
-        verbose_name = 'Customer type'
-        verbose_name_plural = 'Customer types'
+        verbose_name = 'Tipo de cliente'
+        verbose_name_plural = 'Tipos de clientes'
 
     def __str__(self):
         return f"{self.id} - {self.name}"
@@ -712,8 +716,8 @@ class Customer(models.Model):
 
     class Meta:
         db_table = 'customers'
-        verbose_name = 'Customer'
-        verbose_name_plural = 'Customers'
+        verbose_name = 'Cliente'
+        verbose_name_plural = 'Clientes'
         indexes = [
             models.Index(fields=["registration_date"]),
             models.Index(fields=["route", "customer_type"]),
@@ -732,8 +736,8 @@ class CustomerClassMargin(models.Model):
 
     class Meta:
         db_table = 'customer_class_margins'
-        verbose_name = 'Customer class margin'
-        verbose_name_plural = 'Customer class margins'
+        verbose_name = 'Márgen de clase de producto'
+        verbose_name_plural = 'Márgenes de clase de producto'
         unique_together = ('customer', 'product_class')
 
     def __str__(self):
@@ -780,8 +784,8 @@ class CommercialBenefit(models.Model):
 
     class Meta:
         db_table = 'commercial_benefits'
-        verbose_name = 'Commercial benefit'
-        verbose_name_plural = 'Commercial benefits'
+        verbose_name = 'Beneficio comercial'
+        verbose_name_plural = 'Beneficios comerciales'
 
     def __str__(self):
         return f"{self.name.title()} ({self.get_benefit_type_display()})"
@@ -817,8 +821,8 @@ class CustomerAgreement(models.Model):
 
     class Meta:
         db_table = 'customer_agreements'
-        verbose_name = 'Customer agreement'
-        verbose_name_plural = 'Customer agreements'
+        verbose_name = 'Convenio'
+        verbose_name_plural = 'Convenios'
 
     def __str__(self):
         return f"Convenio: {self.doc_id} - {self.agreement_name}"
@@ -833,8 +837,8 @@ class AgreementClassTarget(models.Model):
 
     class Meta:
         db_table = 'agreement_class_targets'
-        verbose_name = 'Agreement class target'
-        verbose_name_plural = 'Agreement class targets'
+        verbose_name = 'Objetivo de convenio por clase de producto'
+        verbose_name_plural = 'Objetivos de convenio por clase de producto'
         unique_together = ('agreement', 'product_class')
 
     def __str__(self):
@@ -868,8 +872,8 @@ class AgreementEvaluationPeriod(models.Model):
 
     class Meta:
         db_table = 'agreement_evaluation_periods'
-        verbose_name = 'Agreement evaluation period'
-        verbose_name_plural = 'Agreement evaluation periods'
+        verbose_name = 'Periodo de evaluación de convenio'
+        verbose_name_plural = 'Periodos de evaluación de convenios'
 
     def __str__(self):
         return f"{self.agreement_id} - Periodo: {self.period_number}"
@@ -885,6 +889,8 @@ class AgreementPeriodClassResult(models.Model):
 
     class Meta:
         db_table = 'agreement_period_class_results'
+        verbose_name = 'Resultado de periodo por clase de producto'
+        verbose_name_plural = 'Resultados de periodos por clase de producto'
 
 
 
@@ -933,8 +939,8 @@ class AccountsReceivable(models.Model):
 
     class Meta:
         db_table = 'accounts_receivables'
-        verbose_name = 'Accounts receivable'
-        verbose_name_plural = 'Accounts receivables'
+        verbose_name = 'Cuentas por cobrar'
+        verbose_name_plural = 'Cuentas por cobrar'
 
     def __str__(self):
         return f'{self.customer_id}: total balance $ {self.total_balance}'
@@ -1137,8 +1143,8 @@ class SaleTransaction(models.Model):
 
     class Meta:
         db_table = "sale_transactions"
-        verbose_name = "Sale transaction"
-        verbose_name_plural = "Sale transactions"
+        verbose_name = "Transacción de venta"
+        verbose_name_plural = "Transacciones de venta"
         indexes = [
             models.Index(fields=["sale_date"]),
             models.Index(fields=["doc_id"]),
@@ -1168,8 +1174,8 @@ class SaleTarget(models.Model):
 
     class Meta:
         db_table = 'sale_targets'
-        verbose_name = 'Sale target'
-        verbose_name_plural = 'Sale targets'
+        verbose_name = 'Objetivo de venta'
+        verbose_name_plural = 'Objetivos de venta'
         constraints = [
             models.UniqueConstraint(
                 fields=["period", "route", "product_class"],
@@ -1200,8 +1206,8 @@ class CommissionProfile(models.Model):
     
     class Meta:
         db_table = 'commission_profiles'
-        verbose_name = 'Commission profile'
-        verbose_name_plural = 'Commission profiles'
+        verbose_name = 'Perfil de comisión'
+        verbose_name_plural = 'Perfiles de comisión'
     
     def __str__(self):
         return self.name.strip().title()
@@ -1222,8 +1228,8 @@ class CommissionTier(models.Model):
     class Meta:
         ordering = ['-min_global_scope_pct', '-min_completed_classes']
         db_table = 'commission_tiers'
-        verbose_name = 'Commission tier'
-        verbose_name_plural = 'Commission tiers'
+        verbose_name = 'Umbral de comision'
+        verbose_name_plural = 'Umbrales de comision'
 
     def __str__(self):
         return f'{self.commission_profile.name}\nAlcance global: {self.min_global_scope_pct} %\nLíneas requeridas: {self.min_completed_classes}\nMultiplicador: {self.bonus_multiplier_pct}%\nBono extra (si aplica): {self.extra_flat_bonus}'
@@ -1250,8 +1256,8 @@ class RouteCommissionSetup(models.Model):
 
     class Meta:
         db_table = 'route_commission_setup'
-        verbose_name = 'Route commission setup'
-        verbose_name_plural = 'Route commission setups'
+        verbose_name = 'Configuración de comisión de ruta'
+        verbose_name_plural = 'Configuraciones de comisión de ruta'
 
 
 class RouteCommissionException(models.Model):
@@ -1274,8 +1280,8 @@ class RouteCommissionException(models.Model):
     
     class Meta:
         db_table = 'route_commission_exception'
-        verbose_name = 'Route commission exception'
-        verbose_name_plural = 'Route commission exceptions'
+        verbose_name = 'Excepción de comisión de ruta'
+        verbose_name_plural = 'Excepciones de comisión de ruta'
 
 
 class CommissionSettlement(models.Model):
@@ -1313,8 +1319,8 @@ class CommissionSettlement(models.Model):
 
     class Meta:
         db_table = 'commission_settlement'
-        verbose_name = 'Commission settlement'
-        verbose_name_plural = 'Commission settlements'
+        verbose_name = 'Liquidación de comisión'
+        verbose_name_plural = 'Liquidaciones de comisión'
         ordering = ['-period_start']
     
 
