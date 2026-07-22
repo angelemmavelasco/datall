@@ -87,13 +87,10 @@
     "folder-color.favoriteColors": [
         "foldercolorizer.color_0000ff"
     ],
-    "python.defaultInterpreterPath": "/Users/angelvelasco/Developer/datall/.venv/bin/python",
-    "python.pythonPath": "/Users/angelvelasco/Developer/datall/.venv/bin/python",
+    "python.defaultInterpreterPath": "/Users/angelvelasco/Developer/venvs/datall_erp/bin/python3",
     "python.analysis.extraPaths": [
         "${workspaceFolder}",
         "${workspaceFolder}/apps"
     ],
-    "python.analysis.venvPath": "${workspaceFolder}",
-    "python.analysis.venv": ".venv",
     "python.terminal.activateEnvironment": true
 }

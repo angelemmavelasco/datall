@@ -82,7 +82,8 @@ INSTALLED_APPS = [
     'apps.data_admin',
     'apps.data_assistant',
     'apps.accounting',
-    'apps.inventory'
+    'apps.inventory',
+    'apps.app_management'
 ]
 
 MIDDLEWARE = [
