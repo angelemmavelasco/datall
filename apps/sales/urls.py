@@ -1,5 +1,5 @@
 from django.urls import path
-from apps.sales.views import products, product, products_export, sale_transactions, sale_transactions_export, sale_targets_calculator, export_sale_targets_calculator_data
+from apps.sales.views import *
 
 app_name='sales'
 
@@ -13,4 +13,10 @@ urlpatterns = [
 
     path('sale_targets_calculator/', sale_targets_calculator, name='sale_targets_calculator'),
     path('sale_targets_calculator/export/', export_sale_targets_calculator_data, name='export_sale_targets_calculator_data'),
+
+
+
+    #refactor
+    path('sales/', sales, name='sales'),
+    path('sales/<path:sale_id>/', sale_detail, name='sale_detail'),
 ]

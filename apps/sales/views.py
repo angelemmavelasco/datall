@@ -1,11 +1,11 @@
 # pyrefly: ignore [missing-import]
 from django.contrib import messages
 # pyrefly: ignore [missing-import]
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from apps.sales.services.products.products_crud import ProductsCrud
 from django.contrib.auth.decorators import login_required
 from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
-from apps.core.models import Reference, ProductClass, Warehouse, Route, ProductCategory, SystemModule
+from apps.core.models import ProductClass, Warehouse, Route, ProductCategory, SystemModule
 from django.core.paginator import Paginator
 import pandas as pd
 import io
@@ -17,6 +17,10 @@ import datetime
 import calendar
 from django.db.models import Sum
 from decimal import Decimal
+from apps.core.utils import get_allowed_routes_for_user, get_allowed_warehouses_for_user
+
+from apps.sales.models import Sale, SaleLine
+from django.conf import settings
 
 
 @login_required
@@ -478,4 +482,59 @@ async def export_sale_targets_calculator_data(request):
     return response
 
 
+
+
+@login_required
+def sales(request):
+    '''
+    handles the main sales viz.
+    '''
+    template = 'sales/sales/sales.html'
+    user = request.user
+    allowed_routes = get_allowed_routes_for_user(user)
+    allowed_warehouses = get_allowed_warehouses_for_user(user)
+
+    sales = Sale.objects.filter(route_id__in=[r.id for r in allowed_routes]).select_related('customer', 'route').all().order_by('-created_at')
+    
+    context = {
+        'filter_routes': allowed_routes,
+        'filter_warehouses': allowed_warehouses,
+        'sales': sales,
+    }
+    
+    return render(request, template, context)
+
+@login_required
+def sale_detail(request, sale_id):
+    '''
+    handles the sale detail viz.
+    '''
+    template = 'sales/sales/sale_detail.html'
+    access_denied_template = settings.ACCESS_DENIED_TEMPLATE
+    
+    user = request.user
+    allowed_routes = get_allowed_routes_for_user(user)
+    allowed_warehouses = get_allowed_warehouses_for_user(user)
+
+    sale_qs = Sale.objects.select_related(
+        'customer',
+        'route',
+        'warehouse',
+        'invoice',
+        'journal_entry'
+    ).prefetch_related(
+        'lines__product',
+        'lines__taxes__tax_account'
+    )
+    sale = get_object_or_404(sale_qs, id=sale_id)
+    if sale.route_id not in [r.id for r in allowed_routes]:
+        return render(request, access_denied_template)
+
+    context = {
+        'allowed_routes': allowed_routes,
+        'allowed_warehouses': allowed_warehouses,
+        'sale': sale,
+    }
+    
+    return render(request, template, context)
     

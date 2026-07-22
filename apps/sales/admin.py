@@ -1,20 +1,21 @@
 from django.contrib import admin
+import nested_admin
 from .models import (
     Sale, SaleLine, SaleLineTax,
     Invoice, InvoiceItem, InvoiceItemTax, InvoiceRelation
 )
 
-class SaleLineTaxInline(admin.TabularInline):
+class SaleLineTaxInline(nested_admin.NestedTabularInline):
     model = SaleLineTax
     extra = 0
 
-class SaleLineInline(admin.TabularInline):
+class SaleLineInline(nested_admin.NestedTabularInline):
     model = SaleLine
     extra = 0
-    show_change_link = True # Permite entrar al detalle de la línea para ver sus impuestos
+    inlines = [SaleLineTaxInline]
 
 @admin.register(Sale)
-class SaleAdmin(admin.ModelAdmin):
+class SaleAdmin(nested_admin.NestedModelAdmin):
     list_display = ['doc_id', 'sale_date', 'customer', 'sale_status', 'payment_status', 'total']
     list_filter = ['sale_status', 'payment_status', 'sale_date']
     search_fields = ['doc_id']
@@ -22,7 +23,7 @@ class SaleAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at']
 
 @admin.register(SaleLine)
-class SaleLineAdmin(admin.ModelAdmin):
+class SaleLineAdmin(nested_admin.NestedModelAdmin):
     list_display = ['sale', 'product', 'quantity', 'unit_price', 'total']
     search_fields = ['sale__doc_id']
     inlines = [SaleLineTaxInline]

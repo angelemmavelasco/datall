@@ -71,6 +71,7 @@ INSTALLED_APPS = [
 
     # for r2 storages
     'storages',
+    'nested_admin',
 
     'apps.core',
     'apps.business_intelligence',
