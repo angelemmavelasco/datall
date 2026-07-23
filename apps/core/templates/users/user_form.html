@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load widget_tweaks %}
+
+{% block title %}Nuevo Usuario{% endblock %}
+
+{% block module_name %}Nuevo Usuario{% endblock %}
+
+
+{% block content %}
+
+<form method="post" enctype="multipart/form-data" class="flex flex-col gap-4">
+    {% csrf_token %}
+
+    <p class="text-title text-sm">Información personal</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Nombre (s)</span>
+        <div>
+            {% render_field form.first_name class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.first_name.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">Primer apellido</span>
+        <div>
+            {% render_field form.last_name class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.last_name.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">Segundo apellido (opcional)</span>
+        <div>
+            {% render_field form.second_last_name class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.second_last_name.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">Fecha de nacimiento</span>
+        <div>
+            {% render_field form.birth_date class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" type="date" %}
+            {% for error in form.birth_date.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">Género</span>
+        <div>
+            {% render_field form.gender class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.gender.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">Fotografía</span>
+        <div>
+            {% render_field form.photo class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.photo.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+    </div>
+
+    <p class="text-title text-sm">Información fiscal</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+
+        <span class="text-title">Clave única de registro de población (CURP)</span>
+        <div>
+            {% render_field form.unique_personal_id class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.unique_personal_id.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">Registro federal de contribuyentes (RFC)</span>
+        <div>
+            {% render_field form.tax_id class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.tax_id.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+    </div>
+
+    <p class="text-title text-sm">Contacto</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Teléfono</span>
+        <div>
+            {% render_field form.phone class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.phone.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">Calle</span>
+        <div>
+            {% render_field form.street class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.street.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">Número de exterior</span>
+        <div>
+            {% render_field form.street_no class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.street_no.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">Número de interior (opcional)</span>
+        <div>
+            {% render_field form.apt_suite class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.apt_suite.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">Ciudad</span>
+        <div>
+            {% render_field form.city class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.city.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+
+        <span class="text-title">Estado</span>
+        <div>
+            {% render_field form.state class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.state.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">País</span>
+        <div>
+            {% render_field form.country class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.country.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">Código postal</span>
+        <div>
+            {% render_field form.zipcode class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.zipcode.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+    </div>
+
+    <p class="text-title text-sm">Configuración de accesos</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        
+        <span class="text-title">Nombre de usuario</span>
+        <div>
+            {% render_field form.username class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.username.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+        
+        <span class="text-title">Contraseña</span>
+        <div>
+            {% render_field form.password class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.password.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title">Activo</span>
+        <div>
+            {% render_field form.is_active class="cursor-pointer" %}
+            <span class="text-xs text-title opacity-70">¿El usuario puede iniciar sesión?</span>
+            {% for error in form.is_active.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+        
+        <span class="text-title">Staff (Acceso al admin)</span>
+        <div>
+            {% render_field form.is_staff class="cursor-pointer" %}
+            <span class="text-xs text-title opacity-70">¿Puede entrar al panel de administración?</span>
+            {% for error in form.is_staff.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+        
+        <span class="text-title">Superusuario</span>
+        <div>
+            {% render_field form.is_superuser class="cursor-pointer" %}
+            <span class="text-xs text-title opacity-70">¿Tiene permisos absolutos sin restricciones?</span>
+            {% for error in form.is_superuser.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title self-start mt-2">Grupos y roles</span>
+        <div class="flex flex-col gap-2 bg-page border border-border rounded p-1 max-h-48 overflow-y-auto">
+            {% for checkbox in form.groups %}
+                <label class="flex items-center gap-2 cursor-pointer hover:bg-hover hover:bg-opacity-10 p-1 rounded transition-colors">
+                    {{ checkbox.tag }}
+                    <span class="text-body">{{ checkbox.choice_label|title }}</span>
+                </label>
+            {% endfor %}
+            {% for error in form.groups.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+    </div>
+
+
+    <p class="text-title text-sm">Notas adicionales</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 items-center bg-container p-2 rounded">
+
+        <div>
+            {% render_field form.notes class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" placeholder="Teléfonos de emergencia, alergias, o datos relevantes que deban ser especificados" rows='4' %}
+            {% for error in form.notes.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+    </div>
+
+
+    <div class="flex justify-end mt-4">
+    <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-50 mt-2 mb-2">Confirmar</button>
+    </div>
+</form>
+{% endblock %}

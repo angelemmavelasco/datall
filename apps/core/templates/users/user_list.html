@@ -5,6 +5,12 @@
 
 {% block module_name %}Usuarios{% endblock %}
 
+{% block module_actions %}
+
+<a href="{% url 'core:create_user' %}" class="hover:text-hover text-strong transition-colors cursor-pointer">Nuevo usuario</a>
+
+{% endblock %}
+
 
 {% block content %}
 

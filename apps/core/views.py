@@ -6,6 +6,8 @@ from django.contrib.auth.views import PasswordChangeView
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import login_required
 from apps.app_management.models import AppVersion
+from .forms import UserForm
+from .services.users import UsersService
 
 def custom_csrf_failure(request, reason=""):
     messages.warning(request, "Tu sesión expiró por inactividad. Por favor, vuelve a ingresar.")
@@ -51,13 +53,36 @@ def app_versions(request):
     return render(request, template, context)
 
 @login_required
-def user_list_view(request):
+def user_list(request):
     template = "users/user_list.html"
     from apps.core.services.users import UsersService
     users_service = UsersService(request.user)
     users = users_service.read_users()
     context = {
         'users': users,
+    }
+    return render(request, template, context)
+
+@login_required
+def user_form(request):
+    template = "users/user_form.html"
+    users_service = UsersService(request.user)
+
+    if request.method == 'POST':
+        form = UserForm(request.POST, request.FILES)
+        print(form)
+        if form.is_valid():
+            print('Formulario validado')
+            new_user = users_service.create_user(**form.cleaned_data)
+            if new_user:
+                messages.success(request, 'Usuario creado correctamente.')
+                return redirect('core:user_list')
+            else:
+                form.add_error(None, "No tienes permisos suficientes para crear usuarios.")
+    else:
+        form = UserForm()
+    context = {
+        'form': form,
     }
     return render(request, template, context)
     

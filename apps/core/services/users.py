@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from django.db.models import QuerySet
 
 
+
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser as UserModel
 else:
@@ -60,10 +61,13 @@ class UsersService:
         if not self._is_full_access:
             return None
         password = kwargs.pop('password', None)
+        groups = kwargs.pop('groups', None)
         new_user = User(**kwargs)
         if password:
             new_user.set_password(password)
         new_user.save()
+        if groups is not None:
+            new_user.groups.set(groups)
         return new_user
     
     def delete_user(self, user_id: int):
@@ -80,6 +84,8 @@ class UsersService:
             user.save()
             return True
         return False
+
+
 
     
         
