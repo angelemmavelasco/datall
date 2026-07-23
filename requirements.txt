@@ -18,9 +18,11 @@ daphne==4.2.2
 distro==1.9.0
 Django==6.0.5
 django-htmx==1.27.0
+django-nested-admin==4.1.6
 django-storages==1.14.6
 django-stubs==6.0.7
 django-stubs-ext==6.0.7
+django-widget-tweaks==1.5.1
 et_xmlfile==2.0.0
 gunicorn==26.0.0
 h11==0.16.0
@@ -48,6 +50,7 @@ pyOpenSSL==26.3.0
 pytailwindcss==0.3.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
+python-monkey-business==1.1.0
 PyYAML==6.0.3
 redis==8.0.1
 s3transfer==0.19.0
@@ -69,4 +72,3 @@ watchfiles==1.2.0
 websockets==16.0
 whitenoise==6.12.0
 zope.interface==8.5
-django-nested-admin==4.1.6
