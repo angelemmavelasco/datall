@@ -87,6 +87,12 @@ class UsersService:
                 kwargs.pop(field, None)
             groups = None
         for key, value in kwargs.items():
+            try:
+                field = user_to_update._meta.get_field(key)
+                if field.get_internal_type() in ['FileField', 'ImageField'] and value is False:
+                    value = None
+            except Exception:
+                pass
             setattr(user_to_update, key, value)
         if password:
             user_to_update.set_password(password)

@@ -1,32 +1,33 @@
 {% for user_obj in page_obj %}
 <tr class="hover:bg-hover/30 transition-colors duration-300 border-b border-border text-sm">
     <td class="p-1 border-r border-border text-left text-strong bg-page">
-        <a href="{% url 'core:update_user' user_obj.id %}" class="underline hover:text-hover transition-colors">
+        <a href="{% url 'core:update_user' user_obj.id %}" class="underline hover:text-hover transition-colors flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
             {{ user_obj.username }}
         </a>
     </td>
-    <td class="p-1 border-r border-border text-left text-title bg-page">
+    <td class="p-1 text-left text-title bg-page">
         {{ user_obj.first_name|title }}
     </td>
-    <td class="p-1 border-r border-border text-left text-title bg-page">
+    <td class="p-1 text-left text-title bg-page">
         {{ user_obj.last_name|title }}
     </td>
-    <td class="p-1 border-r border-border text-left text-title bg-page">
+    <td class="p-1 text-left text-title bg-page">
         {{ user_obj.second_last_name|default:"-"|title }}
     </td>
-    <td class="p-1 border-r border-border text-center text-title bg-page">
+    <td class="p-1 text-center text-title bg-page">
         {{ user_obj.tax_id|default:"-"|upper }}
     </td>
-    <td class="p-1 border-r border-border text-center text-title bg-page">
+    <td class="p-1 text-center text-title bg-page">
         {{ user_obj.unique_personal_id|default:"-"|upper }}
     </td>
-    <td class="p-1 border-r border-border text-center text-title bg-page">
+    <td class="p-1 text-center text-title bg-page">
         {{ user_obj.birth_date|date:"d - M - Y"|default:"-" }}
     </td>
-    <td class="p-1 border-r border-border text-left text-title bg-page">
+    <td class="p-1 text-left text-title bg-page">
         {{ user_obj.get_gender_display|default:"-" }}
     </td>
-    <td class="p-1 border-r border-border text-left text-title bg-page">
+    <td class="p-1 text-left text-title bg-page">
         {% if user_obj.is_active %}
             <span class="text-green-500">Activo</span>
         {% else %}
