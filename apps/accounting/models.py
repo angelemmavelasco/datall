@@ -29,7 +29,17 @@ class Account(models.Model):
     code = models.CharField(max_length=20, unique=True, help_text="Código único de la cuenta según el plan contable, ej: 110501")
     name = models.CharField(max_length=100, help_text="Nombre de la cuenta, ej: Caja General")
     account_type = models.CharField(max_length=20, choices=ACCOUNT_TYPES, help_text="Tipo de cuenta")
+    level = models.PositiveIntegerField(default=1, help_text="Nivel de la cuenta (1=Mayor/Encabezado, 2=Subcuenta, etc.)")
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subaccounts', help_text="Cuenta padre (nivel superior)")
     balance = models.DecimalField(max_digits=18, decimal_places=6, default=0.0, help_text="Saldo actual de la cuenta")
+
+    @property
+    def total_balance(self):
+        """returns the balance of this account plus the balance of all its subaccounts (recursively)"""
+        total = self.balance
+        for child in self.subaccounts.all():
+            total += child.total_balance
+        return total
 
     @property
     def increases_with_debit(self):
@@ -125,6 +135,8 @@ class JournalEntryLine(models.Model):
             # Prevent editing lines if the entry was ALREADY posted in the database
             if JournalEntry.objects.filter(pk=self.entry_id, is_posted=True).exists():
                 raise ValidationError('No se pueden editar líneas de un asiento ya aplicado.')
+        if self.account_id and getattr(self, 'account', None) and self.account.level < 2:
+            raise ValidationError(f"No se pueden hacer asientos en la cuenta de mayor/encabezado '{self.account.name}'. Selecciona una subcuenta (nivel 2 o inferior).")
         if self.debit < 0 or self.credit < 0:
             raise ValidationError('Los valores de débito y crédito deben ser positivos')
         if self.debit > 0 and self.credit > 0:
