@@ -629,6 +629,9 @@
   .min-w-25 {
     min-width: calc(var(--spacing) * 25);
   }
+  .min-w-64 {
+    min-width: calc(var(--spacing) * 64);
+  }
   .min-w-\[14px\] {
     min-width: 14px;
   }
@@ -927,9 +930,6 @@
   .p-1 {
     padding: var(--spacing);
   }
-  .p-1\.5 {
-    padding: calc(var(--spacing) * 1.5);
-  }
   .p-2 {
     padding: calc(var(--spacing) * 2);
   }
@@ -1062,6 +1062,9 @@
   }
   .whitespace-nowrap {
     white-space: nowrap;
+  }
+  .whitespace-pre-wrap {
+    white-space: pre-wrap;
   }
   .text-amber-600 {
     color: var(--color-amber-600);
@@ -1330,6 +1333,9 @@
     }
     .md\:left-\[360px\] {
       left: 360px;
+    }
+    .md\:col-span-1 {
+      grid-column: span 1 / span 1;
     }
     .md\:block {
       display: block;

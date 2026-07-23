@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load widget_tweaks %}
+
+{% block title %}
+    {% if is_editing %}
+        Editar Régimen Fiscal
+    {% else %}
+        Nuevo Régimen Fiscal
+    {% endif %}
+{% endblock %}
+
+{% block module_name %}
+    {% if is_editing %}
+        Editar Régimen Fiscal
+    {% else %}
+        Nuevo Régimen Fiscal
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<form method="post" class="flex flex-col gap-4">
+    {% csrf_token %}
+
+    <p class="text-title text-sm">Información del régimen</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-start bg-container p-2 rounded">
+        
+        <span class="text-title mt-2">ID (Clave)</span>
+        <div>
+            {% if is_editing %}
+                {% render_field form.id class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" readonly="readonly" %}
+            {% else %}
+                {% render_field form.id class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% endif %}
+            {% for error in form.id.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title mt-2">Nombre</span>
+        <div>
+            {% render_field form.name class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" %}
+            {% for error in form.name.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+        <span class="text-title mt-2">Descripción</span>
+        <div class="md:col-span-1">
+            {% render_field form.description class="w-full bg-page border border-border rounded p-1 text-body focus:outline-none focus:border-hover transition-colors" rows="5" %}
+            {% for error in form.description.errors %}<p class="text-red-500 text-xs mt-1">{{ error }}</p>{% endfor %}
+        </div>
+
+    </div>
+
+    <div class="flex justify-end mt-4">
+        <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-50 mt-2 mb-2">Confirmar</button>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Regímenes fiscales{% endblock %}
+
+{% block module_name %}Regímenes fiscales{% endblock %}
+
+{% block module_actions %}
+
+<a href="{% url 'accounting:create_tax_system' %}" class="hover:text-hover text-strong transition-colors cursor-pointer">Nuevo régimen</a>
+
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-4">
+    <div class="">
+        <p class="text-title text-sm mb-2">Catálogo de regímenes fiscales</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh]">
+        <table class="w-max min-w-full border-separate border-spacing-0">
+            <thead>
+                <th class="w-20 p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-20 bg-page">
+                    <div class='w-full flex items-center justify-center gap-2'>
+                        <span>Clave</span>
+                    </div>
+                </th>
+                <th class="w-80 p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-20 bg-page">
+                    <div class='w-full flex items-center justify-center gap-2'>
+                        <span>Régimen fiscal</span>
+                    </div>
+                </th>
+            </thead>
+            <tbody>
+                {% for tax_system in tax_systems %}
+                <tr class="hover:bg-hover/30 transition-colors duration-300 border-b border-border text-sm">
+                    <td class="p-1 border-r border-border text-center text-strong bg-page">
+                        <a href="{% url 'accounting:update_tax_system' tax_system.id %}" class="underline hover:text-hover transition-colors flex items-center justify-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right-icon lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
+                            {{ tax_system.id }}
+                        </a>
+                    </td>
+                    <td class="p-1 border-r border-border text-left text-title bg-page">
+                        {{ tax_system.name }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="p-4 text-center text-title border-b border-border">
+                        No hay regímenes fiscales registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
