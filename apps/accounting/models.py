@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.db.models import F
 from decimal import Decimal
 
 class TaxSystem(models.Model):
@@ -40,10 +41,10 @@ class Account(models.Model):
         debit = Decimal(str(debit))
         credit = Decimal(str(credit))
         if self.increases_with_debit:
-            self.balance += debit - credit
+            Account.objects.filter(pk=self.pk).update(balance=F('balance') + debit - credit)
         else:
-            self.balance += credit - debit
-        self.save()
+            Account.objects.filter(pk=self.pk).update(balance=F('balance') + credit - debit)
+        self.refresh_from_db()
     
     def __str__(self):
         return f"{self.code.upper()} {self.name.title()}"
@@ -72,6 +73,11 @@ class JournalEntry(models.Model):
             total_credit = sum(line.credit for line in self.lines.all())
             if total_debit != total_credit:
                 raise ValidationError('El asiento no está equilibrado. Los débitos deben ser iguales a los créditos.')
+
+    def delete(self, *args, **kwargs):
+        if self.is_posted:
+            raise ValidationError('No se puede eliminar un asiento contable que ya fue aplicado. Se debe hacer un asiento de reversión.')
+        super().delete(*args, **kwargs)
     
     @transaction.atomic
     def post(self):
