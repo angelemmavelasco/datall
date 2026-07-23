@@ -1,4 +1,5 @@
-from apps.core.models import MenuSection, SystemModule, Reference, Novelty, AppVersion
+from apps.app_management.models import MenuSection, SystemModule, Novelty, AppVersion
+from apps.core.models import Reference
 from django.db.models import Prefetch
 from django.utils import timezone
 from datetime import timedelta

@@ -1,5 +1,80 @@
 from django.db import models
+from django.db.models import Q
 from decimal import Decimal
+
+class RouteType(models.Model):
+    id = models.CharField(max_length=50, primary_key=True)
+    name = models.CharField(max_length=255)
+    description = models.TextField(max_length=500, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Tipo de ruta"
+        verbose_name_plural = "Tipos de ruta"
+
+    def __str__(self):
+        name = (self.name or '').title()
+        return f"{self.id.upper()} {name}"
+
+class SaleChannel(models.Model):
+    id = models.CharField(max_length=50, primary_key=True)
+    name = models.CharField(max_length=255)
+    description = models.TextField(max_length=500, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Canal de venta"
+        verbose_name_plural = "Canales de venta"
+
+    def __str__(self):
+        name = (self.name or '').title()
+        return f"{self.id.upper()} {name}"
+
+class Route(models.Model):
+    id = models.CharField(primary_key=True, max_length=255)
+    name = models.CharField(max_length=255, null=True, blank=True)
+    warehouse = models.ForeignKey('human_resources.Warehouse', on_delete=models.SET_NULL, related_name="routes", null=True, blank=True)
+    sale_channel = models.ForeignKey('SaleChannel', on_delete=models.PROTECT, null=True, blank=True, related_name="routes")
+    route_type = models.ForeignKey('RouteType', on_delete=models.PROTECT, null=True, blank=True, related_name="routes")
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Ruta"
+        verbose_name_plural = "Rutas"
+
+    def __str__(self):
+        name = (self.name or '').title()
+        return f"{self.id.upper()} {name}"
+
+class RouteAssignment(models.Model):
+    route = models.ForeignKey('Route', on_delete=models.CASCADE, related_name="assignments")
+    employee = models.ForeignKey('human_resources.Employee', on_delete=models.CASCADE, related_name="route_assignments", blank=True, null=True)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Asignación de ruta"
+        verbose_name_plural = "Asignaciones de rutas"
+        constraints = [
+            # avoid duplicate assignments at the same day
+            models.UniqueConstraint(
+                fields=["route", "employee", "start_date"],
+                name="unique_route_assignment"
+            ),
+            # only one active assignment (end_date NULL) per route
+            models.UniqueConstraint(
+                fields=["route"],
+                condition=Q(end_date__isnull=True),
+                name="unique_active_assignment_per_route"
+            ),
+        ]
+
+    def __str__(self):
+        route = self.route.id
+        if self.employee and self.employee.user:
+            name = f"{self.employee.user.first_name.title()} {self.employee.user.last_name.title()}"
+        else:
+            name = "Sin colaborador asignado"
+        return f"Ruta {route}, {name}"
 
 class Sale(models.Model):
     """
@@ -49,9 +124,9 @@ class Sale(models.Model):
     sale_status = models.CharField(max_length=20, choices=SaleStatusChoices.choices, default=SaleStatusChoices.PENDING, db_index=True, help_text="Estado de la venta")
     payment_status = models.CharField(max_length=20, choices=PaymentStatusChoices.choices, default=PaymentStatusChoices.PENDING, db_index=True, help_text="Estado del pago")
 
-    customer = models.ForeignKey("core.Customer", on_delete=models.PROTECT, related_name="sales", db_index=True, help_text="Cliente que realizó la compra")
-    route = models.ForeignKey("core.Route", on_delete=models.PROTECT, related_name="sales", null=True, blank=True, db_index=True, help_text="Ruta/vendedor asignado a esta venta")
-    warehouse = models.ForeignKey("core.Warehouse", on_delete=models.PROTECT, related_name="sales", null=True, blank=True, db_index=True, help_text="Lugar de expedición de la venta")
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="sales", db_index=True, help_text="Cliente que realizó la compra")
+    route = models.ForeignKey("Route", on_delete=models.PROTECT, related_name="sales", null=True, blank=True, db_index=True, help_text="Ruta/vendedor asignado a esta venta")
+    warehouse = models.ForeignKey("human_resources.Warehouse", on_delete=models.PROTECT, related_name="sales", null=True, blank=True, db_index=True, help_text="Lugar de expedición de la venta")
 
     currency = models.CharField(max_length=3, default="MXN", help_text="Divisa en la que se realizó la venta")
     currency_exchange_rate = models.DecimalField(max_digits=10, decimal_places=4, default=1.0000, help_text="Valor de la divisa")
@@ -69,7 +144,6 @@ class Sale(models.Model):
     journal_entry = models.OneToOneField('accounting.JournalEntry', on_delete=models.SET_NULL, null=True, blank=True, related_name='sale', help_text="Asiento contable generado por esta venta")
 
     class Meta:
-        db_table = 'sales'
         verbose_name = 'Venta'
         verbose_name_plural = 'Ventas'
 
@@ -82,7 +156,7 @@ class SaleLine(models.Model):
     """
 
     sale = models.ForeignKey('Sale', on_delete=models.CASCADE, related_name='lines', help_text='Venta a la que pertenece esta línea')
-    product = models.ForeignKey('core.Product', on_delete=models.PROTECT, related_name='sales_lines')
+    product = models.ForeignKey('inventory.Product', on_delete=models.PROTECT, related_name='sales_lines')
     quantity = models.DecimalField(max_digits=18, decimal_places=4, default=0, help_text='Cantidad de producto vendido')
     unit_price = models.DecimalField(max_digits=18, decimal_places=6, default=0, help_text='Precio unitario del producto')
     unit_cost = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal('0.0'), help_text="Costo del producto al momento de vender para asiento de Costo de Ventas")
@@ -92,7 +166,6 @@ class SaleLine(models.Model):
     description_override = models.TextField(null=True, blank=True)
     
     class Meta:
-        db_table = 'sales_lines'
         verbose_name = 'Desglose de venta'
         verbose_name_plural = 'Desgloses de ventas'
 
@@ -113,7 +186,7 @@ class SaleLineTax(models.Model):
         CUOTA = "Cuota", "Cuota"
         EXENTO = "Exento", "Exento"
 
-    sale_line = models.ForeignKey(SaleLine, on_delete=models.CASCADE, related_name='taxes')
+    sale_line = models.ForeignKey('SaleLine', on_delete=models.CASCADE, related_name='taxes')
     tax_type = models.CharField(max_length=10, choices=TaxType.choices, default=TaxType.IVA)
     factor_type = models.CharField(max_length=10, choices=TaxFactorType.choices, default=TaxFactorType.TASA)
     rate = models.DecimalField(max_digits=6, decimal_places=4, help_text="Ej: 0.1600 para 16%")
@@ -122,10 +195,8 @@ class SaleLineTax(models.Model):
     tax_account = models.ForeignKey("accounting.Account", on_delete=models.PROTECT, null=True, blank=True, help_text="Cuenta contable asociada (ej. 209.01 IVA Pendiente de Trasladar)")
     
     class Meta:
-        db_table = 'sales_line_taxes'
         verbose_name = 'Impuesto de desglose de venta'
         verbose_name_plural = 'Impuestos de desgloses de ventas'
-
 
 class Invoice(models.Model):
     '''
@@ -186,19 +257,17 @@ class Invoice(models.Model):
     updated_at = models.DateTimeField(auto_now=True, help_text="Fecha de actualización (del registro)")
     
     class Meta:
-        db_table = 'invoices'
         verbose_name = 'Factura (CFDI)'
         verbose_name_plural = 'Facturas (CFDI)'
 
     def __str__(self):
         return f"CFDI {self.serie or ''}{self.folio or ''} - {self.uuid or 'Sin timbrar'}"
-
-    
+   
 class InvoiceItem(models.Model):
     """
     Breakdown of an invoice, also know as concepts in a CFDI. It stores data of a single concept in a CFDI and its non-changable info.
     """
-    invoice = models.ForeignKey(Invoice, related_name='items', on_delete=models.CASCADE)
+    invoice = models.ForeignKey('Invoice', related_name='items', on_delete=models.CASCADE)
     
     product_code = models.CharField(max_length=10, help_text="Clave de producto o servicio del SAT (ej. 10111302)")
     identification_number = models.CharField(max_length=50, blank=True, null=True, help_text="No. Identificación o SKU interno")
@@ -215,19 +284,17 @@ class InvoiceItem(models.Model):
     tax_object = models.CharField(max_length=2, help_text="ObjetoImp (01, 02, 03)")
 
     class Meta:
-        db_table = 'invoice_items'
         verbose_name = 'Concepto de factura'
         verbose_name_plural = 'Conceptos de factura'
 
     def __str__(self):
         return f"{self.product_code} - {self.description}"
 
-
 class InvoiceItemTax(models.Model):
     """
     Impuestos fiscales desglosados por concepto del CFDI.
     """
-    item = models.ForeignKey(InvoiceItem, related_name='taxes', on_delete=models.CASCADE)
+    item = models.ForeignKey('InvoiceItem', related_name='taxes', on_delete=models.CASCADE)
     name = models.CharField(max_length=10, help_text="IVA, ISR, IEPS")
     is_retention = models.BooleanField(default=False)
     is_federal_tax = models.BooleanField(default=True)
@@ -237,7 +304,6 @@ class InvoiceItemTax(models.Model):
     total = models.DecimalField(max_digits=18, decimal_places=6)
     
     class Meta:
-        db_table = 'invoice_item_taxes'
         verbose_name = 'Impuesto de factura'
         verbose_name_plural = 'Impuestos de factura'
 
@@ -262,14 +328,14 @@ class InvoiceRelation(models.Model):
         PAGOS_DIFERIDOS = '09', '09 Factura generada por pagos diferidos'
 
     source_invoice = models.ForeignKey(
-        Invoice, 
+        'Invoice', 
         related_name='related_documents', 
         on_delete=models.CASCADE, 
         help_text="CFDI que se está emitiendo (Hijo)"
     )
     
     target_invoice = models.ForeignKey(
-        Invoice, 
+        'Invoice', 
         related_name='referenced_by', 
         on_delete=models.CASCADE, 
         help_text="CFDI previo relacionado (Padre)"
@@ -282,10 +348,32 @@ class InvoiceRelation(models.Model):
     )
 
     class Meta:
-        db_table = 'invoice_relations'
         verbose_name = 'CFDI Relacionado'
         verbose_name_plural = 'CFDIs Relacionados'
         unique_together = ('source_invoice', 'target_invoice', 'relation_type')
 
     def __str__(self):
         return f"{self.source_invoice.uuid} -> {self.relation_type} -> {self.target_invoice.uuid}"
+
+class SaleTarget(models.Model):
+    period = models.DateField()
+    route = models.ForeignKey('Route', on_delete=models.PROTECT, related_name='sale_targets')
+    warehouse = models.ForeignKey('human_resources.Warehouse', on_delete=models.PROTECT, related_name='sale_targets')
+    product_class = models.ForeignKey('inventory.ProductClass', on_delete=models.PROTECT, related_name='sale_targets')
+    target_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal('0.00'))
+    is_valid_for_comission = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Objetivo de venta'
+        verbose_name_plural = 'Objetivos de venta'
+        constraints = [
+            models.UniqueConstraint(
+                fields=["period", "route", "product_class"],
+                name="unique_sale_target_per_period_route_class"
+            )
+        ]
+
+    def __str__(self):
+        route = self.route_id
+        cls_name = (self.product_class_id or "").title()
+        return f'Ruta {route}, clase {cls_name}, periodo {self.period:%b %Y}'

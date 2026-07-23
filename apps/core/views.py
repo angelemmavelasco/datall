@@ -5,8 +5,7 @@ from django.http import HttpResponse
 from django.contrib.auth.views import PasswordChangeView
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import login_required
-from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
-from apps.core.models import SystemModule, AppVersion
+from apps.app_management.models import AppVersion
 
 def custom_csrf_failure(request, reason=""):
     messages.warning(request, "Tu sesión expiró por inactividad. Por favor, vuelve a ingresar.")
@@ -39,36 +38,26 @@ class CustomPasswordChangeView(PasswordChangeView):
 
 @login_required
 def support(request):
-    
-    module = SystemModule.objects.filter(url_name='core:support').first()
-    ActivityLogger.log_read(
-        user=request.user,
-        module=module,
-        description="visualización del manual de usuario / soporte."
-    )
-    
     template = "docs/user_docs.html"
     return render(request, template)
 
 @login_required
 def app_versions(request):
     template = "app_versions/app_versions.html"
-
     app_versions = AppVersion.objects.filter(is_published=True).order_by('-release_date', '-version_number')
-    print(app_versions)
-
     context = {
         'app_versions': app_versions
     }
+    return render(request, template, context)
 
-
-
-    module = SystemModule.objects.filter(url_name='core:app_versions').first()
-    ActivityLogger.log_read(
-        user=request.user,
-        module=module,
-        description="visualización de las versiones de la aplicación."
-    )
-    
+@login_required
+def user_list_view(request):
+    template = "users/user_list.html"
+    from apps.core.services.users import UsersService
+    users_service = UsersService(request.user)
+    users = users_service.read_users()
+    context = {
+        'users': users,
+    }
     return render(request, template, context)
     

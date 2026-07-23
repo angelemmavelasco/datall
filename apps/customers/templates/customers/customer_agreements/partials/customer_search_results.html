@@ -1,8 +1,0 @@
-{% for customer in allowed_customers %}
-<label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
-    <input type="radio" name="customer_id" value="{{ customer.id }}" required class="accent-strong" onchange="updateSelectedText(this); validateClassTargets();">
-    <span class="searchable-text">{{ customer.id|upper }} {{ customer.name|title }}</span>
-</label>
-{% empty %}
-<div class="text-sm text-muted p-2 text-center italic">No se encontraron clientes.</div>
-{% endfor %}

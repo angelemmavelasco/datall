@@ -1,11 +1,10 @@
 {
-    "venvPath": "/Users/angelvelasco/Developer/datall",
-    "venv": ".venv",
-    "pythonPath": "/Users/angelvelasco/Developer/datall/.venv/bin/python",
+    "venvPath": "/Users/angelvelasco/Developer/venvs",
+    "venv": "datall_erp",
     "pythonVersion": "3.12",
     "extraPaths": [
-        "/Users/angelvelasco/Developer/datall",
-        "/Users/angelvelasco/Developer/datall/apps"
+        "/Users/angelvelasco/Library/Mobile Documents/com~apple~CloudDocs/Developer_shared/datall_erp/datall",
+        "/Users/angelvelasco/Library/Mobile Documents/com~apple~CloudDocs/Developer_shared/datall_erp/datall/apps"
     ],
     "typeCheckingMode": "basic",
     "reportMissingTypeStubs": false

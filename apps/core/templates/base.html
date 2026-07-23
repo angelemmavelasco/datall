@@ -277,7 +277,7 @@
             </button>
         </div>
 
-        <a href="{% url 'data_admin:novelties' %}" class="mb-3 text-strong hover:text-hover cursor-pointer transition-colors w-fit">
+        <a href="" class="mb-3 text-strong hover:text-hover cursor-pointer transition-colors w-fit">
             Ver todas
         </a>
 
@@ -285,7 +285,7 @@
             <ul class="flex flex-col gap-3">
                 {% for novelty in recent_novelties %}
                 <li class="border border-border rounded bg-page hover:border-strong transition-colors cursor-pointer group">
-                    <a href="{% url 'data_admin:novelties' %}#novelty-{{ novelty.id }}" class="block p-3">
+                    <a href="" class="block p-3">
                         <div class="flex items-center justify-between mb-1">
                             <span class="text-xs text-strong font-medium group-hover:text-hover transition-colors text-wrap max-w-50">
                                 {{ novelty.title|title }}
@@ -550,7 +550,7 @@
                     <p class="text-title">Workspace</p>
                     <ul class="ml-3 flex flex-col gap-1.5 border-l border-border pl-4 text-body">
 
-                        <li><a href='{% url "data_assistant:datall_assistant" %}' class="block py-1 hover:text-hover transition-colors">
+                        <li><a href='' class="block py-1 hover:text-hover transition-colors">
                                 Asistente datall
                             </a>
                         </li>

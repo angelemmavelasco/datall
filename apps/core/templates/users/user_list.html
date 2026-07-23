@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Usuarios{% endblock %}
+
+{% block module_name %}Usuarios{% endblock %}
+
+
+{% block content %}
+
+    {% for user in users %}
+        <div>
+            {{ user.username }}
+        </div>
+    {% empty %}
+        <p>No hay usuarios registrados</p>
+    {% endfor %}
+
+{% endblock %}

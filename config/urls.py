@@ -39,12 +39,14 @@ urlpatterns = [
     path('data_assistant/', include('apps.data_assistant.urls')),
 
     path('sales/', include('apps.sales.urls')),
-    path('marketing/', include('apps.marketing.urls')),
     path('customers/', include('apps.customers.urls')),
-    path('data_admin/', include('apps.data_admin.urls')),
     path('human_resources/', include('apps.human_resources.urls')),
     path('business_intelligence/', include('apps.business_intelligence.urls')),
     path('core/', include('apps.core.urls')),
+    path('inventory/', include('apps.inventory.urls')),
+    path('accounting/', include('apps.accounting.urls')),
+    path('app_management/', include('apps.app_management.urls')),
+    # path('data_admin', include('apps.data_admin.urls'))
 ]
 
 handler404 = 'apps.core.views.custom_404_view'

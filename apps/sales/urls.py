@@ -3,20 +3,4 @@ from apps.sales.views import *
 
 app_name='sales'
 
-urlpatterns = [
-    path('products/', products, name='products'),
-    path('products/export/', products_export, name='products_export'),
-    path('products/<path:product_id>/', product, name='product'),
-
-    path('sale_transactions/', sale_transactions, name='sale_transactions'),
-    path('sale_transactions/export/', sale_transactions_export, name='sale_transactions_export'),
-
-    path('sale_targets_calculator/', sale_targets_calculator, name='sale_targets_calculator'),
-    path('sale_targets_calculator/export/', export_sale_targets_calculator_data, name='export_sale_targets_calculator_data'),
-
-
-
-    #refactor
-    path('sales/', sales, name='sales'),
-    path('sales/<path:sale_id>/', sale_detail, name='sale_detail'),
-]
+urlpatterns = []

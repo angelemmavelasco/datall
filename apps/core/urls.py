@@ -1,8 +1,8 @@
-# pyrefly: ignore [missing-import]
 from django.urls import path
 from .views import CustomPasswordChangeView, support, app_versions
-# pyrefly: ignore [missing-import]
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView\
+
+from .views import *
 
 app_name='core'
 
@@ -20,4 +20,6 @@ urlpatterns = [
 
     path('support/', support, name='support'),
     path('app_versions/', app_versions, name='app_versions'),
+
+    path('user_list/', user_list_view, name='user_list'),
 ]

@@ -2,6 +2,18 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from decimal import Decimal
 
+class TaxSystem(models.Model):
+    id = models.CharField(max_length=3, primary_key=True)
+    name = models.CharField(unique=True, max_length=255)
+    description = models.TextField(max_length=500, null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Régimen fiscal'
+        verbose_name_plural = 'Regímenes fiscales'
+
+    def __str__(self):
+        return f'{self.id.upper()} {self.name.title()}'
+
 class Account(models.Model):
     """
     Represents an accounting account, e.g. cash, bank accounts, accounts receivable, accounts payable, etc.
@@ -40,7 +52,6 @@ class Account(models.Model):
         verbose_name = "Cuenta contable"
         verbose_name_plural = "Cuentas contables"
         ordering = ['code']
-        db_table = "accounts"
     
 class JournalEntry(models.Model):
     """
@@ -88,18 +99,16 @@ class JournalEntry(models.Model):
         return f"{self.date} {self.description}"
 
     class Meta:
-        db_table = "journal_entries"
         verbose_name = "Asiento contable"
         verbose_name_plural = "Asientos contables"
         ordering = ['date']
-
 
 class JournalEntryLine(models.Model):
     """
     Represents a line item in a journal entry
     """
-    entry = models.ForeignKey(JournalEntry, related_name='lines', on_delete=models.CASCADE)
-    account = models.ForeignKey(Account, on_delete=models.PROTECT)
+    entry = models.ForeignKey('JournalEntry', related_name='lines', on_delete=models.CASCADE)
+    account = models.ForeignKey('Account', on_delete=models.PROTECT)
     debit = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal('0.000000'))
     credit = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal('0.000000'))
     description = models.CharField(max_length=200, blank=True, null=True)
