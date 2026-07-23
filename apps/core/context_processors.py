@@ -23,7 +23,8 @@ def module_permissions(request):
     user_groups = user.groups.all()
 
     allowed_modules = SystemModule.objects.filter(
-        allowed_groups__in=user_groups
+        allowed_groups__in=user_groups,
+        is_active=True
     ).distinct()
 
     sections = MenuSection.objects.filter(

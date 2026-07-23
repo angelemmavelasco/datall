@@ -14,7 +14,7 @@ class MenuSection(models.Model):
         verbose_name_plural = 'Secciones de menú'  
         
     def __str__(self):
-        return self.name.title
+        return self.name.title()
 
 class SystemModule(models.Model):
     """
