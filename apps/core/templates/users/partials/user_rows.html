@@ -1,0 +1,70 @@
+{% for user_obj in page_obj %}
+<tr class="hover:bg-hover/30 transition-colors duration-300 border-b border-border text-sm">
+    <td class="p-1 border-r border-border text-left text-strong bg-page">
+        <a href="{% url 'core:update_user' user_obj.id %}" class="underline hover:text-hover transition-colors">
+            {{ user_obj.username }}
+        </a>
+    </td>
+    <td class="p-1 border-r border-border text-left text-title bg-page">
+        {{ user_obj.first_name|title }}
+    </td>
+    <td class="p-1 border-r border-border text-left text-title bg-page">
+        {{ user_obj.last_name|title }}
+    </td>
+    <td class="p-1 border-r border-border text-left text-title bg-page">
+        {{ user_obj.second_last_name|default:"-"|title }}
+    </td>
+    <td class="p-1 border-r border-border text-center text-title bg-page">
+        {{ user_obj.tax_id|default:"-"|upper }}
+    </td>
+    <td class="p-1 border-r border-border text-center text-title bg-page">
+        {{ user_obj.unique_personal_id|default:"-"|upper }}
+    </td>
+    <td class="p-1 border-r border-border text-center text-title bg-page">
+        {{ user_obj.birth_date|date:"d - M - Y"|default:"-" }}
+    </td>
+    <td class="p-1 border-r border-border text-left text-title bg-page">
+        {{ user_obj.get_gender_display|default:"-" }}
+    </td>
+    <td class="p-1 border-r border-border text-left text-title bg-page">
+        {% if user_obj.is_active %}
+            <span class="text-green-500">Activo</span>
+        {% else %}
+            <span class="text-red-500">Inactivo</span>
+        {% endif %}
+    </td>
+</tr>
+{% empty %}
+    {% if not page_obj.has_previous %}
+    <tr>
+        <td colspan="9" class="p-4 text-center text-title border-b border-border">
+            No hay usuarios registrados.
+        </td>
+    </tr>
+    {% endif %}
+{% endfor %}
+
+{% if page_obj.has_next %}
+<tr id="load-more-row-{{ page_obj.number }}">
+    <td colspan="9" class="p-4 border-t border-border bg-page">
+        <div class="sticky left-1/2 -translate-x-1/2 w-max">
+            <button hx-get="{{ request.path }}?page={{ page_obj.next_page_number }}"
+                    hx-target="#load-more-row-{{ page_obj.number }}"
+                    hx-swap="outerHTML"
+                    class="group hover:text-hover text-strong transition-colors cursor-pointer border border-border rounded p-1 bg-page">
+                
+                <div class="flex items-center gap-2 group-[.htmx-request]:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down-icon lucide-circle-chevron-down"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg>
+                    <span>Mostrar más</span>
+                </div>
+
+                <div class="hidden items-center gap-2 group-[.htmx-request]:flex">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-dot-dashed-icon lucide-circle-dot-dashed animate-spin"><path d="M10.1 2.18a9.93 9.93 0 0 1 3.8 0"/><path d="M17.6 3.71a9.95 9.95 0 0 1 2.69 2.7"/><path d="M21.82 10.1a9.93 9.93 0 0 1 0 3.8"/><path d="M20.29 17.6a9.95 9.95 0 0 1-2.7 2.69"/><path d="M13.9 21.82a9.94 9.94 0 0 1-3.8 0"/><path d="M6.4 20.29a9.95 9.95 0 0 1-2.69-2.7"/><path d="M2.18 13.9a9.93 9.93 0 0 1 0-3.8"/><path d="M3.71 6.4a9.95 9.95 0 0 1 2.7-2.69"/><circle cx="12" cy="12" r="1"/></svg>
+                    <span class="text-strong">Cargando...</span>
+                </div>
+
+            </button>
+        </div>
+    </td>
+</tr>
+{% endif %}

@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from apps.app_management.models import AppVersion
 from .forms import UserForm
 from .services.users import UsersService
+from django.core.paginator import Paginator
 
 def custom_csrf_failure(request, reason=""):
     messages.warning(request, "Tu sesión expiró por inactividad. Por favor, vuelve a ingresar.")
@@ -54,35 +55,75 @@ def app_versions(request):
 
 @login_required
 def user_list(request):
-    template = "users/user_list.html"
-    from apps.core.services.users import UsersService
     users_service = UsersService(request.user)
     users = users_service.read_users()
+    
+    paginator = Paginator(users, 100)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    if request.headers.get('HX-Request') == 'true':
+        template = "users/partials/user_rows.html"
+    else:
+        template = "users/user_list.html"
+        
     context = {
-        'users': users,
+        'page_obj': page_obj,
     }
     return render(request, template, context)
 
 @login_required
-def user_form(request):
+def user_create_form(request):
     template = "users/user_form.html"
     users_service = UsersService(request.user)
 
     if request.method == 'POST':
         form = UserForm(request.POST, request.FILES)
-        print(form)
         if form.is_valid():
             print('Formulario validado')
-            new_user = users_service.create_user(**form.cleaned_data)
-            if new_user:
-                messages.success(request, 'Usuario creado correctamente.')
-                return redirect('core:user_list')
+            if not form.cleaned_data.get('password'):
+                form.add_error('password', 'La contraseña es obligatoria para nuevos usuarios.')
             else:
-                form.add_error(None, "No tienes permisos suficientes para crear usuarios.")
+                new_user = users_service.create_user(**form.cleaned_data)
+                if new_user:
+                    messages.success(request, 'Usuario creado correctamente.')
+                    return redirect('core:user_list')
+                else:
+                    form.add_error(None, "No tienes permisos suficientes para crear usuarios.")
     else:
         form = UserForm()
     context = {
         'form': form,
+    }
+    return render(request, template, context)
+
+@login_required
+def user_update_form(request, user_id: int):
+    template = "users/user_form.html"
+    users_service = UsersService(request.user)
+    user_to_edit = users_service.read_user(user_id)
+
+    if not user_to_edit:
+        messages.error(request, 'Usuario no encontrado.')
+        return redirect('core:user_list')
+
+    if request.method == 'POST':
+        form = UserForm(request.POST, request.FILES, instance=user_to_edit)
+        if form.is_valid():
+            print('Formulario validado')
+            updated_user = users_service.update_user(user_id, **form.cleaned_data)
+            if updated_user:
+                messages.success(request, 'Usuario actualizado correctamente.')
+                return redirect('core:user_list')
+            else:
+                form.add_error(None, "No tienes permisos suficientes para actualizar el usuario.")
+    else:
+        form = UserForm(instance=user_to_edit)
+        form.initial['password'] = ''
+
+    context = {
+        'form': form,
+        'is_editing': True,
     }
     return render(request, template, context)
     

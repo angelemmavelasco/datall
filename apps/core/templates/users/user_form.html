@@ -2,9 +2,21 @@
 {% load humanize %}
 {% load widget_tweaks %}
 
-{% block title %}Nuevo Usuario{% endblock %}
+{% block title %}
+    {% if is_editing %}
+        Editar Usuario
+    {% else %}
+        Nuevo Usuario
+    {% endif %}
+{% endblock %}
 
-{% block module_name %}Nuevo Usuario{% endblock %}
+{% block module_name %}
+    {% if is_editing %}
+        Editar Usuario
+    {% else %}
+        Nuevo Usuario
+    {% endif %}
+{% endblock %}
 
 
 {% block content %}

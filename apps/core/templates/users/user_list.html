@@ -14,12 +14,99 @@
 
 {% block content %}
 
-    {% for user in users %}
-        <div>
-            {{ user.username }}
-        </div>
-    {% empty %}
-        <p>No hay usuarios registrados</p>
-    {% endfor %}
+<div class="flex flex-col w-full gap-4">
+    <div class="">
+        <p class="text-title text-sm mb-2">Total de usuarios registrados en Datall</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh]">
+        <table class="w-max min-w-full min-h-48 border-separate border-spacing-0">
+            <thead>
+                <th class="w-50 p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-20 bg-page">
+                    <div class='w-full flex items-center justify-center gap-2'>
+                        <span>Usuario</span>
+                        <span class='custom-tooltip tooltip-left'
+                            data-title='Credencial con la que un usuario ingresa al sistema'>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                        </span>
+                    </div>
+                </th>
+                <th class="w-60 p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-20 bg-page">
+                    <div class='w-full flex items-center justify-center gap-2'>
+                        <span>Nombre (s)</span>
+                        <span class='custom-tooltip tooltip-left'
+                            data-title='Nombre legal del usuario'>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                        </span>
+                    </div>
+                </th>
+                <th class="w-60 p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-20 bg-page">
+                    <div class='w-full flex items-center justify-center gap-2'>
+                        <span>Primer apellido</span>
+                        <span class='custom-tooltip tooltip-left'
+                            data-title='Primer apellido legal del usuario'>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                        </span>
+                    </div>
+                </th>
+                <th class="w-60 p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-20 bg-page">
+                    <div class='w-full flex items-center justify-center gap-2'>
+                        <span>Segundo apellido</span>
+                        <span class='custom-tooltip tooltip-left'
+                            data-title='Segundo apellido legal del usuario. Este campo puede quedar vacío.'>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                        </span>
+                    </div>
+                </th>
+                <th class="w-50 p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-20 bg-page">
+                    <div class='w-full flex items-center justify-center gap-2'>
+                        <span>RFC</span>
+                        <span class='custom-tooltip tooltip-left' data-title='Registro Federal de Contribuyentes'>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                        </span>
+                    </div>
+                </th>
+                <th class="w-50 p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-20 bg-page">
+                    <div class='w-full flex items-center justify-center gap-2'>
+                        <span>CURP</span>
+                        <span class='custom-tooltip tooltip-left' data-title='Clave Única de Registro de Población'>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                        </span>
+                    </div>
+                </th>
+                <th class="w-40 p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-20 bg-page">
+                    <div class='w-full flex items-center justify-center gap-2'>
+                        <span>Nacimiento</span>
+                        <span class='custom-tooltip tooltip-left' data-title='Fecha de nacimiento del usuario'>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                        </span>
+                    </div>
+                </th>
+                <th class="w-40 p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-20 bg-page">
+                    <div class='w-full flex items-center justify-center gap-2'>
+                        <span>Género</span>
+                        <span class='custom-tooltip tooltip-right' data-title='Género del usuario'>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                        </span>
+                    </div>
+                </th>
+                <th class="w-20 p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-20 bg-page">
+                    <div class='w-full flex items-center justify-center gap-2'>
+                        <span>Estado</span>
+                        <span class='custom-tooltip tooltip-right'
+                            data-title='Estado de la cuenta del usuario. Indica si tiene acceso al sistema o no. Puede estar activo o inactivo'>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                        </span>
+                    </div>
+                </th>
+            </thead>
+            <tbody>
+                {% include "users/partials/user_rows.html" %}
+            </tbody>
+
+        </table>
+    </div>
+</div>
 
 {% endblock %}

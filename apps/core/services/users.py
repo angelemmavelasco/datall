@@ -70,6 +70,31 @@ class UsersService:
             new_user.groups.set(groups)
         return new_user
     
+    def update_user(self, user_id: int, **kwargs):
+        """
+        updates a user. A user can only modify their own info unless they have full access.
+        """
+        if not self.user or not self.user.is_authenticated:
+            return None
+        user_to_update = self.read_user(user_id)
+        if not user_to_update:
+            return None
+        password = kwargs.pop('password', None)
+        groups = kwargs.pop('groups', None)
+        if not self._is_full_access:
+            sensitive_fields = ['is_superuser', 'is_staff', 'is_active']
+            for field in sensitive_fields:
+                kwargs.pop(field, None)
+            groups = None
+        for key, value in kwargs.items():
+            setattr(user_to_update, key, value)
+        if password:
+            user_to_update.set_password(password)
+        user_to_update.save()
+        if groups is not None:
+            user_to_update.groups.set(groups)
+        return user_to_update
+    
     def delete_user(self, user_id: int):
         """
         deletes a user if the main user has total access (its soft deleted)
