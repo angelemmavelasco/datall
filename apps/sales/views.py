@@ -129,6 +129,46 @@ def product(request, product_id: str):
 
 @login_required
 def stock_transfers(request):
+    if request.method == 'POST' and request.headers.get('HX-Request'):
+        action = request.POST.get('action')
+        if action == 'calculate-transfer':
+            from apps.sales.services.stock_transfers.calculator import StockTransferCalculatorService
+            
+            origin = request.POST.get('warehouse_origin')
+            destination = request.POST.get('warehouse_destination')
+            start_date = request.POST.get('start_date')
+            end_date = request.POST.get('end_date')
+            
+            # Using getlist for multiselect, although in template it's a single select currently,
+            # but user said "el usuario puede decidir si solo de una clase o todas, por lo tanto, esto tiene que ser multiselect".
+            # We will use getlist to support it if it becomes a multiple select.
+            product_classes = request.POST.getlist('product_classes')
+            rotation_levels = request.POST.getlist('rotation_levels')
+            
+            service = StockTransferCalculatorService(
+                origin_warehouse_id=origin,
+                destination_warehouse_id=destination,
+                product_class_ids=product_classes,
+                rotation_level_ids=rotation_levels
+            )
+            
+            results = service.calculate_transfer(start_date, end_date)
+            
+            # optional logging
+            module = SystemModule.objects.filter(url_name='sales:stock_transfers').first()
+            if module:
+                ActivityLogger.log_read(
+                    user=request.user,
+                    module=module,
+                    description='cálculo de transferencias de stock',
+                    metadata={'origin': origin, 'destination': destination}
+                )
+                
+            return render(request, 'sales/stock_transfers/partials/transfer_results.html', {
+                'results': results,
+                'errors': service.errors
+            })
+
     template = 'sales/stock_transfers/stock_transfers.html'
     warehouses = Warehouse.objects.all().exclude(id__in = ['cdmx1','cdmx2']).order_by('name')
     product_classes = ProductClass.objects.all().order_by('name')
@@ -137,6 +177,75 @@ def stock_transfers(request):
         'product_classes': product_classes,
     }
     return render(request, template, context)
+
+@login_required
+async def export_stock_transfer_data(request):
+    req_data = request.POST if request.method == 'POST' else request.GET
+    
+    origin = req_data.get('warehouse_origin')
+    destination = req_data.get('warehouse_destination')
+    start_date = req_data.get('start_date')
+    end_date = req_data.get('end_date')
+    
+    product_classes = req_data.getlist('product_classes')
+    rotation_levels = req_data.getlist('rotation_levels')
+    
+    coverages = {}
+    for key, value in req_data.items():
+        if key.startswith('coverage_'):
+            prod_id = key.replace('coverage_', '')
+            try:
+                coverages[prod_id] = float(value)
+            except (ValueError, TypeError):
+                coverages[prod_id] = 1.0
+
+    @sync_to_async
+    def generate_file():
+        from apps.sales.services.stock_transfers.calculator import StockTransferCalculatorService
+        from apps.core.models import Warehouse
+        
+        service = StockTransferCalculatorService(
+            origin_warehouse_id=origin,
+            destination_warehouse_id=destination,
+            product_class_ids=product_classes,
+            rotation_level_ids=rotation_levels
+        )
+        
+        results = service.calculate_transfer(start_date, end_date)
+        
+        origin_name = "Desconocido"
+        dest_name = "Desconocido"
+        if origin:
+            w_origin = Warehouse.objects.filter(id=origin).first()
+            if w_origin:
+                origin_name = w_origin.name.title()
+        if destination:
+            w_dest = Warehouse.objects.filter(id=destination).first()
+            if w_dest:
+                dest_name = w_dest.name.title()
+        
+        module = SystemModule.objects.filter(url_name='sales:stock_transfers').first()
+        ActivityLogger.log_download(
+            user=request.user,
+            module=module,
+            description='descarga de resultados de transferencias de stock en Excel',
+            metadata={'origin': origin, 'destination': destination}
+        )
+        
+        return service.export_data_report(results, start_date, end_date, origin_name, dest_name, coverages)
+
+    excel_file = await generate_file()
+    
+    if not excel_file:
+        return HttpResponse("Error en los parámetros o la simulación", status=400)
+
+    response = HttpResponse(
+        excel_file, 
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="transferencias_stock.xlsx"'
+    
+    return response
 
 
 @login_required

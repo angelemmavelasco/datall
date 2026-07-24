@@ -38,7 +38,7 @@
     </div>
 
     <div class="bg-container border border-border rounded p-2">
-        <form hx-post="{% url 'sales:stock_transfers' %}" hx-target="#transfer-preview" id="trasnfer-form">
+        <form hx-post="{% url 'sales:stock_transfers' %}" hx-target="#transfer-results" id="trasnfer-form">
             {% csrf_token %}
             <input type="hidden" name="action" value="calculate-transfer">
 
@@ -62,14 +62,16 @@
                     </select>
                 </div>
 
-                <div class="flex flex-col gap-1">
-                    <label class="text-strong">Filtrar por clase de producto</label>
-                    <select name="product_classes" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none">
-                        <option value="">Todas</option>
-                        {% for product_class in product_classes %}
-                            <option value="{{ product_class.id }}">{{ product_class.name|title }}</option>
+                <div class="flex flex-col gap-1 col-span-1 md:col-span-2">
+                    <label class="text-strong">Filtrar por clase de producto (Selecciona una o más)</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-1 bg-page border border-border p-2 rounded max-h-32 overflow-y-auto">
+                        {% for pc in product_classes %}
+                        <label class="flex items-center gap-2 cursor-pointer hover:bg-hover rounded transition-colors p-1">
+                            <input type="checkbox" name="product_classes" value="{{ pc.id }}" checked>
+                            <span class="text-strong text-sm">{{ pc.name|title }}</span>
+                        </label>
                         {% endfor %}
-                    </select>
+                    </div>
                 </div>
 
                 <div class="flex flex-col gap-1">
@@ -98,10 +100,24 @@
 
             <div class="mt-4 flex justify-end">
                 <button type="submit" class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-40">
-                    Validar existencias
+                    Calcular transferencia
                 </button>
             </div>
         </form>
+    </div>
+
+    <div class="my-4">
+        <p class="text-title text-sm mb-2">Resultados del cálculo</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="my-4 flex items-center gap-2">
+        <p class="text-title text-sm">Cobertura default</p>
+        <input type="number" step="0.1" min="0" value="1.0" class="border border-border rounded p-1 bg-page  text-strong w-20 outline-none" onchange="updateGlobalCoverage(this)" onkeyup="updateGlobalCoverage(this)">
+
+        <button id="btn-descargar" disabled onclick="exportarCalculo()" class="hover:text-hover text-strong transition-colors cursor-not-allowed opacity-50 ml-auto">
+            Descargar datos
+        </button>
     </div>
 
     <div class="w-full overflow-x-auto border border-border rounded bg-container mt-4">
@@ -114,15 +130,78 @@
                 <th class="w-40 p-1 text-center text-title">Existencias</th>
                 <th class="w-40 p-1 text-center text-title">En tránsito</th>
                 <th class="w-40 p-1 text-center text-title">Cobertura (%)</th>
-                <th class="w-40 p-1 text-center text-title">Sugerencia</th>
+                <th class="w-40 p-1 text-center text-title">Transferencia</th>
             </tr>
             </thead>
 
-            <tbody>
+            <tbody id="transfer-results">
                 <!-- peticion htmx -->
             </tbody>
 
         </table>
     </div>
 
+    <script>
+        document.getElementById('trasnfer-form').addEventListener('submit', function() {
+            const btn = document.getElementById('btn-descargar');
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                btn.classList.remove('cursor-pointer');
+            }
+        });
+
+        function updateGlobalCoverage(inputElement) {
+            const val = inputElement.value;
+            const rowInputs = document.querySelectorAll('#transfer-results .coverage-input');
+            rowInputs.forEach(input => {
+                input.value = val;
+                if (typeof calculateSuggestion === 'function') {
+                    calculateSuggestion(input);
+                }
+            });
+        }
+        
+        function exportarCalculo() {
+            const filterForm = document.getElementById('trasnfer-form');
+            if (!filterForm) return;
+            
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = "{% url 'sales:export_stock_transfer_data' %}";
+            form.style.display = 'none';
+            
+            const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrf;
+            form.appendChild(csrfInput);
+            
+            const formData = new FormData(filterForm);
+            for (const pair of formData.entries()) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = pair[0];
+                input.value = pair[1];
+                form.appendChild(input);
+            }
+            
+            const coverageInputs = document.querySelectorAll('#transfer-results .coverage-input');
+            coverageInputs.forEach(input => {
+                const productId = input.dataset.productId;
+                if (productId) {
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = `coverage_${productId}`;
+                    hiddenInput.value = input.value;
+                    form.appendChild(hiddenInput);
+                }
+            });
+            
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+        }
+    </script>
 {% endblock content %}

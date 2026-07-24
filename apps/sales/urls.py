@@ -8,6 +8,7 @@ urlpatterns = [
     path('products/export/', products_export, name='products_export'),
     path('products/<path:product_id>/', product, name='product'),
     path('stock_transfers/', stock_transfers, name='stock_transfers'),
+    path('stock_transfers/export/', export_stock_transfer_data, name='export_stock_transfer_data'),
 
     path('sale_transactions/', sale_transactions, name='sale_transactions'),
     path('sale_transactions/export/', sale_transactions_export, name='sale_transactions_export'),
