@@ -53,7 +53,7 @@ class Department(models.Model):
 class Position(models.Model):
     id = models.CharField(max_length=20, primary_key=True, help_text='Identificador único del puesto')
     name = models.CharField(max_length=255, unique=True, help_text='Nombre del puesto')
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='%(app_label)s_positions', help_text='Departamento al que pertenece el puesto')
+    department = models.ForeignKey('Department', on_delete=models.CASCADE, related_name='%(app_label)s_positions', help_text='Departamento al que pertenece el puesto')
     description = models.TextField(max_length=255, null=True, blank=True, help_text='Descripción del puesto')
 
     class Meta:
@@ -63,7 +63,7 @@ class Position(models.Model):
 class Employee(models.Model):
     id = models.CharField(max_length=20, primary_key=True, help_text='Identificador único del colaborador')
     user = models.ForeignKey('core.User', on_delete=models.CASCADE, null=True, blank=True, related_name='%(app_label)s_employees')
-    position = models.ForeignKey(Position, on_delete=models.CASCADE, null=True, blank=True, related_name='%(app_label)s_employees')
+    position = models.ForeignKey('Position', on_delete=models.CASCADE, null=True, blank=True, related_name='%(app_label)s_employees')
     manager = models.ForeignKey('self', on_delete=models.SET_NULL, blank=True, null=True, related_name='%(app_label)s_direct_reports')
     hire_date = models.DateField()
     termination_date = models.DateField(null=True, blank=True)
