@@ -2,6 +2,26 @@ from django.db import models
 from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+import jsonschema
+from .schemas import TAX_ENTITIES_SCHEMA, DELIVERY_ADDRESSES_SCHEMA, CONTACTS_SCHEMA
+
+def validate_tax_entities(value):
+    try:
+        jsonschema.validate(instance=value, schema=TAX_ENTITIES_SCHEMA)
+    except jsonschema.exceptions.ValidationError as e:
+        raise ValidationError(f"Error en tax_entities: {e.message}")
+
+def validate_delivery_addresses(value):
+    try:
+        jsonschema.validate(instance=value, schema=DELIVERY_ADDRESSES_SCHEMA)
+    except jsonschema.exceptions.ValidationError as e:
+        raise ValidationError(f"Error en delivery_addresses: {e.message}")
+
+def validate_contacts(value):
+    try:
+        jsonschema.validate(instance=value, schema=CONTACTS_SCHEMA)
+    except jsonschema.exceptions.ValidationError as e:
+        raise ValidationError(f"Error en contacts: {e.message}")
 
 class CustomerType(models.Model):
     id = models.CharField(max_length=100, primary_key=True, help_text='Identificador unico del tipo de cliente')
@@ -20,6 +40,9 @@ class Customer(models.Model):
     credit_days = models.IntegerField(default=0, help_text='Dias de credito del cliente')
     customer_type = models.ForeignKey('CustomerType', on_delete=models.PROTECT, related_name='%(app_label)s_customers', help_text='Tipo de cliente')
     opinion_leader = models.BooleanField(default=False, help_text='Indica si el cliente es un lider de opinion')
+    tax_entities = models.JSONField(default=list, blank=True, validators=[validate_tax_entities], help_text='Información fiscal')
+    delivery_addresses = models.JSONField(default=list, blank=True, validators=[validate_delivery_addresses], help_text='Direcciones de entrega')
+    contacts = models.JSONField(default=list, blank=True, validators=[validate_contacts], help_text='Contactos')
 
     class Meta:
         verbose_name = 'Cliente'
