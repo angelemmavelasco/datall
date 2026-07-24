@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Transferencias de stock{% endblock %}
+
+{% block module_name %}Transferencias de stock{% endblock %}
+
+{% block module_actions %}
+    <!-- <a href="" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Exportar metas">Exportar</a> -->
+
+    <button onclick="toggleFilters()"
+        class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+            <path d="M10 5H3" />
+            <path d="M12 19H3" />
+            <path d="M14 3v4" />
+            <path d="M16 17v4" />
+            <path d="M21 12h-9" />
+            <path d="M21 19h-5" />
+            <path d="M21 5h-7" />
+            <path d="M8 10v4" />
+            <path d="M8 12H3" />
+        </svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+{% endblock %}
+
+
+{% block content %}
+
+    <div class="mb-4">
+        <p class="text-title text-sm mb-2">Datos generales de la transferencia</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="bg-container border border-border rounded p-2">
+        <form hx-post="{% url 'sales:stock_transfers' %}" hx-target="#transfer-preview" id="trasnfer-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="calculate-transfer">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-strong">Almacén origen</label>
+                    <select name="warehouse_origin" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none">
+                        {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}">{{ warehouse.name|title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-strong">Almacén destino</label>
+                    <select name="warehouse_destination" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none">
+                        {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}">{{ warehouse.name|title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-strong">Filtrar por clase de producto</label>
+                    <select name="product_classes" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none">
+                        <option value="">Todas</option>
+                        {% for product_class in product_classes %}
+                            <option value="{{ product_class.id }}">{{ product_class.name|title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-strong">Filtrar por nivel rotación</label>
+                    <select name="rotation_levels" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none">
+                        <option value="">Todos</option>
+                        <option value="1">Alta</option>
+                        <option value="2">Media</option>
+                        <option value="3">Baja</option>
+                    </select>
+                </div>
+
+                <span class="text-title col-span-2 border border-border p-2 text-center">Evaluar unidades vendidas</span>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-strong">Fecha de inicio</label>
+                    <input type="month" name="start_date" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none">
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-strong">Fecha de fin</label>
+                    <input type="month" name="end_date" class="border border-border rounded p-1 bg-page  text-strong w-full outline-none">
+                </div>
+
+            </div>
+
+            <div class="mt-4 flex justify-end">
+                <button type="submit" class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-40">
+                    Validar existencias
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="w-full overflow-x-auto border border-border rounded bg-container mt-4">
+        <table class="w-full table-fixed text-left border-collapse">
+            <thead>
+            <tr class="border-b border-border">
+                <th class="w-40 p-1 text-center text-title">Producto</th>
+                <th class="w-40 p-1 text-center text-title">Unidades vendidas</th>
+                <th class="w-40 p-1 text-center text-title">Promedio mensual</th>
+                <th class="w-40 p-1 text-center text-title">Existencias</th>
+                <th class="w-40 p-1 text-center text-title">En tránsito</th>
+                <th class="w-40 p-1 text-center text-title">Cobertura (%)</th>
+                <th class="w-40 p-1 text-center text-title">Sugerencia</th>
+            </tr>
+            </thead>
+
+            <tbody>
+                <!-- peticion htmx -->
+            </tbody>
+
+        </table>
+    </div>
+
+{% endblock content %}

@@ -521,6 +521,19 @@ class Product(models.Model):
         name = (self.name or "").title()
         return f'{self.id.upper()} {name}'
 
+class Stock(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='stocks', null=True, blank=True)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='stocks', null=True, blank=True)
+    quantity = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Stock'
+        verbose_name_plural = 'Stocks'
+        db_table = 'stocks'
+        unique_together = ('product', 'warehouse')
+
+    def __str__(self):
+        return f'{self.product.name.title()}: {self.quantity}'
 
 
 

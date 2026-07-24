@@ -127,6 +127,16 @@ def product(request, product_id: str):
     return render(request, TEMPLATE, context)
 
 
+@login_required
+def stock_transfers(request):
+    template = 'sales/stock_transfers/stock_transfers.html'
+    warehouses = Warehouse.objects.all().exclude(id__in = ['cdmx1','cdmx2']).order_by('name')
+    product_classes = ProductClass.objects.all().order_by('name')
+    context = {
+        'warehouses': warehouses,
+        'product_classes': product_classes,
+    }
+    return render(request, template, context)
 
 
 @login_required
