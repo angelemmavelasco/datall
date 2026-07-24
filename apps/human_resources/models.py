@@ -62,7 +62,7 @@ class Position(models.Model):
 
 class Employee(models.Model):
     id = models.CharField(max_length=20, primary_key=True, help_text='Identificador único del colaborador')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='%(app_label)s_employees')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, null=True, blank=True, related_name='%(app_label)s_employees')
     position = models.ForeignKey(Position, on_delete=models.CASCADE, null=True, blank=True, related_name='%(app_label)s_employees')
     manager = models.ForeignKey('self', on_delete=models.SET_NULL, blank=True, null=True, related_name='%(app_label)s_direct_reports')
     hire_date = models.DateField()
