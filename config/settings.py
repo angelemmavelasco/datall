@@ -79,7 +79,8 @@ INSTALLED_APPS = [
     'apps.marketing',
     'apps.human_resources',
     'apps.data_admin',
-    'apps.data_assistant'
+    'apps.data_assistant',
+    'apps.inventory'
 ]
 
 MIDDLEWARE = [
