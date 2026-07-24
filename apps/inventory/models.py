@@ -106,7 +106,8 @@ class StockMovement(models.Model):
     class StockMovementTypeChoices(models.TextChoices):
         IN = 'in', 'Entrada'
         OUT = 'out', 'Salida'
-        FIX = 'fix', 'Ajuste'
+        FIX_IN = 'fix_in', 'Ajuste positivo'
+        FIX_OUT = 'fix_out', 'Ajuste negativo'
 
     stock = models.ForeignKey('Stock', on_delete=models.PROTECT, related_name='%(app_label)s_movements', help_text='Registro de existencia que recibe el movimiento')
     type = models.CharField(max_length=20, choices=StockMovementTypeChoices.choices, default=StockMovementTypeChoices.IN, help_text='Indica si el movimiento suma, resta o ajusta el inventario')
@@ -116,7 +117,7 @@ class StockMovement(models.Model):
 
     class Meta:
         verbose_name = 'Movimiento de existencia'
-        verbose_name_plural = 'Movimientos de existencias'
-        constraints = [models.CheckConstraint(check=models.Q(quantity__gt=0),name='stock_movement_quantity_gt_zero')]
+        verbose_name_plural =  'Movimientos de existencias'
+        constraints = [models.CheckConstraint(condition=models.Q(quantity__gt=0), name='stock_movement_quantity_gt_zero')]
 
 
