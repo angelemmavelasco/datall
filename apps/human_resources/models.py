@@ -9,6 +9,9 @@ class Department(models.Model):
         verbose_name = "Departamento"
         verbose_name_plural = "Departamentos"
 
+    def __str__(self):
+        return f'{self.id.upper()} {self.name.title()}'
+
 # class TaxSystem(models.Model):
 #     id = models.CharField(max_length=3, primary_key=True, help_text='Identificador único del sistema de impuestos')
 #     name = models.CharField(unique=True, max_length=255, help_text='Nombre del sistema de impuestos')
@@ -60,6 +63,9 @@ class Position(models.Model):
         verbose_name = 'Puesto'
         verbose_name_plural = 'Puestos'
 
+    def __str__(self):
+        return f'{self.name.title()} ({self.department.id.upper()})'
+
 class Employee(models.Model):
     id = models.CharField(max_length=20, primary_key=True, help_text='Identificador único del colaborador')
     user = models.ForeignKey('core.User', on_delete=models.CASCADE, null=True, blank=True, related_name='%(app_label)s_employees')
@@ -71,6 +77,10 @@ class Employee(models.Model):
     class Meta:
         verbose_name = 'Colaborador'
         verbose_name_plural = 'Colaboradores'
+
+    def __str__(self):
+        return f'{self.position.name.title()}: {self.user.first_name.title()} {self.user.last_name.title()} (@{self.user.username.lower()})'
+    
 
     def get_reporting_tree_ids(self):
         """
