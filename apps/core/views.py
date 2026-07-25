@@ -8,6 +8,8 @@ from django.contrib.auth.decorators import login_required
 from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
 from apps.core.models import SystemModule, AppVersion
 
+from apps.core.services.users import UsersService
+
 def custom_csrf_failure(request, reason=""):
     messages.warning(request, "Tu sesión expiró por inactividad. Por favor, vuelve a ingresar.")
     if "HX-Request" in request.headers:
@@ -71,4 +73,21 @@ def app_versions(request):
     )
     
     return render(request, template, context)
+
+
+@login_required
+def user_list_view(request):
+    template = 'core/users/user_list.html'
+    users_service = UsersService(user=request.user)
+
+    users = users_service.read_users()
+
+    context = {
+        'users': users
+    }
+
+    return render(request, template, context)
+
+    
+
     
