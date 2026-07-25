@@ -71,6 +71,8 @@ INSTALLED_APPS = [
 
     # for r2 storages
     'storages',
+    #forms styling
+    'widget_tweaks',
 
     'apps.core',
     'apps.business_intelligence',
