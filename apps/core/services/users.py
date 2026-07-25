@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Count, Q
 from django.db import transaction
+from collections import defaultdict
 
 #exceptions
 class ServiceError(Exception):
@@ -63,9 +64,9 @@ class UsersService:
         returns a qs which the main user has access to.
         '''
         if self._is_full_access:
-            return self.User.objects.all()
+            return self.User.objects.prefetch_related('groups', 'human_resources_employees').all()
         else:
-            return self.User.objects.filter(pk=self.user.pk)
+            return self.User.objects.prefetch_related('groups', 'human_resources_employees').filter(pk=self.user.pk)
     
     def read_user(self, *, pk: int) -> Optional['UserModel']:
         '''
@@ -107,9 +108,7 @@ class UsersService:
         if getattr(self.user, 'is_superuser', False):
             disallowed = ['password', 'id', 'pk', 'user_permissions']
         elif self._is_full_access:
-            disallowed = ['is_superuser', 'is_staff', 'password']
-        elif self._is_full_access:
-            disallowed = ['id', 'pk', 'password', 'is_superuser']
+            disallowed = ['is_superuser', 'is_staff', 'password', 'id', 'pk']
         else:
             disallowed = [
                 'id', 'pk', 'password', 'is_superuser', 'is_staff', 
@@ -128,3 +127,39 @@ class UsersService:
             if groups is not None: #update groups if were allowed
                 user_to_update.groups.set(groups)
         return user_to_update
+
+@dataclass
+class UsersKPIsService:
+    '''
+    dedicated to read generals stats and information about users.
+    '''
+    users_service: UsersService
+
+    @property
+    def _base_qs(self) -> QuerySet:
+        '''
+        reuse class service base logic (UsersService) to bring allowed users and calculate over them
+        '''
+        return self.users_service.read_users()
+
+    @property
+    def stats(self) -> dict:
+        '''
+        returns dictionary with general users stats, all in a single call to database.
+
+        returns
+        -------
+            dict: dictionary with general users stats, including: registered users, active users, inactive users and employeed users.
+        '''
+        return self._base_qs.aggregate(
+            registered_users=Count('pk'),
+            active_users=Count('is_active', filter=Q(is_active=True)),
+            inactive_users=Count('is_active', filter=Q(is_active=False)),
+            employeed_users=Count('human_resources_employees'),
+        )
+
+        
+
+
+
+

@@ -8,7 +8,9 @@ from django.contrib.auth.decorators import login_required
 from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
 from apps.core.models import SystemModule, AppVersion
 
-from apps.core.services.users import UsersService
+from django.core.paginator import Paginator
+from apps.core.services.users import UsersService, UsersKPIsService
+
 
 def custom_csrf_failure(request, reason=""):
     messages.warning(request, "Tu sesión expiró por inactividad. Por favor, vuelve a ingresar.")
@@ -79,12 +81,31 @@ def app_versions(request):
 def user_list_view(request):
     template = 'core/users/user_list.html'
     users_service = UsersService(user=request.user)
+    users_kpis_service = UsersKPIsService(users_service=users_service)
 
-    users = users_service.read_users()
+    users_qs = users_service.read_users().order_by('first_name')
+    paginator = Paginator(users_qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    query_dict = request.GET.copy()
+    if 'page' in query_dict: del query_dict['page']
+
+    users = page_obj.object_list
+
+    kpis = users_kpis_service.stats
+
+    print(len(users))
 
     context = {
-        'users': users
+        'users': users,
+        'kpis': kpis,
+        'query_string': query_dict.urlencode(),
+        'page_obj': page_obj,
     }
+
+    if request.htmx:
+        return render(request, 'core/users/partials/user_list_rows.html', context)
 
     return render(request, template, context)
 
