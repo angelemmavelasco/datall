@@ -138,6 +138,8 @@ Perfil de usuario
             {{ user_instance.username|default:"-" }}
         </div>
 
+        {% if request.user.pk == user_instance.pk %}
+
         <span class="text-title"></span>
         <div class="w-full rounded  flex items-center">
             <a href="{% url 'core:password_change' %}" class="text-strong hover:text-hover transition-colors flex items-center gap-1 underline">
@@ -145,6 +147,8 @@ Perfil de usuario
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
             </a>
         </div>
+
+        {% endif %}
 
         <span class="text-title self-start mt-2">Grupos autorizados</span>
         <div class="flex flex-col gap-1 max-h-40 overflow-y-auto bg-page border border-border rounded p-1 md:col-span-1">
