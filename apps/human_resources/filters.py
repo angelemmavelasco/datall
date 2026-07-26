@@ -88,3 +88,26 @@ class PositionFilter(django_filters.FilterSet):
             Q(human_resources_employees__user__first_name__icontains=value) |
             Q(human_resources_employees__user__last_name__icontains=value)
         ).distinct()
+
+class SkillFilter(django_filters.FilterSet):
+    search = django_filters.CharFilter(
+        method='filter_search', 
+        label='Buscar habilidad',
+        widget=forms.TextInput(attrs={'placeholder': 'Nombre o descripción...'})
+    )
+    
+    skill_type = django_filters.ChoiceFilter(
+        choices=Skill.SkillTypeChoices.choices,
+        label='Tipo de habilidad',
+        widget=forms.Select(attrs={'class': 'w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title'})
+    )
+
+    class Meta:
+        model = Skill
+        fields = ['search', 'skill_type']
+
+    def filter_search(self, queryset, name, value):
+        return queryset.filter(
+            Q(name__icontains=value) |
+            Q(description__icontains=value)
+        ).distinct()

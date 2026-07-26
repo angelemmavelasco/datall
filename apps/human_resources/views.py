@@ -24,7 +24,7 @@ from apps.core.utils import get_allowed_routes_for_user
 from apps.human_resources.services.comissions.comissions import Comissions, CommissionExceptions, CommissionsReport, RouteCommissionException
 from apps.human_resources.services.departments import DepartmentsService, DepartmentsKPIsService, ServiceError
 from apps.human_resources.services.positions import PositionsService, PositionsKPIsService
-from apps.human_resources.filters import DepartmentFilter, PositionFilter
+from apps.human_resources.filters import DepartmentFilter, PositionFilter, SkillFilter
 from apps.human_resources.forms import DepartmentForm, PositionForm, SkillForm, PositionSkillFormSet
 from django.core.paginator import Paginator
 User = get_user_model()
@@ -1072,6 +1072,38 @@ def position_update_view(request, pk):
         'creating': creating,
         'can_update_access': can_update_access
     }
+
+    return render(request, template, context)
+
+@login_required
+def skill_list_view(request):
+    template = 'human_resources/positions/skill_list.html'
+    positions_service = PositionsService(user=request.user)
+    can_create = positions_service._checkout_full_access
+
+    skills_qs = positions_service.read_skills()
+    skill_filter = SkillFilter(request.GET, queryset=skills_qs)
+    skills_qs = skill_filter.qs
+
+    paginator = Paginator(skills_qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    query_dict = request.GET.copy()
+    if 'page' in query_dict: del query_dict['page']
+
+    skills = page_obj.object_list
+
+    context = {
+        'skills': skills,
+        'query_string': query_dict.urlencode(),
+        'page_obj': page_obj,
+        'can_create': can_create,
+        'filter': skill_filter
+    }
+
+    if request.htmx:
+        return render(request, 'human_resources/positions/partials/skill_list_rows.html', context)
 
     return render(request, template, context)
 

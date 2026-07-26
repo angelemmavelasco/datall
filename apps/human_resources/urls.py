@@ -34,5 +34,6 @@ urlpatterns = [
     path('positions/<str:pk>/edit/', position_update_view, name='position_update_view'),
     path('positions/<str:pk>/', position_detail_view, name='position_detail_view'),
     
+    path('skills/', skill_list_view, name='skill_list_view'),
     path('skills/create/', skill_create_view, name='skill_create_view'),
 ]
