@@ -395,7 +395,15 @@
     <!--  left sidebar for navigation-->
 
     <aside id="sidebar"
-        class="fixed inset-y-0 left-0 z-50 flex w-50 -translate-x-full flex-col overflow-y-auto border-r border-border bg-container px-4 pb-4 pb-4 pt-0 transition-transform duration-300 lg:translate-x-0">
+        class="fixed inset-y-0 left-0 z-50 flex w-full sm:w-50 -translate-x-full flex-col overflow-y-auto border-r border-border bg-container px-4 pb-4 pt-0 transition-transform duration-300 lg:translate-x-0">
+        
+        <!-- Botón para cerrar en móvil -->
+        <div class="flex justify-end pt-4 lg:hidden">
+            <button type="button" onclick="toggleMobileMenu()" class="text-muted hover:text-hover cursor-pointer" title="Cerrar menú">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+
         <div class="flex flex-col gap-6 pb-20">
             <nav class="flex flex-col gap-5" aria-label="Navegacion principal">
 
@@ -408,12 +416,9 @@
                         --svg-color-grafica: var(--text-body, black);
                         --svg-color-dat: var(--text-body, black);
                         --svg-color-all: oklch(55.4% 0.046 257.417);
-                        
-                        /* Grosores ajustados a la nueva escala (60%) */
                         --grosor-linea: 8px;
                         --grosor-nodo: 9px;
                         }
-                        
                         .linea-animada {
                         fill: none;
                         stroke-width: var(--grosor-linea);
@@ -421,34 +426,29 @@
                         stroke-linecap: round;
                         stroke-linejoin: round;
                         }
-
                         .nodo {
                         fill: none;
                         stroke: var(--svg-color-grafica);
                         stroke-width: var(--grosor-nodo);
                         opacity: 0;
                         }
-
                         .texto-logo {
                         font-family: 'Quicksand', sans-serif;
                         font-size: 240px;
                         font-weight: 600;
                         }
-                        
                         .dat {
                         letter-spacing: 0.05em;
                         fill: var(--svg-color-dat);
                         opacity: 0;
                         animation: dibujarRTL 2.5s ease-out 1s forwards;
                         }
-                        
                         .all {
                         letter-spacing: 0.05em;
                         fill: var(--svg-color-all);
                         opacity: 0;
                         animation: aparecerTexto 1s ease-out 0s forwards;
                         }
-
                         @keyframes aparecerTexto {
                         0% {
                             opacity: 0;
@@ -459,7 +459,6 @@
                             transform: translateY(0);
                         }
                         }
-
                         @keyframes dibujarRTL {
                         0% { 
                             opacity: 1; 
@@ -544,32 +543,6 @@
                     </p>
                 {% endif %}
 
-                {% if request.user.is_superuser %}
-
-                <section class="flex flex-col gap-2">
-                    <p class="text-title">Workspace</p>
-                    <ul class="ml-3 flex flex-col gap-1.5 border-l border-border pl-4 text-body">
-
-                        <li><a href='{% url "data_assistant:datall_assistant" %}' class="block py-1 hover:text-hover transition-colors">
-                                Asistente datall
-                            </a>
-                        </li>
-
-                        <li class="custom-tooltip tooltip-left"
-                        data-title="Organiza tus ideas con este apartado de notas que le da estructura a lo que piensas"
-                        ><a href="" class="block py-1 hover:text-hover transition-colors">
-                                aDoc
-                            </a>
-                        </li>
-
-                    </ul>
-                </section>
-
-                {% endif %}
-
-
-
-
                 {% for section in sections %}
 
                 <section class="flex flex-col gap-2">
@@ -577,7 +550,10 @@
                     <ul class="ml-3 flex flex-col gap-1.5 border-l border-border pl-4 text-body">
                         {% for module in section.modules.all %}
 
-                        <li><a href="{% url module.url_name %}" {% if module.url_name == 'admin:index'  %}target="_blank"{% endif %} class="block py-1 hover:text-hover transition-colors">
+                        <li><a href="{% url module.url_name %}" {% if module.url_name == 'admin:index'  %}target="_blank"{% endif %} class="block hover:text-hover transition-colors
+                            sm:text-xs sm:py-1 sm:border-none
+                            text-sm py-2 border-b border-border
+                            ">
                                 {{ module.name|title }}
                             </a>
                         </li>
@@ -597,20 +573,14 @@
 
     <!--  header-->
     <div class="flex min-h-dvh flex-col lg:pl-50">
-        <header class="sticky top-0 z-30 border-b border-border bg-page p-2 backdrop-blur">
+        <header class="sticky top-0 z-30 bg-page backdrop-blur">
 
-            <div class="flex min-h-5 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex min-h-5 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-2">
                 <div class="flex min-w-0 items-center gap-2">
                     <button type="button" onclick="toggleMobileMenu()"
                         class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded text-title transition-colors hover:text-hover lg:hidden cursor-pointer"
                         title="Abrir menu">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="lucide lucide-ellipsis-vertical-icon lucide-ellipsis-vertical">
-                            <circle cx="12" cy="12" r="1" />
-                            <circle cx="12" cy="5" r="1" />
-                            <circle cx="12" cy="19" r="1" />
-                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layout-grid-icon lucide-layout-grid"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
                     </button>
 
                     <p class="text-title text-xl w-80 shrink-0">
@@ -619,12 +589,8 @@
                 </div>
 
                 <div class="flex min-w-0 w-full items-center gap-3 justify-end">
-                    <div
-                        class="flex items-center gap-4 text-strong overflow-x-auto whitespace-nowrap pb-4 sm:p-0 scrollbar-none">
-                        {% block module_actions %}{% endblock %}
-                    </div>
 
-                    <div class="flex items-center gap-3 border-l border-border pl-3 pb-4 sm:pb-0">
+                    <div class="flex items-center justify-between gap-4 sm:pb-0 w-full md:w-fit">
 
                         <!-- <button type="button" onclick="toggleNotifications()" class="inline-flex items-center justify-center gap-1 cursor-pointer text-title transition-colors hover:text-hover" title="Ver notificaciones">
                             <svg id="toggle-notifications-button" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell-icon lucide-bell"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
@@ -634,7 +600,9 @@
 
                         </button> -->
 
-                        <button type="button" id="toggle-novelties-button" onclick="toggleNovelties()" class="inline-flex items-center justify-center gap-1 cursor-pointer text-title transition-colors hover:text-hover" title="Ver novedades">
+                        <button type="button" id="toggle-novelties-button" onclick="toggleNovelties()"
+                            class="flex flex-col md:flex-row items-center justify-center gap-1 cursor-pointer text-title transition-colors hover:text-hover"
+                            itle="Ver novedades">
                             <div class="relative flex items-center justify-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-newspaper-icon lucide-newspaper"><path d="M15 18h-5"/><path d="M18 14h-8"/><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0v-9a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="10" y="6" rx="1"/></svg>
                                 {% if has_novelties %}
@@ -644,13 +612,13 @@
                                 </span>
                                 {% endif %}
                             </div>
-                            <span class="hidden md:flex items-center">
+                            <span class="flex items-center text-[8px] md:text-xs">
                                 Novedades
                             </span>
                         </button>
 
                         <button type="button" onclick="toggleDarkMode()"
-                            class="flex gap-1 items-center justify-center cursor-pointer text-title transition-colors hover:text-hover"
+                            class="flex flex-col md:flex-row items-center justify-center gap-1 cursor-pointer text-title transition-colors hover:text-hover"
                             title="Cambiar modo oscuro">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -658,29 +626,35 @@
                                 <circle cx="12" cy="12" r="10" />
                                 <path d="M12 2a7 7 0 1 0 10 10" />
                             </svg>
-                            <span class="hidden md:flex items-center">
+                            <span class="flex items-center text-[8px] md:text-xs">
                                 Tema
                             </span>
                         </button>
 
                         {% if request.user.is_superuser %}
 
-                        <a href="{% url 'admin:index' %}" target="_blank" class="flex gap-1 items-center justify-center cursor-pointer text-title transition-colors hover:text-hover" title="Panel de administración">
+                        <a href="{% url 'admin:index' %}" target="_blank" class="flex flex-col md:flex-row items-center justify-center gap-1 cursor-pointer text-title transition-colors hover:text-hover" title="Panel de administración">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wrench-icon lucide-wrench"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/></svg>
-                            Panel de administrador
+                            <span class="flex items-center text-[8px] md:text-xs">
+                                Administrador
+                            </span>
                         </a>
 
                         {% endif %}
 
-                        <a href="{% url 'core:user_details' request.user.pk %}" class="flex gap-1 items-center justify-center cursor-pointer text-title transition-colors hover:text-hover" title="Panel de administración">
+                        <a href="{% url 'core:user_details' request.user.pk %}"
+                        class="flex flex-col md:flex-row items-center justify-center gap-1 cursor-pointer text-title transition-colors hover:text-hover"
+                        title="Panel de administración">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-icon lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                            Mi perfíl
+                            <span class="flex items-center text-[8px] md:text-xs">
+                                Mi perfíl
+                            </span>
                         </a>
 
                         <form action="{% url 'logout' %}" method="post">
                             {% csrf_token %}
                             <button type="submit"
-                                class="flex gap-1 items-center justify-center cursor-pointer text-title transition-colors hover:text-hover"
+                                class="flex flex-col md:flex-row items-center justify-center gap-1 cursor-pointer text-title transition-colors hover:text-hover"
                                 title="Cerrar sesión">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -689,7 +663,7 @@
                                     <path d="M21 12H9" />
                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                                 </svg>
-                                <span class="hidden md:flex items-center">
+                                <span class="flex items-center text-[8px] md:text-xs">
                                     Cerrar sesión
                                 </span>
                             </button>
@@ -697,6 +671,26 @@
                     </div>
 
                 </div>
+            </div>
+
+            <!-- Subheader for Module Actions -->
+            <div class="relative border-t border-border bg-page">
+                
+                <!-- Mobile Dropdown Toggle -->
+                <div class="md:hidden flex justify-end p-2">
+                    <button type="button" onclick="document.getElementById('mobile-module-actions').classList.toggle('hidden')" class="flex items-center gap-2 text-strong bg-container border border-border p-1 rounded text-sm hover:text-hover transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-plus-icon lucide-list-plus"><path d="M16 5H3"/><path d="M11 12H3"/><path d="M16 19H3"/><path d="M18 9v6"/><path d="M21 12h-6"/></svg>
+                        Acciones
+                    </button>
+                </div>
+
+                <!-- Module Actions Container -->
+                <div id="mobile-module-actions" class="hidden md:block absolute md:static top-full right-2 z-50">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-end gap-6 md:gap-4 text-sm md:text-xs text-strong w-70 md:w-auto bg-page md:bg-transparent border border-border md:border-none rounded md:rounded-none shadow-lg md:shadow-none p-3 md:p-2 mt-1 md:mt-0 items-start overflow-x-auto whitespace-nowrap">
+                        {% block module_actions %}{% endblock %}
+                    </div>
+                </div>
+
             </div>
         </header>
 
