@@ -1868,6 +1868,9 @@
     .hover\:underline:hover {
       text-decoration-line: underline;
     }
+    .hover\:opacity-75:hover {
+      opacity: 75%;
+    }
     .hover\:file\:bg-border:hover::file-selector-button {
       background-color: var(--color-border);
     }

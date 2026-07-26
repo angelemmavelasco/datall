@@ -698,33 +698,39 @@
         <main class="flex-grow p-2 mb-10">
             {% if messages %}
             {% for message in messages %}
-            <div id="alert-message" class="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-3xl items-center gap-2 rounded border p-3 text-sm shadow-sm
+            <div id="alert-message" class="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-3xl items-center justify-between gap-2 rounded border p-3 text-sm shadow-sm
 {% if message.tags == 'error' %} bg-msg-error-bg text-msg-error-txt border-msg-error-border
 {% elif message.tags == 'warning' %} bg-msg-warn-bg text-msg-warn-txt border-msg-warn-border
 {% else %} bg-msg-succ-bg text-msg-succ-txt border-msg-succ-border {% endif %}">
+                
+                <div class="flex items-center gap-2">
+                    {% if message.tags == 'error' %}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M4.929 4.929 19.07 19.071" />
+                    </svg>
+                    {% elif message.tags == 'warning' %}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" x2="12" y1="8" y2="12" />
+                        <line x1="12" x2="12.01" y1="16" y2="16" />
+                    </svg>
+                    {% else %}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="m9 12 2 2 4-4" />
+                    </svg>
+                    {% endif %}
 
-                {% if message.tags == 'error' %}
-                <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M4.929 4.929 19.07 19.071" />
-                </svg>
-                {% elif message.tags == 'warning' %}
-                <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" x2="12" y1="8" y2="12" />
-                    <line x1="12" x2="12.01" y1="16" y2="16" />
-                </svg>
-                {% else %}
-                <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="m9 12 2 2 4-4" />
-                </svg>
-                {% endif %}
+                    <span>{{ message }}</span>
+                </div>
 
-                <span>{{ message }}</span>
+                <button onclick="this.closest('#alert-message').remove()" class="shrink-0 hover:opacity-75 transition-opacity" title="Cerrar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+                </button>
             </div>
             {% endfor %}
             {% endif %}
