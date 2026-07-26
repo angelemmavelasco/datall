@@ -3,11 +3,19 @@
 {% load widget_tweaks %}
 
 {% block title %}
+{% if creating %}
 Nueva habilidad
+{% else %}
+Editar habilidad
+{% endif %}
 {% endblock %}
 
 {% block module_name %}
+{% if creating %}
 Nueva habilidad
+{% else %}
+Editar habilidad
+{% endif %}
 {% endblock %}
 
 {% block content %}

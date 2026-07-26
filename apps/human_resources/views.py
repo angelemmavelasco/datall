@@ -1111,6 +1111,7 @@ def skill_list_view(request):
 def skill_create_view(request):
     template = 'human_resources/positions/skill_form.html'
     positions_service = PositionsService(user=request.user)
+    creating = True
 
     if not positions_service._is_full_access:
         messages.error(request, 'No tienes permisos para crear habilidades.')
@@ -1140,6 +1141,95 @@ def skill_create_view(request):
 
     context = {
         'form': form,
+        'creating': creating,
     }
 
     return render(request, template, context)
+
+@login_required
+def skill_detail_view(request, pk):
+    template = 'human_resources/positions/skill_details.html'
+    positions_service = PositionsService(user=request.user)
+    
+    skill_instance = positions_service.read_skill(pk=pk)
+    if not skill_instance:
+        messages.error(request, 'Habilidad no encontrada o no tienes permisos para verla.')
+        return redirect('human_resources:position_list_view')
+
+    context = {
+        'skill_instance': skill_instance,
+    }
+    return render(request, template, context)
+
+@login_required
+def skill_update_view(request, pk):
+    template = 'human_resources/positions/skill_form.html'
+    positions_service = PositionsService(user=request.user)
+    can_update_access = positions_service._checkout_full_access
+    creating = False
+
+    skill_instance = positions_service.read_skill(pk=pk)
+    if not skill_instance:
+        messages.error(request, 'Habilidad no encontrada o no tienes permisos para editarla.')
+        return redirect('human_resources:position_list_view')
+
+    if request.method == 'POST':
+        form = SkillForm(
+            request.POST, 
+            instance=skill_instance,
+            requesting_user=request.user,
+            is_full_access=positions_service._is_full_access
+        )
+        if form.is_valid():
+            try:
+                updated_skill = positions_service.update_skill(
+                    pk=pk, 
+                    skill_data=form.cleaned_data
+                )
+                messages.success(request, 'Habilidad actualizada correctamente.')
+                return redirect('human_resources:skill_detail_view', updated_skill.pk)
+            except ServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = SkillForm(
+            instance=skill_instance,
+            requesting_user=request.user,
+            is_full_access=positions_service._is_full_access
+        )
+
+    context = {
+        'form': form,
+        'creating': creating,
+        'can_update_access': can_update_access
+    }
+
+    return render(request, template, context)
+
+@login_required
+def skill_delete_view(request, pk):
+    positions_service = PositionsService(user=request.user)
+
+    if not positions_service._is_full_access:
+        messages.error(request, 'No tienes permisos para eliminar habilidades.')
+        return redirect('human_resources:skill_list_view')
+
+    skill_instance = positions_service.read_skill(pk=pk)
+    if not skill_instance:
+        messages.error(request, 'Habilidad no encontrada o no tienes permisos para editarla.')
+        return redirect('human_resources:skill_list_view')
+
+    if request.method == 'POST':
+        try:
+            positions_service.delete_skill(pk=pk)
+            messages.success(request, 'Habilidad eliminada correctamente.')
+            return redirect('human_resources:skill_list_view')
+        except ServiceError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f"Ocurrió un error inesperado: {str(e)}")
+            
+    return redirect('human_resources:skill_detail_view', pk=pk)

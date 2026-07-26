@@ -10,21 +10,6 @@
         <td class="p-2 text-left truncate">{{ position.name|title }}</td>
         <td class="p-2 text-center truncate">{{ position.department.id|upper }}</td>
         <td class="p-2 text-center truncate max-w-[300px]">{{ position.position_skills.all|length|intcomma }}</td>
-        
-        {# We calculate active vs inactive from the prefetch_related if possible, or we could have annotated them. #}
-        {# But since we didn't annotate the individual rows in the query for employees count directly like departments did, #}
-        {# we'll just count them here in template from the prefetched human_resources_employees. #}
-        {% with active_count=0 inactive_count=0 %}
-            {% for emp in position.human_resources_employees.all %}
-                {% if not emp.termination_date or emp.termination_date > now.date %}
-                    {# Need a custom filter or just rely on the view providing this data. #}
-                    {# Actually, it's better if we annotate these in the qs to avoid template logic complexity. #}
-                    {# I will update the service to annotate these! For now, let's just use a basic length if not annotated #}
-                {% endif %}
-            {% endfor %}
-        {% endwith %}
-        
-        {# Using annotations which I should add in service read_positions! #}
         <td class="p-2 text-center truncate max-w-[300px]">{{ position.active_employees_count|default:0|intcomma }}</td>
         <td class="p-2 text-center truncate max-w-[300px]">{{ position.inactive_employees_count|default:0|intcomma }}</td>
 

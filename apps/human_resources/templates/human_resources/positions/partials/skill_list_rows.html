@@ -2,7 +2,11 @@
 
 {% for skill in skills %}
     <tr class="hover:bg-hover transition-colors duration-300">
-        <td class="p-2 text-center text-strong truncate">{{ skill.id }}</td>
+        <td class="p-2 text-center text-strong underline">
+            <a href="{% url 'human_resources:skill_detail_view' skill.id %}" target="_blank">
+                {{ skill.id|upper }}
+            </a>
+        </td>
         <td class="p-2 text-left truncate">{{ skill.name|title }}</td>
         <td class="p-2 text-left truncate max-w-[300px]">{{ skill.description|default:"-" }}</td>
         

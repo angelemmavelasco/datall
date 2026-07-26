@@ -8,19 +8,16 @@
 {% block module_actions %}
 
     {% if can_create %}
-        <a href="{% url 'human_resources:position_create_view' %}" target="_blank"  class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear un nuevo puesto">
+        <a href="{% url 'human_resources:position_create_view' %}" target="_blank"  class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 w-full md:w-fit" title="Crear un nuevo puesto">
             Nuevo puesto
         </a>
-        <a href="{% url 'human_resources:skill_list_view' %}" target="_blank"  class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear un nuevo puesto">
+        <a href="{% url 'human_resources:skill_list_view' %}" target="_blank"  class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 w-full md:w-fit" title="Crear un nuevo puesto">
             Habilidades y competencias
-        </a>
-        <a href="{% url 'human_resources:skill_create_view' %}?next={{ request.path }}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear nueva habilidad">
-            Nueva habilidad
         </a>
     {% endif %}
 
     <button onclick="toggleFilters()"
-        class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+        class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1  w-full md:w-fit">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
             class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
