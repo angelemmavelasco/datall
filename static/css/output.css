@@ -2063,6 +2063,14 @@
     .md\:rounded-none {
       border-radius: 0;
     }
+    .md\:border-t-0 {
+      border-top-style: var(--tw-border-style);
+      border-top-width: 0px;
+    }
+    .md\:border-b {
+      border-bottom-style: var(--tw-border-style);
+      border-bottom-width: 1px;
+    }
     .md\:border-none {
       --tw-border-style: none;
       border-style: none;
