@@ -83,6 +83,8 @@ class UsersService:
             raise UserPermissionError('El usuario no tiene permisos para crear usuarios.')
         password = data.pop('password', None)
         groups = data.pop('groups', [])
+        if data.get('photo') is False:
+            data['photo'] = None
         with transaction.atomic():
             new_user = self.User(**data)
             if password:
@@ -119,6 +121,9 @@ class UsersService:
         for key in disallowed: #remove disallowed fields to prevent errors
             new_data.pop(key, None)
         groups = new_data.pop('groups', None)
+
+        if new_data.get('photo') is False:
+            new_data['photo'] = None
 
         with transaction.atomic():
             for attr, value in new_data.items(): #update simple attrs

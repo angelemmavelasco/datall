@@ -9,7 +9,14 @@ from apps.data_admin.services.data_history.data_history_crud import ActivityLogg
 from apps.core.models import SystemModule, AppVersion
 
 from django.core.paginator import Paginator
-from apps.core.services.users import UsersService, UsersKPIsService
+from apps.core.services.users import (
+    UsersService, 
+    UsersKPIsService, 
+    ServiceError, 
+    UserPermissionError, 
+    UserNotFoundError
+)
+from apps.core.forms import UserForm
 
 
 def custom_csrf_failure(request, reason=""):
@@ -78,10 +85,11 @@ def app_versions(request):
 
 
 @login_required
-def user_list_view(request):
+def user_list(request):
     template = 'core/users/user_list.html'
     users_service = UsersService(user=request.user)
     users_kpis_service = UsersKPIsService(users_service=users_service)
+    can_create = users_service._checkout_full_access
 
     users_qs = users_service.read_users().order_by('first_name')
     paginator = Paginator(users_qs, 100)
@@ -95,19 +103,120 @@ def user_list_view(request):
 
     kpis = users_kpis_service.stats
 
-    print(len(users))
-
     context = {
         'users': users,
         'kpis': kpis,
         'query_string': query_dict.urlencode(),
         'page_obj': page_obj,
+        'can_create': can_create
     }
 
     if request.htmx:
         return render(request, 'core/users/partials/user_list_rows.html', context)
 
     return render(request, template, context)
+
+@login_required
+def user_create_form(request):
+    template = 'core/users/user_form.html'
+    users_service = UsersService(user=request.user)
+    creating = True
+
+    if request.method == 'POST':
+        form = UserForm(
+            request.POST, 
+            request.FILES,
+            requesting_user=request.user,
+            is_full_access=users_service._is_full_access
+        )
+        if form.is_valid():
+            try:
+                new_user = users_service.create_user(**form.cleaned_data)
+                messages.success(request, 'Usuario creado correctamente.')
+                return redirect('core:user_details', pk=new_user.id)
+            except ServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = UserForm(
+            requesting_user=request.user,
+            is_full_access=users_service._is_full_access
+        )
+
+    context = {
+        'form': form,
+        'creating': creating
+    }
+
+    return render(request, template, context)
+
+@login_required
+def user_details(request, pk):
+    template = 'core/users/user_details.html'
+    users_service = UsersService(user=request.user)
+    can_update_access = users_service._checkout_full_access
+
+    user_instance = users_service.read_user(pk=pk)
+    if not user_instance:
+        messages.error(request, 'Usuario no encontrado o no tienes permisos para verlo.')
+        return redirect('core:user_list')
+
+    context = {
+        'user_instance': user_instance,
+        'can_update_access': can_update_access
+    }
+    return render(request, template, context)
+
+
+@login_required
+def user_update_form(request, pk):
+    template = 'core/users/user_form.html'
+    users_service = UsersService(user=request.user)
+    can_update_access = users_service._checkout_full_access
+    creating = False
+
+    user_instance = users_service.read_user(pk=pk)
+    if not user_instance:
+        messages.error(request, 'Usuario no encontrado o no tienes permisos para editarlo.')
+        return redirect('core:user_list')
+
+    if request.method == 'POST':
+        form = UserForm(
+            request.POST, 
+            request.FILES,
+            instance=user_instance,
+            requesting_user=request.user,
+            is_full_access=users_service._is_full_access
+        )
+        if form.is_valid():
+            try:
+                updated_user = users_service.update_user(pk=pk, **form.cleaned_data)
+                messages.success(request, 'Usuario actualizado correctamente.')
+                return redirect('core:user_details', updated_user.pk)
+            except ServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = UserForm(
+            instance=user_instance,
+            requesting_user=request.user,
+            is_full_access=users_service._is_full_access
+        )
+
+    context = {
+        'form': form,
+        'creating': creating,
+        'can_update_access': can_update_access
+    }
+
+    return render(request, template, context)
+    
 
     
 

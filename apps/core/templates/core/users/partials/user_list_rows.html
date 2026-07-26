@@ -2,7 +2,11 @@
 
 {% for user in users %}
     <tr class="hover:bg-hover transition-colors duration-300">
-        <td class="p-2 text-left text-strong italic underline">@ {{ user.username }}</td>
+        <td class="p-2 text-left text-strong italic underline">
+            <a href="{% url 'core:user_details' user.id %}" target="_blank">
+                @ {{ user.username }}
+            </a>
+        </td>
         <td class="p-2 text-left truncate">{{ user.first_name|title }} {{ user.last_name|title }} {% if user.second_last_name %} {{ user.second_last_name|title }} {% endif %}</td>
         <td class="p-2 text-left truncate max-w-0">{{ user.email|default:"--- ---" }}</td>
         <td class="p-2 text-center ">{{ user.human_resources_employees.all|length }}</td>

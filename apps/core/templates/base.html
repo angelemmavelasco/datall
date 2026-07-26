@@ -510,7 +510,7 @@
 
                 </div>
 
-                <div class="flex flex-col items-center justify-center -mt-4 mb-2">
+                <a class="flex flex-col items-center justify-center -mt-4 mb-2" href="{% url 'core:user_details' request.user.pk %}">
                     {% if request.user.photo %}
                     <img src="{{ request.user.photo.url }}" alt="Foto de perfil"
                         style="width: 80px; height: 80px; min-width: 80px; min-height: 80px; object-fit: cover; object-position: top; padding: 4px;"
@@ -524,16 +524,16 @@
                         <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
                     </svg>
                     {% endif %}
-                </div>
+                </a>
 
-                <p class="block truncate text-center">
+                <a class="block truncate text-center" href="{% url 'core:user_details' request.user.pk %}">
                     <span class="text-title">
                         {{ request.user.first_name|title }} {{ request.user.last_name|title }}
                     </span><br>
                     <span class="text-body">
                         @{{ request.user.username }}
                     </span>
-                </p>
+                </a>
 
                 {% if last_data_update %}
                     <p class="block truncate text-center font-light text-[10px]">

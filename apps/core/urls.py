@@ -22,5 +22,8 @@ urlpatterns = [
     path('app_versions/', app_versions, name='app_versions'),
 
 
-    path('user_list/', user_list_view, name='user_list'),
+    path('user_list/', user_list, name='user_list'),
+    path('user/create/', user_create_form, name='user_create'),
+    path('user/<int:pk>/edit/', user_update_form, name='user_update'),
+    path('user/<int:pk>/', user_details, name='user_details'),
 ]

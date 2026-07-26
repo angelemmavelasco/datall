@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}
+Perfil de usuario
+{% endblock %}
+
+{% block module_name %}
+Perfil de usuario
+{% endblock %}
+
+{% block module_actions %}
+    <a href="{% url 'core:user_update' user_instance.id %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Editar usuario">
+        Editar
+    </a>
+{% endblock module_actions %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+
+    <p class="text-title text-sm">Información personal</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Nombre (s)</span>
+        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+            {{ user_instance.first_name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Primer apellido</span>
+        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+            {{ user_instance.last_name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Segundo apellido</span>
+        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+            {{ user_instance.second_last_name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Género</span>
+        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+            {{ user_instance.get_gender_display|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Fecha de nacimiento</span>
+        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+            {{ user_instance.birth_date|date:"d/m/Y"|default:"-" }}
+        </div>
+
+        <span class="text-title">Fotografía</span>
+        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+            {% if user_instance.photo %}
+                <a href="{{ user_instance.photo.url }}" target="_blank" class="text-blue-600 hover:underline">Ver fotografía</a>
+            {% else %}
+                -
+            {% endif %}
+        </div>
+
+        <span class="text-title">Notas</span>
+        <div class="w-full bg-page border border-border rounded p-1 text-title  flex items-center">
+            {{ user_instance.notes|default:"-"|title }}
+        </div>
+    </div>
+
+    <p class="text-title text-sm">Información fiscal</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Registro Federal de Contribuyentes (RFC)</span>
+        <div class="w-full bg-page border border-border rounded p-2 text-body  flex items-center">
+            {{ user_instance.tax_id|default:"-"|upper }}
+        </div>
+
+        <span class="text-title">Clave Única de Registro de Población (CURP)</span>
+        <div class="w-full bg-page border border-border rounded p-2 text-body  flex items-center">
+            {{ user_instance.unique_personal_id|default:"-"|upper }}
+        </div>
+
+        <span class="text-title">Calle</span>
+        <div class="w-full bg-page border border-border rounded p-2 text-body  flex items-center">
+            {{ user_instance.street|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Exterior</span>
+        <div class="w-full bg-page border border-border rounded p-2 text-body  flex items-center">
+            {{ user_instance.street_no|default:"-" }}
+        </div>
+
+        <span class="text-title">Interior (opcional)</span>
+        <div class="w-full bg-page border border-border rounded p-2 text-body  flex items-center">
+            {{ user_instance.apt_suite|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Ciudad</span>
+        <div class="w-full bg-page border border-border rounded p-2 text-body  flex items-center">
+            {{ user_instance.city|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Estado</span>
+        <div class="w-full bg-page border border-border rounded p-2 text-body  flex items-center">
+            {{ user_instance.state|default:"-"|title }}
+        </div>
+
+        <span class="text-title">País</span>
+        <div class="w-full bg-page border border-border rounded p-2 text-body  flex items-center">
+            {{ user_instance.country|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Código postal</span>
+        <div class="w-full bg-page border border-border rounded p-2 text-body  flex items-center">
+            {{ user_instance.zipcode|default:"-" }}
+        </div>
+    </div>
+
+    <p class="text-title text-sm">Contacto</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Teléfono</span>
+        <div class="w-full bg-page border border-border rounded p-2 text-body  flex items-center">
+            {{ user_instance.phone|default:"-" }}
+        </div>
+
+        <span class="text-title">Correo electrónico</span>
+        <div class="w-full bg-page border border-border rounded p-2 text-body  flex items-center">
+            {{ user_instance.email|default:"-" }}
+        </div>
+    </div>
+
+    {% if can_update_access %}
+
+    <p class="text-title text-sm">Accesos</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Nombre de usuario</span>
+        <div class="w-full bg-page border border-border rounded p-2 text-title  flex items-center">
+            {{ user_instance.username|default:"-" }}
+        </div>
+
+        <span class="text-title">Contraseña</span>
+        <div class="w-full rounded  flex items-center">
+            <a href="{% url 'core:password_change' %}" class="text-muted hover:text-hover transition-colors flex items-center gap-1 underline">
+                Cambiar contraseña
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
+            </a>
+        </div>
+
+        <span class="text-title self-start mt-2">Grupos autorizados</span>
+        <div class="flex flex-col gap-1 max-h-40 overflow-y-auto bg-page border border-border rounded p-2 md:col-span-1">
+            {% for group in user_instance.groups.all %}
+                <span class="text-sm text-title p-1">• {{ group.name|title }}</span>
+            {% empty %}
+                <span class="text-sm text-title p-1">-</span>
+            {% endfor %}
+        </div>
+
+        <div class="flex items-center gap-2 md:col-span-2 mt-2">
+            <div class="w-4 h-4 rounded border flex items-center justify-center {% if user_instance.is_superuser %}bg-blue-600 border-blue-600{% else %}bg-page border-border{% endif %}">
+                {% if user_instance.is_superuser %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                {% endif %}
+            </div>
+            <span class="text-title">Administrador del sistema</span>
+        </div>
+
+        <div class="flex items-center gap-2 md:col-span-2">
+            <div class="w-4 h-4 rounded border flex items-center justify-center {% if user_instance.is_staff %}bg-blue-600 border-blue-600{% else %}bg-page border-border{% endif %}">
+                {% if user_instance.is_staff %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                {% endif %}
+            </div>
+            <span class="text-title">Acceso al panel de administración (Staff)</span>
+        </div>
+
+        <div class="flex items-center gap-2 md:col-span-2">
+            <div class="w-4 h-4 rounded border flex items-center justify-center {% if user_instance.is_active %}bg-blue-600 border-blue-600{% else %}bg-page border-border{% endif %}">
+                {% if user_instance.is_active %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                {% endif %}
+            </div>
+            <span class="text-title">Activo</span>
+        </div>
+
+    </div>
+
+    {% endif %}
+</div>
+
+{% endblock %}
