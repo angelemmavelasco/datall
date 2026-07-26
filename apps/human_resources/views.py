@@ -23,8 +23,9 @@ from apps.core.utils import get_allowed_routes_for_user
 
 from apps.human_resources.services.comissions.comissions import Comissions, CommissionExceptions, CommissionsReport, RouteCommissionException
 from apps.human_resources.services.departments import DepartmentsService, DepartmentsKPIsService, ServiceError
-from apps.human_resources.filters import DepartmentFilter
-from apps.human_resources.forms import DepartmentForm
+from apps.human_resources.services.positions import PositionsService, PositionsKPIsService
+from apps.human_resources.filters import DepartmentFilter, PositionFilter
+from apps.human_resources.forms import DepartmentForm, PositionForm, SkillForm, PositionSkillFormSet
 from django.core.paginator import Paginator
 User = get_user_model()
 
@@ -919,6 +920,194 @@ def department_update_form(request, pk):
         'form': form,
         'creating': creating,
         'can_update_access': can_update_access
+    }
+
+    return render(request, template, context)
+
+@login_required
+def position_list_view(request):
+    template = 'human_resources/positions/position_list.html'
+    positions_service = PositionsService(user=request.user)
+    positions_kpis_service = PositionsKPIsService(positions_service=positions_service)
+    can_create = positions_service._checkout_full_access
+
+    positions_qs = positions_service.read_positions().order_by('id')
+    position_filter = PositionFilter(request.GET, queryset=positions_qs)
+    positions_qs = position_filter.qs
+
+    paginator = Paginator(positions_qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    query_dict = request.GET.copy()
+    if 'page' in query_dict: del query_dict['page']
+
+    positions = page_obj.object_list
+
+    kpis = positions_kpis_service.stats
+
+    context = {
+        'positions': positions,
+        'kpis': kpis,
+        'query_string': query_dict.urlencode(),
+        'page_obj': page_obj,
+        'can_create': can_create,
+        'filter': position_filter
+    }
+
+    if request.htmx:
+        return render(request, 'human_resources/positions/partials/position_list_rows.html', context)
+
+    return render(request, template, context)
+
+@login_required
+def position_create_view(request):
+    template = 'human_resources/positions/position_form.html'
+    positions_service = PositionsService(user=request.user)
+    creating = True
+
+    if request.method == 'POST':
+        form = PositionForm(
+            request.POST, 
+            request.FILES,
+            requesting_user=request.user,
+            is_full_access=positions_service._is_full_access
+        )
+        formset = PositionSkillFormSet(request.POST, request.FILES)
+
+        if form.is_valid() and formset.is_valid():
+            try:
+                new_position = positions_service.create_position(
+                    position_data=form.cleaned_data, 
+                    skills_data=formset.cleaned_data
+                )
+                messages.success(request, 'Puesto creado correctamente.')
+                return redirect('human_resources:position_detail_view', pk=new_position.id)
+            except ServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = PositionForm(
+            requesting_user=request.user,
+            is_full_access=positions_service._is_full_access
+        )
+        formset = PositionSkillFormSet()
+
+    context = {
+        'form': form,
+        'formset': formset,
+        'creating': creating
+    }
+
+    return render(request, template, context)
+
+@login_required
+def position_detail_view(request, pk):
+    template = 'human_resources/positions/position_details.html'
+    positions_service = PositionsService(user=request.user)
+    can_update_access = positions_service._checkout_full_access
+
+    position_instance = positions_service.read_position(pk=pk)
+    if not position_instance:
+        messages.error(request, 'Puesto no encontrado o no tienes permisos para verlo.')
+        return redirect('human_resources:position_list_view')
+
+    context = {
+        'position_instance': position_instance,
+        'can_update_access': can_update_access
+    }
+    return render(request, template, context)
+
+@login_required
+def position_update_view(request, pk):
+    template = 'human_resources/positions/position_form.html'
+    positions_service = PositionsService(user=request.user)
+    can_update_access = positions_service._checkout_full_access
+    creating = False
+
+    position_instance = positions_service.read_position(pk=pk)
+    if not position_instance:
+        messages.error(request, 'Puesto no encontrado o no tienes permisos para editarlo.')
+        return redirect('human_resources:position_list_view')
+
+    if request.method == 'POST':
+        form = PositionForm(
+            request.POST, 
+            request.FILES,
+            instance=position_instance,
+            requesting_user=request.user,
+            is_full_access=positions_service._is_full_access
+        )
+        formset = PositionSkillFormSet(request.POST, request.FILES, instance=position_instance)
+        
+        if form.is_valid() and formset.is_valid():
+            try:
+                updated_position = positions_service.update_position(
+                    pk=pk, 
+                    position_data=form.cleaned_data, 
+                    skills_data=formset.cleaned_data
+                )
+                messages.success(request, 'Puesto actualizado correctamente.')
+                return redirect('human_resources:position_detail_view', updated_position.pk)
+            except ServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = PositionForm(
+            instance=position_instance,
+            requesting_user=request.user,
+            is_full_access=positions_service._is_full_access
+        )
+        formset = PositionSkillFormSet(instance=position_instance)
+
+    context = {
+        'form': form,
+        'formset': formset,
+        'creating': creating,
+        'can_update_access': can_update_access
+    }
+
+    return render(request, template, context)
+
+@login_required
+def skill_create_view(request):
+    template = 'human_resources/positions/skill_form.html'
+    positions_service = PositionsService(user=request.user)
+
+    if not positions_service._is_full_access:
+        messages.error(request, 'No tienes permisos para crear habilidades.')
+        return redirect('human_resources:position_list_view')
+
+    if request.method == 'POST':
+        form = SkillForm(request.POST)
+        if form.is_valid():
+            try:
+                positions_service.create_skill(**form.cleaned_data)
+                messages.success(request, 'Habilidad creada correctamente.')
+                
+                # Check if we should redirect back to position creation
+                next_url = request.GET.get('next')
+                if next_url:
+                    return redirect(next_url)
+                    
+                return redirect('human_resources:position_list_view')
+            except ServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = SkillForm()
+
+    context = {
+        'form': form,
     }
 
     return render(request, template, context)

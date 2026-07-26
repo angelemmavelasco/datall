@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load widget_tweaks %}
+
+{% block title %}
+{% if creating %}
+Nuevo puesto
+{% else %}
+Editar puesto
+{% endif %}
+{% endblock %}
+
+{% block module_name %}
+{% if creating %}
+Nuevo puesto
+{% else %}
+Editar puesto
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="flex flex-col gap-4">
+    {% csrf_token %}
+
+    <p class="text-title text-sm">Información del puesto</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title flex items-center gap-1">ID (Máximo 20 caracteres)
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ej. DIR-01' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.id.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Nombre
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Nombre del puesto' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.name.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Departamento
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.department class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.department.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title self-start mt-2">Descripción</span>
+        <div class="mt-2">
+            {% render_field form.description class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' rows='3' placeholder='Descripción detallada (opcional)' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.description.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between mt-4">
+        <p class="text-title text-sm">Perfil del puesto (Habilidades)</p>
+        <button type="button" id="add-skill-form" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+            Agregar habilidad
+        </button>
+    </div>
+    <hr class="border-border border">
+    
+    {{ formset.management_form }}
+    
+    <div id="formset-container" class="flex flex-col gap-4">
+        {% for form in formset %}
+        <div class="skill-form grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 items-center bg-container p-2 rounded relative">
+            
+            {% for hidden in form.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+            
+            <div class="flex flex-col gap-1">
+                <span class="text-title text-xs">Habilidad</span>
+                {% render_field form.skill class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            </div>
+            
+            <div class="flex flex-col gap-1">
+                <span class="text-title text-xs">Nivel</span>
+                {% render_field form.skill_level class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            </div>
+
+            <div class="flex flex-col gap-1">
+                <span class="text-title text-xs">Requisito</span>
+                {% render_field form.requirement_level class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            </div>
+
+            <div class="flex flex-col gap-1">
+                <span class="text-title text-xs">Notas</span>
+                {% render_field form.notes class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' rows="1" %}
+            </div>
+            
+            <div class="flex items-center justify-center pt-5">
+                {% if formset.can_delete %}
+                    <label class="hidden">Eliminar: {{ form.DELETE }}</label>
+                {% endif %}
+                <button type="button" class="remove-skill-form text-red-500 hover:text-red-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-minus-icon lucide-circle-minus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+                </button>
+            </div>
+            
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Template for new dynamic forms -->
+    <div id="empty-form" class="hidden">
+        <div class="skill-form grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 items-center bg-container p-2 rounded relative mt-2">
+            
+            {% for hidden in formset.empty_form.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+            
+            <div class="flex flex-col gap-1">
+                <span class="text-title text-xs">Habilidad</span>
+                {% render_field formset.empty_form.skill class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            </div>
+            
+            <div class="flex flex-col gap-1">
+                <span class="text-title text-xs">Nivel</span>
+                {% render_field formset.empty_form.skill_level class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            </div>
+
+            <div class="flex flex-col gap-1">
+                <span class="text-title text-xs">Requisito</span>
+                {% render_field formset.empty_form.requirement_level class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            </div>
+
+            <div class="flex flex-col gap-1">
+                <span class="text-title text-xs">Notas</span>
+                {% render_field formset.empty_form.notes class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' rows="1" %}
+            </div>
+            
+            <div class="flex items-center justify-center pt-5">
+                {% if formset.can_delete %}
+                    <label class="hidden">Eliminar: {{ formset.empty_form.DELETE }}</label>
+                {% endif %}
+                <button type="button" class="remove-skill-form text-red-500 hover:text-red-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-minus-icon lucide-circle-minus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="flex flex-col gap-2 mt-4">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            Confirmar
+        </button>
+        <a href="{% url 'human_resources:position_list_view' %}"
+            class=" border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            Cancelar
+        </a>
+    </div>
+
+</form>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const addButton = document.getElementById("add-skill-form");
+        const formsetContainer = document.getElementById("formset-container");
+        const emptyFormTemplate = document.getElementById("empty-form").innerHTML;
+        const totalFormsInput = document.getElementById("id_position_skills-TOTAL_FORMS");
+        
+        addButton.addEventListener("click", function () {
+            const formCount = parseInt(totalFormsInput.value);
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, formCount);
+            
+            formsetContainer.insertAdjacentHTML('beforeend', newFormHtml);
+            totalFormsInput.value = formCount + 1;
+        });
+        
+        formsetContainer.addEventListener("click", function (e) {
+            let removeButton = e.target.closest('.remove-skill-form');
+            if (removeButton) {
+                const skillForm = removeButton.closest('.skill-form');
+                
+                const deleteInput = skillForm.querySelector('input[name$="-DELETE"]');
+                if (deleteInput) {
+                    deleteInput.checked = true;
+                    skillForm.style.display = 'none';
+                } else {
+                    skillForm.remove();
+                    // Optional: recalculate form counts if needed, but Django handles missing intermediate forms well in most versions
+                    // Or keep TOTAL_FORMS the same. It's safer to just hide and mark DELETE if possible.
+                }
+            }
+        });
+    });
+</script>
+
+{% endblock %}

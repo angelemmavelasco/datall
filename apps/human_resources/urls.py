@@ -28,4 +28,11 @@ urlpatterns = [
     path('departments/create/', department_create_form, name='department_create'),
     path('departments/<str:pk>/edit/', department_update_form, name='department_update'),
     path('departments/<str:pk>/', department_details, name='department_details'),
+
+    path('positions/', position_list_view, name='position_list_view'),
+    path('positions/create/', position_create_view, name='position_create_view'),
+    path('positions/<str:pk>/edit/', position_update_view, name='position_update_view'),
+    path('positions/<str:pk>/', position_detail_view, name='position_detail_view'),
+    
+    path('skills/create/', skill_create_view, name='skill_create_view'),
 ]

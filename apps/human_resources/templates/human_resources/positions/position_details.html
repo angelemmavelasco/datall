@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}
+Detalle del puesto
+{% endblock %}
+
+{% block module_name %}
+Detalle del puesto
+{% endblock %}
+
+{% block module_actions %}
+    {% if can_update_access %}
+    <a href="{% url 'human_resources:position_update_view' position_instance.id %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Editar puesto">
+        Editar
+    </a>
+    {% endif %}
+{% endblock module_actions %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+
+    <p class="text-title text-sm">Información del puesto</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+
+        <span class="text-title">ID</span>
+        <div class="w-full text-body flex items-center">
+            {{ position_instance.id|upper }}
+        </div>
+
+        <span class="text-title">Nombre</span>
+        <div class="w-full text-body flex items-center">
+            {{ position_instance.name|title }}
+        </div>
+
+        <span class="text-title mt-2">Departamento</span>
+        <div class="w-full text-body flex items-center mt-2">
+            <a href="{% url 'human_resources:department_details' position_instance.department.id %}" class="text-blue-500 hover:underline">
+                {{ position_instance.department.name|title }}
+            </a>
+        </div>
+
+        <span class="text-title self-start mt-2">Descripción</span>
+        <div class="w-full text-body flex items-center mt-2">
+            {{ position_instance.description|default:"-" }}
+        </div>
+    </div>
+
+    <p class="text-title text-sm mt-4">Estadísticas relacionadas</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Habilidades requeridas</span>
+        <div class="w-full text-body flex items-center">
+            {{ position_instance.position_skills.all|length }}
+        </div>
+
+        <span class="text-title">Colaboradores activos</span>
+        <div class="w-full text-body flex items-center">
+            {{ position_instance.active_employees_count|default:0|intcomma }}
+        </div>
+
+        <span class="text-title">Colaboradores inactivos</span>
+        <div class="w-full text-body flex items-center">
+            {{ position_instance.inactive_employees_count|default:0|intcomma }}
+        </div>
+
+        <span class="text-title">Colaboradores asociados</span>
+        <div class="w-full text-body flex items-center">
+            <a href="{% url 'human_resources:employees' %}?q={{ position_instance.id }}" class="text-strong hover:text-hover transition-colors flex items-center gap-1 underline">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-out-up-right"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 12 12"/><path d="M16 2h6v6"/></svg>
+                Ver todos los colaboradores asociados
+            </a>
+        </div>
+    </div>
+
+    <p class="text-title text-sm mt-4">Perfil del puesto (Habilidades)</p>
+    <hr class="border-border border">
+    
+    <div class="w-full overflow-auto border border-border rounded bg-container relative">
+        <table class="w-full border-separate border-spacing-0">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="p-2 text-left text-title border-r border-b border-border bg-page">Habilidad</th>
+                    <th class="p-2 text-center text-title border-r border-b border-border bg-page">Tipo</th>
+                    <th class="p-2 text-center text-title border-r border-b border-border bg-page">Nivel de Dominio</th>
+                    <th class="p-2 text-center text-title border-b border-border bg-page">Requisito</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ps in position_instance.position_skills.all %}
+                <tr class="hover:bg-hover transition-colors">
+                    <td class="p-2 text-left text-body border-r border-b border-border">{{ ps.skill.name|title }}</td>
+                    <td class="p-2 text-center text-body border-r border-b border-border">{{ ps.skill.get_skill_type_display }}</td>
+                    <td class="p-2 text-center text-body border-r border-b border-border">{{ ps.get_skill_level_display }}</td>
+                    <td class="p-2 text-center text-body border-b border-border">{{ ps.get_requirement_level_display }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="p-4 text-center text-body">No hay habilidades requeridas.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+{% endblock %}

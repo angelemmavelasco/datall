@@ -1,0 +1,65 @@
+{% load humanize %}
+
+{% for position in positions %}
+    <tr class="hover:bg-hover transition-colors duration-300">
+        <td class="p-2 text-left text-strong underline">
+            <a href="{% url 'human_resources:position_detail_view' position.id %}" target="_blank">
+                {{ position.id|upper }}
+            </a>
+        </td>
+        <td class="p-2 text-left truncate">{{ position.name|title }}</td>
+        <td class="p-2 text-center truncate">{{ position.department.id|upper }}</td>
+        <td class="p-2 text-center truncate max-w-[300px]">{{ position.position_skills.all|length|intcomma }}</td>
+        
+        {# We calculate active vs inactive from the prefetch_related if possible, or we could have annotated them. #}
+        {# But since we didn't annotate the individual rows in the query for employees count directly like departments did, #}
+        {# we'll just count them here in template from the prefetched human_resources_employees. #}
+        {% with active_count=0 inactive_count=0 %}
+            {% for emp in position.human_resources_employees.all %}
+                {% if not emp.termination_date or emp.termination_date > now.date %}
+                    {# Need a custom filter or just rely on the view providing this data. #}
+                    {# Actually, it's better if we annotate these in the qs to avoid template logic complexity. #}
+                    {# I will update the service to annotate these! For now, let's just use a basic length if not annotated #}
+                {% endif %}
+            {% endfor %}
+        {% endwith %}
+        
+        {# Using annotations which I should add in service read_positions! #}
+        <td class="p-2 text-center truncate max-w-[300px]">{{ position.active_employees_count|default:0|intcomma }}</td>
+        <td class="p-2 text-center truncate max-w-[300px]">{{ position.inactive_employees_count|default:0|intcomma }}</td>
+
+    </tr>
+{% empty %}
+    <tr>
+        <td colspan="100%" class="p-4 text-center ">No se encontraron puestos.</td>
+    </tr>
+{% endfor %}
+
+{% if page_obj.has_next %}
+<tr id="load-more-row-{{ page_obj.number }}">
+    <td colspan="7" class="p-4 border-t border-border">
+        
+        <div class="sticky left-1/2 -translate-x-1/2 w-max">
+            
+            <button hx-get="{{ request.path }}?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}"
+                    hx-target="#load-more-row-{{ page_obj.number }}"
+                    hx-swap="outerHTML"
+                    class="group hover:text-hover text-strong transition-colors cursor-pointer border border-border rounded p-1 bg-page">
+                
+                <div class="flex items-center gap-2 group-[.htmx-request]:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-down"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="m8 12 4 4 4-4"/></svg>
+                    <span>Mostrar más</span>
+                </div>
+
+                <div class="hidden items-center gap-2 group-[.htmx-request]:flex">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search animate-spin"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <span class="text-strong">Cargando...</span>
+                </div>
+
+            </button>
+            
+        </div>
+        
+    </td>
+</tr>
+{% endif %}
