@@ -9,6 +9,7 @@ from apps.data_admin.services.data_history.data_history_crud import ActivityLogg
 from apps.core.models import SystemModule, AppVersion
 
 from django.core.paginator import Paginator
+from apps.core.filters import UserFilter
 from apps.core.services.users import (
     UsersService, 
     UsersKPIsService, 
@@ -92,6 +93,9 @@ def user_list(request):
     can_create = users_service._checkout_full_access
 
     users_qs = users_service.read_users().order_by('first_name')
+    user_filter = UserFilter(request.GET, queryset=users_qs)
+    users_qs = user_filter.qs
+
     paginator = Paginator(users_qs, 100)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
@@ -108,7 +112,8 @@ def user_list(request):
         'kpis': kpis,
         'query_string': query_dict.urlencode(),
         'page_obj': page_obj,
-        'can_create': can_create
+        'can_create': can_create,
+        'filter': user_filter
     }
 
     if request.htmx:

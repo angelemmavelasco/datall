@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize %}
+{% load humanize widget_tweaks %}
 
 {% block title %}Usuarios{% endblock %}
 
@@ -137,3 +137,36 @@
 
 
 {% endblock content %}
+
+{% block filters %}
+<form hx-get="{% url 'core:user_list' %}" hx-target="#report-container" hx-push-url="true" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.search.id_for_label }}" class="text-sm text-title">{{ filter.form.search.label }}</label>
+        {% render_field filter.form.search class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-2 text-sm text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.is_active.id_for_label }}" class="text-sm text-title">{{ filter.form.is_active.label }}</label>
+        {% render_field filter.form.is_active class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-2 text-sm text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.gender.id_for_label }}" class="text-sm text-title">{{ filter.form.gender.label }}</label>
+        {% render_field filter.form.gender class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-2 text-sm text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.last_login__gte.id_for_label }}" class="text-sm text-title">{{ filter.form.last_login__gte.label }}</label>
+        {% render_field filter.form.last_login__gte class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-2 text-sm text-title" %}
+    </div>
+
+    <div class="flex gap-2 mt-4">
+        <button type="submit" onclick="closeFilters()" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded transition-colors text-sm">
+            Aplicar
+        </button>
+        <a href="{% url 'core:user_list' %}" class="w-full bg-page border border-border hover:bg-hover text-title p-2 rounded transition-colors text-sm text-center">
+            Limpiar
+        </a>
+    </div>
+</form>
+{% endblock %}

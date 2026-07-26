@@ -73,6 +73,8 @@ INSTALLED_APPS = [
     'storages',
     #forms styling
     'widget_tweaks',
+    #filters
+    'django_filters',
 
     'apps.core',
     'apps.business_intelligence',
