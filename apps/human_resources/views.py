@@ -21,6 +21,7 @@ from apps.core.models import (
     )
 from apps.core.utils import get_allowed_routes_for_user
 
+from django.conf import settings
 from apps.human_resources.services.comissions.comissions import Comissions, CommissionExceptions, CommissionsReport, RouteCommissionException
 from apps.human_resources.services.departments import DepartmentsService, DepartmentsKPIsService, ServiceError
 from apps.human_resources.services.positions import PositionsService, PositionsKPIsService
@@ -966,6 +967,10 @@ def position_create_view(request):
     positions_service = PositionsService(user=request.user)
     creating = True
 
+    if not positions_service._is_full_access:
+        messages.error(request, 'No tienes permisos para crear puestos.')
+        return render(request, settings.ACCESS_DENIED_TEMPLATE)
+
     if request.method == 'POST':
         form = PositionForm(
             request.POST, 
@@ -1028,6 +1033,10 @@ def position_update_view(request, pk):
     can_update_access = positions_service._checkout_full_access
     creating = False
 
+    if not can_update_access:
+        messages.error(request, 'No tienes permisos para editar puestos.')
+        return render(request, settings.ACCESS_DENIED_TEMPLATE)
+
     position_instance = positions_service.read_position(pk=pk)
     if not position_instance:
         messages.error(request, 'Puesto no encontrado o no tienes permisos para editarlo.')
@@ -1081,6 +1090,10 @@ def skill_list_view(request):
     positions_service = PositionsService(user=request.user)
     can_create = positions_service._checkout_full_access
 
+    if not can_create:
+        messages.error(request, 'No tienes permisos para ver ni crear habilidades.')
+        return render(request, settings.ACCESS_DENIED_TEMPLATE)
+
     skills_qs = positions_service.read_skills()
     skill_filter = SkillFilter(request.GET, queryset=skills_qs)
     skills_qs = skill_filter.qs
@@ -1115,7 +1128,7 @@ def skill_create_view(request):
 
     if not positions_service._is_full_access:
         messages.error(request, 'No tienes permisos para crear habilidades.')
-        return redirect('human_resources:position_list_view')
+        return render(request, settings.ACCESS_DENIED_TEMPLATE)
 
     if request.method == 'POST':
         form = SkillForm(request.POST)
@@ -1123,8 +1136,6 @@ def skill_create_view(request):
             try:
                 positions_service.create_skill(**form.cleaned_data)
                 messages.success(request, 'Habilidad creada correctamente.')
-                
-                # Check if we should redirect back to position creation
                 next_url = request.GET.get('next')
                 if next_url:
                     return redirect(next_url)
@@ -1150,6 +1161,7 @@ def skill_create_view(request):
 def skill_detail_view(request, pk):
     template = 'human_resources/positions/skill_details.html'
     positions_service = PositionsService(user=request.user)
+    can_update_access = positions_service._checkout_full_access
     
     skill_instance = positions_service.read_skill(pk=pk)
     if not skill_instance:
@@ -1158,6 +1170,7 @@ def skill_detail_view(request, pk):
 
     context = {
         'skill_instance': skill_instance,
+        'can_update_access': can_update_access
     }
     return render(request, template, context)
 
@@ -1168,23 +1181,25 @@ def skill_update_view(request, pk):
     can_update_access = positions_service._checkout_full_access
     creating = False
 
+    if not can_update_access:
+        messages.error(request, 'No tienes permisos para editar habilidades.')
+        return render(request, settings.ACCESS_DENIED_TEMPLATE)
+
     skill_instance = positions_service.read_skill(pk=pk)
     if not skill_instance:
-        messages.error(request, 'Habilidad no encontrada o no tienes permisos para editarla.')
+        messages.error(request, 'Habilidad no encontrada o no tienes permisos para verla.')
         return redirect('human_resources:position_list_view')
 
     if request.method == 'POST':
         form = SkillForm(
             request.POST, 
-            instance=skill_instance,
-            requesting_user=request.user,
-            is_full_access=positions_service._is_full_access
+            instance=skill_instance
         )
         if form.is_valid():
             try:
                 updated_skill = positions_service.update_skill(
                     pk=pk, 
-                    skill_data=form.cleaned_data
+                    data=form.cleaned_data
                 )
                 messages.success(request, 'Habilidad actualizada correctamente.')
                 return redirect('human_resources:skill_detail_view', updated_skill.pk)
@@ -1196,9 +1211,7 @@ def skill_update_view(request, pk):
             messages.error(request, 'Por favor revisa los errores en el formulario.')
     else:
         form = SkillForm(
-            instance=skill_instance,
-            requesting_user=request.user,
-            is_full_access=positions_service._is_full_access
+            instance=skill_instance
         )
 
     context = {
@@ -1215,7 +1228,7 @@ def skill_delete_view(request, pk):
 
     if not positions_service._is_full_access:
         messages.error(request, 'No tienes permisos para eliminar habilidades.')
-        return redirect('human_resources:skill_list_view')
+        return render(request, settings.ACCESS_DENIED_TEMPLATE)
 
     skill_instance = positions_service.read_skill(pk=pk)
     if not skill_instance:

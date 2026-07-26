@@ -18,6 +18,13 @@ Editar puesto
 {% endif %}
 {% endblock %}
 
+{% block module_actions %}
+        <a href="{% url 'human_resources:skill_create_view' %}?next={{ request.path }}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear nueva habilidad">
+            Nueva habilidad
+        </a>
+
+{% endblock %}
+
 {% block content %}
 
 <form method="POST" class="flex flex-col gap-4">
