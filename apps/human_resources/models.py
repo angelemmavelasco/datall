@@ -12,48 +12,11 @@ class Department(models.Model):
     def __str__(self):
         return f'{self.id.upper()} {self.name.title()}'
 
-# class TaxSystem(models.Model):
-#     id = models.CharField(max_length=3, primary_key=True, help_text='Identificador único del sistema de impuestos')
-#     name = models.CharField(unique=True, max_length=255, help_text='Nombre del sistema de impuestos')
-#     description = models.TextField(max_length=500, null=True, blank=True, help_text='Descripción del sistema de impuestos')
-
-#     class Meta:
-#         verbose_name = 'Tax system'
-#         verbose_name_plural = 'Tax systems'
-#         db_table = 'tax_systems'
-
-#     def __str__(self):
-#         return f'{self.id.upper()} {self.name.title()}'
-
-
-# class PayrollType(models.Model):
-#     id = models.CharField(max_length=20,primary_key=True, help_text='Identificador único del tipo de nómina')
-#     name = models.CharField(max_length=100,unique=True, help_text='Nombre del tipo de nómina')
-#     description = models.TextField(max_length=500, blank=True, null=True, help_text='Descripción del tipo de nómina')
-
-#     class Meta:
-#         verbose_name = "Tipo de nómina"
-#         verbose_name_plural = "Tipos de nómina"
-#         db_table = 'payroll_types'
-
-#     def __str__(self):
-#         return f"{self.id.upper()} {self.name.title()}"
-
-
-# class Periodicity(models.Model):
-#     id = models.CharField(max_length=20, primary_key=True)
-#     name = models.CharField(max_length=255)
-
-#     class Meta:
-#         verbose_name = "Periodicity"
-#         verbose_name_plural = "Periodicities"
-#         ordering = ["id"]
-#         db_table = "periodicities"
-
-#     def __str__(self):
-#         return f"{self.id} - {self.name}"
 
 class Position(models.Model):
+    '''
+    header to identofy the main object, which is gonna have multiple employees, skills, etc.
+    '''
     id = models.CharField(max_length=20, primary_key=True, help_text='Identificador único del puesto')
     name = models.CharField(max_length=255, unique=True, help_text='Nombre del puesto')
     department = models.ForeignKey('Department', on_delete=models.CASCADE, related_name='%(app_label)s_positions', help_text='Departamento al que pertenece el puesto')
@@ -65,6 +28,59 @@ class Position(models.Model):
 
     def __str__(self):
         return f'{self.name.title()} ({self.department.id.upper()})'
+
+class Skill(models.Model):
+    '''
+    global catalog of reusable skills across the organization.
+    '''
+    class SkillTypeChoices(models.TextChoices):
+        HARD = 'hard', 'Técnica'
+        SOFT = 'soft', 'Blanda'
+        LANGUAGE = 'language', 'Idioma'
+        OTHER = 'other', 'Otra'
+
+    name = models.CharField(max_length=150, unique=True, help_text='Nombre de la habilidad')
+    skill_type = models.CharField(max_length=20, choices=SkillTypeChoices.choices, default=SkillTypeChoices.HARD, help_text='Clasificación general de la habilidad')
+    description = models.TextField(null=True, blank=True, help_text='Definición o alcance de la habilidad')
+
+    class Meta:
+        verbose_name = 'Habilidad / Competencia'
+        verbose_name_plural = 'Catálogo de Habilidades'
+        ordering = ['skill_type', 'name']
+
+    def __str__(self):
+        return f'{self.name.title()} ({self.get_skill_type_display()})'
+
+class PositionSkill(models.Model):
+    '''
+    intermediate table linking Positions to Skills, specifying the target requirements.
+    '''
+    class RequirementLevelChoices(models.TextChoices):
+        REQUIRED = 'required', 'Requerido'
+        OPTIONAL = 'optional', 'Opcional'
+        PREFERRED = 'preferred', 'Preferente'
+
+    class SkillLevelChoices(models.TextChoices):
+        NO_KNOWLEDGE = 'none', 'Sin conocimiento'
+        BASIC = 'basic', 'Básico'
+        INTERMEDIATE = 'intermediate', 'Intermedio'
+        ADVANCED = 'advanced', 'Avanzado'
+        EXPERT = 'expert', 'Experto'
+
+    position = models.ForeignKey('Position', on_delete=models.CASCADE, related_name='position_skills', help_text='Puesto al que se le asigna la competencia')
+    skill = models.ForeignKey('Skill', on_delete=models.PROTECT, related_name='position_requirements', help_text='Habilidad del catálogo')
+    requirement_level = models.CharField(max_length=20, choices=RequirementLevelChoices.choices, default=RequirementLevelChoices.REQUIRED, help_text='Grado de obligatoriedad')
+    skill_level = models.CharField(max_length=20, choices=SkillLevelChoices.choices, default=SkillLevelChoices.BASIC, help_text='Nivel de dominio mínimo requerido')
+    notes = models.TextField(null=True, blank=True, help_text='Especificaciones adicionales para este puesto (ej. Certificación vigente requerida)')
+
+    class Meta:
+        verbose_name = 'Requisito de competencia'
+        verbose_name_plural = 'Requisitos de competencias'
+        unique_together = ('position', 'skill')
+
+    def __str__(self):
+        return f'{self.position.name.title()} -> {self.skill.name.title()} ({self.get_skill_level_display()})'
+        
 
 class Employee(models.Model):
     id = models.CharField(max_length=20, primary_key=True, help_text='Identificador único del colaborador')
