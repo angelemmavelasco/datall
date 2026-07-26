@@ -430,7 +430,6 @@
                         fill: none;
                         stroke: var(--svg-color-grafica);
                         stroke-width: var(--grosor-nodo);
-                        opacity: 0;
                         }
                         .texto-logo {
                         font-family: 'Quicksand', sans-serif;
@@ -440,36 +439,10 @@
                         .dat {
                         letter-spacing: 0.05em;
                         fill: var(--svg-color-dat);
-                        opacity: 0;
-                        animation: dibujarRTL 2.5s ease-out 1s forwards;
                         }
                         .all {
                         letter-spacing: 0.05em;
                         fill: var(--svg-color-all);
-                        opacity: 0;
-                        animation: aparecerTexto 1s ease-out 0s forwards;
-                        }
-                        @keyframes aparecerTexto {
-                        0% {
-                            opacity: 0;
-                            transform: translateY(30px);
-                        }
-                        100% {
-                            opacity: 1;
-                            transform: translateY(0);
-                        }
-                        }
-                        @keyframes dibujarRTL {
-                        0% { 
-                            opacity: 1; 
-                            -webkit-clip-path: inset(0 0 0 100%);
-                            clip-path: inset(0 0 0 100%); 
-                        }
-                        100% { 
-                            opacity: 1; 
-                            -webkit-clip-path: inset(0 0 0 0);
-                            clip-path: inset(0 0 0 0); 
-                        }
                         }
                     </style>
                     
@@ -487,22 +460,12 @@
                         <circle cx="240" cy="220" r="10" fill="black" />
                         </mask>
 
-                        <path class="linea-animada" mask="url(#mask-nodos)" d="M 60 400 L 120 280 L 180 340 L 240 220" stroke-dasharray="360" stroke-dashoffset="360">
-                        <animate attributeName="stroke-dashoffset" from="360" to="0" begin="1s" dur="2.5s" fill="freeze" />
-                        </path>
+                        <path class="linea-animada" mask="url(#mask-nodos)" d="M 60 400 L 120 280 L 180 340 L 240 220" />
 
-                        <circle class="nodo" cx="60" cy="400" r="13">
-                        <animate attributeName="opacity" from="0" to="1" begin="1s" dur="0.2s" fill="freeze" />
-                        </circle>
-                        <circle class="nodo" cx="120" cy="280" r="13">
-                        <animate attributeName="opacity" from="0" to="1" begin="1.9s" dur="0.2s" fill="freeze" />
-                        </circle>
-                        <circle class="nodo" cx="180" cy="340" r="13">
-                        <animate attributeName="opacity" from="0" to="1" begin="2.5s" dur="0.2s" fill="freeze" />
-                        </circle>
-                        <circle class="nodo" cx="240" cy="220" r="13">
-                        <animate attributeName="opacity" from="0" to="1" begin="3.4s" dur="0.2s" fill="freeze" />
-                        </circle>
+                        <circle class="nodo" cx="60" cy="400" r="13" />
+                        <circle class="nodo" cx="120" cy="280" r="13" />
+                        <circle class="nodo" cx="180" cy="340" r="13" />
+                        <circle class="nodo" cx="240" cy="220" r="13" />
                         
                     </g>
                     </svg>
