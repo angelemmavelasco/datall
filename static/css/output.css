@@ -788,6 +788,9 @@
   .max-w-\[250px\] {
     max-width: 250px;
   }
+  .max-w-\[300px\] {
+    max-width: 300px;
+  }
   .max-w-md {
     max-width: var(--container-md);
   }
@@ -853,6 +856,9 @@
   }
   .min-w-\[250px\] {
     min-width: 250px;
+  }
+  .min-w-\[300px\] {
+    min-width: 300px;
   }
   .min-w-\[500px\] {
     min-width: 500px;
@@ -1919,11 +1925,20 @@
     opacity: 50%;
   }
   @media (width >= 40rem) {
+    .sm\:mx-0 {
+      margin-inline: 0px;
+    }
     .sm\:flex {
       display: flex;
     }
     .sm\:w-50 {
       width: calc(var(--spacing) * 50);
+    }
+    .sm\:w-full {
+      width: 100%;
+    }
+    .sm\:max-w-none {
+      max-width: none;
     }
     .sm\:flex-1 {
       flex: 1;

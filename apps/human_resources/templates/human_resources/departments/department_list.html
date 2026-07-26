@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}Departamentos{% endblock %}
+
+{% block module_name %}Departamentos{% endblock %}
+
+{% block module_actions %}
+
+    {% if can_create %}
+        <a href="{% url 'human_resources:department_create' %}" target="_blank"  class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear un nuevo departamento">
+            Nuevo departamento
+        </a>
+    {% endif %}
+
+    <button onclick="toggleFilters()"
+        class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+            <path d="M10 5H3" />
+            <path d="M12 19H3" />
+            <path d="M14 3v4" />
+            <path d="M16 17v4" />
+            <path d="M21 12h-9" />
+            <path d="M21 19h-5" />
+            <path d="M21 5h-7" />
+            <path d="M8 10v4" />
+            <path d="M8 12H3" />
+        </svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-4">
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Resumen de departamentos</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Departamentos registrados
+            </p>
+            <p class="text-xl text-blue-500">
+                <span>
+                    {{ kpis.registered_departments }}
+                </span>
+
+            </p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Posiciones asociadas
+            </p>
+            <p class="text-xl text-violet-500">
+                <span>
+                    {{ kpis.associated_positions }}
+                </span>
+
+            </p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Colaboradores activos
+            </p>
+            <p class="text-xl text-emerald-500">
+                <span>
+                    {{ kpis.active_employees }}
+                </span>
+
+            </p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Colaboradores inactivos
+            </p>
+            <p class="text-xl text-red-500">
+                <span>
+                    {{ kpis.inactive_employees }}
+                </span>
+
+            </p>
+        </div>
+
+
+    </div>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th
+                        class="min-w-[50px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
+                        ID</th>
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Nombre</th>
+                    <th
+                        class="min-w-[300px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Descripción</th>
+
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Posiciones asociadas</th>
+
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Colaboradores activos</th>
+
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Colaboradores inactivos</th>
+                </tr>
+            </thead>
+
+            <tbody class="" id="report-container">
+                {% include "human_resources/departments/partials/department_list_rows.html" %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+
+{% endblock content %}
+
+{% block filters %}
+<form hx-get="{% url 'human_resources:department_list' %}" hx-target="#report-container" hx-push-url="true" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.search.id_for_label }}" class=" text-title">{{ filter.form.search.label }}</label>
+        {% render_field filter.form.search class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1  text-title" %}
+    </div>
+
+    <div class="flex gap-2 flex-col">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+</form>
+{% endblock %}

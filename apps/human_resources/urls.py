@@ -23,4 +23,9 @@ urlpatterns = [
     path('commissions_report/', commissions_report, name='commissions_report'),
     path('commissions_report/action/', commissions_action, name='commissions_action'),
     path('commissions_report/<int:pk>/', commission_report_detail, name='commission_report_detail'),
+
+    path('departments/', department_list, name='department_list'),
+    path('departments/create/', department_create_form, name='department_create'),
+    path('departments/<str:pk>/edit/', department_update_form, name='department_update'),
+    path('departments/<str:pk>/', department_details, name='department_details'),
 ]

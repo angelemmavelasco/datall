@@ -22,7 +22,10 @@ from apps.core.models import (
 from apps.core.utils import get_allowed_routes_for_user
 
 from apps.human_resources.services.comissions.comissions import Comissions, CommissionExceptions, CommissionsReport, RouteCommissionException
-
+from apps.human_resources.services.departments import DepartmentsService, DepartmentsKPIsService, ServiceError
+from apps.human_resources.filters import DepartmentFilter
+from apps.human_resources.forms import DepartmentForm
+from django.core.paginator import Paginator
 User = get_user_model()
 
 @login_required
@@ -779,4 +782,143 @@ def commission_report_detail(request, pk):
         description=f"visualización de detalle del reporte de comisiones de ruta {settlement.route_id} ({settlement.period_start.strftime('%m/%Y')})" if settlement else 'visualización de detalle del reporte de comisiones'
     )
     
+    return render(request, template, context)
+
+@login_required
+def department_list(request):
+    template = 'human_resources/departments/department_list.html'
+    departments_service = DepartmentsService(user=request.user)
+    departments_kpis_service = DepartmentsKPIsService(departments_service=departments_service)
+    can_create = departments_service._checkout_full_access
+
+    departments_qs = departments_service.read_departments().order_by('id')
+    department_filter = DepartmentFilter(request.GET, queryset=departments_qs)
+    departments_qs = department_filter.qs
+
+    paginator = Paginator(departments_qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    query_dict = request.GET.copy()
+    if 'page' in query_dict: del query_dict['page']
+
+    departments = page_obj.object_list
+
+    kpis = departments_kpis_service.stats
+
+    context = {
+        'departments': departments,
+        'kpis': kpis,
+        'query_string': query_dict.urlencode(),
+        'page_obj': page_obj,
+        'can_create': can_create,
+        'filter': department_filter
+    }
+
+    if request.htmx:
+        return render(request, 'human_resources/departments/partials/department_list_rows.html', context)
+
+    return render(request, template, context)
+
+
+@login_required
+def department_create_form(request):
+    template = 'human_resources/departments/department_form.html'
+    departments_service = DepartmentsService(user=request.user)
+    creating = True
+
+    if request.method == 'POST':
+        form = DepartmentForm(
+            request.POST, 
+            request.FILES,
+            requesting_user=request.user,
+            is_full_access=departments_service._is_full_access
+        )
+        if form.is_valid():
+            try:
+                new_department = departments_service.create_department(**form.cleaned_data)
+                messages.success(request, 'Departamento creado correctamente.')
+                return redirect('human_resources:department_details', pk=new_department.id)
+            except ServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = DepartmentForm(
+            requesting_user=request.user,
+            is_full_access=departments_service._is_full_access
+        )
+
+    context = {
+        'form': form,
+        'creating': creating
+    }
+
+    return render(request, template, context)
+
+
+@login_required
+def department_details(request, pk):
+    template = 'human_resources/departments/department_details.html'
+    departments_service = DepartmentsService(user=request.user)
+    can_update_access = departments_service._checkout_full_access
+
+    department_instance = departments_service.read_department(pk=pk)
+    if not department_instance:
+        messages.error(request, 'Departamento no encontrado o no tienes permisos para verlo.')
+        return redirect('human_resources:department_list')
+
+    context = {
+        'department_instance': department_instance,
+        'can_update_access': can_update_access
+    }
+    return render(request, template, context)
+
+
+@login_required
+def department_update_form(request, pk):
+    template = 'human_resources/departments/department_form.html'
+    departments_service = DepartmentsService(user=request.user)
+    can_update_access = departments_service._checkout_full_access
+    creating = False
+
+    department_instance = departments_service.read_department(pk=pk)
+    if not department_instance:
+        messages.error(request, 'Departamento no encontrado o no tienes permisos para editarlo.')
+        return redirect('human_resources:department_list')
+
+    if request.method == 'POST':
+        form = DepartmentForm(
+            request.POST, 
+            request.FILES,
+            instance=department_instance,
+            requesting_user=request.user,
+            is_full_access=departments_service._is_full_access
+        )
+        if form.is_valid():
+            try:
+                updated_department = departments_service.update_department(pk=pk, **form.cleaned_data)
+                messages.success(request, 'Departamento actualizado correctamente.')
+                return redirect('human_resources:department_details', updated_department.pk)
+            except ServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = DepartmentForm(
+            instance=department_instance,
+            requesting_user=request.user,
+            is_full_access=departments_service._is_full_access
+        )
+
+    context = {
+        'form': form,
+        'creating': creating,
+        'can_update_access': can_update_access
+    }
+
     return render(request, template, context)
