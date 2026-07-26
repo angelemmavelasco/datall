@@ -22,42 +22,50 @@ Perfil de usuario
     <hr class="border-border border">
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+
+        <div class="w-full md:col-span-2  flex items-center justify-center my-4">
+            {% if user_instance.photo %}
+            <img src="{{ user_instance.photo.url }}" alt="Foto de perfil"
+                style="width: 100px; height: 100px; min-width: 100px; min-height: 100px; object-fit: cover; object-position: top; padding: 4px;"
+                class="rounded-full bg-white">
+            {% else %}
+            <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="lucide lucide-circle-user-icon lucide-circle-user text-muted">
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="10" r="3" />
+                <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
+            </svg>
+            {% endif %}
+        </div>
+
         <span class="text-title">Nombre (s)</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.first_name|default:"-"|title }}
         </div>
 
         <span class="text-title">Primer apellido</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.last_name|default:"-"|title }}
         </div>
 
         <span class="text-title">Segundo apellido</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.second_last_name|default:"-"|title }}
         </div>
 
         <span class="text-title">Género</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.get_gender_display|default:"-"|title }}
         </div>
 
         <span class="text-title">Fecha de nacimiento</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.birth_date|date:"d/m/Y"|default:"-" }}
         </div>
 
-        <span class="text-title">Fotografía</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
-            {% if user_instance.photo %}
-                <a href="{{ user_instance.photo.url }}" target="_blank" class="text-blue-600 hover:underline">Ver fotografía</a>
-            {% else %}
-                -
-            {% endif %}
-        </div>
-
         <span class="text-title">Notas</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-title  flex items-center">
+        <div class="w-full  text-title  flex items-center">
             {{ user_instance.notes|default:"-"|title }}
         </div>
     </div>
@@ -67,47 +75,47 @@ Perfil de usuario
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
         <span class="text-title">Registro Federal de Contribuyentes (RFC)</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.tax_id|default:"-"|upper }}
         </div>
 
         <span class="text-title">Clave Única de Registro de Población (CURP)</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.unique_personal_id|default:"-"|upper }}
         </div>
 
         <span class="text-title">Calle</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.street|default:"-"|title }}
         </div>
 
         <span class="text-title">Exterior</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.street_no|default:"-" }}
         </div>
 
         <span class="text-title">Interior (opcional)</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.apt_suite|default:"-"|title }}
         </div>
 
         <span class="text-title">Ciudad</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.city|default:"-"|title }}
         </div>
 
         <span class="text-title">Estado</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.state|default:"-"|title }}
         </div>
 
         <span class="text-title">País</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.country|default:"-"|title }}
         </div>
 
         <span class="text-title">Código postal</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.zipcode|default:"-" }}
         </div>
     </div>
@@ -117,12 +125,12 @@ Perfil de usuario
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
         <span class="text-title">Teléfono</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.phone|default:"-" }}
         </div>
 
         <span class="text-title">Correo electrónico</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-body  flex items-center">
+        <div class="w-full  text-body  flex items-center">
             {{ user_instance.email|default:"-" }}
         </div>
     </div>
@@ -134,7 +142,7 @@ Perfil de usuario
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
         <span class="text-title">Nombre de usuario</span>
-        <div class="w-full bg-page border border-border rounded p-1 text-title  flex items-center">
+        <div class="w-full  text-title  flex items-center">
             {{ user_instance.username|default:"-" }}
         </div>
 
@@ -151,9 +159,9 @@ Perfil de usuario
         {% endif %}
 
         <span class="text-title self-start mt-2">Grupos autorizados</span>
-        <div class="flex flex-col gap-1 max-h-40 overflow-y-auto bg-page border border-border rounded p-1 md:col-span-1">
+        <div class="flex flex-col gap-1 max-h-40 overflow-y-auto  md:col-span-1">
             {% for group in user_instance.groups.all %}
-                <span class=" text-title p-1">• {{ group.name|title }}</span>
+                <span class=" text-title p-1 border border-border rounded p-1">{{ group.name|title }}</span>
             {% empty %}
                 <span class=" text-title p-1">-</span>
             {% endfor %}

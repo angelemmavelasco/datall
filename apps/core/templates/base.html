@@ -626,13 +626,13 @@
 
                     <div class="flex items-center gap-3 border-l border-border pl-3 pb-4 sm:pb-0">
 
-                        <button type="button" onclick="toggleNotifications()" class="inline-flex items-center justify-center gap-1 cursor-pointer text-title transition-colors hover:text-hover" title="Ver notificaciones">
+                        <!-- <button type="button" onclick="toggleNotifications()" class="inline-flex items-center justify-center gap-1 cursor-pointer text-title transition-colors hover:text-hover" title="Ver notificaciones">
                             <svg id="toggle-notifications-button" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell-icon lucide-bell"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
                             <span class="hidden md:flex items-center">
                                 Notificaciones
                             </span>
 
-                        </button>
+                        </button> -->
 
                         <button type="button" id="toggle-novelties-button" onclick="toggleNovelties()" class="inline-flex items-center justify-center gap-1 cursor-pointer text-title transition-colors hover:text-hover" title="Ver novedades">
                             <div class="relative flex items-center justify-center">
@@ -671,6 +671,11 @@
                         </a>
 
                         {% endif %}
+
+                        <a href="{% url 'core:user_details' request.user.pk %}" class="flex gap-1 items-center justify-center cursor-pointer text-title transition-colors hover:text-hover" title="Panel de administración">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-icon lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            Mi perfíl
+                        </a>
 
                         <form action="{% url 'logout' %}" method="post">
                             {% csrf_token %}
