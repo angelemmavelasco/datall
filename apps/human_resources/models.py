@@ -18,10 +18,18 @@ class Position(models.Model):
     '''
     header to identofy the main object, which is gonna have multiple employees, skills, etc.
     '''
+    class HierarchyLevelChoices(models.TextChoices):
+        LEVEL_1 = '1', 'Nivel 1'
+        LEVEL_2 = '2', 'Nivel 2'
+        LEVEL_3 = '3', 'Nivel 3'
+        LEVEL_4 = '4', 'Nivel 4'
+        LEVEL_5 = '5', 'Nivel 5'
+        
     id = models.CharField(max_length=20, primary_key=True, help_text='Identificador único del puesto')
     name = models.CharField(max_length=255, unique=True, help_text='Nombre del puesto')
     department = models.ForeignKey('Department', on_delete=models.CASCADE, related_name='%(app_label)s_positions', help_text='Departamento al que pertenece el puesto')
     description = models.TextField(max_length=255, null=True, blank=True, help_text='Descripción del puesto')
+    hierarchy_level = models.CharField(max_length=20, choices=HierarchyLevelChoices.choices, default=HierarchyLevelChoices.LEVEL_1, help_text='Nivel jerárquico del puesto')
 
     class Meta:
         verbose_name = 'Puesto'
