@@ -52,6 +52,12 @@ class PositionFilter(django_filters.FilterSet):
         )
     )
 
+    hierarchy_level = django_filters.ChoiceFilter(
+        choices=Position.HierarchyLevelChoices.choices,
+        label='Nivel jerárquico',
+        widget=forms.Select(attrs={'class': 'w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title'})
+    )
+
     employee = django_filters.CharFilter(
         method='filter_employee',
         label='Colaborador (Nombre)',
@@ -60,7 +66,7 @@ class PositionFilter(django_filters.FilterSet):
 
     class Meta:
         model = Position
-        fields = ['search', 'department', 'skill', 'is_active', 'employee']
+        fields = ['search', 'department', 'hierarchy_level', 'skill', 'is_active', 'employee']
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(
