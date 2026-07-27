@@ -165,9 +165,24 @@ Perfil de usuario
                     {{ position.termination_date|date:"d/m/Y"|default:"No aplica" }}
                 </div>
 
-                <span class="text-title">Notas</span>
+                <span class="text-title">Régimen fiscal asociado a pago o facturación</span>
                 <div class="w-full  text-body  flex items-center">
-                    {{ position.notes|default:"-"|title }}
+                    {{ position.get_tax_regime_display|default:"No aplica"|title }}
+                </div>
+
+                <span class="text-title">RFC asociado a pago o facturación</span>
+                <div class="w-full  text-body  flex items-center">
+                    {{ position.tax_id|default:"XAXX010101000"|upper }}
+                </div>
+
+                <span class="text-title">Constancia de situación fiscal</span>
+                <div class="w-full  text-body  flex items-center">
+                    {{ position.doc_id|date:"d/m/Y"|default:"No aplica" }}
+                </div>
+
+                <span class="text-title">Tipo de contrato</span>
+                <div class="w-full  text-body  flex items-center">
+                    {{ position.get_contract_type_display|default:"Otro"|title }}
                 </div>
 
                 <span class="text-title md:col-span-2 p-2 text-center mt-2 font-bold rounded border border-border">Colaboradores a cargo</span>
