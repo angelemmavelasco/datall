@@ -39,4 +39,6 @@ urlpatterns = [
     path('skills/<str:pk>/edit/', skill_update_view, name='skill_update_view'),
     path('skills/<str:pk>/delete/', skill_delete_view, name='skill_delete_view'),
     path('skills/<str:pk>/', skill_detail_view, name='skill_detail_view'),
+
+    path('employee_list/', employee_list_view, name='employee_list_view')
 ]

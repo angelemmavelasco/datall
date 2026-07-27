@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}Personal{% endblock %}
+
+{% block module_name %}Personal{% endblock %}
+
+{% block module_actions %}
+
+    <!-- {% if can_create %}
+        <a href="" target="_blank"  class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 w-full md:w-fit" title="Crear un nuevo puesto">
+            Nuevo colaborador
+        </a>
+    {% endif %} -->
+
+    <button onclick="toggleFilters()"
+        class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1  w-full md:w-fit">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+            <path d="M10 5H3" />
+            <path d="M12 19H3" />
+            <path d="M14 3v4" />
+            <path d="M16 17v4" />
+            <path d="M21 12h-9" />
+            <path d="M21 19h-5" />
+            <path d="M21 5h-7" />
+            <path d="M8 10v4" />
+            <path d="M8 12H3" />
+        </svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-4">
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Resumen de personal</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Posiciones asignadas
+            </p>
+            <p class="text-xl text-blue-500">
+                <span>
+                    {{ kpis.registered_positions }}
+                </span>
+
+            </p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Colaboradores activos
+            </p>
+            <p class="text-xl text-violet-500">
+                <span>
+                    {{ kpis.registered_skills }}
+                </span>
+
+            </p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Colaboradores masculinos
+            </p>
+            <p class="text-xl text-emerald-500">
+                <span>
+                    {{ kpis.active_collaborators }}
+                </span>
+
+            </p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Colaboradores femeninos
+            </p>
+            <p class="text-xl text-red-500">
+                <span>
+                    {{ kpis.inactive_collaborators }}
+                </span>
+
+            </p>
+        </div>
+
+
+    </div>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th
+                        class="min-w-[50px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
+                        ID</th>
+                    <th
+                        class="min-w-[100px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Nivel jerárquico</th>
+
+                    <th
+                        class="min-w-[100px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Departamento</th>
+
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Posición asignada</th>
+
+
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Colaborador</th>
+
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Líder directo</th>
+
+                    <th
+                        class="min-w-[100px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Ingreso</th>
+                        
+                </tr>
+            </thead>
+
+            <tbody class="" id="report-container">
+                {% include "human_resources/employees/partials/employee_list_rows.html" %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+
+{% endblock content %}
+
+
+{% block filters %}
+<form hx-get="{% url 'human_resources:employee_list_view' %}" hx-target="#report-container" hx-push-url="true" class="flex flex-col gap-4">
+    
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.search.id_for_label }}" class=" text-title">{{ filter.form.search.label }}</label>
+        {% render_field filter.form.search class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.department.id_for_label }}" class=" text-title">{{ filter.form.department.label }}</label>
+        {% render_field filter.form.department %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.hierarchy_level.id_for_label }}" class=" text-title">{{ filter.form.hierarchy_level.label }}</label>
+        {% render_field filter.form.hierarchy_level %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.position.id_for_label }}" class=" text-title">{{ filter.form.position.label }}</label>
+        {% render_field filter.form.position %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.contract_type.id_for_label }}" class=" text-title">{{ filter.form.contract_type.label }}</label>
+        {% render_field filter.form.contract_type %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.tax_regime.id_for_label }}" class=" text-title">{{ filter.form.tax_regime.label }}</label>
+        {% render_field filter.form.tax_regime %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.is_active.id_for_label }}" class=" text-title">{{ filter.form.is_active.label }}</label>
+        {% render_field filter.form.is_active %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.hire_date_from.id_for_label }}" class=" text-title">{{ filter.form.hire_date_from.label }}</label>
+        {% render_field filter.form.hire_date_from %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.hire_date_to.id_for_label }}" class=" text-title">{{ filter.form.hire_date_to.label }}</label>
+        {% render_field filter.form.hire_date_to %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.termination_date_from.id_for_label }}" class=" text-title">{{ filter.form.termination_date_from.label }}</label>
+        {% render_field filter.form.termination_date_from %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.termination_date_to.id_for_label }}" class=" text-title">{{ filter.form.termination_date_to.label }}</label>
+        {% render_field filter.form.termination_date_to %}
+    </div>
+
+    <div class="flex gap-2 flex-col">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+</form>
+{% endblock %}

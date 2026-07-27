@@ -4,6 +4,7 @@ from django.db.models import QuerySet
 from apps.human_resources.models import Employee
 from django.utils import timezone
 from dataclasses import dataclass, field
+from django.db.models.functions import Lower
 
 class ServiceError(Exception):
     pass
@@ -64,7 +65,8 @@ class EmployeesService:
         base_qs = self.EmployeeModel.objects.select_related(
             'user', 
             'position', 
-            'position__department'
+            'position__department',
+            'manager__user'
         ).prefetch_related(
             'position__position_skills__skill',
             'human_resources_direct_reports',
@@ -76,7 +78,7 @@ class EmployeesService:
                 default=models.Value(False),
                 output_field=models.BooleanField()
             )
-        ).order_by('position__department__name', 'position__name', 'user__first_name')
+        ).order_by('position__hierarchy_level', Lower('position__department__name'), Lower('position__name'), Lower('user__first_name'), Lower('user__last_name'))
         if self._is_full_access:
             return base_qs.all()
         user_employees = self.EmployeeModel.objects.filter(user=self.user)
