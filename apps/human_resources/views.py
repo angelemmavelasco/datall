@@ -24,7 +24,7 @@ from apps.core.utils import get_allowed_routes_for_user
 from django.conf import settings
 from apps.human_resources.services.comissions.comissions import Comissions, CommissionExceptions, CommissionsReport, RouteCommissionException
 from apps.human_resources.services.departments import DepartmentsService, DepartmentsKPIsService, ServiceError
-from apps.human_resources.services.employees_service import EmployeesService
+from apps.human_resources.services.employees_service import EmployeesService, EmployeesKpisService
 from apps.human_resources.services.positions import PositionsService, PositionsKPIsService
 from apps.human_resources.filters import DepartmentFilter, PositionFilter, SkillFilter, EmployeeFilter
 from apps.human_resources.forms import DepartmentForm, PositionForm, SkillForm, PositionSkillFormSet
@@ -1253,6 +1253,7 @@ def employee_list_view(request):
     template = 'human_resources/employees/employee_list.html'
     partial = 'human_resources/employees/partials/employee_list_rows.html'
     employees_service = EmployeesService(user=request.user)
+    employees_kpis_service = EmployeesKpisService(employees_service=employees_service)
     can_create = employees_service._checkout_full_access
 
     employees_qs = employees_service.read_employees()
@@ -1268,11 +1269,11 @@ def employee_list_view(request):
 
     employees = page_obj.object_list
 
-    # kpis = employees_kpis_service.stats
+    kpis = employees_kpis_service.stats
 
     context = {
         'employees': employees,
-        # 'kpis': kpis,
+        'kpis': kpis,
         'query_string': query_dict.urlencode(),
         'page_obj': page_obj,
         'can_create': can_create,

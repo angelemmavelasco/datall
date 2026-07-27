@@ -1,10 +1,10 @@
 from typing import TYPE_CHECKING, Optional
-from django.db import models, transaction
+from django.db import models, transaction, connection
 from django.db.models import QuerySet
 from apps.human_resources.models import Employee
 from django.utils import timezone
 from dataclasses import dataclass, field
-from django.db.models.functions import Lower
+from django.db.models.functions import Lower, ExtractYear
 
 class ServiceError(Exception):
     pass
@@ -99,3 +99,61 @@ class EmployeesService:
         Useful for the user profile view to list their positions.
         '''
         return self.read_employees().filter(user__id=user_id).order_by('-is_active', '-hire_date')
+
+
+@dataclass
+class EmployeesKpisService:
+    '''
+    dedicated top read and get general kpis and stats over employees
+    '''
+    employees_service: EmployeesService
+
+    class Median(models.Aggregate):
+        function = 'PERCENTILE_CONT'
+        template = '%(function)s(0.5) WITHIN GROUP (ORDER BY %(expressions)s)'
+        output_field = models.FloatField()
+
+    @property
+    def _base_qs(self) -> QuerySet:
+        '''
+        reuse class service base logic to bring allowed positions and calculate over them
+        '''
+        return self.employees_service.read_employees()
+
+    @property
+    def stats(self) -> dict:
+        '''
+        Returns a dictionary with general statistics about the employees.
+        '''
+        today = timezone.now().date()
+        base_qs = self._base_qs.annotate(
+            age=models.Value(today.year) - ExtractYear('user__birth_date')
+        )
+
+        aggregate_kwargs = {
+            #personal
+            'assigned_positions': models.Count('position__pk', distinct=True, filter=(models.Q(is_active=True))),
+            'total_personal': models.Count('user__pk', distinct=True, filter=(models.Q(is_active=True))),
+            'active_employees': models.Count('pk', distinct=True, filter=(models.Q(is_active=True))),
+            'inactive_employees': models.Count('pk', distinct=True, filter=(models.Q(is_active=False))),
+            'total_employees': models.Count('pk', distinct=True),
+            'men_count': models.Count('user__pk', distinct=True, filter=(models.Q(is_active=True, user__gender='m'))),
+            'women_count': models.Count('user__pk', distinct=True, filter=(models.Q(is_active=True, user__gender='f'))),
+            #payroll
+            'payroll_mean': models.Avg('payroll_payment_amount', filter=(models.Q(is_active=True))),
+            'payroll_max': models.Max('payroll_payment_amount', filter=(models.Q(is_active=True))),
+            'payroll_min': models.Min('payroll_payment_amount', filter=(models.Q(is_active=True))),
+            'total_payroll': models.Sum('payroll_payment_amount', filter=(models.Q(is_active=True))),
+            #age
+            'age_mean': models.Avg('age', filter=(models.Q(is_active=True, user__birth_date__isnull=False))),
+            'age_max': models.Max('age', filter=(models.Q(is_active=True, user__birth_date__isnull=False))),
+            'age_min': models.Min('age', filter=(models.Q(is_active=True, user__birth_date__isnull=False))),
+        }
+        if connection.vendor == 'postgresql':
+            aggregate_kwargs['payroll_median'] = self.Median('payroll_payment_amount')
+        else:
+            aggregate_kwargs['payroll_median'] = models.Avg('payroll_payment_amount', filter=(models.Q(is_active=True)))
+
+        kpis = base_qs.aggregate(**aggregate_kwargs)
+        return kpis
+    

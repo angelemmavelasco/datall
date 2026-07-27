@@ -1,7 +1,11 @@
 # Sistema de Comisiones
 
 El motor de comisiones está estructurado utilizando Programación Orientada a Objetos en la capa de servicios y se apoya en modelos relacionales jerárquicos para garantizar la trazabilidad en el tiempo y el rendimiento de la base de datos.
+commit 1360b3b9cf194f28c518a34305c5dd5d5d8adf8f (HEAD -> etl, origin/etl)
+Author: Angel Velasco <angelvelasco@Angels-MacBook-Air.local>
+Date:   Fri Jul 24 15:02:52 2026 -0600
 
+    feat: implement stock transfer calculation and export service with database models and UI integration
 ## Arquitectura de Modelos
 
 El sistema se divide en los siguientes modelos clave dentro de `apps/core/models.py`:
