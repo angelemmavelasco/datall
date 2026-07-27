@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 from django.db.models import QuerySet, Count, Q
+from django.db.models.functions import Lower
 from django.db import transaction
 from django.utils import timezone
 
@@ -88,7 +89,7 @@ class PositionsService:
         ).select_related('department').prefetch_related(
             'position_skills__skill', 
             'human_resources_employees'
-        )
+        ).order_by('hierarchy_level', Lower('department__name'), Lower('name'))
         
         if self._is_full_access:
             return base_qs.all()

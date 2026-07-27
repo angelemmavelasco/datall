@@ -932,7 +932,7 @@ def position_list_view(request):
     positions_kpis_service = PositionsKPIsService(positions_service=positions_service)
     can_create = positions_service._checkout_full_access
 
-    positions_qs = positions_service.read_positions().order_by('id')
+    positions_qs = positions_service.read_positions()
     position_filter = PositionFilter(request.GET, queryset=positions_qs)
     positions_qs = position_filter.qs
 

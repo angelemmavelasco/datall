@@ -1,15 +1,15 @@
 {% load humanize %}
 
 {% for position in positions %}
-    <tr class="hover:bg-hover transition-colors duration-300">
+<tr class="hover:bg-hover transition-colors duration-300">
         <td class="p-2 text-left text-strong underline">
             <a href="{% url 'human_resources:position_detail_view' position.id %}" target="_blank">
                 {{ position.id|upper }}
             </a>
         </td>
-        <td class="p-2 text-left truncate">{{ position.name|title }}</td>
-        <td class="p-2 text-center truncate">{{ position.department.id|upper }}</td>
         <td class="p-2 text-center truncate">{{ position.get_hierarchy_level_display|title }}</td>
+        <td class="p-2 text-left truncate">{{ position.department.name|title }}</td>
+        <td class="p-2 text-left truncate">{{ position.name|title }}</td>
         <td class="p-2 text-center truncate max-w-[300px]">{{ position.position_skills.all|length|intcomma }}</td>
         <td class="p-2 text-center truncate max-w-[300px]">{{ position.active_employees_count|default:0|intcomma }}</td>
         <td class="p-2 text-center truncate max-w-[300px]">{{ position.inactive_employees_count|default:0|intcomma }}</td>
