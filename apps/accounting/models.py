@@ -1,0 +1,22 @@
+from django.db import models
+
+class TaxRegimeChoices(models.TextChoices):
+    GENERAL_PERSONAS_MORALES = '601', '601 General de Ley Personas Morales'
+    PERSONAS_MORALES_FINES_NO_LUCRATIVOS = '603', '603 Personas Morales con Fines no Lucrativos'
+    SUELDOS_SALARIOS = '605', '605 Sueldos y Salarios e Ingresos Asimilados a Salarios'
+    ARRENDAMIENTO = '606', '606 Arrendamiento'
+    ENAJENACION_BIENES = '607', '607 Régimen de Enajenación o Adquisición de Bienes'
+    DEMAS_INGRESOS = '608', '608 Demás ingresos'
+    RESIDENTES_EXTRANJERO = '610', '610 Residentes en el Extranjero sin Establecimiento Permanente en México'
+    DIVIDENDOS = '611', '611 Ingresos por Dividendos (socios y accionistas)'
+    ACTIVIDADES_EMPRESARIALES_PROFESIONALES = '612', '612 Personas Físicas con Actividades Empresariales y Profesionales'
+    INTERESES = '614', '614 Ingresos por intereses'
+    PREMIOS = '615', '615 Régimen de los ingresos por obtención de premios'
+    SIN_OBLIGACIONES_FISCALES = '616', '616 Sin obligaciones fiscales'
+    SOCIEDADES_COOPERATIVAS = '620', '620 Sociedades Cooperativas de Producción que optan por diferir sus ingresos'
+    INCORPORACION_FISCAL = '621', '621 Incorporación Fiscal (RIF)'
+    AGRAPES = '622', '622 Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras (AGAPES)'
+    GRUPOS_SOCIEDADES = '623', '623 Opcional para Grupos de Sociedades'
+    COORDINADOS = '624', '624 Coordinados'
+    PLATAFORMAS_TECNOLOGICAS = '625', '625 Actividades Empresariales con ingresos a través de Plataformas Tecnológicas'
+    RESICO = '626', '626 Régimen Simplificado de Confianza (RESICO)'
