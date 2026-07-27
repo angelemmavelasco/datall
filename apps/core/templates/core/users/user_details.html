@@ -135,6 +135,95 @@ Perfil de usuario
         </div>
     </div>
 
+    <p class="text-title text-sm">Puestos asignados</p>
+    <hr class="border-border border">
+
+    {% for position in user_positions %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+                <span class="text-title">Puesto</span>
+                <div class="w-full  text-body  flex items-center">
+                    {{ position.position.name|default:"-"|title }}
+                </div>
+
+                <span class="text-title">Departamento</span>
+                <div class="w-full  text-body  flex items-center">
+                    {{ position.position.department.name|default:"-"|title }}
+                </div>
+
+                <span class="text-title">Estado</span>
+                <div class="w-full  text-body  flex items-center {{ position.is_active|yesno:'text-emerald-500,text-red-500' }}">
+                    {{ position.is_active|yesno:"Activo, Inactivo"|default:"-" }}
+                </div>
+
+                <span class="text-title">Fecha de ingreso</span>
+                <div class="w-full  text-body  flex items-center">
+                    {{ position.hire_date|date:"d/m/Y"|default:"-" }}
+                </div>
+
+                <span class="text-title">Fecha de baja</span>
+                <div class="w-full  text-body  flex items-center">
+                    {{ position.termination_date|date:"d/m/Y"|default:"No aplica" }}
+                </div>
+
+                <span class="text-title">Notas</span>
+                <div class="w-full  text-body  flex items-center">
+                    {{ position.notes|default:"-"|title }}
+                </div>
+
+                <span class="text-title md:col-span-2 p-2 text-center mt-2 font-bold rounded border border-border">Colaboradores a cargo</span>
+
+                {% if position.human_resources_direct_reports.all %}
+                <div class="md:col-span-2 w-full overflow-auto border border-border rounded bg-container max-h-50 relative mt-2">
+                    <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+                        <thead>
+                            <tr class="border-b border-border text-xs">
+                                <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Departamento</th>
+                                <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Puesto</th>
+                                <th class="min-w-[200px] p-2 text-left text-title border-r border-b border-border sticky top-0 z-30 bg-page">Colaborador</th>
+                                <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Ingreso</th>
+                                <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Baja</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sub in position.human_resources_direct_reports.all %}
+                                <tr class="hover:bg-hover transition-colors duration-300">
+                                    <td class="p-2 text-left text-body border-r border-b border-border">
+                                        {{ sub.position.department.name|title }}
+                                    </td>
+                                    <td class="p-2 text-left text-body border-r border-b border-border">
+                                        {{ sub.position.name|title }}
+                                    </td>
+                                    <td class="p-2 text-left text-body border-r border-b border-border">
+                                        {{ sub.user.first_name|title }} {{ sub.user.last_name|title }}
+                                    </td>
+                                    <td class="p-2 text-center text-body border-r border-b border-border">
+                                        {{ sub.hire_date|date:"d/m/Y"|default:"-" }}
+                                    </td>
+                                    <td class="p-2 text-center text-body border-r border-b border-border">
+                                        {{ sub.termination_date|date:"d/m/Y"|default:"-" }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <div class="w-full md:col-span-2 text-body justify-center flex items-center p-4">
+                        No hay colaboradores a cargo en este puesto
+                    </div>
+                {% endif %}
+
+
+        </div>
+    {% empty %}
+        <div class="w-full col-span-2  text-body  flex items-center justify-center">
+            No hay puestos asignados
+        </div>
+    {% endfor %}
+
+
+
+
     {% if can_update_access %}
 
     <p class="text-title text-sm">Accesos</p>

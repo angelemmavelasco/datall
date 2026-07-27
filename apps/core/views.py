@@ -18,6 +18,7 @@ from apps.core.services.users import (
     UserNotFoundError
 )
 from apps.core.forms import UserForm
+from apps.human_resources.services.employees_service import EmployeesService
 
 
 def custom_csrf_failure(request, reason=""):
@@ -126,6 +127,7 @@ def user_create_form(request):
     template = 'core/users/user_form.html'
     users_service = UsersService(user=request.user)
     creating = True
+    can_update_access = users_service._checkout_full_access
 
     if request.method == 'POST':
         form = UserForm(
@@ -153,7 +155,8 @@ def user_create_form(request):
 
     context = {
         'form': form,
-        'creating': creating
+        'creating': creating,
+        'can_update_access': can_update_access
     }
 
     return render(request, template, context)
@@ -162,15 +165,18 @@ def user_create_form(request):
 def user_details(request, pk):
     template = 'core/users/user_details.html'
     users_service = UsersService(user=request.user)
+    employees_service = EmployeesService(user=request.user)
     can_update_access = users_service._checkout_full_access
 
     user_instance = users_service.read_user(pk=pk)
+    user_positions = employees_service.read_employees_by_user(user_id=user_instance.id)
     if not user_instance:
         messages.error(request, 'Usuario no encontrado o no tienes permisos para verlo.')
         return redirect('core:user_list')
 
     context = {
         'user_instance': user_instance,
+        'user_positions': user_positions,
         'can_update_access': can_update_access
     }
     return render(request, template, context)
