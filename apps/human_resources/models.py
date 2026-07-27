@@ -1,5 +1,6 @@
 from django.db import models
-
+from apps.accounting.models import TaxRegimeChoices
+    
 class Department(models.Model):
     id = models.CharField(max_length=3, primary_key=True, help_text='Identificador único del departamento')
     name = models.CharField(max_length=255, help_text='Nombre del departamento')
@@ -83,12 +84,24 @@ class PositionSkill(models.Model):
         
 
 class Employee(models.Model):
+    class ContractType(models.TextChoices):
+        TEMPORARY = 'temporary', 'Temporal'
+        INDETERMINATE = 'indeterminate', 'Indeterminado'
+        SERVICE = 'service', 'Servicios Profesionales / Honorarios'
+        INTERNSHIP = 'internship', 'Prácticas / Becario'
+        OTHER = 'other', 'Otro'
+        
     id = models.CharField(max_length=20, primary_key=True, help_text='Identificador único del colaborador')
-    user = models.ForeignKey('core.User', on_delete=models.CASCADE, null=True, blank=True, related_name='%(app_label)s_employees')
-    position = models.ForeignKey('Position', on_delete=models.CASCADE, null=True, blank=True, related_name='%(app_label)s_employees')
+    user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='%(app_label)s_employees')
+    position = models.ForeignKey('Position', on_delete=models.CASCADE, related_name='%(app_label)s_employees')
     manager = models.ForeignKey('self', on_delete=models.SET_NULL, blank=True, null=True, related_name='%(app_label)s_direct_reports')
     hire_date = models.DateField()
     termination_date = models.DateField(null=True, blank=True)
+    contract_type = models.CharField(max_length=20, choices=ContractType.choices, default=ContractType.INDETERMINATE, help_text='Tipo de contrato')
+    contract_doc = models.FileField(upload_to='contracts', null=True, blank=True, help_text='Documento del contrato')
+    tax_doc = models.FileField(upload_to='tax_docs', null=True, blank=True, help_text='Documento de impuestos')
+    tax_regime = models.CharField(max_length=3, choices=TaxRegimeChoices.choices, default=TaxRegimeChoices.SUELDOS_SALARIOS, help_text='Régimen fiscal del colaborador (asociado a pago o facturación)')
+    tax_id = models.CharField(max_length=13, help_text='RFC del colaborador', default='XAXX010101000')
 
     class Meta:
         verbose_name = 'Colaborador'
