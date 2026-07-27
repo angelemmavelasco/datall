@@ -1,3 +1,5 @@
+from datetime import date
+from dateutil.relativedelta import relativedelta
 from django.db import models
 
 class TaxRegimeChoices(models.TextChoices):
@@ -44,3 +46,44 @@ class PaymentFormChoices(models.TextChoices):
     _30 = '30', '30 Aplicación de anticipos'
     _31 = '31', '31 Intermediario pagos'
     _99 = '99', '99 Por definir'
+
+class PeriodicityChoices(models.TextChoices):
+    DAILY = '1d', '1 día'
+    WEEKLY = '1w', '1 semana'
+    FORTNIGHTLY = '2w', '2 semanas'
+    MONTHLY = '1m', '1 mes'
+    BIMONTHLY = '2m', '2 meses'
+    QUARTERLY = '3m', '3 meses'
+    FOUR_MONTHS = '4m', '4 meses'
+    FIVE_MONTHS = '5m', '5 meses'
+    SEMIANNUAL = '6m', '6 meses'
+    SEVEN_MONTHS = '7m', '7 meses'
+    EIGHT_MONTHS = '8m', '8 meses'
+    NINE_MONTHS = '9m', '9 meses'
+    TEN_MONTHS = '10m', '10 meses'
+    ELEVEN_MONTHS = '11m', '11 meses'
+    ANNUAL = '1y', '1 año'
+
+    def get_relativedelta(self) -> relativedelta:
+        '''
+        calculates the relativedelta based on the numeric and key ref value, example : 1d -> 1 day, 11m -> 11 months, 1y -> 1 year
+        '''
+        val = str(self.value)
+        amount = int(val[:-1])
+        unit = val[-1].lower()   
+
+        unit_mapping = {
+            'd': 'days',
+            'w': 'weeks',
+            'm': 'months',
+            'y': 'years',
+        }
+
+        kwargs = {unit_mapping.get(unit, 'months'): amount}
+        return relativedelta(**kwargs)
+
+    def get_next_date(self, from_date: date) -> date:
+        '''
+        calculates the next date from a provided date
+        '''
+        return from_date + self.get_relativedelta()
