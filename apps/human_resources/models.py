@@ -1,5 +1,6 @@
 from django.db import models
-from apps.accounting.models import TaxRegimeChoices
+from decimal import Decimal
+from apps.accounting.models import TaxRegimeChoices, PaymentFormChoices, PeriodicityChoices
     
 class Department(models.Model):
     id = models.CharField(max_length=3, primary_key=True, help_text='Identificador único del departamento')
@@ -110,6 +111,10 @@ class Employee(models.Model):
     tax_doc = models.FileField(upload_to='tax_docs', null=True, blank=True, help_text='Documento de impuestos')
     tax_regime = models.CharField(max_length=3, choices=TaxRegimeChoices.choices, default=TaxRegimeChoices.SUELDOS_SALARIOS, help_text='Régimen fiscal del colaborador (asociado a pago o facturación)')
     tax_id = models.CharField(max_length=13, help_text='RFC del colaborador', default='XAXX010101000')
+    payment_form = models.CharField(max_length=2, choices=PaymentFormChoices.choices, default=PaymentFormChoices._99, help_text='Forma de pago al colaborador')
+    payroll_payment_amount = models.DecimalField(max_digits=10, decimal_places=2,default=Decimal('0.00'), help_text='Monto del pago al colaborador')
+    payroll_frequency = models.CharField(max_length=3, choices=PeriodicityChoices.choices, default=PeriodicityChoices.FORTNIGHTLY, help_text='Periodicidad del pago al colaborador')
+    
 
     class Meta:
         verbose_name = 'Colaborador'
