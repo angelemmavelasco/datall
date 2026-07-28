@@ -106,7 +106,7 @@ def user_list(request):
 
     users = page_obj.object_list
 
-    kpis = users_kpis_service.stats
+    kpis = users_kpis_service.stats(qs=users_qs)
 
     context = {
         'users': users,
@@ -118,6 +118,9 @@ def user_list(request):
     }
 
     if request.htmx:
+        target = request.headers.get('HX-Target')
+        if target == 'user-list-content':
+            return render(request, 'core/users/partials/user_list_content.html', context)
         return render(request, 'core/users/partials/user_list_rows.html', context)
 
     return render(request, template, context)

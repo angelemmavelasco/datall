@@ -147,8 +147,7 @@ class UsersKPIsService:
         '''
         return self.users_service.read_users()
 
-    @property
-    def stats(self) -> dict:
+    def stats(self, qs=None) -> dict:
         '''
         returns dictionary with general users stats, all in a single call to database.
 
@@ -156,7 +155,8 @@ class UsersKPIsService:
         -------
             dict: dictionary with general users stats, including: registered users, active users, inactive users and employeed users.
         '''
-        return self._base_qs.aggregate(
+        base_qs = qs if qs is not None else self._base_qs
+        return base_qs.aggregate(
             registered_users=Count('pk'),
             active_users=Count('is_active', filter=Q(is_active=True)),
             inactive_users=Count('is_active', filter=Q(is_active=False)),

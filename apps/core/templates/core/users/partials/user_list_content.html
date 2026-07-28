@@ -1,0 +1,98 @@
+<div class="flex flex-col w-full gap-4" id="user-list-content">
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Resumen de usuarios</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Usuarios registrados
+            </p>
+            <p class="text-xl text-blue-500">
+                <span>
+                    {{ kpis.registered_users }}
+                </span>
+
+            </p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Usuarios activos
+            </p>
+            <p class="text-xl text-emerald-500">
+                <span>
+                    {{ kpis.active_users }}
+                </span>
+
+            </p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Usuarios inactivos
+            </p>
+            <p class="text-xl text-red-500">
+                <span>
+                    {{ kpis.inactive_users }}
+                </span>
+
+            </p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="">
+            <p class="text-sm text-strong w-max cursor-pointer">
+                Con posición asignada
+            </p>
+            <p class="text-xl text-violet-500">
+                <span>
+                    {{ kpis.employeed_users }}
+                </span>
+
+            </p>
+        </div>
+
+    </div>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
+                        Nombre de usuario</th>
+                    <th
+                        class="min-w-[250px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Nombre completo</th>
+                    <th
+                        class="min-w-[200px] max-w-[50px] w-[50px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Correo electrónico</th>
+                    <th
+                        class="min-w-[50px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Posiciones asignadas</th>
+                    <th
+                        class="min-w-[100px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Último inicio de sesión</th>
+                    <th
+                        class="min-w-[50px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Grupos asignados</th>
+                    <th
+                        class="min-w-[100px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Estado</th>
+                </tr>
+            </thead>
+
+            <tbody class="" id="report-container">
+                {% include "core/users/partials/user_list_rows.html" %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
