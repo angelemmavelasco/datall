@@ -119,6 +119,13 @@ class Employee(models.Model):
     class Meta:
         verbose_name = 'Colaborador'
         verbose_name_plural = 'Colaboradores'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'position'],
+                condition=models.Q(termination_date__isnull=True),
+                name='unique_active_user_position_pair'
+            )
+        ]
 
     def __str__(self):
         return f'{self.position.name.title()}: {self.user.first_name.title()} {self.user.last_name.title()} (@{self.user.username.lower()})'
