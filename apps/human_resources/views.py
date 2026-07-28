@@ -807,7 +807,7 @@ def department_list(request):
 
     departments = page_obj.object_list
 
-    kpis = departments_kpis_service.stats
+    kpis = departments_kpis_service.stats(qs=departments_qs)
 
     context = {
         'departments': departments,
@@ -819,6 +819,9 @@ def department_list(request):
     }
 
     if request.htmx:
+        target = request.headers.get('HX-Target')
+        if target == 'department-list-content':
+            return render(request, 'human_resources/departments/partials/department_list_content.html', context)
         return render(request, 'human_resources/departments/partials/department_list_rows.html', context)
 
     return render(request, template, context)

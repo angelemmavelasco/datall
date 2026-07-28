@@ -146,13 +146,13 @@ class DepartmentsKPIsService:
         '''
         return self.departments_service.read_departments()
 
-    @property
-    def stats(self) -> dict:
+    def stats(self, qs=None) -> dict:
         '''
         returns dictionary with general departments stats, including: registered departments, associated positions, and active employees.
         '''
         today = timezone.now().date()
-        return self._base_qs.aggregate(
+        base_qs = qs if qs is not None else self._base_qs
+        return base_qs.aggregate(
             registered_departments=Count('pk', distinct=True),
             associated_positions=Count('human_resources_positions', distinct=True),
             active_employees=Count(
