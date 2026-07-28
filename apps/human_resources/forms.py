@@ -1,6 +1,7 @@
 from apps.human_resources.models import Department, Position, Skill, PositionSkill, Employee
 from django import forms
 from django.forms import inlineformset_factory
+from django.utils import timezone
 import uuid
 
 class DepartmentForm(forms.ModelForm):
@@ -91,3 +92,30 @@ class EmployeeForm(forms.ModelForm):
                 if not Employee.objects.filter(pk=generated_id).exists():
                     return generated_id
         return id_val.strip().lower()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        user = cleaned_data.get('user')
+        position = cleaned_data.get('position')
+        termination_date = cleaned_data.get('termination_date')
+        
+        today = timezone.now().date()
+        is_active = termination_date is None or termination_date > today
+
+        if user and position and is_active:
+            qs = Employee.objects.filter(
+                user=user,
+                position=position,
+                termination_date__isnull=True
+            )
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            if qs.exists():
+                user_name = f"{user.first_name.title()} {user.last_name.title()}" if hasattr(user, 'first_name') else str(user)
+                pos_name = position.name.title() if hasattr(position, 'name') else str(position)
+                msg = f'El colaborador {user_name} ya cuenta con una asignación activa en el puesto "{pos_name}".'
+                self.add_error('user', msg)
+                self.add_error('position', msg)
+
+        return cleaned_data

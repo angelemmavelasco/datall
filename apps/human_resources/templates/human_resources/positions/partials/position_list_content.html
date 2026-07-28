@@ -1,3 +1,4 @@
+{% load humanize %}
 <div class="flex flex-col w-full gap-4" id="position-list-content">
 
     <div class="">
@@ -8,52 +9,56 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 
         <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
-            data-title="">
-            <p class="text-sm text-strong w-max cursor-pointer">
+            data-title="Total de puestos o posiciones registrados en la organización">
+            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
                 Puestos registrados
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
             </p>
             <p class="text-xl text-blue-500">
                 <span>
-                    {{ kpis.registered_positions }}
+                    {{ kpis.registered_positions|default:0|intcomma }}
                 </span>
 
             </p>
         </div>
 
-        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
-            data-title="">
-            <p class="text-sm text-strong w-max cursor-pointer">
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
+            data-title="Cantidad de habilidades y competencias requeridas en los puestos registrados">
+            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
                 Habilidades registradas
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
             </p>
             <p class="text-xl text-violet-500">
                 <span>
-                    {{ kpis.registered_skills }}
+                    {{ kpis.registered_skills|default:0|intcomma }}
                 </span>
 
             </p>
         </div>
 
         <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
-            data-title="">
-            <p class="text-sm text-strong w-max cursor-pointer">
+            data-title="Colaboradores activos asociados a los puestos registrados">
+            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
                 Colaboradores activos
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
             </p>
             <p class="text-xl text-emerald-500">
                 <span>
-                    {{ kpis.active_collaborators }}
+                    {{ kpis.active_employees|default:0|intcomma }}
                 </span>
 
             </p>
         </div>
 
-        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
-            data-title="">
-            <p class="text-sm text-strong w-max cursor-pointer">
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
+            data-title="Colaboradores inactivos asociados a los puestos registrados">
+            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
                 Colaboradores inactivos
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
             </p>
             <p class="text-xl text-red-500">
                 <span>
-                    {{ kpis.inactive_collaborators }}
+                    {{ kpis.inactive_employees|default:0|intcomma }}
                 </span>
 
             </p>

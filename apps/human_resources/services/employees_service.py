@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING, Optional
-from django.db import models, transaction, connection
+from django.db import models, transaction, connection, IntegrityError
 from django.db.models import QuerySet
 from apps.human_resources.models import Employee
 from django.utils import timezone
@@ -16,6 +16,9 @@ class EmployeePermissionError(ServiceError):
     pass
 
 class EmployeeAuthenticationError(ServiceError):
+    pass
+
+class EmployeeCreateError(ServiceError):
     pass
 
 if TYPE_CHECKING:
@@ -107,9 +110,17 @@ class EmployeesService:
         if not self._is_full_access:
             raise EmployeePermissionError("No se tienen permisos para crear colaboradores")
         with transaction.atomic():
-            new_employee = self.EmployeeModel.objects.create(**data)
-            new_employee.save()
-        return new_employee
+            try:
+                new_employee = self.EmployeeModel.objects.create(**data)
+                return new_employee
+            except IntegrityError:
+                user = data.get("user")
+                position = data.get("position")
+                user_name = f"{user.first_name.title()} {user.last_name.title()}" if user and hasattr(user, 'first_name') else str(user or '')
+                pos_name = position.name.title() if position and hasattr(position, 'name') else str(position or '')
+                raise EmployeeCreateError(f'El colaborador {user_name} ya cuenta con una asignación activa en el puesto "{pos_name}".')
+            except Exception as e:
+                raise EmployeeCreateError(f'Error al crear el colaborador: {e}')
 
     def update_employee(self, *, pk: str, **data) -> Employee:
         '''

@@ -196,21 +196,21 @@ class PositionsService:
         '''
         today = timezone.now().date()
         base_qs = self.SkillModel.objects.annotate(
-            assigned_positions_count=Count('position_requirements__position', distinct=True),
+            assigned_positions_count=Count('human_resources_position_requirements__position', distinct=True),
             active_employees_count=Count(
-                'position_requirements__position__human_resources_employees',
+                'human_resources_position_requirements__position__human_resources_employees',
                 distinct=True,
                 filter=(
-                    Q(position_requirements__position__human_resources_employees__termination_date__isnull=True) |
-                    Q(position_requirements__position__human_resources_employees__termination_date__gt=today)
+                    Q(human_resources_position_requirements__position__human_resources_employees__termination_date__isnull=True) |
+                    Q(human_resources_position_requirements__position__human_resources_employees__termination_date__gt=today)
                 )
             ),
             inactive_employees_count=Count(
-                'position_requirements__position__human_resources_employees',
+                'human_resources_position_requirements__position__human_resources_employees',
                 distinct=True,
                 filter=(
-                    Q(position_requirements__position__human_resources_employees__termination_date__isnull=False) &
-                    Q(position_requirements__position__human_resources_employees__termination_date__lte=today)
+                    Q(human_resources_position_requirements__position__human_resources_employees__termination_date__isnull=False) &
+                    Q(human_resources_position_requirements__position__human_resources_employees__termination_date__lte=today)
                 )
             )
         )
@@ -219,7 +219,7 @@ class PositionsService:
             return base_qs.order_by('name')
             
         return base_qs.filter(
-            position_requirements__position__human_resources_employees__user=self.user
+            human_resources_position_requirements__position__human_resources_employees__user=self.user
         ).distinct().order_by('name')
 
     def read_skill(self, *, pk: str) -> Optional[Skill]:
@@ -286,7 +286,7 @@ class PositionsKPIsService:
         return base_qs.aggregate(
             registered_positions=Count('pk', distinct=True),
             registered_skills=Count('human_resources_position_skills__skill', distinct=True),
-            active_collaborators=Count(
+            active_employees=Count(
                 'human_resources_employees',
                 distinct=True,
                 filter=(
@@ -294,7 +294,7 @@ class PositionsKPIsService:
                     Q(human_resources_employees__termination_date__gt=today)
                 )
             ),
-            inactive_collaborators=Count(
+            inactive_employees=Count(
                 'human_resources_employees',
                 distinct=True,
                 filter=(

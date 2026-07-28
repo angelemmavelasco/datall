@@ -157,10 +157,10 @@ class UsersKPIsService:
         '''
         base_qs = qs if qs is not None else self._base_qs
         return base_qs.aggregate(
-            registered_users=Count('pk'),
-            active_users=Count('is_active', filter=Q(is_active=True)),
-            inactive_users=Count('is_active', filter=Q(is_active=False)),
-            employeed_users=Count('human_resources_employees'),
+            registered_users=Count('pk', distinct=True),
+            active_users=Count('pk', filter=Q(is_active=True), distinct=True),
+            inactive_users=Count('pk', filter=Q(is_active=False), distinct=True),
+            employeed_users=Count('human_resources_employees__user__pk', filter=(Q(human_resources_employees__termination_date__isnull=True)&Q(is_active=True)), distinct=True),
         )
 
         

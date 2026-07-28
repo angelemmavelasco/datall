@@ -949,7 +949,7 @@ def position_list_view(request):
 
     positions = page_obj.object_list
 
-    kpis = positions_kpis_service.stats(qs=positions_qs)
+    kpis = positions_kpis_service.stats
 
     context = {
         'positions': positions,
@@ -961,9 +961,6 @@ def position_list_view(request):
     }
 
     if request.htmx:
-        target = request.headers.get('HX-Target')
-        if target == 'position-list-content':
-            return render(request, 'human_resources/positions/partials/position_list_content.html', context)
         return render(request, 'human_resources/positions/partials/position_list_rows.html', context)
 
     return render(request, template, context)
@@ -1315,7 +1312,6 @@ def employee_create_form(request):
                 return redirect('human_resources:employee_details_view', pk=new_employee.pk)
             except ServiceError as e:
                 messages.error(request, str(e))
-                return redirect('human_resources:employee_create_form')
         else:
             messages.error(request, 'Por favor revisa los errores en el formulario.')
     else:
@@ -1353,7 +1349,6 @@ def employee_update_form(request, pk):
                 return redirect('human_resources:employee_details_view', pk=employee_to_update.pk)
             except ServiceError as e:
                 messages.error(request, str(e))
-                return redirect('human_resources:employee_update_form', pk=pk)
         else:
             messages.error(request, 'Por favor revisa los errores en el formulario.')
     else:

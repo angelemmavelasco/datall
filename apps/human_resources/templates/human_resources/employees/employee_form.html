@@ -35,6 +35,14 @@ Editar colaborador
 <form method="POST" enctype="multipart/form-data" class="flex flex-col gap-4">
     {% csrf_token %}
 
+    {% if form.non_field_errors %}
+    <div class="p-2 bg-red-500/10 border border-red-500/30 rounded text-red-500 text-xs flex flex-col gap-1">
+        {% for error in form.non_field_errors %}
+        <p class="font-medium">• {{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <p class="text-title text-sm">Información de la asignación</p>
     <hr class="border-border border">
 
