@@ -77,8 +77,8 @@ class PositionSkill(models.Model):
         ADVANCED = 'advanced', 'Avanzado'
         EXPERT = 'expert', 'Experto'
 
-    position = models.ForeignKey('Position', on_delete=models.CASCADE, related_name='position_skills', help_text='Puesto al que se le asigna la competencia')
-    skill = models.ForeignKey('Skill', on_delete=models.PROTECT, related_name='position_requirements', help_text='Habilidad del catálogo')
+    position = models.ForeignKey('Position', on_delete=models.CASCADE, related_name='%(app_label)s_position_skills', help_text='Puesto al que se le asigna la competencia')
+    skill = models.ForeignKey('Skill', on_delete=models.PROTECT, related_name='%(app_label)s_position_requirements', help_text='Habilidad del catálogo')
     requirement_level = models.CharField(max_length=20, choices=RequirementLevelChoices.choices, default=RequirementLevelChoices.REQUIRED, help_text='Grado de obligatoriedad')
     skill_level = models.CharField(max_length=20, choices=SkillLevelChoices.choices, default=SkillLevelChoices.BASIC, help_text='Nivel de dominio mínimo requerido')
     notes = models.TextField(null=True, blank=True, help_text='Especificaciones adicionales para este puesto (ej. Certificación vigente requerida)')

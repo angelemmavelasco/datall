@@ -68,7 +68,7 @@ class EmployeesService:
             'position__department',
             'manager__user'
         ).prefetch_related(
-            'position__position_skills__skill',
+            'position__human_resources_position_skills__skill',
             'human_resources_direct_reports',
             'human_resources_direct_reports__user',
             'human_resources_direct_reports__position'
@@ -99,6 +99,18 @@ class EmployeesService:
         Useful for the user profile view to list their positions.
         '''
         return self.read_employees().filter(user__id=user_id).order_by('-is_active', '-hire_date')
+
+    def create_user(self, **data) -> Employee:
+        '''
+        creates a new employee (position assignment) from provided data
+        '''
+        if not self._is_full_access:
+            raise PositionPermissionError("No se tienen permisos para crear colaboradores")
+        with transaction.atomic():
+            new_employee = self.EmployeeModel.objects.create(**data)
+            new_employee.save()
+        return new_employee
+        
 
 
 @dataclass

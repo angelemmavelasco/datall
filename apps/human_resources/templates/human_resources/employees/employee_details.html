@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}
+Detalles de colaborador
+{% endblock %}
+
+{% block module_name %}
+Detalles de colaborador
+{% endblock %}
+
+{% block module_actions %}
+    {% if can_update %}
+    <a href="" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Editar puesto">
+        Editar
+    </a>
+    {% endif %}
+{% endblock module_actions %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+
+    <p class="text-title text-sm">Información personal del colaborador asigando</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Nombre (s)</span>
+        <div class="w-full text-body flex items-center">
+            {{ employee.user.first_name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Primer apellido</span>
+        <div class="w-full text-body flex items-center">
+            {{ employee.user.last_name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Segundo apellido</span>
+        <div class="w-full text-body flex items-center">
+            {{ employee.user.second_last_name|default:"-"|title }}
+        </div>
+        <span class="text-title">CURP</span>
+        <div class="w-full text-body flex items-center">
+            {{ employee.user.unique_personal_id|default:"-"|upper }}
+        </div>
+    </div>
+
+    <p class="text-title text-sm">Información del puesto</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Puesto</span>
+        <div class="w-full text-body flex items-center">
+            {{ employee.position.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Departamento</span>
+        <div class="w-full text-body flex items-center">
+            {{ employee.position.department.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Puesto</span>
+        <div class="w-full text-body flex items-center">
+            {{ employee.position.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Estado</span>
+        <div class="w-full  text-body  flex items-center {{ employee.is_active|yesno:'text-emerald-500,text-red-500' }}">
+            {{ employee.is_active|yesno:"Activo, Inactivo"|default:"-" }}
+        </div>
+
+        <span class="text-title">Fecha de ingreso</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ employee.hire_date|date:"d/m/Y"|default:"-" }}
+        </div>
+
+        <span class="text-title">Fecha de baja</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ employee.termination_date|date:"d/m/Y"|default:"No aplica" }}
+        </div>
+
+        <span class="text-title">Contrato</span>
+        <div class="w-full  text-body  flex items-center">
+            {% if employee.contract_doc %}
+                <a href="{{ employee.contract_doc.url }}" class="underline " target="_blank">Ver contrato</a>
+            {% else %}
+                No adjunto
+            {% endif %}
+        </div>
+
+        <span class="text-title">Régimen fiscal asociado a pago o facturación</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ employee.get_tax_regime_display|default:"No aplica"|title }}
+        </div>
+
+        <span class="text-title">RFC asociado a pago o facturación</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ employee.tax_id|default:"XAXX010101000"|upper }}
+        </div>
+
+        <span class="text-title">Constancia de situación fiscal</span>
+        <div class="w-full  text-body  flex items-center">
+            {% if employee.tax_doc %}
+                <a href="{{ employee.tax_doc.url }}" class="underline " target="_blank">Ver constancia</a>
+            {% else %}
+                No adjunta
+            {% endif %}
+        </div>
+
+        <span class="text-title">Tipo de contrato</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ employee.get_contract_type_display|default:"Otro"|title }}
+        </div>
+
+        <span class="text-title">Forma de pago</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ employee.get_payment_form_display|default:"Otro"|title }}
+        </div>
+
+        <span class="text-title">Monto del pago</span>
+        <div class="w-full  text-body  flex items-center">
+            $ {{ employee.payroll_payment_amount|default:0|floatformat:2|intcomma }}
+        </div>
+
+        <span class="text-title">Periodicidad del pago</span>
+        <div class="w-full  text-body  flex items-center">
+            cada {{ employee.get_payroll_frequency_display|default:"Otro"|title }}
+        </div>
+    </div>
+
+    {% if employee.position.human_resources_position_skills %}
+    <p class="text-title text-sm mt-4">Perfil del puesto (Habilidades y competencias)</p>
+    <hr class="border-border border">
+    
+    <div class="md:col-span-2 w-full overflow-auto border border-border rounded bg-container max-h-50 relative">
+        <table class="w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-1/6 p-2 text-left text-title border-r border-b border-border bg-page">Habilidad</th>
+                    <th class="w-24 p-2 text-center text-title border-r border-b border-border bg-page">Tipo</th>
+                    <th class="w-28 p-2 text-center text-title border-r border-b border-border bg-page">Dominio</th>
+                    <th class="w-24 p-2 text-center text-title border-r border-b border-border bg-page">Requisito</th>
+                    <th class="w-1/4 p-2 text-center text-title border-r border-b border-border bg-page">Descripción</th>
+                    <th class="w-1/4 p-2 text-center text-title border-b border-border bg-page">Notas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ps in employee.position.human_resources_position_skills.all %}
+                <tr>
+                    <td class="p-2 text-left text-body border-b border-border truncate">{{ ps.skill.name|title }}</td>
+                    <td class="p-2 text-center text-body border-b border-border truncate">{{ ps.skill.get_skill_type_display }}</td>
+                    <td class="p-2 text-center text-body border-b border-border truncate">{{ ps.get_skill_level_display }}</td>
+                    <td class="p-2 text-center text-body border-b border-border truncate">{{ ps.get_requirement_level_display }}</td>
+                    <td class="p-2 text-center text-body border-b border-border truncate max-w-[150px] underline cursor-pointer" title="{{ ps.skill.description|default:'-'|title }}">
+                        {{ ps.skill.description|default:'-'|title }}
+                    </td>
+                    <td class="p-2 text-center text-body border-b border-border truncate cursor-pointer" title="{{ ps.notes|default:'-'|title }}">{{ ps.notes|default:'-'|title }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="p-4 text-center text-body">No hay habilidades requeridas.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+
+
+    
+    {% if employee.human_resources_direct_reports.all %}
+    <p class="text-title text-sm">Colaboradores a cargo</p>
+    <hr class="border-border border">
+    <div class="md:col-span-2 w-full overflow-auto border border-border rounded bg-container max-h-50 relative">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Departamento</th>
+                    <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Puesto</th>
+                    <th class="min-w-[200px] p-2 text-left text-title border-r border-b border-border sticky top-0 z-30 bg-page">Colaborador</th>
+                    <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Ingreso</th>
+                    <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Baja</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in employee.human_resources_direct_reports.all %}
+                    <tr class="hover:bg-hover transition-colors duration-300">
+                        <td class="p-2 text-left text-body border-r border-b border-border">
+                            {{ sub.position.department.name|title }}
+                        </td>
+                        <td class="p-2 text-left text-body border-r border-b border-border">
+                            {{ sub.position.name|title }}
+                        </td>
+                        <td class="p-2 text-left text-body border-r border-b border-border">
+                            {{ sub.user.first_name|title }} {{ sub.user.last_name|title }}
+                        </td>
+                        <td class="p-2 text-center text-body border-r border-b border-border">
+                            {{ sub.hire_date|date:"d/m/Y"|default:"-" }}
+                        </td>
+                        <td class="p-2 text-center text-body border-r border-b border-border">
+                            {{ sub.termination_date|date:"d/m/Y"|default:"-" }}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="p-4 text-center text-body">No hay colaboradores a cargo en este puesto</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+
+
+
+
+</div>
+{% endblock %}

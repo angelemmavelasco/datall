@@ -59,7 +59,7 @@ Detalle del puesto
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
         <span class="text-title">Habilidades requeridas</span>
         <div class="w-full text-body flex items-center">
-            {{ position_instance.position_skills.all|length }}
+            {{ position_instance.human_resources_position_skills.all|length }}
         </div>
 
         <span class="text-title">Colaboradores activos</span>
@@ -81,7 +81,7 @@ Detalle del puesto
         </div>
     </div>
 
-    <p class="text-title text-sm mt-4">Perfil del puesto (Habilidades)</p>
+    <p class="text-title text-sm mt-4">Perfil del puesto (Habilidades y competencias)</p>
     <hr class="border-border border">
     
     <div class="w-full overflow-auto border border-border rounded bg-container relative">
@@ -95,7 +95,7 @@ Detalle del puesto
                 </tr>
             </thead>
             <tbody>
-                {% for ps in position_instance.position_skills.all %}
+                {% for ps in position_instance.human_resources_position_skills.all %}
                 <tr class="hover:bg-hover transition-colors">
                     <td class="p-2 text-left text-body border-r border-b border-border">{{ ps.skill.name|title }}</td>
                     <td class="p-2 text-center text-body border-r border-b border-border">{{ ps.skill.get_skill_type_display }}</td>

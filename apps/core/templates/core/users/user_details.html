@@ -140,6 +140,11 @@ Perfil de usuario
 
     {% for position in user_positions %}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+                <span class="text-title md:col-span-2 p-2 text-center mt-2 font-bold rounded border border-border">
+                    Información general
+                </span>
+                <a href="{% url 'human_resources:employee_details_view' position.id %}" target="_blank" class="underline  md:col-span-2 p-2 text-right">Ver más</a>
+
                 <span class="text-title">Puesto</span>
                 <div class="w-full  text-body  flex items-center">
                     {{ position.position.name|default:"-"|title }}
@@ -165,6 +170,15 @@ Perfil de usuario
                     {{ position.termination_date|date:"d/m/Y"|default:"No aplica" }}
                 </div>
 
+                <span class="text-title">Contrato</span>
+                <div class="w-full  text-body  flex items-center">
+                    {% if position.contract_doc %}
+                        <a href="{{ position.contract_doc.url }}" class="underline " target="_blank">Ver contrato</a>
+                    {% else %}
+                        No adjunto
+                    {% endif %}
+                </div>
+
                 <span class="text-title">Régimen fiscal asociado a pago o facturación</span>
                 <div class="w-full  text-body  flex items-center">
                     {{ position.get_tax_regime_display|default:"No aplica"|title }}
@@ -177,7 +191,11 @@ Perfil de usuario
 
                 <span class="text-title">Constancia de situación fiscal</span>
                 <div class="w-full  text-body  flex items-center">
-                    {{ position.doc_id|date:"d/m/Y"|default:"No aplica" }}
+                    {% if position.tax_doc %}
+                        <a href="{{ position.tax_doc.url }}" class="underline " target="_blank">Ver constancia</a>
+                    {% else %}
+                        No adjunta
+                    {% endif %}
                 </div>
 
                 <span class="text-title">Tipo de contrato</span>

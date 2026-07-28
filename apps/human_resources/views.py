@@ -27,7 +27,7 @@ from apps.human_resources.services.departments import DepartmentsService, Depart
 from apps.human_resources.services.employees_service import EmployeesService, EmployeesKpisService
 from apps.human_resources.services.positions import PositionsService, PositionsKPIsService
 from apps.human_resources.filters import DepartmentFilter, PositionFilter, SkillFilter, EmployeeFilter
-from apps.human_resources.forms import DepartmentForm, PositionForm, SkillForm, PositionSkillFormSet
+from apps.human_resources.forms import DepartmentForm, PositionForm, SkillForm, PositionSkillFormSet, EmployeeForm
 from django.core.paginator import Paginator
 User = get_user_model()
 
@@ -1128,7 +1128,7 @@ def skill_create_view(request):
     creating = True
 
     if not positions_service._is_full_access:
-        messages.error(request, 'No tienes permisos para crear habilidades.')
+        messages.error(request, 'No tienes permisos para crear habilidades y competencias.')
         return render(request, settings.ACCESS_DENIED_TEMPLATE)
 
     if request.method == 'POST':
@@ -1286,8 +1286,70 @@ def employee_list_view(request):
     return render(request, template, context)
 
     
+@login_required
+def employee_create_form(request):
+    template = 'human_resources/employees/employee_form.html'
+    employees_service = EmployeesService(user=request.user)
+    can_create = employees_service._checkout_full_access
+    creating = True
+
+    if not can_create:
+        messages.error(request, 'No tienes permisos para crear colaboradores.')
+        return render(request, settings.ACCESS_DENIED_TEMPLATE)
+
+    if request.method == 'POST':
+        form = EmployeeForm(request.POST, requesting_user=request.user, is_full_access=employees_service._is_full_access)
+        if form.is_valid():
+            try:
+                new_employee = employees_service.create_user(**form.cleaned_data)
+                messages.success(request, f'Colaborador {new_employee.user.first_name.title()} {new_employee.user.last_name.title()} creado exitosamente.')
+                return redirect('human_resources:employee_details_view', pk=new_employee.pk)
+            except ServiceError as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:employee_create_form')
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = EmployeeForm()   
+    context = {
+        'form': form,
+        'creating': creating,
+        'can_create': can_create,
+    }
+
+    return render(request, template, context)
     
 
-    
-    
-    
+@login_required
+def employee_update_form(request, pk):
+    template = 'human_resources/employees/employee_form.html'
+    employees_service = EmployeesService(user=request.user)
+    can_update_access = employees_service._checkout_full_access
+
+    if not can_update_access:
+        messages.error(request, 'No tienes permisos para editar colaboradores.')
+        return render(request, settings.ACCESS_DENIED_TEMPLATE)
+
+    context = {
+        'can_update': can_update_access,
+    }
+
+    return render(request, template, context)
+
+@login_required
+def employee_details(request, pk):
+    template = 'human_resources/employees/employee_details.html'
+    employees_service = EmployeesService(user=request.user)
+    can_update = employees_service._checkout_full_access
+
+    employee = employees_service.read_employee(pk=pk)
+    if not employee:
+        messages.error(request, 'Colaborador no encontrado o no tienes permisos para verlo.')
+        return redirect('human_resources:employee_list_view')
+
+    context = {
+        'employee': employee,
+        'can_update': can_update
+    }
+
+    return render(request, template, context)

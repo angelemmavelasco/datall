@@ -133,7 +133,7 @@ class PositionFilter(django_filters.FilterSet):
     )
     
     skill = django_filters.ModelChoiceFilter(
-        field_name='position_skills__skill',
+        field_name='human_resources_position_skills__skill',
         queryset=Skill.objects.all(),
         label='Habilidad',
         widget=forms.Select(attrs={'class': 'w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title'})

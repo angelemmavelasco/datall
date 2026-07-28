@@ -40,5 +40,8 @@ urlpatterns = [
     path('skills/<str:pk>/delete/', skill_delete_view, name='skill_delete_view'),
     path('skills/<str:pk>/', skill_detail_view, name='skill_detail_view'),
 
-    path('employee_list/', employee_list_view, name='employee_list_view')
+    path('employee_list/', employee_list_view, name='employee_list_view'),
+    path('employee/create/', employee_create_form, name='employee_create_form'),
+    path('employee/<str:pk>/edit/', employee_update_form, name='employee_update_form'),
+    path('employee/<str:pk>/', employee_details, name='employee_details_view'),
 ]

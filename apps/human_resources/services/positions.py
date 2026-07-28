@@ -87,7 +87,7 @@ class PositionsService:
                 )
             ),
         ).select_related('department').prefetch_related(
-            'position_skills__skill', 
+            'human_resources_position_skills__skill', 
             'human_resources_employees'
         ).order_by('hierarchy_level', Lower('department__name'), Lower('name'))
         
@@ -285,7 +285,7 @@ class PositionsKPIsService:
         today = timezone.now().date()
         return self._base_qs.aggregate(
             registered_positions=Count('pk', distinct=True),
-            registered_skills=Count('position_skills__skill', distinct=True),
+            registered_skills=Count('human_resources_position_skills__skill', distinct=True),
             active_collaborators=Count(
                 'human_resources_employees',
                 distinct=True,

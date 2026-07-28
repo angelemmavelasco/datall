@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load widget_tweaks %}
+
+{% block title %}
+{% if creating %}
+Nuevo colaborador
+{% else %}
+Editar colaborador
+{% endif %}
+{% endblock %}
+
+{% block module_name %}
+{% if creating %}
+Nuevo colaborador
+{% else %}
+Editar colaborador
+{% endif %}
+{% endblock %}
+
+
+{% block module_actions %}
+        <a href="{% url 'human_resources:position_create_view' %}?next={{ request.path }}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear nueva habilidad">
+            Nuevo puesto
+        </a>
+
+        <a href="{% url 'human_resources:department_create' %}?next={{ request.path }}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear nueva habilidad">
+            Nuevo departamento
+        </a>
+
+{% endblock %}
