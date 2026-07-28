@@ -277,13 +277,13 @@ class PositionsKPIsService:
         '''
         return self.positions_service.read_positions()
 
-    @property
-    def stats(self) -> dict:
+    def stats(self, qs=None) -> dict:
         '''
         returns dictionary with general positions stats, including: registered positions, registered skills, and active/inactive employees.
         '''
         today = timezone.now().date()
-        return self._base_qs.aggregate(
+        base_qs = qs if qs is not None else self._base_qs
+        return base_qs.aggregate(
             registered_positions=Count('pk', distinct=True),
             registered_skills=Count('human_resources_position_skills__skill', distinct=True),
             active_collaborators=Count(

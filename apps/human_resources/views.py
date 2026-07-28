@@ -949,7 +949,7 @@ def position_list_view(request):
 
     positions = page_obj.object_list
 
-    kpis = positions_kpis_service.stats
+    kpis = positions_kpis_service.stats(qs=positions_qs)
 
     context = {
         'positions': positions,
@@ -961,6 +961,9 @@ def position_list_view(request):
     }
 
     if request.htmx:
+        target = request.headers.get('HX-Target')
+        if target == 'position-list-content':
+            return render(request, 'human_resources/positions/partials/position_list_content.html', context)
         return render(request, 'human_resources/positions/partials/position_list_rows.html', context)
 
     return render(request, template, context)
