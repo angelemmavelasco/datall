@@ -1,0 +1,60 @@
+<div class="flex flex-col w-full gap-4" id="employee-list-content">
+
+    <div class="custom-tooltip tooltip-left"  data-title="
+    • Posición / Puesto: Define un rol o cargo dentro de la estructura de la empresa. 
+    • Colaborador: Es la asignación formal de una persona (usuario) a un puesto específico. 
+    • Multi-asignación: Una persona puede ocupar más de un puesto simultáneamente, generando un registro de colaborador por cada rol que desempeña.
+    ">
+        <p class="text-title text-sm mb-2 flex items-center gap-1">
+            <span>
+                Resumen de personal
+            </span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </p>
+        <hr class="border-border">
+    </div>
+
+    {% include "human_resources/employees/partials/employee_kpis.html" %}
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th
+                        class="min-w-[50px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
+                        ID</th>
+                    <th
+                        class="min-w-[100px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Nivel jerárquico</th>
+
+                    <th
+                        class="min-w-[100px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Departamento</th>
+
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Posición asignada</th>
+
+
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Colaborador</th>
+
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Líder directo</th>
+
+                    <th
+                        class="min-w-[100px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Ingreso</th>
+                        
+                </tr>
+            </thead>
+
+            <tbody class="" id="report-container">
+                {% include "human_resources/employees/partials/employee_list_rows.html" %}
+            </tbody>
+        </table>
+    </div>
+
+</div>

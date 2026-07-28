@@ -1,0 +1,108 @@
+{% load humanize %}
+<div id="kpis-container" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+    <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+        data-title="Total de puestos o posiciones cubiertos actualmente por personal activo.">
+        <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
+            Posiciones asignadas
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </p>
+        <p class="text-xl text-blue-500">
+            <span>
+                {{ kpis.assigned_positions }}
+            </span>
+        </p>
+    </div>
+
+    <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
+        data-title="Número de personas (usuarios) con al menos un puesto activo. Si un usuario ocupa más de un puesto, se contabiliza una sola vez">
+        <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
+            Personal total
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </p>
+        <p class="text-xl text-violet-500">
+            <span>
+                {{ kpis.total_personal }}
+            </span>
+        </p>
+    </div>
+
+    <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+        data-title="Total de asignaciones laborales (puesto-usuario) actualmente vigentes y en activo.">
+        <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
+            Colaboradores activos
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </p>
+        <p class="text-xl text-emerald-500">
+            <span>
+                {{ kpis.active_employees }}
+            </span>
+        </p>
+    </div>
+
+    <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
+        data-title="Total de asignaciones laborales (puesto-usuario) con fecha de baja cumplida o inactivas.">
+        <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
+            Colaboradores inactivos
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </p>
+        <p class="text-xl text-red-500">
+            <span>
+                {{ kpis.inactive_employees }}
+            </span>
+        </p>
+    </div>
+
+    <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+        data-title="Número de personas (usuarios) activas registradas con género femenino.">
+        <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
+            Personal femenino
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </p>
+        <p class="text-xl text-gray-500">
+            <span>
+                {{ kpis.women_count }}
+            </span>
+        </p>
+    </div>
+
+    <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
+        data-title="Número de personas (usuarios) activas registradas con género masculino.">
+        <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
+            Personal masculino
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </p>
+        <p class="text-xl text-gray-500">
+            <span>
+                {{ kpis.men_count }}
+            </span>
+        </p>
+    </div>
+
+    <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+        data-title="Suma total de los sueldos / honorarios asignados a todos los colaboradores activos.">
+        <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
+            Masa salarial
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </p>
+        <p class="text-xl text-emerald-500">
+            <span>
+                $ {{ kpis.total_payroll|default:0|floatformat:2|intcomma }}
+            </span>
+        </p>
+    </div>
+
+    <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
+        data-title="Valor central de la distribución salarial de los colaboradores activos (el 50% gana más y el 50% gana menos).">
+        <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
+            Mediana de sueldos
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </p>
+        <p class="text-xl text-emerald-500">
+            <span>
+                $ {{ kpis.payroll_median|default:0|floatformat:2|intcomma }}
+            </span>
+        </p>
+    </div>
+
+</div>

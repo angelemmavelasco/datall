@@ -1,6 +1,7 @@
 from apps.human_resources.models import Department, Position, Skill, PositionSkill, Employee
 from django import forms
 from django.forms import inlineformset_factory
+import uuid
 
 class DepartmentForm(forms.ModelForm):
     class Meta:
@@ -63,9 +64,14 @@ class EmployeeForm(forms.ModelForm):
     class Meta:
         model = Employee
         fields = '__all__'
+        widgets = {
+            'hire_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'termination_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+        }
 
     def __init__(self, *args, requesting_user=None, is_full_access=False, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['id'].required = False
 
         if self.instance and self.instance.pk:
             self.fields['id'].disabled = True
@@ -76,3 +82,12 @@ class EmployeeForm(forms.ModelForm):
         is_superuser = getattr(requesting_user, 'is_superuser', False)
         if not is_full_access and not is_superuser:
             pass
+
+    def clean_id(self):
+        id_val = self.cleaned_data.get('id')
+        if not id_val:
+            while True:
+                generated_id = str(uuid.uuid4())[-5:].lower()
+                if not Employee.objects.filter(pk=generated_id).exists():
+                    return generated_id
+        return id_val.strip().lower()

@@ -11,7 +11,7 @@ Detalles de colaborador
 
 {% block module_actions %}
     {% if can_update %}
-    <a href="" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Editar puesto">
+    <a href="{% url 'human_resources:employee_update_form' pk=employee.pk %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Editar puesto">
         Editar
     </a>
     {% endif %}
@@ -131,29 +131,29 @@ Detalles de colaborador
     <p class="text-title text-sm mt-4">Perfil del puesto (Habilidades y competencias)</p>
     <hr class="border-border border">
     
-    <div class="md:col-span-2 w-full overflow-auto border border-border rounded bg-container max-h-50 relative">
-        <table class="w-full border-separate border-spacing-0 table-fixed">
+    <div class="md:col-span-2 w-full overflow-x-auto border border-border rounded bg-container max-h-60 relative">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
             <thead>
                 <tr class="border-b border-border text-xs">
-                    <th class="w-1/6 p-2 text-left text-title border-r border-b border-border bg-page">Habilidad</th>
-                    <th class="w-24 p-2 text-center text-title border-r border-b border-border bg-page">Tipo</th>
-                    <th class="w-28 p-2 text-center text-title border-r border-b border-border bg-page">Dominio</th>
-                    <th class="w-24 p-2 text-center text-title border-r border-b border-border bg-page">Requisito</th>
-                    <th class="w-1/4 p-2 text-center text-title border-r border-b border-border bg-page">Descripción</th>
-                    <th class="w-1/4 p-2 text-center text-title border-b border-border bg-page">Notas</th>
+                    <th class="min-w-[150px] p-2 text-left text-title border-r border-b border-border bg-page sticky top-0 z-30">Habilidad</th>
+                    <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border bg-page sticky top-0 z-30">Tipo</th>
+                    <th class="min-w-[120px] p-2 text-center text-title border-r border-b border-border bg-page sticky top-0 z-30">Dominio</th>
+                    <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border bg-page sticky top-0 z-30">Requisito</th>
+                    <th class="min-w-[150px] max-w-[250px] p-2 text-center text-title border-r border-b border-border bg-page sticky top-0 z-30">Descripción</th>
+                    <th class="min-w-[150px] max-w-[250px] p-2 text-center text-title border-b border-border bg-page sticky top-0 z-30">Notas</th>
                 </tr>
             </thead>
             <tbody>
                 {% for ps in employee.position.human_resources_position_skills.all %}
-                <tr>
-                    <td class="p-2 text-left text-body border-b border-border truncate">{{ ps.skill.name|title }}</td>
-                    <td class="p-2 text-center text-body border-b border-border truncate">{{ ps.skill.get_skill_type_display }}</td>
-                    <td class="p-2 text-center text-body border-b border-border truncate">{{ ps.get_skill_level_display }}</td>
-                    <td class="p-2 text-center text-body border-b border-border truncate">{{ ps.get_requirement_level_display }}</td>
-                    <td class="p-2 text-center text-body border-b border-border truncate max-w-[150px] underline cursor-pointer" title="{{ ps.skill.description|default:'-'|title }}">
+                <tr class="hover:bg-hover transition-colors">
+                    <td class="p-2 text-left text-body border-r border-b border-border truncate">{{ ps.skill.name|title }}</td>
+                    <td class="p-2 text-center text-body border-r border-b border-border truncate">{{ ps.skill.get_skill_type_display }}</td>
+                    <td class="p-2 text-center text-body border-r border-b border-border truncate">{{ ps.get_skill_level_display }}</td>
+                    <td class="p-2 text-center text-body border-r border-b border-border truncate">{{ ps.get_requirement_level_display }}</td>
+                    <td class="p-2 text-center text-body border-r border-b border-border truncate cursor-pointer underline max-w-[250px]" title="{{ ps.skill.description|default:'-'|title }}">
                         {{ ps.skill.description|default:'-'|title }}
                     </td>
-                    <td class="p-2 text-center text-body border-b border-border truncate cursor-pointer" title="{{ ps.notes|default:'-'|title }}">{{ ps.notes|default:'-'|title }}</td>
+                    <td class="p-2 text-center text-body border-b border-border truncate cursor-pointer underline max-w-[250px]" title="{{ ps.notes|default:'-'|title }}">{{ ps.notes|default:'-'|title }}</td>
                 </tr>
                 {% empty %}
                 <tr>
@@ -165,39 +165,36 @@ Detalles de colaborador
     </div>
     {% endif %}
 
-
-
-    
     {% if employee.human_resources_direct_reports.all %}
-    <p class="text-title text-sm">Colaboradores a cargo</p>
+    <p class="text-title text-sm mt-4">Colaboradores a cargo</p>
     <hr class="border-border border">
-    <div class="md:col-span-2 w-full overflow-auto border border-border rounded bg-container max-h-50 relative">
+    <div class="md:col-span-2 w-full overflow-x-auto border border-border rounded bg-container max-h-60 relative">
         <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
             <thead>
                 <tr class="border-b border-border text-xs">
-                    <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Departamento</th>
-                    <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Puesto</th>
+                    <th class="min-w-[150px] p-2 text-left text-title border-r border-b border-border sticky top-0 z-30 bg-page">Departamento</th>
+                    <th class="min-w-[150px] p-2 text-left text-title border-r border-b border-border sticky top-0 z-30 bg-page">Puesto</th>
                     <th class="min-w-[200px] p-2 text-left text-title border-r border-b border-border sticky top-0 z-30 bg-page">Colaborador</th>
-                    <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Ingreso</th>
-                    <th class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Baja</th>
+                    <th class="min-w-[120px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">Ingreso</th>
+                    <th class="min-w-[120px] p-2 text-center text-title border-b border-border sticky top-0 z-30 bg-page">Baja</th>
                 </tr>
             </thead>
             <tbody>
                 {% for sub in employee.human_resources_direct_reports.all %}
                     <tr class="hover:bg-hover transition-colors duration-300">
-                        <td class="p-2 text-left text-body border-r border-b border-border">
+                        <td class="p-2 text-left text-body border-r border-b border-border truncate">
                             {{ sub.position.department.name|title }}
                         </td>
-                        <td class="p-2 text-left text-body border-r border-b border-border">
+                        <td class="p-2 text-left text-body border-r border-b border-border truncate">
                             {{ sub.position.name|title }}
                         </td>
-                        <td class="p-2 text-left text-body border-r border-b border-border">
+                        <td class="p-2 text-left text-body border-r border-b border-border truncate">
                             {{ sub.user.first_name|title }} {{ sub.user.last_name|title }}
                         </td>
-                        <td class="p-2 text-center text-body border-r border-b border-border">
+                        <td class="p-2 text-center text-body border-r border-b border-border truncate">
                             {{ sub.hire_date|date:"d/m/Y"|default:"-" }}
                         </td>
-                        <td class="p-2 text-center text-body border-r border-b border-border">
+                        <td class="p-2 text-center text-body border-b border-border truncate">
                             {{ sub.termination_date|date:"d/m/Y"|default:"-" }}
                         </td>
                     </tr>

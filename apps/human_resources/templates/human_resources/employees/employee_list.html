@@ -7,11 +7,21 @@
 
 {% block module_actions %}
 
-    <!-- {% if can_create %}
-        <a href="" target="_blank"  class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 w-full md:w-fit" title="Crear un nuevo puesto">
+    {% if can_create %}
+        <a href="{% url 'human_resources:position_create_view' %}?next={{ request.path }}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear nueva habilidad">
+            Nuevo puesto
+        </a>
+
+        <a href="{% url 'human_resources:department_create' %}?next={{ request.path }}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear nueva habilidad">
+            Nuevo departamento
+        </a>
+
+        <a href="{% url 'human_resources:employee_create_form' %}?next={{ request.path }}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear nueva habilidad">
             Nuevo colaborador
         </a>
-    {% endif %} -->
+
+    {% endif %}
+
 
     <button onclick="toggleFilters()"
         class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1  w-full md:w-fit">
@@ -36,188 +46,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="flex flex-col w-full gap-4">
-
-    <div class="custom-tooltip tooltip-left"  data-title="
-    • Posición / Puesto: Define un rol o cargo dentro de la estructura de la empresa. 
-    • Colaborador: Es la asignación formal de una persona (usuario) a un puesto específico. 
-    • Multi-asignación: Una persona puede ocupar más de un puesto simultáneamente, generando un registro de colaborador por cada rol que desempeña.
-    ">
-        <p class="text-title text-sm mb-2 flex items-center gap-1">
-            <span>
-                Resumen de personal
-            </span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-        </p>
-        <hr class="border-border">
-    </div>
-
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-
-        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
-            data-title="Total de puestos o posiciones cubiertos actualmente por personal activo.">
-            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
-                Posiciones asignadas
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            </p>
-            <p class="text-xl text-blue-500">
-                <span>
-                    {{ kpis.assigned_positions }}
-                </span>
-
-            </p>
-        </div>
-
-        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
-            data-title="Número de personas (usuarios) con al menos un puesto activo. Si un usuario ocupa más de un puesto, se contabiliza una sola vez">
-            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
-                Personal total
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            </p>
-            <p class="text-xl text-violet-500">
-                <span>
-                    {{ kpis.total_personal }}
-                </span>
-
-            </p>
-        </div>
-
-        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
-            data-title="Total de asignaciones laborales (puesto-usuario) actualmente vigentes y en activo.">
-            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
-                Colaboradores activos
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            </p>
-            <p class="text-xl text-emerald-500">
-                <span>
-                    {{ kpis.active_employees }}
-                </span>
-
-            </p>
-        </div>
-
-        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
-            data-title="Total de asignaciones laborales (puesto-usuario) con fecha de baja cumplida o inactivas.">
-            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
-                Colaboradores inactivos
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            </p>
-            <p class="text-xl text-red-500">
-                <span>
-                    {{ kpis.inactive_employees }}
-                </span>
-
-            </p>
-        </div>
-
-        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
-            data-title="Número de personas (usuarios) activas registradas con género femenino.">
-            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
-                Personal femenino
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            </p>
-            <p class="text-xl text-gray-500">
-                <span>
-                    {{ kpis.women_count }}
-                </span>
-
-            </p>
-        </div>
-
-        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
-            data-title="Número de personas (usuarios) activas registradas con género masculino.">
-            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
-                Personal masculino
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            </p>
-            <p class="text-xl text-gray-500">
-                <span>
-                    {{ kpis.men_count }}
-                </span>
-
-            </p>
-        </div>
-
-        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
-            data-title="Suma total de los sueldos / honorarios asignados a todos los colaboradores activos.">
-            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
-                Masa salarial
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            </p>
-            <p class="text-xl text-emerald-500">
-                <span>
-                    $ {{ kpis.total_payroll|default:0|floatformat:2|intcomma }}
-                </span>
-
-            </p>
-        </div>
-
-        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
-            data-title="Valor central de la distribución salarial de los colaboradores activos (el 50% gana más y el 50% gana menos).">
-            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
-                Mediana de sueldos
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            </p>
-            <p class="text-xl text-emerald-500">
-                <span>
-                    $ {{ kpis.payroll_median|default:0|floatformat:2|intcomma }}
-                </span>
-
-            </p>
-        </div>
-
-
-    </div>
-
-    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative">
-        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
-            <thead>
-                <tr class="border-b border-border text-xs">
-                    <th
-                        class="min-w-[50px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
-                        ID</th>
-                    <th
-                        class="min-w-[100px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                        Nivel jerárquico</th>
-
-                    <th
-                        class="min-w-[100px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                        Departamento</th>
-
-                    <th
-                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                        Posición asignada</th>
-
-
-                    <th
-                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                        Colaborador</th>
-
-                    <th
-                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                        Líder directo</th>
-
-                    <th
-                        class="min-w-[100px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                        Ingreso</th>
-                        
-                </tr>
-            </thead>
-
-            <tbody class="" id="report-container">
-                {% include "human_resources/employees/partials/employee_list_rows.html" %}
-            </tbody>
-        </table>
-    </div>
-
-</div>
-
+{% include "human_resources/employees/partials/employee_list_content.html" %}
 
 {% endblock content %}
 
 
 {% block filters %}
-<form hx-get="{% url 'human_resources:employee_list_view' %}" hx-target="#report-container" hx-push-url="true" class="flex flex-col gap-4">
+<form hx-get="{% url 'human_resources:employee_list_view' %}" hx-target="#employee-list-content" hx-swap="outerHTML" hx-push-url="true" class="flex flex-col gap-4">
     
     <div class="flex flex-col gap-1">
         <label for="{{ filter.form.search.id_for_label }}" class=" text-title">{{ filter.form.search.label }}</label>

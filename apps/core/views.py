@@ -169,10 +169,11 @@ def user_details(request, pk):
     can_update_access = users_service._checkout_full_access
 
     user_instance = users_service.read_user(pk=pk)
-    user_positions = employees_service.read_employees_by_user(user_id=user_instance.id)
     if not user_instance:
         messages.error(request, 'Usuario no encontrado o no tienes permisos para verlo.')
         return redirect('core:user_list')
+
+    user_positions = employees_service.read_employees_by_user(user_id=user_instance.pk)
 
     context = {
         'user_instance': user_instance,

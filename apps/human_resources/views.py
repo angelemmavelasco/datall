@@ -1254,7 +1254,6 @@ def employee_list_view(request):
     partial = 'human_resources/employees/partials/employee_list_rows.html'
     employees_service = EmployeesService(user=request.user)
     employees_kpis_service = EmployeesKpisService(employees_service=employees_service)
-    can_create = employees_service._checkout_full_access
 
     employees_qs = employees_service.read_employees()
     employee_filter = EmployeeFilter(request.GET, queryset=employees_qs)
@@ -1269,18 +1268,22 @@ def employee_list_view(request):
 
     employees = page_obj.object_list
 
-    kpis = employees_kpis_service.stats
+    kpis = employees_kpis_service.stats(qs=employees_qs)
+
 
     context = {
         'employees': employees,
         'kpis': kpis,
         'query_string': query_dict.urlencode(),
         'page_obj': page_obj,
-        'can_create': can_create,
+        'can_create': employees_service._checkout_full_access,
         'filter': employee_filter
     }
 
     if request.htmx:
+        target = request.headers.get('HX-Target')
+        if target == 'employee-list-content':
+            return render(request, 'human_resources/employees/partials/employee_list_content.html', context)
         return render(request, partial, context)
 
     return render(request, template, context)
@@ -1298,7 +1301,7 @@ def employee_create_form(request):
         return render(request, settings.ACCESS_DENIED_TEMPLATE)
 
     if request.method == 'POST':
-        form = EmployeeForm(request.POST, requesting_user=request.user, is_full_access=employees_service._is_full_access)
+        form = EmployeeForm(request.POST, request.FILES, requesting_user=request.user, is_full_access=can_create)
         if form.is_valid():
             try:
                 new_employee = employees_service.create_user(**form.cleaned_data)
@@ -1330,7 +1333,28 @@ def employee_update_form(request, pk):
         messages.error(request, 'No tienes permisos para editar colaboradores.')
         return render(request, settings.ACCESS_DENIED_TEMPLATE)
 
+    employee_instance = employees_service.read_employee(pk=pk)
+    if not employee_instance:
+        messages.error(request, 'Colaborador no encontrado o no tienes permisos para verlo.')
+        return redirect('human_resources:employee_list_view')
+
+    if request.method == 'POST':
+        form = EmployeeForm(request.POST, request.FILES, instance=employee_instance, requesting_user=request.user, is_full_access=can_update_access)
+        if form.is_valid():
+            try:
+                employee_to_update = employees_service.update_employee(pk=pk, **form.cleaned_data)
+                messages.success(request, f'Colaborador {employee_to_update.user.first_name.title()} {employee_to_update.user.last_name.title()} actualizado correctamente.')
+                return redirect('human_resources:employee_details_view', pk=employee_to_update.pk)
+            except ServiceError as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:employee_update_form', pk=pk)
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = EmployeeForm(instance=employee_instance, requesting_user=request.user, is_full_access=can_update_access)
+
     context = {
+        'form': form,
         'can_update': can_update_access,
     }
 

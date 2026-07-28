@@ -9,13 +9,13 @@ from django.db.models.functions import Lower, ExtractYear
 class ServiceError(Exception):
     pass
 
-class PositionNotFoundError(ServiceError):
+class EmployeeNotFoundError(ServiceError):
     pass
 
-class PositionPermissionError(ServiceError):
+class EmployeePermissionError(ServiceError):
     pass
 
-class PositionAuthenticationError(ServiceError):
+class EmployeeAuthenticationError(ServiceError):
     pass
 
 if TYPE_CHECKING:
@@ -38,11 +38,11 @@ class EmployeesService:
         validates if the user was provided, exists and is authenticated.
         '''
         if not self.user:
-            raise PositionNotFoundError('No se ha proporcionado un usuario válido.')
+            raise EmployeeNotFoundError('No se ha proporcionado un usuario válido.')
         if not self.user.is_authenticated:
-            raise PositionAuthenticationError('El usuario proporcionado no está autenticado.')
+            raise EmployeeAuthenticationError('El usuario proporcionado no está autenticado.')
         if not getattr(self.user, 'is_active', True):
-            raise PositionPermissionError('El usuario se encuentra inactivo.')
+            raise EmployeePermissionError('El usuario se encuentra inactivo.')
 
     @property
     def _checkout_full_access(self) -> bool:
@@ -105,12 +105,31 @@ class EmployeesService:
         creates a new employee (position assignment) from provided data
         '''
         if not self._is_full_access:
-            raise PositionPermissionError("No se tienen permisos para crear colaboradores")
+            raise EmployeePermissionError("No se tienen permisos para crear colaboradores")
         with transaction.atomic():
             new_employee = self.EmployeeModel.objects.create(**data)
             new_employee.save()
         return new_employee
-        
+
+    def update_employee(self, *, pk: str, **data) -> Employee:
+        '''
+        update an employee based on provided data
+        '''
+        employee = self.read_employee(pk=pk)
+        if not employee:
+            raise EmployeeNotFoundError('El colaborador no existe o no se tiene permisos para verlo.')
+        if not self._is_full_access:
+            raise EmployeePermissionError("No se tienen permisos para actualizar colaboradores")
+        disallowed = ['pk']
+        for key in disallowed:
+            data.pop(key, None)
+        with transaction.atomic():
+            for key, value in data.items():
+                if value is False:
+                    value = None
+                setattr(employee, key, value)
+            employee.save()
+        return employee
 
 
 @dataclass
@@ -128,17 +147,17 @@ class EmployeesKpisService:
     @property
     def _base_qs(self) -> QuerySet:
         '''
-        reuse class service base logic to bring allowed positions and calculate over them
+        reuse class service base logic to bring allowed employees and calculate over them
         '''
         return self.employees_service.read_employees()
 
-    @property
-    def stats(self) -> dict:
+    def stats(self, qs:QuerySet=None) -> dict:
         '''
         Returns a dictionary with general statistics about the employees.
         '''
         today = timezone.now().date()
-        base_qs = self._base_qs.annotate(
+        target_qs = qs if qs is not None else self._base_qs
+        base_qs = target_qs.annotate(
             age=models.Value(today.year) - ExtractYear('user__birth_date')
         )
 
