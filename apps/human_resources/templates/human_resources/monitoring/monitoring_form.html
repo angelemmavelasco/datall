@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load widget_tweaks %}
+
+{% block title %}
+{% if creating %}
+Nuevo reporte de desempeño
+{% else %}
+Editar reporte de desempeño
+{% endif %}
+{% endblock %}
+
+{% block module_name %}
+{% if creating %}
+Nuevo reporte de desempeño
+{% else %}
+Editar reporte de desempeño
+{% endif %}
+{% endblock %}

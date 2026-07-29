@@ -118,6 +118,7 @@ class MonitoringFormField(models.Model):
             PERCENTAGE = 'percentage', 'Porcentaje (%)'
             SCALE_1_5 = 'scale_1_5', 'Escala 1 a 5'
             BOOLEAN = 'boolean', 'Sí / No'
+            FILE = 'file', 'Archivo'
 
     label = models.CharField(max_length=500, help_text='Pregunta o texto que ve el usuario')
     response_type = models.CharField(max_length=20, choices=ResponseTypeChoices.choices, default=ResponseTypeChoices.TEXT, help_text='Tipo de respuesta')

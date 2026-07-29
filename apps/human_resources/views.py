@@ -1378,3 +1378,8 @@ def employee_details(request, pk):
     }
 
     return render(request, template, context)
+
+@login_required
+def monitoring_form_view(request):
+    template = 'human_resources/monitoring/monitoring_form.html'
+    
