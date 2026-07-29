@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import Department, Position, Employee, Skill, PositionSkill, BusinessUnit
+from .models import (
+    Department, Position, Employee, Skill, PositionSkill, BusinessUnit,
+    MonitoringForm, MonitoringFormField, MonitoringFormQuestion,
+    MonitoringFormSubmission, MonitoringFormAnswer
+)
 
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
@@ -40,3 +44,43 @@ class EmployeeAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'position', 'manager', 'business_unit', 'hire_date', 'termination_date', 'contract_type')
     search_fields = ('id', 'user__username', 'user__first_name', 'user__last_name', 'position__name')
     list_filter = ('contract_type', 'position__department', 'business_unit', 'payroll_frequency')
+
+class MonitoringFormQuestionInline(admin.TabularInline):
+    model = MonitoringFormQuestion
+    extra = 1
+
+@admin.register(MonitoringForm)
+class MonitoringFormAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'version', 'periodicity', 'is_active')
+    list_filter = ('periodicity', 'is_active')
+    search_fields = ('id', 'name')
+    inlines = [MonitoringFormQuestionInline]
+
+@admin.register(MonitoringFormField)
+class MonitoringFormFieldAdmin(admin.ModelAdmin):
+    list_display = ('label', 'response_type', 'is_active')
+    list_filter = ('response_type', 'is_active')
+    search_fields = ('label', 'description')
+
+@admin.register(MonitoringFormQuestion)
+class MonitoringFormQuestionAdmin(admin.ModelAdmin):
+    list_display = ('form', 'question', 'hierarchy_level', 'position', 'order', 'is_required')
+    list_filter = ('form', 'hierarchy_level', 'is_required')
+    search_fields = ('question__label', 'form__name', 'position__name')
+
+class MonitoringFormAnswerInline(admin.TabularInline):
+    model = MonitoringFormAnswer
+    extra = 0
+    readonly_fields = ('question', 'value')
+
+@admin.register(MonitoringFormSubmission)
+class MonitoringFormSubmissionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'employee', 'form', 'period_identifier', 'status', 'submitted_at')
+    list_filter = ('form', 'status', 'period_identifier')
+    search_fields = ('employee__user__first_name', 'employee__user__last_name', 'period_identifier')
+    inlines = [MonitoringFormAnswerInline]
+
+@admin.register(MonitoringFormAnswer)
+class MonitoringFormAnswerAdmin(admin.ModelAdmin):
+    list_display = ('submission', 'question', 'value')
+    search_fields = ('submission__employee__user__first_name', 'question__question__label')

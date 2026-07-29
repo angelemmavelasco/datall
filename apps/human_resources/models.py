@@ -91,6 +91,92 @@ class PositionSkill(models.Model):
     def __str__(self):
         return f'{self.position.name.title()} -> {self.skill.name.title()} ({self.get_skill_level_display()})'
 
+class MonitoringForm(models.Model):
+    '''
+    the base header to all the different monitoring forms to evaluate skills and kpis
+    '''
+    id = models.CharField(max_length=50, primary_key=True, help_text='Identificador único del formulario')
+    name = models.CharField(max_length=255, help_text='Nombre del formulario')
+    version = models.PositiveIntegerField(default=1, help_text='Versión del formulario')
+    periodicity = models.CharField(max_length=3, choices=PeriodicityChoices.choices, default=PeriodicityChoices.WEEKLY, help_text='Periodicidad del formulario')
+    is_active = models.BooleanField(default=True, help_text='Indica si el formulario está activo')
+
+    class Meta:
+        verbose_name = 'Formulario'
+        verbose_name_plural = 'Formularios'
+    
+    def __str__(self):
+        return f'{self.id.upper()} {self.name.title()} ({self.version})'
+
+class MonitoringFormField(models.Model):
+    '''
+    Questions to be answered in the monitoring forms
+    '''
+    class ResponseTypeChoices(models.TextChoices):
+            TEXT = 'text', 'Texto libre'
+            NUMBER = 'number', 'Número / Cantidad'
+            PERCENTAGE = 'percentage', 'Porcentaje (%)'
+            SCALE_1_5 = 'scale_1_5', 'Escala 1 a 5'
+            BOOLEAN = 'boolean', 'Sí / No'
+
+    label = models.CharField(max_length=500, help_text='Pregunta o texto que ve el usuario')
+    response_type = models.CharField(max_length=20, choices=ResponseTypeChoices.choices, default=ResponseTypeChoices.TEXT, help_text='Tipo de respuesta')
+    description = models.TextField(null=True, blank=True, help_text='Ayuda o guía para responder la pregunta')
+    is_active = models.BooleanField(default=True, help_text='Indica si el campo está activo')
+
+    class Meta:
+        verbose_name = 'Campo de formulario de monitoreo'
+        verbose_name_plural = 'Campos de formulario de monitoreo'
+
+    def __str__(self):
+        return f'{self.label.title()} ({self.get_response_type_display()})'
+    
+class MonitoringFormQuestion(models.Model):
+    '''
+    this connects the questions to the forms and defines in which forms and which positions/levels the questions are used
+    '''
+    form = models.ForeignKey('MonitoringForm', on_delete=models.CASCADE, related_name='%(app_label)s_form_questions', help_text='Formulario al que se le asigna la pregunta')
+    question = models.ForeignKey('MonitoringFormField', on_delete=models.CASCADE, related_name='%(app_label)s_form_questions', help_text='Pregunta que se le asigna al formulario')
+    hierarchy_level = models.CharField(max_length=20, null=True, blank=True, choices=Position.HierarchyLevelChoices.choices, help_text='Nivel jerárquico al que se le asigna la pregunta')
+    position = models.ForeignKey('Position', null=True, blank=True, on_delete=models.CASCADE, related_name='%(app_label)s_monitoring_form_questions', help_text='Puesto al que se le asigna la pregunta')
+    order = models.IntegerField(default=1, help_text='Orden en el que se muestra la pregunta')
+    is_required = models.BooleanField(default=True, help_text='Indica si la pregunta es requerida')
+    
+    class Meta:
+        verbose_name = 'Pregunta de formulario de monitoreo'
+        verbose_name_plural = 'Preguntas de formulario de monitoreo'
+
+    def __str__(self):
+        target = self.position.name.title() if self.position else (f'Nivel {self.get_hierarchy_level_display()}' if self.hierarchy_level else 'General')
+        return f'{self.question.label.title()} ({self.form.name.title()} - {target})'
+    
+class MonitoringFormSubmission(models.Model):
+    class SubmissionStatus(models.TextChoices):
+        DRAFT = 'draft', 'Borrador'
+        SUBMITTED = 'submitted', 'Enviado'
+        REVIEWED = 'reviewed', 'Revisado'
+
+    employee = models.ForeignKey('Employee', on_delete=models.PROTECT, related_name='%(app_label)s_monitoring_submissions')
+    form = models.ForeignKey('MonitoringForm', on_delete=models.PROTECT, related_name='%(app_label)s_submissions')
+    period_identifier = models.CharField(max_length=20, help_text='Identificador del período (ej. 2026-W30 o 2026-07)')
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=SubmissionStatus.choices, default=SubmissionStatus.DRAFT)
+    
+    class Meta:
+        verbose_name = 'Envío de formulario de monitoreo'
+        verbose_name_plural = 'Envíos de formularios de monitoreo'
+        unique_together = ('employee', 'form', 'period_identifier')
+
+class MonitoringFormAnswer(models.Model):
+    submission = models.ForeignKey('MonitoringFormSubmission', on_delete=models.CASCADE, related_name='%(app_label)s_answers')
+    question = models.ForeignKey('MonitoringFormQuestion', on_delete=models.PROTECT, related_name='%(app_label)s_answers')
+    value = models.JSONField(help_text='Respuesta del usuario guardada de forma estructurada')
+
+    class Meta:
+        verbose_name = 'Respuesta de formulario de monitoreo'
+        verbose_name_plural = 'Respuestas de formularios de monitoreo'
+
+
 class BusinessUnit(models.Model):
     id = models.CharField(primary_key=True, max_length=50, help_text='Identificador único (ej. cdmx1, gdl, foráneos)')
     name = models.CharField(max_length=255, help_text='Nombre de la gerencia o unidad de negocio')
