@@ -90,8 +90,8 @@ class UserRouteAccess(models.Model):
     
 
 class RouteWarehouseLogistic(models.Model):
-    route = models.ForeignKey('Route', on_delete=models.CASCADE, help_text='Ruta a la que se le asignará un centro de distribución')
-    warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.CASCADE, help_text='Centro de distribución a asignar')
+    route = models.ForeignKey('Route', on_delete=models.CASCADE, help_text='Ruta a la que se le asignará un centro de distribución', related_name='%(app_label)s_route_warehouse_logistics')
+    warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.CASCADE, help_text='Centro de distribución a asignar', related_name='%(app_label)s_route_warehouse_logistics')
     priority = models.IntegerField(default=1, help_text="Orden en el que se intenta surtir (1=Principal)")
 
     class Meta:

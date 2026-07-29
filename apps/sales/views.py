@@ -19,6 +19,9 @@ from django.db.models import Sum
 from decimal import Decimal
 from django.conf import settings
 
+#services
+from .services.routes_service import RoutesService
+
 
 @login_required
 def products(request):
@@ -608,6 +611,12 @@ async def export_sale_targets_calculator_data(request):
 @login_required
 def sale_list_view(request):
     template = 'sales/sales/sale_list.html'
-    context = {}
+    routes_service = RoutesService(user=request.user)
+    
+    context = {
+        'allowed_routes_for_selling': routes_service.read_routes(for_selling=True),
+        'allowed_routes_for_viewing': routes_service.read_routes(),
+        'allowed_bu_by_routes': routes_service.get_allowed_bu_by_routes()
+    }
     return render(request, template, context)
     

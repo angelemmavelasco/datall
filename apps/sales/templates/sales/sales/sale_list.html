@@ -44,3 +44,61 @@
     </button>
 
 {% endblock %}
+
+{% block content %}
+
+    <p>Rutas permitidas para vender</p><br>
+
+    {% for route in allowed_routes_for_selling %}
+
+        <p>
+            {{ route.business_unit.id|upper }}: {{ route.id|upper }} {{ route.name|title }}
+        </p>
+
+    {% empty %}
+
+        <p>Sin rutas permitidas</p>
+
+    {% endfor %}
+
+    <br><br>
+
+    <p>
+        Rutas permitidas para ver
+    </p><br>
+
+    {% for route in allowed_routes_for_viewing %}
+
+        <p>
+            {{ route.business_unit.id|upper }}: {{ route.id|upper }} {{ route.name|title }}
+        </p>
+
+    {% empty %}
+
+        <p>Sin rutas permitidas</p>
+
+    {% endfor %}
+
+    <br><br>
+
+    <p>
+        Gerencias permitidas para ver (solo resultados de rutas permitidas)
+    </p><br>
+
+    {% for bu in allowed_bu_by_routes %}
+
+        <p>
+            {{ bu.id|upper }}: {{ bu.name|title }}
+        </p>
+
+    {% empty %}
+
+        <p>Sin rutas permitidas</p>
+
+    {% endfor %}
+
+
+
+
+
+{% endblock content %}
