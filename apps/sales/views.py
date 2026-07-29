@@ -616,7 +616,8 @@ def sale_list_view(request):
     context = {
         'allowed_routes_for_selling': routes_service.read_routes(for_selling=True),
         'allowed_routes_for_viewing': routes_service.read_routes(),
-        'allowed_bu_by_routes': routes_service.get_allowed_bu_by_routes()
+        'allowed_bu_by_routes': routes_service.get_allowed_bu_by_routes(),
+        'allowed_warehouses_by_routes': routes_service.get_allowed_warehouses_by_routes()
     }
     return render(request, template, context)
     

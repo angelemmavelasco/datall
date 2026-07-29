@@ -97,6 +97,24 @@
 
     {% endfor %}
 
+    <br><br>
+
+    <p>
+        Almacenes permitidos para despacho
+    </p><br>
+
+    {% for warehouse in allowed_warehouses_by_routes %}
+
+        <p>
+            {{ warehouse.id|upper }}: {{ warehouse.name|title }}
+        </p>
+
+    {% empty %}
+
+        <p>Sin almacenes permitidos</p>
+
+    {% endfor %}
+
 
 
 
