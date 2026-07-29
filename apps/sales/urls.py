@@ -15,4 +15,9 @@ urlpatterns = [
 
     path('sale_targets_calculator/', sale_targets_calculator, name='sale_targets_calculator'),
     path('sale_targets_calculator/export/', export_sale_targets_calculator_data, name='export_sale_targets_calculator_data'),
+
+
+
+    #erp
+    path('sales/', sale_list_view, name='sale_list_view'),
 ]

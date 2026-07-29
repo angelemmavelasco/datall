@@ -17,6 +17,7 @@ import datetime
 import calendar
 from django.db.models import Sum
 from decimal import Decimal
+from django.conf import settings
 
 
 @login_required
@@ -597,4 +598,16 @@ async def export_sale_targets_calculator_data(request):
     return response
 
 
+
+
+
+
+
+
+
+@login_required
+def sale_list_view(request):
+    template = 'sales/sales/sale_list.html'
+    context = {}
+    return render(request, template, context)
     
