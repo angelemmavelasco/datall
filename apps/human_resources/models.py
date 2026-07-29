@@ -90,7 +90,19 @@ class PositionSkill(models.Model):
 
     def __str__(self):
         return f'{self.position.name.title()} -> {self.skill.name.title()} ({self.get_skill_level_display()})'
-        
+
+class BusinessUnit(models.Model):
+    id = models.CharField(primary_key=True, max_length=50, help_text='Identificador único (ej. cdmx1, gdl, foráneos)')
+    name = models.CharField(max_length=255, help_text='Nombre de la gerencia o unidad de negocio')
+    parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(app_label)s_sub_units', help_text='Gerencia padre (ej. Foráneos es padre de Culiacán, Colima, etc.)')
+    manager = models.ForeignKey('Employee', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(app_label)s_managed_business_units', help_text='Gerente de la unidad de negocio')
+
+    class Meta:
+        verbose_name = 'Unidad de Negocio / Gerencia'
+        verbose_name_plural = 'Unidades de Negocio / Gerencias'
+
+    def __str__(self):
+        return f'{self.id.upper()} {self.name.title()}'
 
 class Employee(models.Model):
     class ContractType(models.TextChoices):
@@ -104,6 +116,7 @@ class Employee(models.Model):
     user = models.ForeignKey('core.User', on_delete=models.CASCADE, related_name='%(app_label)s_employees')
     position = models.ForeignKey('Position', on_delete=models.CASCADE, related_name='%(app_label)s_employees')
     manager = models.ForeignKey('self', on_delete=models.SET_NULL, blank=True, null=True, related_name='%(app_label)s_direct_reports')
+    business_unit = models.ForeignKey('BusinessUnit', on_delete=models.SET_NULL, null=True, blank=True, related_name='%(app_label)s_employees', help_text='Unidad de negocio a la que pertenece el colaborador')
     hire_date = models.DateField()
     termination_date = models.DateField(null=True, blank=True)
     contract_type = models.CharField(max_length=20, choices=ContractType.choices, default=ContractType.INDETERMINATE, help_text='Tipo de contrato')

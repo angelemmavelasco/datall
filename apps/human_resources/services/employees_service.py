@@ -21,6 +21,9 @@ class EmployeeAuthenticationError(ServiceError):
 class EmployeeCreateError(ServiceError):
     pass
 
+class EmployeeUpdateError(ServiceError):
+    pass
+
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser as UserModel
 else:
@@ -135,12 +138,21 @@ class EmployeesService:
         for key in disallowed:
             data.pop(key, None)
         with transaction.atomic():
-            for key, value in data.items():
-                if value is False:
-                    value = None
-                setattr(employee, key, value)
-            employee.save()
-        return employee
+            try:
+                for key, value in data.items():
+                    if value is False:
+                        value = None
+                    setattr(employee, key, value)
+                employee.save()
+                return employee
+            except IntegrityError:
+                user = employee.user
+                position = employee.position
+                user_name = f"{user.first_name.title()} {user.last_name.title()}" if user and hasattr(user, 'first_name') else str(user or '')
+                pos_name = position.name.title() if position and hasattr(position, 'name') else str(position or '')
+                raise EmployeeUpdateError(f'El colaborador {user_name} ya cuenta con una asignación activa en el puesto "{pos_name}".')
+            except Exception as e:
+                raise EmployeeUpdateError(f'Error al actualizar el colaborador: {e}')
 
 
 @dataclass
