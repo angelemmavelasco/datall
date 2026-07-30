@@ -494,6 +494,29 @@ def upload_create(request):
                 audit_upload(DataHistory.Result.ERROR, msg)
                 messages.error(request, msg)
                 return redirect('data_admin:upload_create')
+
+        elif content_type.model == 'stock':
+            from apps.sales.services.products.products_bulk import StocksBulk
+            bulk_service = StocksBulk()
+            success, result = bulk_service.clean(uploaded_file)
+            
+            if not success:
+                audit_upload(DataHistory.Result.ERROR, result)
+                messages.error(request, result)
+                return redirect('data_admin:upload_create')
+            
+            df_cleaned = result
+            success_create, msg = bulk_service.create(df_cleaned)
+            
+            if success_create:
+                audit_upload(DataHistory.Result.SUCCESS, msg)
+                messages.success(request, msg)
+                return redirect('data_admin:uploads')
+            else:
+                audit_upload(DataHistory.Result.ERROR, msg)
+                messages.error(request, msg)
+                return redirect('data_admin:upload_create')
+
         else:
             msg = f"Todavía no hay un servicio de importación masiva configurado para el modelo: {content_type.model.title()}."
             audit_upload(DataHistory.Result.ERROR, msg)
@@ -503,13 +526,15 @@ def upload_create(request):
     
 
     content_types = ContentType.objects.filter(
-        model__in=['product', 'customer', 'saletransaction', 'accountsreceivable']
+        app_label='core',
+        model__in=['product', 'customer', 'saletransaction', 'accountsreceivable', 'stock']
     ).annotate(
         nombre_es=Case(
             When(model='product', then=Value('Productos')),
             When(model='customer', then=Value('Clientes')),
             When(model='saletransaction', then=Value('Transacciones de Venta')),
             When(model='accountsreceivable', then=Value('Cuentas por Cobrar')),
+            When(model='stock', then=Value('Inventarios (Stock)')),
             output_field=CharField(),
         )
     ).order_by('nombre_es')

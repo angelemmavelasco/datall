@@ -93,7 +93,10 @@ class StockTransferCalculatorService:
             warehouse_id=self.destination_warehouse_id,
             product_id__in=product_ids
         )
-        stock_map = {stock.product_id: stock.quantity or Decimal('0.00') for stock in destination_stocks}
+        stock_map = {stock.product_id: {
+            'quantity': stock.quantity or Decimal('0.00'),
+            'in_transit': stock.in_transit or Decimal('0.00')
+        } for stock in destination_stocks}
         
         grouped_results = {}
         
@@ -103,11 +106,10 @@ class StockTransferCalculatorService:
         for p in products:
             sold_qty = sales_map.get(p.id, Decimal('0.00'))
             avg_monthly = sold_qty / Decimal(months_count)
-            current_stock = stock_map.get(p.id, Decimal('0.00'))
             
-            # Since there's no explicitly implemented 'in_transit' field in the model currently, 
-            # we will set it to 0 as a placeholder for the UI calculation.
-            in_transit = Decimal('0.00') 
+            stock_info = stock_map.get(p.id, {'quantity': Decimal('0.00'), 'in_transit': Decimal('0.00')})
+            current_stock = stock_info['quantity']
+            in_transit = stock_info['in_transit'] 
             
             # Optionally filter out products with no activity/stock to avoid clutter
             if sold_qty == 0 and current_stock == 0:
@@ -251,9 +253,9 @@ class StockTransferCalculatorService:
                     
                     # Apply formulas:
                     # Transferencia (Col I) = MAX((Promedio*CoberturaSolicitada)-Existencias-Transito, 0)
-                    # Cobertura actual (%) (Col G) = IF(Transferencia>0, (Existencias/Transferencia)*100, 0)
+                    # Cobertura actual (%) (Col G) = IF((Promedio*CoberturaSolicitada)>0, (Existencias/(Promedio*CoberturaSolicitada))*100, IF(Existencias>0, 100, 0))
                     formula_transfer = f"=MAX((D{data_row}*H{data_row})-E{data_row}-F{data_row}, 0)"
-                    formula_cov_act = f"=IF(I{data_row}>0, (E{data_row}/I{data_row})*100, 0)"
+                    formula_cov_act = f"=IF((D{data_row}*H{data_row})>0, (E{data_row}/(D{data_row}*H{data_row}))*100, IF(E{data_row}>0, 100, 0))"
                     
                     ws.cell(row=data_row, column=9, value=formula_transfer)
                     ws.cell(row=data_row, column=7, value=formula_cov_act)

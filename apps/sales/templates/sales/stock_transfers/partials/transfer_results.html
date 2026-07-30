@@ -68,9 +68,12 @@
             tr.querySelector('.suggestion-cell').textContent = Math.round(suggestion).toLocaleString();
 
             // Cobertura actual
+            const targetStock = avgMonthly * coverage;
             let currentCoverage = 0;
-            if (suggestion > 0) {
-                currentCoverage = (currentStock / suggestion) * 100;
+            if (targetStock > 0) {
+                currentCoverage = (currentStock / targetStock) * 100;
+            } else if (currentStock > 0) {
+                currentCoverage = 100;
             }
             tr.querySelector('.current-coverage-cell').textContent = currentCoverage.toFixed(2) + '%';
         }
