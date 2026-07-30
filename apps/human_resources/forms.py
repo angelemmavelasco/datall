@@ -142,6 +142,13 @@ class MonitoringFormForm(forms.ModelForm):
                     return generated_id
         return id_val.strip().upper()
 
+class MonitoringFormFieldForm(forms.ModelForm):
+    class Meta:
+        from apps.human_resources.models import MonitoringFormField
+        model = MonitoringFormField
+        fields = ['label', 'response_type', 'description', 'is_active']
+
+
 class MonitoringFormQuestionForm(forms.ModelForm):
     class Meta:
         from apps.human_resources.models import MonitoringFormQuestion
@@ -182,7 +189,6 @@ class MonitoringSubmissionForm(forms.Form):
             self.position_fields = []
 
             for mq in questions:
-                # Validar si aplica al empleado
                 is_applicable = False
                 if mq.hierarchy_level and mq.hierarchy_level == emp_level:
                     is_applicable = True
@@ -196,8 +202,7 @@ class MonitoringSubmissionForm(forms.Form):
 
                 q = mq.question
                 field_name = f'question_{mq.id}'
-                
-                # Tipo de respuesta
+
                 if q.response_type == 'boolean':
                     field = forms.BooleanField(label=q.label, required=False)
                 elif q.response_type == 'scale_1_5':

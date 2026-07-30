@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Lista de preguntas de monitoreo
+{% endblock %}
+
+{% block module_name %}
+Preguntas de monitoreo
+{% endblock %}
+
+{% block module_actions %}
+    {% if can_create %}
+        <a href="{% url 'human_resources:monitoring_form_list_view' %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Ver lista de reportes">
+            Lista de reportes
+        </a>
+        <a href="{% url 'human_resources:monitoring_question_create_view' %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear nueva pregunta">
+            Nueva pregunta
+        </a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-100">
+        <table class="w-full text-left border-spacing-0 border-separate">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="p-1 w-20 text-center bg-container border-r border-border sticky left-0 z-10 text-title">ID</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Pregunta</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Tipo de respuesta</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Estado</th>
+                    <th class="p-1 w-32 text-center text-title bg-page">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for question in questions %}
+                <tr class="hover:bg-page cursor-pointer transition-colors border-b border-border text-xs group" 
+                    hx-get="{% url 'human_resources:monitoring_question_detail_view' pk=question.id %}" 
+                    hx-target="#main_body" 
+                    hx-push-url="true" 
+                    hx-swap="innerHTML transition:true">
+                    <td class="p-2 border-r border-border sticky left-0 group-hover:bg-page bg-container z-10 transition-colors uppercase font-mono text-center">
+                        {{ question.id|truncatechars:6 }}
+                    </td>
+                    <td class="p-2 truncate min-w-[150px] font-semibold text-left">
+                        {{ question.label|title }}
+                    </td>
+                    <td class="p-2 text-left text-strong min-w-[150px]">
+                        {{ question.get_response_type_display }}
+                    </td>
+                    <td class="p-2 text-center text-strong min-w-[150px]">
+                        {% if question.is_active %}
+                            <span class="text-green-500">Activo</span>
+                        {% else %}
+                            <span class="text-red-500">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-2 flex gap-4 justify-center items-center h-full min-w-[150px]" onclick="event.stopPropagation()">
+                        <a href="{% url 'human_resources:monitoring_question_detail_view' pk=question.id %}" 
+                           class="hover:text-hover text-strong transition-colors" 
+                           title="Ver Detalles">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        </a>
+                        
+                        {% if can_create %}
+                        <a href="{% url 'human_resources:monitoring_question_update_view' pk=question.id %}" 
+                           class="hover:text-hover text-strong transition-colors" 
+                           title="Editar Pregunta">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="p-4 text-center text-strong border border-border rounded bg-container">
+                        No hay preguntas creadas.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

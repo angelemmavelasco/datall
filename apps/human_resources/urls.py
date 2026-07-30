@@ -52,4 +52,9 @@ urlpatterns = [
     path('monitoring/<str:pk>/', monitoring_form_detail_view, name='monitoring_form_detail_view'),
     path('monitoring/<str:pk>/submit/', monitoring_submission_create_view, name='monitoring_submission_create_view'),
     path('monitoring/submissions/<str:pk>/', monitoring_submission_detail_view, name='monitoring_submission_detail_view'),
+    
+    path('monitoring/questions/list/', monitoring_question_list_view, name='monitoring_question_list_view'),
+    path('monitoring/questions/create/', monitoring_question_create_view, name='monitoring_question_create_view'),
+    path('monitoring/questions/<str:pk>/edit/', monitoring_question_update_view, name='monitoring_question_update_view'),
+    path('monitoring/questions/<str:pk>/', monitoring_question_detail_view, name='monitoring_question_detail_view'),
 ]

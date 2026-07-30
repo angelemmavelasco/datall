@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Detalles de pregunta: {{ question.label|truncatechars:50|title }}
+{% endblock %}
+
+{% block module_name %}
+Pregunta: {{ question.label|truncatechars:50|title }}
+{% endblock %}
+
+{% block module_actions %}
+<a href="{% url 'human_resources:monitoring_question_list_view' %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Volver a la lista">
+    Regresar
+</a>
+<a href="{% url 'human_resources:monitoring_question_update_view' pk=question.id %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Editar">
+    Editar
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+
+    <div class="bg-container border border-border rounded p-4 flex flex-col gap-2">
+        <p class="text-title text-sm">Información de la pregunta</p>
+        <hr class="border-border border mb-2">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="md:col-span-2">
+                <p class="text-title text-xs">Pregunta</p>
+                <p class="text-strong">{{ question.label }}</p>
+            </div>
+            <div>
+                <p class="text-title text-xs">Tipo de respuesta</p>
+                <p class="text-strong">{{ question.get_response_type_display }}</p>
+            </div>
+            <div>
+                <p class="text-title text-xs">Estado</p>
+                <p class="text-strong">
+                    {% if question.is_active %}
+                        <span class="text-green-500">Activo</span>
+                    {% else %}
+                        <span class="text-red-500">Inactivo</span>
+                    {% endif %}
+                </p>
+            </div>
+            {% if question.description %}
+            <div class="md:col-span-4">
+                <p class="text-title text-xs">Descripción / Ayuda</p>
+                <p class="text-strong">{{ question.description }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="bg-container border border-border rounded p-4 flex flex-col gap-4">
+        <p class="text-title text-sm">Asignaciones en reportes (Niveles / Posiciones)</p>
+        <hr class="border-border border mb-2">
+        
+        <div class="w-full overflow-auto border border-border rounded bg-page max-h-50">
+            <table class="w-full text-left border-spacing-0 border-separate">
+                <thead>
+                    <tr class="border-b border-border">
+                        <th class="p-2 text-title bg-page">Reporte</th>
+                        <th class="p-2 text-title bg-page">Nivel jerárquico</th>
+                        <th class="p-2 text-title bg-page">Posición</th>
+                        <th class="p-2 text-title bg-page text-center">Orden</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fq in form_questions %}
+                    <tr class="border-b border-border text-sm">
+                        <td class="p-2 text-strong">
+                            <a href="{% url 'human_resources:monitoring_form_detail_view' pk=fq.form.id %}" class="hover:text-hover hover:underline transition-colors">
+                                {{ fq.form.name|title }}
+                            </a>
+                        </td>
+                        <td class="p-2 text-strong">
+                            {% if fq.hierarchy_level %}
+                                {{ fq.get_hierarchy_level_display }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="p-2 text-strong">
+                            {% if fq.position %}
+                                {{ fq.position.name|title }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="p-2 text-strong text-center">{{ fq.order }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="p-4 text-center text-strong">
+                            Esta pregunta no está asignada a ningún reporte actualmente.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="bg-container border border-border rounded p-4 flex flex-col gap-4">
+        <p class="text-title text-sm">Historial de respuestas</p>
+        <hr class="border-border border mb-2">
+        
+        <div class="w-full overflow-auto border border-border rounded bg-page max-h-100">
+            <table class="w-full text-left border-spacing-0 border-separate">
+                <thead>
+                    <tr class="border-b border-border">
+                        <th class="p-2 text-title bg-page">Colaborador</th>
+                        <th class="p-2 text-title bg-page">Formulario asociado</th>
+                        <th class="p-2 text-title bg-page">Fecha y hora de respuesta</th>
+                        <th class="p-2 text-title bg-page">Respuesta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for answer in answers %}
+                    <tr class="border-b border-border text-sm">
+                        <td class="p-2 text-strong">
+                            {{ answer.submission.employee.user.first_name|title }} {{ answer.submission.employee.user.last_name|title }}
+                        </td>
+                        <td class="p-2 text-strong">
+                            <a href="{% url 'human_resources:monitoring_submission_detail_view' pk=answer.submission.id %}" class="hover:text-hover hover:underline transition-colors">
+                                {{ answer.submission.form.name|title }}
+                            </a>
+                        </td>
+                        <td class="p-2 text-strong">
+                            {{ answer.submission.submitted_at|date:"d M Y H:i" }}
+                        </td>
+                        <td class="p-2 text-strong">
+                            {% if question.response_type == 'boolean' %}
+                                {% if answer.value.answer == 'True' %}Sí{% else %}No{% endif %}
+                            {% else %}
+                                {{ answer.value.answer }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="p-4 text-center text-strong">
+                            Aún no hay respuestas para esta pregunta.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

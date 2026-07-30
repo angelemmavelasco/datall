@@ -31,6 +31,7 @@ from apps.human_resources.services.monitoring import MonitoringService
 from apps.human_resources.filters import DepartmentFilter, PositionFilter, SkillFilter, EmployeeFilter
 from apps.human_resources.forms import DepartmentForm, PositionForm, SkillForm, PositionSkillFormSet, EmployeeForm
 from django.core.paginator import Paginator
+from django.db import transaction
 User = get_user_model()
 
 @login_required
@@ -641,9 +642,6 @@ def commissions_action(request):
                     emails.append(e)
                 except ValidationError:
                     invalid_emails.append(e)
-                    
-    # Eliminada la validación suelta de invalid_emails aquí para evitar superposición
-    
     action = request.POST.get('action')
     selected_routes = request.POST.getlist('selected_routes')
     month = request.POST.get('action_month')
@@ -1524,7 +1522,6 @@ def monitoring_submission_detail_view(request, pk):
     return render(request, template, context)
 
 from apps.human_resources.forms import MonitoringSubmissionForm
-from django.db import transaction
 
 @login_required
 def monitoring_submission_create_view(request, pk):
@@ -1591,5 +1588,113 @@ def monitoring_submission_create_view(request, pk):
     }
     return render(request, template, context)
 
-
+@login_required
+def monitoring_question_list_view(request):
+    template = 'human_resources/monitoring/monitoring_question_list.html'
+    monitoring_service = MonitoringService(user=request.user)
     
+    if not monitoring_service._is_full_access:
+        messages.error(request, 'No tienes permisos para ver la lista de preguntas.')
+        return redirect('human_resources:monitoring_form_list_view')
+        
+    questions = monitoring_service.read_questions()
+    
+    context = {
+        'questions': questions,
+        'can_create': monitoring_service._is_full_access
+    }
+    return render(request, template, context)
+
+from apps.human_resources.forms import MonitoringFormFieldForm
+
+@login_required
+def monitoring_question_create_view(request):
+    template = 'human_resources/monitoring/monitoring_question_form.html'
+    monitoring_service = MonitoringService(user=request.user)
+    
+    if not monitoring_service._is_full_access:
+        messages.error(request, 'No tienes permisos para crear preguntas.')
+        return redirect('human_resources:monitoring_question_list_view')
+
+    if request.method == 'POST':
+        form = MonitoringFormFieldForm(request.POST)
+        if form.is_valid():
+            try:
+                monitoring_service.create_question(form.cleaned_data)
+                messages.success(request, 'Pregunta creada exitosamente.')
+                return redirect('human_resources:monitoring_question_list_view')
+            except Exception as e:
+                messages.error(request, f'Error al crear la pregunta: {str(e)}')
+    else:
+        form = MonitoringFormFieldForm()
+
+    context = {
+        'form': form,
+        'creating': True
+    }
+    return render(request, template, context)
+
+@login_required
+def monitoring_question_update_view(request, pk):
+    template = 'human_resources/monitoring/monitoring_question_form.html'
+    monitoring_service = MonitoringService(user=request.user)
+    
+    if not monitoring_service._is_full_access:
+        messages.error(request, 'No tienes permisos para editar preguntas.')
+        return redirect('human_resources:monitoring_question_list_view')
+
+    try:
+        question_instance = monitoring_service.MonitoringFormFieldModel.objects.get(pk=pk)
+    except monitoring_service.MonitoringFormFieldModel.DoesNotExist:
+        messages.error(request, 'Pregunta no encontrada.')
+        return redirect('human_resources:monitoring_question_list_view')
+
+    if request.method == 'POST':
+        form = MonitoringFormFieldForm(request.POST, instance=question_instance)
+        if form.is_valid():
+            try:
+                monitoring_service.update_question(question_instance, form.cleaned_data)
+                messages.success(request, 'Pregunta actualizada exitosamente.')
+                return redirect('human_resources:monitoring_question_list_view')
+            except Exception as e:
+                messages.error(request, f'Error al actualizar la pregunta: {str(e)}')
+    else:
+        form = MonitoringFormFieldForm(instance=question_instance)
+
+    context = {
+        'form': form,
+        'creating': False
+    }
+    return render(request, template, context)
+
+@login_required
+def monitoring_question_detail_view(request, pk):
+    template = 'human_resources/monitoring/monitoring_question_detail.html'
+    monitoring_service = MonitoringService(user=request.user)
+    
+    if not monitoring_service._is_full_access:
+        messages.error(request, 'No tienes permisos para ver los detalles de esta pregunta.')
+        return redirect('human_resources:monitoring_question_list_view')
+
+    try:
+        question_instance = monitoring_service.read_question_detail(question_id=pk)
+        if not question_instance:
+            raise Exception('Pregunta no encontrada.')
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:monitoring_question_list_view')
+        
+    form_questions = monitoring_service.MonitoringFormQuestionModel.objects.filter(
+        question=question_instance
+    ).select_related('form', 'position')
+    
+    answers = monitoring_service.MonitoringFormAnswerModel.objects.filter(
+        question__question=question_instance
+    ).select_related('submission__employee__user', 'submission__form').order_by('-submission__submitted_at')
+
+    context = {
+        'question': question_instance,
+        'form_questions': form_questions,
+        'answers': answers,
+    }
+    return render(request, template, context)

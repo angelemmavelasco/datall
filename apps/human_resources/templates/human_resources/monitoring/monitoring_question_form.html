@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}
+{% if creating %}
+Nueva pregunta
+{% else %}
+Editar pregunta
+{% endif %}
+{% endblock %}
+
+{% block module_name %}
+{% if creating %}
+Nueva pregunta
+{% else %}
+Editar pregunta
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<form method="POST" class="flex flex-col gap-4">
+    {% csrf_token %}
+
+    <p class="text-title text-sm">Información de la pregunta</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title flex items-center gap-1">Pregunta (Label)
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.label class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Pregunta o texto que ve el usuario' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.label.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Tipo de respuesta
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.response_type class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.response_type.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Descripción / Ayuda</span>
+        <div>
+            {% render_field form.description class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ayuda o guía para responder' rows="2" %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.description.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">¿Está activa?</span>
+        <div>
+            {% render_field form.is_active class='w-4 h-4 text-strong bg-page border-border rounded focus:ring-strong cursor-pointer' %}
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-2 mt-4">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            Confirmar
+        </button>
+        <a href="{% url 'human_resources:monitoring_question_list_view' %}"
+            class=" border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            Cancelar
+        </a>
+    </div>
+
+</form>
+{% endblock %}

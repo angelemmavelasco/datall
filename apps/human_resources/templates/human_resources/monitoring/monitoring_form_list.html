@@ -10,6 +10,9 @@ Reportes de desempeño
 
 {% block module_actions %}
     {% if can_create %}
+        <a href="{% url 'human_resources:monitoring_question_list_view' %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Ver lista de preguntas">
+            Lista de preguntas
+        </a>
         <a href="{% url 'human_resources:monitoring_form_create_view' %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear nuevo formulario">
             Nuevo formulario
         </a>

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Optional, Set, List
 from django.db.models import QuerySet, Q
 from django.utils import timezone
 from dataclasses import dataclass, field
+from django.db import transaction
 
 class ServiceError(Exception):
     pass
@@ -219,8 +220,6 @@ class MonitoringService:
         return base_qs.filter(employee_id__in=tree_ids)
 
     def read_form_detail(self, form_id: str) -> Optional[MonitoringForm]:
-        # Reuse read_forms logic but filter by ID
-        # Since read_forms computes everything globally, we can just filter it.
         own_forms = self.read_forms(own_forms=True)
         sub_forms = self.read_forms(own_forms=False)
         
@@ -230,17 +229,10 @@ class MonitoringService:
         for f in sub_forms:
             if f.id == form_id:
                 return f
-        
-        # If it doesn't match own or subordinates, but user is full access, it might be an inactive form.
-        # But read_forms only returns active forms.
-        # Let's fallback if the form wasn't in the active matching forms.
-        # For full access, they can view inactive forms detail if needed.
         if self._is_full_access:
             return self.MonitoringFormModel.objects.filter(id=form_id).first()
             
         raise MonitoringFormPermissionError('No tienes permiso para ver los detalles de este formulario o no existe.')
-
-    from django.db import transaction
 
     @transaction.atomic
     def create_form(self, form_data: dict, formset_data: list) -> MonitoringForm:
@@ -265,16 +257,11 @@ class MonitoringService:
     def update_form(self, form_instance: MonitoringForm, form_data: dict, formset_data: list, deleted_questions: list) -> MonitoringForm:
         if not self._is_full_access:
             raise MonitoringFormPermissionError('Solo los administradores pueden editar formularios de monitoreo.')
-            
         for key, value in form_data.items():
             setattr(form_instance, key, value)
         form_instance.save()
-        
-        # Handle deletes
         if deleted_questions:
             self.MonitoringFormQuestionModel.objects.filter(id__in=deleted_questions).delete()
-            
-        # Handle updates and creates
         for q_data in formset_data:
             q_id = q_data.get('id')
             if q_id:
@@ -294,3 +281,29 @@ class MonitoringService:
                 )
                 
         return form_instance
+
+    def read_questions(self) -> QuerySet[MonitoringFormField]:
+        if not self._is_full_access:
+            return self.MonitoringFormFieldModel.objects.none()
+        return self.MonitoringFormFieldModel.objects.all().order_by('-id')
+
+    def read_question_detail(self, question_id: str) -> Optional[MonitoringFormField]:
+        if not self._is_full_access:
+            raise MonitoringFormPermissionError('No tienes permiso para ver los detalles de esta pregunta.')
+        return self.MonitoringFormFieldModel.objects.filter(id=question_id).first()
+
+    @transaction.atomic
+    def create_question(self, form_data: dict) -> MonitoringFormField:
+        if not self._is_full_access:
+            raise MonitoringFormPermissionError('Solo los administradores pueden crear preguntas.')
+        return self.MonitoringFormFieldModel.objects.create(**form_data)
+
+    @transaction.atomic
+    def update_question(self, question_instance: MonitoringFormField, form_data: dict) -> MonitoringFormField:
+        if not self._is_full_access:
+            raise MonitoringFormPermissionError('Solo los administradores pueden editar preguntas.')
+        for key, value in form_data.items():
+            setattr(question_instance, key, value)
+        question_instance.save()
+        return question_instance
+
