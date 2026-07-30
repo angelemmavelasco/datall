@@ -511,6 +511,7 @@ class Product(models.Model):
     cost = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
     price = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     unit_of_measure = models.CharField(max_length=255, null=True, blank=True)
+    # properties = models.JSONField(null=True, blank=True, help_text="Propiedades del producto")
 
     class Meta:
         verbose_name = 'Product'

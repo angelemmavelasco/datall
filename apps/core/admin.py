@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from apps.core.models import (
     User, MenuSection, SystemModule, Department, TaxSystem,
     PayrollType, Periodicity, Position, Region, Warehouse, Employee,
-    ProductCategory, ProductClass, Product, Reference,
+    ProductCategory, ProductClass, Product, Stock, Reference,
     RouteType, SaleChannel, Route, RouteAssignment,
     CommissionProfile, CommissionTier, RouteCommissionSetup,
     RouteCommissionException, CommissionSettlement, Novelty,
@@ -116,6 +116,12 @@ class ProductAdmin(admin.ModelAdmin):
     list_display = ('id', 'barcode', 'name', 'product_class', 'cost', 'price', 'unit_of_measure')
     search_fields = ('id', 'barcode', 'name', 'product_class__name')
     list_filter = ('product_class', 'unit_of_measure')
+
+@admin.register(Stock)
+class StockAdmin(admin.ModelAdmin):
+    list_display = ('product', 'warehouse', 'quantity')
+    search_fields = ('product__id', 'product__name', 'warehouse__name')
+    list_filter = ('warehouse',)
 
 @admin.register(Reference)
 class ReferenceAdmin(admin.ModelAdmin):

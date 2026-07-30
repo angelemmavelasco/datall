@@ -68,9 +68,7 @@ class StockTransferCalculatorService:
         months_count = self._months_diff(start_date, end_date)
         if months_count <= 0: months_count = 1
         
-        # Filter products by classes if provided
         products_qs = Product.objects.select_related('product_class')
-        # Clean product_class_ids list, removing empty strings
         clean_class_ids = [pid for pid in self.product_class_ids if pid]
         if clean_class_ids:
             products_qs = products_qs.filter(product_class_id__in=clean_class_ids)
@@ -81,7 +79,6 @@ class StockTransferCalculatorService:
         if not product_ids:
             return []
             
-        # Query total sales quantity for destination warehouse in the period
         sales = SaleTransaction.objects.filter(
             warehouse_id=self.destination_warehouse_id,
             product_id__in=product_ids,
@@ -148,7 +145,7 @@ class StockTransferCalculatorService:
                 'current_stock': round(current_stock, 2),
                 'in_transit': round(in_transit, 2),
                 'rotation_name': rotation_name,
-                'rotation_level': rotation_level
+                'rotation_level': rotation_level,
             })
             
         final_results = []
@@ -193,7 +190,7 @@ class StockTransferCalculatorService:
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         period_str = f"{start_date_str} a {end_date_str}"
         
-        headers = ["ID producto", "Producto", "Unidades vendidas", "Promedio mensual", "Existencias", "En tránsito", "Cobertura (%)", "Transferencia"]
+        headers = ["ID producto", "Producto", "Unidades vendidas", "Promedio mensual", "Existencias", "En tránsito", "Cobertura actual (%)", "Cobertura solicitada (%)", "Transferencia"]
         
         # Escribir header global solo una vez
         ws.append([f"Periodo Evaluado para reposición: {period_str}"])
@@ -245,17 +242,21 @@ class StockTransferCalculatorService:
                         p['avg_monthly'],
                         p['current_stock'],
                         p['in_transit'],
-                        cov, # Custom individual coverage
+                        0,   # Cobertura actual (%) (calculated by formula below)
+                        cov, # Cobertura solicitada (%)
                         0    # Transferencia (calculated by formula below)
                     ]
                     ws.append(row_data)
                     data_row = ws.max_row
                     
-                    # Apply formula for Transferencia
-                    # Formula: =MAX((Promedio*Cobertura)-Existencias-Transito, 0)
-                    # Promedio is Col D, Cobertura is Col G, Existencias is Col E, Transito is Col F
-                    formula = f"=MAX((D{data_row}*G{data_row})-E{data_row}-F{data_row}, 0)"
-                    ws.cell(row=data_row, column=8, value=formula)
+                    # Apply formulas:
+                    # Transferencia (Col I) = MAX((Promedio*CoberturaSolicitada)-Existencias-Transito, 0)
+                    # Cobertura actual (%) (Col G) = IF(Transferencia>0, (Existencias/Transferencia)*100, 0)
+                    formula_transfer = f"=MAX((D{data_row}*H{data_row})-E{data_row}-F{data_row}, 0)"
+                    formula_cov_act = f"=IF(I{data_row}>0, (E{data_row}/I{data_row})*100, 0)"
+                    
+                    ws.cell(row=data_row, column=9, value=formula_transfer)
+                    ws.cell(row=data_row, column=7, value=formula_cov_act)
                     
                     for col_num in range(1, len(headers) + 1):
                         ws.cell(row=data_row, column=col_num).border = thin_border
@@ -267,7 +268,7 @@ class StockTransferCalculatorService:
         # Adjust column widths
         ws.column_dimensions['A'].width = 15
         ws.column_dimensions['B'].width = 40
-        for col_letter in ['C', 'D', 'E', 'F', 'G', 'H']:
+        for col_letter in ['C', 'D', 'E', 'F', 'G', 'H', 'I']:
             ws.column_dimensions[col_letter].width = 18
             
         output = io.BytesIO()
