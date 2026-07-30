@@ -177,7 +177,6 @@ class MonitoringFormAnswer(models.Model):
         verbose_name = 'Respuesta de formulario de monitoreo'
         verbose_name_plural = 'Respuestas de formularios de monitoreo'
 
-
 class BusinessUnit(models.Model):
     id = models.CharField(primary_key=True, max_length=50, help_text='Identificador único (ej. cdmx1, gdl, foráneos)')
     name = models.CharField(max_length=255, help_text='Nombre de la gerencia o unidad de negocio')
@@ -240,7 +239,3 @@ class Employee(models.Model):
         for report in direct_reports:
             tree_ids.extend(report.get_reporting_tree_ids())
         return list(set(tree_ids))
-
-
-
-
