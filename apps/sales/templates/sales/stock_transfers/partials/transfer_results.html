@@ -41,12 +41,12 @@
                 <td class="w-40 p-1 text-center text-muted avg-monthly" data-value="{{ row.avg_monthly|stringformat:'f' }}">{{ row.avg_monthly|intcomma }}</td>
                 <td class="w-40 p-1 text-center text-muted current-stock" data-value="{{ row.current_stock|stringformat:'f' }}">{{ row.current_stock|intcomma }}</td>
                 <td class="w-40 p-1 text-center text-muted in-transit" data-value="{{ row.in_transit|stringformat:'f' }}">{{ row.in_transit|intcomma }}</td>
-                <td class="w-40 p-1 text-center text-muted current-coverage-cell">0%</td>
+                <td class="w-40 p-1 text-center text-muted current-coverage-cell">{{ row.initial_coverage|floatformat:2 }}%</td>
                 <td class="w-40 p-1 text-center">
                     <input type="number" step="0.1" min="0" value="1.0" data-product-id="{{ row.product_id }}" class="border border-border rounded p-1 bg-page text-strong w-20 text-center outline-none coverage-input" onchange="calculateSuggestion(this)" onkeyup="calculateSuggestion(this)">
                 </td>
                 <td class="w-40 p-1 text-center text-title font-bold suggestion-cell">
-                    0
+                    {{ row.initial_suggestion|intcomma }}
                 </td>
             </tr>
         {% endfor %}

@@ -139,6 +139,16 @@ class StockTransferCalculatorService:
                     'products': []
                 }
                 
+            # Calculate initial metrics for default coverage (1.0)
+            target_stock = avg_monthly * Decimal('1.0')
+            initial_suggestion = max(target_stock - current_stock - in_transit, Decimal('0.00'))
+            if target_stock > 0:
+                initial_coverage = (current_stock / target_stock) * Decimal('100.0')
+            elif current_stock > 0:
+                initial_coverage = Decimal('100.0')
+            else:
+                initial_coverage = Decimal('0.00')
+
             grouped_results[class_id]['products'].append({
                 'product_id': p.id,
                 'product_name': (p.name or "").title(),
@@ -146,6 +156,8 @@ class StockTransferCalculatorService:
                 'avg_monthly': round(avg_monthly, 2),
                 'current_stock': round(current_stock, 2),
                 'in_transit': round(in_transit, 2),
+                'initial_coverage': round(initial_coverage, 2),
+                'initial_suggestion': round(initial_suggestion, 0),
                 'rotation_name': rotation_name,
                 'rotation_level': rotation_level,
             })
