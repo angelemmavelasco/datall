@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Detalles de envío: {{ submission.form.name|title }}
+{% endblock %}
+
+{% block module_name %}
+Envío: {{ submission.form.name|title }}
+{% endblock %}
+
+{% block module_actions %}
+<a href="{% url 'human_resources:monitoring_form_detail_view' pk=submission.form.id %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Volver al reporte">
+    Regresar
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+
+    <div class="bg-container border border-border rounded p-4 flex flex-col gap-2">
+        <p class="text-title text-sm">Información del envío</p>
+        <hr class="border-border border mb-2">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div>
+                <p class="text-title text-xs">Fecha</p>
+                <p class="text-strong">{{ submission.created_at|date:"d M Y H:i" }}</p>
+            </div>
+            <div>
+                <p class="text-title text-xs">Reporte</p>
+                <p class="text-strong">{{ submission.form.name|title }}</p>
+            </div>
+            <div>
+                <p class="text-title text-xs">Colaborador evaluado</p>
+                <p class="text-strong">{{ submission.employee.user.first_name|title }} {{ submission.employee.user.last_name|title }}</p>
+            </div>
+            <div>
+                <p class="text-title text-xs">Nivel</p>
+                <p class="text-strong">{{ submission.employee.position.get_hierarchy_level_display }}</p>
+            </div>
+            <div>
+                <p class="text-title text-xs">Posición</p>
+                <p class="text-strong">{{ submission.employee.position.name|title }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-container border border-border rounded p-4 flex flex-col gap-4">
+        <p class="text-title text-sm">Respuestas</p>
+        <hr class="border-border border mb-2">
+        
+        <div class="w-full overflow-auto border border-border rounded bg-page max-h-50">
+            <table class="w-full text-left border-spacing-0 border-separate">
+                <thead>
+                    <tr class="border-b border-border">
+                        <th class="p-2 text-title bg-page">Pregunta</th>
+                        <th class="p-2 text-title bg-page">Respuesta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for answer in answers %}
+                    <tr class="border-b border-border text-sm">
+                        <td class="p-2 text-strong">{{ answer.question.question.label }}</td>
+                        <td class="p-2 text-strong">
+                            {% if answer.question.question.response_type == 'boolean' %}
+                                {% if answer.value.answer == 'True' %}Sí{% else %}No{% endif %}
+                            {% else %}
+                                {{ answer.value.answer }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+<div class="flex flex-col gap-4">
+
+    {% if own_active_forms %}
+    <p class="text-title text-sm">Reportes asignados</p>
+    <hr class="border-border border">
+    
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-50">
+        <table class="w-full text-left border-spacing-0 border-separate">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="p-1 w-20 text-center bg-container border-r border-border sticky left-0 z-10 text-title">ID</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Nombre</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Periodicidad</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Niveles objetivo</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Posiciones objetivo</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Colaboradores asignados</th>
+                    <th class="p-1 w-32 text-center text-title bg-page">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% with form_list=own_active_forms list_type='own' %}
+                    {% include 'human_resources/monitoring/partials/monitoring_form_list_rows.html' %}
+                {% endwith %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if subordinates_active_forms %}
+    <p class="text-title text-sm mt-4">Reportes de mis colaboradores</p>
+    <hr class="border-border border">
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-50">
+        <table class="w-full text-left border-spacing-0 border-separate">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="p-1 w-20 text-center bg-container border-r border-border sticky left-0 z-10 text-title">ID</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Nombre</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Periodicidad</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Niveles objetivo</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Posiciones objetivo</th>
+                    <th class="p-1 min-w-[150px] text-center text-title bg-page">Colaboradores asignados</th>
+                    <th class="p-1 w-32 text-center text-title bg-page">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% with form_list=subordinates_active_forms list_type='subordinates' %}
+                    {% include 'human_resources/monitoring/partials/monitoring_form_list_rows.html' %}
+                {% endwith %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if not own_active_forms and not subordinates_active_forms %}
+    <div class="p-4 text-center text-strong border border-border rounded bg-container">
+        No hay reportes de desempeño asignados a ti o a tus colaboradores.
+    </div>
+    {% endif %}
+</div>

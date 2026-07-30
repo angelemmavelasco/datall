@@ -7,7 +7,7 @@ from ..models import (
     Employee,
     Position,
 )
-from typing import TYPE_CHECKING, Optional, Set
+from typing import TYPE_CHECKING, Optional, Set, List
 from django.db.models import QuerySet, Q
 from django.utils import timezone
 from dataclasses import dataclass, field
@@ -78,7 +78,7 @@ class MonitoringService:
             user=self.user
         ).filter(
             Q(termination_date__isnull=True) | Q(termination_date__gte=today)
-        ).select_related('position')
+        ).select_related('user', 'position__department', 'manager__user')
 
     def _get_reporting_tree_employee_ids(self) -> Set[str]:
         '''
@@ -91,40 +91,82 @@ class MonitoringService:
             tree_ids.update(emp.get_reporting_tree_ids())
         return tree_ids
 
-    def read_forms(self) -> QuerySet[MonitoringForm]:
+    def read_forms(self, *, own_forms: bool = True) -> List[MonitoringForm]:
         '''
-        returns a queryset of allowed active forms to submit/view.
+        returns unique forms with dynamic count metrics attached.
         '''
-        base_qs = self.MonitoringFormModel.objects.filter(is_active=True)
-
-        if self._is_full_access:
-            return base_qs
-
-        tree_ids = self._get_reporting_tree_employee_ids()
-        if not tree_ids:
-            return self.MonitoringFormModel.objects.none()
+        base_qs = self.MonitoringFormModel.objects.filter(is_active=True).prefetch_related(
+            'human_resources_form_questions__position__department',
+            'human_resources_form_questions__question'
+        )
 
         today = timezone.now().date()
-        employee_positions = self.EmployeeModel.objects.filter(
-            id__in=tree_ids
-        ).filter(
+        target_employee_qs = self.EmployeeModel.objects.filter(
             Q(termination_date__isnull=True) | Q(termination_date__gte=today)
-        ).values_list('position_id', 'position__hierarchy_level')
+        )
 
-        positions = {pos_id for pos_id, _ in employee_positions if pos_id}
-        hierarchy_levels = {h_level for _, h_level in employee_positions if h_level}
+        if own_forms:
+            own_ids = [emp.id for emp in self._get_active_user_employees()]
+            if not own_ids:
+                return []
+            target_employee_qs = target_employee_qs.filter(id__in=own_ids)
+        else:
+            if self._is_full_access:
+                target_employee_qs = target_employee_qs.exclude(user=self.user)
+            else:
+                tree_ids = self._get_reporting_tree_employee_ids()
+                own_ids = {emp.id for emp in self._get_active_user_employees()}
+                subordinate_ids = tree_ids - own_ids
+                if not subordinate_ids:
+                    return []
+                target_employee_qs = target_employee_qs.filter(id__in=subordinate_ids)
+        
+        valid_positions = set(target_employee_qs.values_list('position_id', flat=True))
+        valid_levels = set(target_employee_qs.values_list('position__hierarchy_level', flat=True))
 
-        if not positions and not hierarchy_levels:
-            return self.MonitoringFormModel.objects.none()
+        matched_forms = []
+        for form in base_qs:
+            q_levels_raw = set()
+            q_positions_raw = set()
+            for q in form.human_resources_form_questions.all():
+                if q.hierarchy_level:
+                    q_levels_raw.add(q.hierarchy_level)
+                if q.position_id:
+                    q_positions_raw.add(q.position_id)
+            
+            is_relevant = False
+            if self._is_full_access and not own_forms:
+                is_relevant = True
+            else:
+                if q_positions_raw.intersection(valid_positions):
+                    is_relevant = True
+                elif q_levels_raw.intersection(valid_levels):
+                    is_relevant = True
+                elif not q_positions_raw and not q_levels_raw:
+                    is_relevant = True
+            
+            if is_relevant:
+                if not q_positions_raw and not q_levels_raw:
+                    count = target_employee_qs.count()
+                else:
+                    count = target_employee_qs.filter(
+                        Q(position_id__in=q_positions_raw) | Q(position__hierarchy_level__in=q_levels_raw)
+                    ).distinct().count()
+                
+                if count == 0 and not (self._is_full_access and not own_forms):
+                    continue
 
-        return base_qs.filter(
-            human_resources_form_questions__question__is_active=True
-        ).filter(
-            Q(human_resources_form_questions__hierarchy_level__in=hierarchy_levels) |
-            Q(human_resources_form_questions__position_id__in=positions) |
-            Q(human_resources_form_questions__hierarchy_level__isnull=True, 
-              human_resources_form_questions__position__isnull=True)
-        ).distinct()
+                form.assigned_employees_count = count
+                
+                q_levels_display = {q.get_hierarchy_level_display() for q in form.human_resources_form_questions.all() if q.hierarchy_level}
+                q_positions_display = {q.position.name.title() for q in form.human_resources_form_questions.all() if q.position}
+                
+                form.target_levels_display = ", ".join(sorted(q_levels_display)) if q_levels_display else "Todos"
+                form.target_positions_display = ", ".join(sorted(q_positions_display)) if q_positions_display else "Todas"
+                
+                matched_forms.append(form)
+
+        return matched_forms
 
     def read_form_questions(self, form_id: str) -> QuerySet[MonitoringFormQuestion]:
         '''
@@ -175,3 +217,80 @@ class MonitoringService:
             return self.MonitoringFormSubmissionModel.objects.none()
 
         return base_qs.filter(employee_id__in=tree_ids)
+
+    def read_form_detail(self, form_id: str) -> Optional[MonitoringForm]:
+        # Reuse read_forms logic but filter by ID
+        # Since read_forms computes everything globally, we can just filter it.
+        own_forms = self.read_forms(own_forms=True)
+        sub_forms = self.read_forms(own_forms=False)
+        
+        for f in own_forms:
+            if f.id == form_id:
+                return f
+        for f in sub_forms:
+            if f.id == form_id:
+                return f
+        
+        # If it doesn't match own or subordinates, but user is full access, it might be an inactive form.
+        # But read_forms only returns active forms.
+        # Let's fallback if the form wasn't in the active matching forms.
+        # For full access, they can view inactive forms detail if needed.
+        if self._is_full_access:
+            return self.MonitoringFormModel.objects.filter(id=form_id).first()
+            
+        raise MonitoringFormPermissionError('No tienes permiso para ver los detalles de este formulario o no existe.')
+
+    from django.db import transaction
+
+    @transaction.atomic
+    def create_form(self, form_data: dict, formset_data: list) -> MonitoringForm:
+        if not self._is_full_access:
+            raise MonitoringFormPermissionError('Solo los administradores pueden crear formularios de monitoreo.')
+            
+        form_instance = self.MonitoringFormModel.objects.create(**form_data)
+        
+        for q_data in formset_data:
+            if not q_data.get('DELETE', False):
+                self.MonitoringFormQuestionModel.objects.create(
+                    form=form_instance,
+                    question=q_data['question'],
+                    order=q_data.get('order', 1),
+                    hierarchy_level=q_data.get('hierarchy_level'),
+                    position=q_data.get('position')
+                )
+                
+        return form_instance
+
+    @transaction.atomic
+    def update_form(self, form_instance: MonitoringForm, form_data: dict, formset_data: list, deleted_questions: list) -> MonitoringForm:
+        if not self._is_full_access:
+            raise MonitoringFormPermissionError('Solo los administradores pueden editar formularios de monitoreo.')
+            
+        for key, value in form_data.items():
+            setattr(form_instance, key, value)
+        form_instance.save()
+        
+        # Handle deletes
+        if deleted_questions:
+            self.MonitoringFormQuestionModel.objects.filter(id__in=deleted_questions).delete()
+            
+        # Handle updates and creates
+        for q_data in formset_data:
+            q_id = q_data.get('id')
+            if q_id:
+                q_instance = self.MonitoringFormQuestionModel.objects.get(id=q_id)
+                q_instance.question = q_data['question']
+                q_instance.order = q_data.get('order', 1)
+                q_instance.hierarchy_level = q_data.get('hierarchy_level')
+                q_instance.position = q_data.get('position')
+                q_instance.save()
+            else:
+                self.MonitoringFormQuestionModel.objects.create(
+                    form=form_instance,
+                    question=q_data['question'],
+                    order=q_data.get('order', 1),
+                    hierarchy_level=q_data.get('hierarchy_level'),
+                    position=q_data.get('position')
+                )
+                
+        return form_instance

@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Detalle del reporte: {{ monitoring_form.name|title }}
+{% endblock %}
+
+{% block module_name %}
+Reporte: {{ monitoring_form.name|title }}
+{% endblock %}
+
+{% block module_actions %}
+<a href="{% url 'human_resources:monitoring_form_list_view' %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Volver al listado">
+    Regresar
+</a>
+{% if can_edit %}
+<a href="{% url 'human_resources:monitoring_form_update_view' pk=monitoring_form.id %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 ml-4" title="Editar reporte">
+    Editar reporte
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+
+    <!-- General Info -->
+    <p class="text-title text-sm">Información general</p>
+    <hr class="border-border border">
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-container border border-border rounded p-4">
+        <div>
+            <p class="text-title text-xs">ID</p>
+            <p class="text-strong font-mono uppercase">{{ monitoring_form.id }}</p>
+        </div>
+        <div>
+            <p class="text-title text-xs">Nombre</p>
+            <p class="text-strong truncate" title="{{ monitoring_form.name }}">{{ monitoring_form.name|title }}</p>
+        </div>
+        <div>
+            <p class="text-title text-xs">Versión</p>
+            <p class="text-strong">{{ monitoring_form.version|default:"-" }}</p>
+        </div>
+        <div>
+            <p class="text-title text-xs">Periodicidad</p>
+            <p class="text-strong">{{ monitoring_form.get_periodicity_display }}</p>
+        </div>
+        <div>
+            <p class="text-title text-xs">Estado</p>
+            <p class="text-strong">
+                {% if monitoring_form.is_active %}
+                <span class="text-green-500">Activo</span>
+                {% else %}
+                <span class="text-red-500">Inactivo</span>
+                {% endif %}
+            </p>
+        </div>
+        <div>
+            <p class="text-title text-xs">Fecha de creación</p>
+            <p class="text-strong">{{ monitoring_form.created_at|date:"d M Y" }}</p>
+        </div>
+    </div>
+
+    <!-- Questions -->
+    <p class="text-title text-sm mt-4">Preguntas configuradas</p>
+    <hr class="border-border border">
+    
+    {% if questions %}
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-50">
+        <table class="w-full text-left border-spacing-0 border-separate">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="p-2 w-16 text-center text-title bg-page">Orden</th>
+                    <th class="p-2 text-title bg-page">Pregunta base</th>
+                    <th class="p-2 text-title bg-page text-center">Nivel objetivo</th>
+                    <th class="p-2 text-title bg-page text-center">Posición objetivo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for q in questions %}
+                <tr class="border-b border-border text-sm">
+                    <td class="p-2 text-center text-strong font-mono">{{ q.order }}</td>
+                    <td class="p-2 text-strong">{{ q.question.label }}</td>
+                    <td class="p-2 text-center text-strong">{{ q.get_hierarchy_level_display|default:"-" }}</td>
+                    <td class="p-2 text-center text-strong">{{ q.position.name|title|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="p-4 text-center text-strong border border-border rounded bg-container">
+        Este reporte no tiene preguntas configuradas.
+    </div>
+    {% endif %}
+
+    <!-- Submissions -->
+    <p class="text-title text-sm mt-4">Envíos realizados (Historial)</p>
+    <hr class="border-border border">
+    
+    {% if submissions %}
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-50">
+        <table class="w-full text-left border-spacing-0 border-separate">
+            <thead>
+                <tr class="border-b border-border">
+                    <th class="p-2 text-title bg-page text-center w-24">Fecha</th>
+                    <th class="p-2 text-title bg-page">Colaborador evaluado</th>
+                    <th class="p-2 text-title bg-page">Nivel</th>
+                    <th class="p-2 text-title bg-page">Posición</th>
+                    <th class="p-2 w-32 text-center text-title bg-page">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in submissions %}
+                <tr class="hover:bg-page cursor-pointer transition-colors border-b border-border text-sm group"
+                    hx-get="{% url 'human_resources:monitoring_submission_detail_view' pk=sub.id %}"
+                    hx-target="#main_body"
+                    hx-push-url="true"
+                    hx-swap="innerHTML transition:true">
+                    <td class="p-2 text-center text-strong font-mono">{{ sub.created_at|date:"d M Y" }}</td>
+                    <td class="p-2 text-strong truncate" title="{{ sub.employee.user.first_name }} {{ sub.employee.user.last_name }}">
+                        {{ sub.employee.user.first_name|title }} {{ sub.employee.user.last_name|title }}
+                    </td>
+                    <td class="p-2 text-strong">
+                        {{ sub.employee.position.get_hierarchy_level_display|default:"-" }}
+                    </td>
+                    <td class="p-2 text-strong truncate" title="{{ sub.employee.position.name }}">
+                        {{ sub.employee.position.name|title|default:"-" }}
+                    </td>
+                    <td class="p-2 flex gap-4 justify-center items-center h-full min-w-[150px]" onclick="event.stopPropagation()">
+                        <a href="{% url 'human_resources:monitoring_submission_detail_view' pk=sub.id %}" 
+                           class="hover:text-hover text-strong transition-colors" 
+                           title="Ver respuestas">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="p-4 text-center text-strong border border-border rounded bg-container">
+        Aún no hay envíos realizados para este reporte.
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

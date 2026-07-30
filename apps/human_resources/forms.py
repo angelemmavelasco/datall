@@ -119,3 +119,110 @@ class EmployeeForm(forms.ModelForm):
                 self.add_error('position', msg)
 
         return cleaned_data
+
+class MonitoringFormForm(forms.ModelForm):
+    class Meta:
+        from apps.human_resources.models import MonitoringForm
+        model = MonitoringForm
+        fields = ['id', 'name', 'version', 'periodicity', 'is_active']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['id'].required = False
+        if self.instance and self.instance.pk:
+            self.fields['id'].disabled = True
+
+    def clean_id(self):
+        id_val = self.cleaned_data.get('id')
+        if not id_val:
+            while True:
+                generated_id = str(uuid.uuid4())[-5:].upper()
+                from apps.human_resources.models import MonitoringForm
+                if not MonitoringForm.objects.filter(pk=generated_id).exists():
+                    return generated_id
+        return id_val.strip().upper()
+
+class MonitoringFormQuestionForm(forms.ModelForm):
+    class Meta:
+        from apps.human_resources.models import MonitoringFormQuestion
+        model = MonitoringFormQuestion
+        fields = ['question', 'order', 'hierarchy_level', 'position']
+
+    def clean(self):
+        cleaned_data = super().clean()
+        hierarchy_level = cleaned_data.get('hierarchy_level')
+        position = cleaned_data.get('position')
+        return cleaned_data
+
+from apps.human_resources.models import MonitoringForm, MonitoringFormQuestion
+MonitoringFormQuestionFormSet = inlineformset_factory(
+    MonitoringForm,
+    MonitoringFormQuestion,
+    form=MonitoringFormQuestionForm,
+    fields=['question', 'order', 'hierarchy_level', 'position'],
+    extra=1,
+    can_delete=True
+)
+
+class MonitoringSubmissionForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        self.monitoring_form = kwargs.pop('monitoring_form', None)
+        self.employee = kwargs.pop('employee', None)
+        super().__init__(*args, **kwargs)
+
+        if self.monitoring_form and self.employee:
+            emp_pos = self.employee.position
+            emp_level = emp_pos.hierarchy_level if emp_pos else None
+
+            questions = self.monitoring_form.human_resources_form_questions.filter(
+                question__is_active=True
+            ).select_related('question').order_by('order')
+
+            self.hierarchy_fields = []
+            self.position_fields = []
+
+            for mq in questions:
+                # Validar si aplica al empleado
+                is_applicable = False
+                if mq.hierarchy_level and mq.hierarchy_level == emp_level:
+                    is_applicable = True
+                elif mq.position_id and mq.position_id == emp_pos.id:
+                    is_applicable = True
+                elif not mq.hierarchy_level and not mq.position_id:
+                    is_applicable = True
+
+                if not is_applicable:
+                    continue
+
+                q = mq.question
+                field_name = f'question_{mq.id}'
+                
+                # Tipo de respuesta
+                if q.response_type == 'boolean':
+                    field = forms.BooleanField(label=q.label, required=False)
+                elif q.response_type == 'scale_1_5':
+                    field = forms.ChoiceField(
+                        label=q.label,
+                        choices=[(i, str(i)) for i in range(1, 6)],
+                        required=True
+                    )
+                elif q.response_type == 'percentage':
+                    field = forms.IntegerField(
+                        label=q.label, 
+                        min_value=0, 
+                        max_value=100,
+                        required=True
+                    )
+                elif q.response_type == 'number':
+                    field = forms.FloatField(label=q.label, required=True)
+                elif q.response_type == 'file':
+                    field = forms.FileField(label=q.label, required=True)
+                else:
+                    field = forms.CharField(label=q.label, widget=forms.Textarea(attrs={'rows': 2}), required=True)
+
+                self.fields[field_name] = field
+                
+                if mq.position_id:
+                    self.position_fields.append(field_name)
+                else:
+                    self.hierarchy_fields.append(field_name)

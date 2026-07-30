@@ -1,3 +1,4 @@
+from apps.human_resources.views import monitoring_form_list_view
 from django.urls import path
 from apps.human_resources.views import *
 
@@ -44,4 +45,11 @@ urlpatterns = [
     path('employee/create/', employee_create_form, name='employee_create_form'),
     path('employee/<str:pk>/edit/', employee_update_form, name='employee_update_form'),
     path('employee/<str:pk>/', employee_details, name='employee_details_view'),
+
+    path('monitoring/', monitoring_form_list_view, name='monitoring_form_list_view'),
+    path('monitoring/create/', monitoring_form_create_view, name='monitoring_form_create_view'),
+    path('monitoring/<str:pk>/edit/', monitoring_form_update_view, name='monitoring_form_update_view'),
+    path('monitoring/<str:pk>/', monitoring_form_detail_view, name='monitoring_form_detail_view'),
+    path('monitoring/<str:pk>/submit/', monitoring_submission_create_view, name='monitoring_submission_create_view'),
+    path('monitoring/submissions/<str:pk>/', monitoring_submission_detail_view, name='monitoring_submission_detail_view'),
 ]

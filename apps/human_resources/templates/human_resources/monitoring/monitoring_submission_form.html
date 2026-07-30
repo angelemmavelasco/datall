@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}
+{{ monitoring_form.name|title }}
+{% endblock %}
+
+{% block module_name %}
+{{ monitoring_form.name|title }}
+{% endblock %}
+
+{% block module_actions %}
+{% endblock %}
+
+{% block content %}
+<form method="POST" enctype="multipart/form-data" class="flex flex-col gap-4">
+    {% csrf_token %}
+
+    <div class="bg-container border border-border rounded p-4 flex flex-col gap-2">
+        <p class="text-title text-sm">Información del reporte</p>
+        <hr class="border-border border mb-2">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+                <p class="text-title text-xs">Reporte</p>
+                <p class="text-strong">{{ monitoring_form.name|title }}</p>
+            </div>
+            <div>
+                <p class="text-title text-xs">Colaborador evaluado</p>
+                <p class="text-strong">{{ employee.user.first_name|title }} {{ employee.user.last_name|title }}</p>
+            </div>
+            <div>
+                <p class="text-title text-xs">Nivel</p>
+                <p class="text-strong">{{ employee.position.get_hierarchy_level_display }}</p>
+            </div>
+            <div>
+                <p class="text-title text-xs">Posición</p>
+                <p class="text-strong">{{ employee.position.name|title }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-container border border-border rounded p-4 flex flex-col gap-4">
+        <p class="text-title text-sm">Cuestionario</p>
+        <hr class="border-border border mb-2">
+        
+        <div class="flex flex-col gap-4">
+            {% for field in form %}
+            <div class="flex flex-col gap-1">
+                <span class="text-title text-xs flex gap-1 items-center">
+                    {{ field.label }}
+                    {% if field.field.required %}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="text-red-500 lucide lucide-asterisk">
+                        <path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" />
+                    </svg>
+                    {% endif %}
+                </span>
+                
+                {% if field.field.widget.input_type == 'checkbox' %}
+                    <div class="mt-1">
+                        {% render_field field class='w-4 h-4 text-strong bg-page border-border rounded focus:ring-strong cursor-pointer' %}
+                    </div>
+                {% else %}
+                    {% render_field field class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-2' %}
+                {% endif %}
+                
+                {% if field.errors %}
+                <p class="text-red-500 text-xs flex flex-col gap-1 mt-1">
+                    {% for error in field.errors %}
+                    <span class="block">• {{ error }}</span>
+                    {% endfor %}
+                </p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-2 mt-4">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            Enviar reporte
+        </button>
+        <a href="{% url 'human_resources:monitoring_form_list_view' %}"
+            class=" border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            Cancelar
+        </a>
+    </div>
+</form>
+{% endblock %}

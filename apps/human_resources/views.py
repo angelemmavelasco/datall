@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from apps.human_resources.services.employees import employees_crud
 from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
 from apps.core.models import (
@@ -26,6 +27,7 @@ from apps.human_resources.services.comissions.comissions import Comissions, Comm
 from apps.human_resources.services.departments import DepartmentsService, DepartmentsKPIsService, ServiceError
 from apps.human_resources.services.employees_service import EmployeesService, EmployeesKpisService
 from apps.human_resources.services.positions import PositionsService, PositionsKPIsService
+from apps.human_resources.services.monitoring import MonitoringService
 from apps.human_resources.filters import DepartmentFilter, PositionFilter, SkillFilter, EmployeeFilter
 from apps.human_resources.forms import DepartmentForm, PositionForm, SkillForm, PositionSkillFormSet, EmployeeForm
 from django.core.paginator import Paginator
@@ -1380,6 +1382,214 @@ def employee_details(request, pk):
     return render(request, template, context)
 
 @login_required
-def monitoring_form_view(request):
-    template = 'human_resources/monitoring/monitoring_form.html'
+def monitoring_form_list_view(request):
+    template = 'human_resources/monitoring/monitoring_form_list.html'
+    
+    monitoring_service = MonitoringService(user=request.user)
+    own_active_forms = monitoring_service.read_forms(own_forms=True)
+    subordinates_active_forms = monitoring_service.read_forms(own_forms=False)
+    
+    can_create = monitoring_service._is_full_access
+
+    context = {
+        'own_active_forms': own_active_forms,
+        'subordinates_active_forms': subordinates_active_forms,
+        'can_create': can_create,
+    }
+    return render(request, template, context)
+
+from apps.human_resources.forms import MonitoringFormForm, MonitoringFormQuestionFormSet
+
+@login_required
+def monitoring_form_create_view(request):
+    template = 'human_resources/monitoring/monitoring_form_form.html'
+    monitoring_service = MonitoringService(user=request.user)
+    
+    if not monitoring_service._is_full_access:
+        messages.error(request, 'No tienes permisos para crear reportes.')
+        return redirect('human_resources:monitoring_form_list_view')
+
+    if request.method == 'POST':
+        form = MonitoringFormForm(request.POST)
+        formset = MonitoringFormQuestionFormSet(request.POST)
+        
+        if form.is_valid() and formset.is_valid():
+            try:
+                form_data = form.cleaned_data
+                formset_data = [f.cleaned_data for f in formset.forms if f.cleaned_data and not f.cleaned_data.get('DELETE', False)]
+                monitoring_service.create_form(form_data, formset_data)
+                messages.success(request, 'Formulario creado exitosamente.')
+                return redirect('human_resources:monitoring_form_list_view')
+            except Exception as e:
+                messages.error(request, f'Error al crear el formulario: {str(e)}')
+    else:
+        form = MonitoringFormForm()
+        formset = MonitoringFormQuestionFormSet()
+
+    context = {
+        'form': form,
+        'formset': formset,
+        'creating': True
+    }
+    return render(request, template, context)
+
+@login_required
+def monitoring_form_update_view(request, pk):
+    template = 'human_resources/monitoring/monitoring_form_form.html'
+    monitoring_service = MonitoringService(user=request.user)
+    
+    if not monitoring_service._is_full_access:
+        messages.error(request, 'No tienes permisos para editar reportes.')
+        return redirect('human_resources:monitoring_form_list_view')
+
+    try:
+        form_instance = monitoring_service.MonitoringFormModel.objects.get(pk=pk)
+    except monitoring_service.MonitoringFormModel.DoesNotExist:
+        messages.error(request, 'Formulario no encontrado.')
+        return redirect('human_resources:monitoring_form_list_view')
+
+    if request.method == 'POST':
+        form = MonitoringFormForm(request.POST, instance=form_instance)
+        formset = MonitoringFormQuestionFormSet(request.POST, instance=form_instance)
+        
+        if form.is_valid() and formset.is_valid():
+            try:
+                form_data = form.cleaned_data
+                deleted_questions = [f.instance.id for f in formset.deleted_forms if f.instance.id]
+                formset_data = []
+                for f in formset.forms:
+                    if f.cleaned_data and not f.cleaned_data.get('DELETE', False):
+                        q_data = f.cleaned_data
+                        if f.instance.pk:
+                            q_data['id'] = f.instance.pk
+                        formset_data.append(q_data)
+                
+                monitoring_service.update_form(form_instance, form_data, formset_data, deleted_questions)
+                messages.success(request, 'Formulario actualizado exitosamente.')
+                return redirect('human_resources:monitoring_form_list_view')
+            except Exception as e:
+                messages.error(request, f'Error al actualizar el formulario: {str(e)}')
+    else:
+        form = MonitoringFormForm(instance=form_instance)
+        formset = MonitoringFormQuestionFormSet(instance=form_instance)
+
+    context = {
+        'form': form,
+        'formset': formset,
+        'creating': False
+    }
+    return render(request, template, context)
+
+@login_required
+def monitoring_form_detail_view(request, pk):
+    template = 'human_resources/monitoring/monitoring_form_detail.html'
+    monitoring_service = MonitoringService(user=request.user)
+    
+    try:
+        form_instance = monitoring_service.read_form_detail(form_id=pk)
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:monitoring_form_list_view')
+        
+    questions = monitoring_service.read_form_questions(form_id=pk)
+    submissions = monitoring_service.read_submissions().filter(form_id=pk)
+
+    context = {
+        'monitoring_form': form_instance,
+        'questions': questions,
+        'submissions': submissions,
+        'can_edit': monitoring_service._is_full_access
+    }
+    return render(request, template, context)
+
+@login_required
+def monitoring_submission_detail_view(request, pk):
+    template = 'human_resources/monitoring/monitoring_submission_detail.html'
+    monitoring_service = MonitoringService(user=request.user)
+    
+    try:
+        submission = monitoring_service.read_submissions().get(pk=pk)
+    except Exception:
+        messages.error(request, 'No tienes permisos para ver este envío o no existe.')
+        return redirect('human_resources:monitoring_form_list_view')
+        
+    answers = monitoring_service.MonitoringFormAnswerModel.objects.filter(
+        submission=submission
+    ).select_related('question')
+
+    context = {
+        'submission': submission,
+        'answers': answers,
+    }
+    return render(request, template, context)
+
+from apps.human_resources.forms import MonitoringSubmissionForm
+from django.db import transaction
+
+@login_required
+def monitoring_submission_create_view(request, pk):
+    template = 'human_resources/monitoring/monitoring_submission_form.html'
+    monitoring_service = MonitoringService(user=request.user)
+    own_forms = monitoring_service.read_forms(own_forms=True)
+    form_instance = next((f for f in own_forms if f.id == pk), None)
+    
+    if not form_instance:
+        messages.error(request, 'Este reporte no está asignado a ti o no existe.')
+        return redirect('human_resources:monitoring_form_list_view')
+
+    employee = None
+    for emp in monitoring_service._get_active_user_employees():
+        emp_level = emp.position.hierarchy_level if emp.position else None
+        emp_pos = emp.position_id
+        for q in form_instance.human_resources_form_questions.all():
+            if (q.hierarchy_level and q.hierarchy_level == emp_level) or \
+               (q.position_id and q.position_id == emp_pos) or \
+               (not q.hierarchy_level and not q.position_id):
+                employee = emp
+                break
+        if employee:
+            break
+            
+    if not employee:
+        messages.error(request, 'No se encontró un perfil de colaborador compatible con este reporte.')
+        return redirect('human_resources:monitoring_form_list_view')
+
+    if request.method == 'POST':
+        form = MonitoringSubmissionForm(request.POST, request.FILES, monitoring_form=form_instance, employee=employee)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    import datetime
+                    submission = monitoring_service.MonitoringFormSubmissionModel.objects.create(
+                        employee=employee,
+                        form=form_instance,
+                        period_identifier=timezone.now().strftime('%Y-%W-%H%M%S'),
+                        submitted_at=timezone.now(),
+                        status='submitted'
+                    )
+                    
+                    for field_name, value in form.cleaned_data.items():
+                        if field_name.startswith('question_'):
+                            q_id = int(field_name.replace('question_', ''))
+                            q_obj = monitoring_service.MonitoringFormQuestionModel.objects.get(id=q_id)
+                            monitoring_service.MonitoringFormAnswerModel.objects.create(
+                                submission=submission,
+                                question=q_obj,
+                                value={'answer': str(value) if value is not None else ''}
+                            )
+                messages.success(request, 'Reporte enviado exitosamente.')
+                return redirect('human_resources:monitoring_form_list_view')
+            except Exception as e:
+                messages.error(request, f'Error al guardar el reporte: {str(e)}')
+    else:
+        form = MonitoringSubmissionForm(monitoring_form=form_instance, employee=employee)
+
+    context = {
+        'form': form,
+        'monitoring_form': form_instance,
+        'employee': employee,
+    }
+    return render(request, template, context)
+
+
     
