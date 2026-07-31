@@ -139,15 +139,16 @@ class StockTransferCalculatorService:
                     'products': []
                 }
                 
-            # Calculate initial metrics for default coverage (1.0)
-            target_stock = avg_monthly * Decimal('1.0')
-            initial_suggestion = max(target_stock - current_stock - in_transit, Decimal('0.00'))
-            if target_stock > 0:
-                initial_coverage = (current_stock / target_stock) * Decimal('100.0')
+            # Cobertura actual
+            if avg_monthly > 0:
+                initial_coverage = (current_stock / avg_monthly) * Decimal('100.0')
             elif current_stock > 0:
                 initial_coverage = Decimal('100.0')
             else:
                 initial_coverage = Decimal('0.00')
+
+            target_stock = avg_monthly * Decimal('1.0')
+            initial_suggestion = max(target_stock - current_stock - in_transit, Decimal('0.00'))
 
             grouped_results[class_id]['products'].append({
                 'product_id': p.id,
@@ -164,11 +165,9 @@ class StockTransferCalculatorService:
             
         final_results = []
         for class_id, data in grouped_results.items():
-            # Sort products by sold_qty descending
             data['products'].sort(key=lambda x: x['sold_qty'], reverse=True)
             final_results.append(data)
             
-        # Sort classes by name
         final_results.sort(key=lambda x: x['class_name'])
             
         return final_results
@@ -265,9 +264,9 @@ class StockTransferCalculatorService:
                     
                     # Apply formulas:
                     # Transferencia (Col I) = MAX((Promedio*CoberturaSolicitada)-Existencias-Transito, 0)
-                    # Cobertura actual (%) (Col G) = IF((Promedio*CoberturaSolicitada)>0, (Existencias/(Promedio*CoberturaSolicitada))*100, IF(Existencias>0, 100, 0))
+                    # Cobertura actual (%) (Col G) = IF(Promedio>0, (Existencias/Promedio)*100, IF(Existencias>0, 100, 0))
                     formula_transfer = f"=MAX((D{data_row}*H{data_row})-E{data_row}-F{data_row}, 0)"
-                    formula_cov_act = f"=IF((D{data_row}*H{data_row})>0, (E{data_row}/(D{data_row}*H{data_row}))*100, IF(E{data_row}>0, 100, 0))"
+                    formula_cov_act = f"=IF(D{data_row}>0, (E{data_row}/D{data_row})*100, IF(E{data_row}>0, 100, 0))"
                     
                     ws.cell(row=data_row, column=9, value=formula_transfer)
                     ws.cell(row=data_row, column=7, value=formula_cov_act)
