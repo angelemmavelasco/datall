@@ -554,9 +554,6 @@
   .h-4 {
     height: calc(var(--spacing) * 4);
   }
-  .h-5 {
-    height: calc(var(--spacing) * 5);
-  }
   .h-6 {
     height: calc(var(--spacing) * 6);
   }
@@ -607,9 +604,6 @@
   }
   .h-screen {
     height: 100vh;
-  }
-  .max-h-10 {
-    max-height: calc(var(--spacing) * 10);
   }
   .max-h-16 {
     max-height: calc(var(--spacing) * 16);
@@ -764,9 +758,6 @@
   .max-w-0 {
     max-width: 0px;
   }
-  .max-w-2xl {
-    max-width: var(--container-2xl);
-  }
   .max-w-3xl {
     max-width: var(--container-3xl);
   }
@@ -856,9 +847,6 @@
   }
   .min-w-\[150px\] {
     min-width: 150px;
-  }
-  .min-w-\[180px\] {
-    min-width: 180px;
   }
   .min-w-\[200px\] {
     min-width: 200px;
@@ -1166,12 +1154,6 @@
     --tw-border-style: none;
     border-style: none;
   }
-  .border-blue-500\/20 {
-    border-color: color-mix(in srgb, oklch(62.3% 0.214 259.815) 20%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      border-color: color-mix(in oklab, var(--color-blue-500) 20%, transparent);
-    }
-  }
   .border-border {
     border-color: var(--color-border);
   }
@@ -1213,12 +1195,6 @@
   }
   .bg-black {
     background-color: var(--color-black);
-  }
-  .bg-blue-500\/10 {
-    background-color: color-mix(in srgb, oklch(62.3% 0.214 259.815) 10%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      background-color: color-mix(in oklab, var(--color-blue-500) 10%, transparent);
-    }
   }
   .bg-body {
     background-color: var(--color-body);
@@ -1454,9 +1430,6 @@
   .text-right {
     text-align: right;
   }
-  .align-middle {
-    vertical-align: middle;
-  }
   .font-mono {
     font-family: var(--font-mono);
   }
@@ -1634,9 +1607,6 @@
   }
   .text-red-700 {
     color: var(--color-red-700);
-  }
-  .text-red-800 {
-    color: var(--color-red-800);
   }
   .text-sky-400 {
     color: var(--color-sky-400);
@@ -1882,9 +1852,6 @@
     .hover\:border-strong:hover {
       border-color: var(--color-strong);
     }
-    .hover\:bg-container:hover {
-      background-color: var(--color-container);
-    }
     .hover\:bg-hover:hover {
       background-color: var(--color-hover);
     }
@@ -1927,9 +1894,6 @@
     }
     .hover\:opacity-75:hover {
       opacity: 75%;
-    }
-    .hover\:opacity-90:hover {
-      opacity: 90%;
     }
     .hover\:file\:bg-border:hover::file-selector-button {
       background-color: var(--color-border);
