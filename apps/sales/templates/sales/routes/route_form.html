@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load widget_tweaks %}
+
+{% block title %}
+{% if creating %}
+Nueva ruta
+{% else %}
+Editar ruta
+{% endif %}
+{% endblock %}
+
+{% block module_name %}
+{% if creating %}
+Nueva ruta
+{% else %}
+Editar ruta
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="flex flex-col gap-4">
+    {% csrf_token %}
+
+    <p class="text-title text-sm">Información de la ruta</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title flex items-center gap-1">Número de ruta
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ej. RUTA-001' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.id.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Nombre
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Nombre de la ruta' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.name.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Gerencia
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.business_unit class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.business_unit.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Tipo de ruta
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.route_type class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.route_type.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Canal de venta
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.sale_channel class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.sale_channel.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Ruta activa</span>
+        <div class="flex items-center gap-2">
+            {% render_field form.is_active class='bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <span class="text-body text-sm">Marcar como apta para asignación u operando</span>
+        </div>
+
+        <span class="text-title self-start mt-2">Notas</span>
+        <div class="mt-2">
+            {% render_field form.notes class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Notas sobre la ruta (opcional)' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.notes.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between mt-4">
+        <p class="text-title text-sm">Usuarios con acceso a la ruta (solo vista)</p>
+        <button type="button" id="add-access-form" class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+            Agregar usuario
+        </button>
+    </div>
+    <hr class="border-border border">
+
+    {{ formset.management_form }}
+
+    <div id="formset-container" class="flex flex-col gap-4">
+        {% for f in formset %}
+        <div class="access-form grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 items-center bg-container p-2 rounded relative">
+
+            {% for hidden in f.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+
+            <div class="flex flex-col gap-1">
+                <span class="text-title text-xs">Usuario</span>
+                {% render_field f.user class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+                {% for error in f.user.errors %}
+                <span class="text-red-500 text-xs">• {{ error }}</span>
+                {% endfor %}
+            </div>
+
+            <div class="flex flex-col gap-1 items-center">
+                <span class="text-title text-xs">¿Puede ver?</span>
+                {% render_field f.can_view class='bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            </div>
+
+            <div class="flex items-center justify-center pt-5">
+                {% if formset.can_delete %}
+                    <label class="hidden">Eliminar: {{ f.DELETE }}</label>
+                {% endif %}
+                <button type="button" class="remove-access-form text-red-500 hover:text-red-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-minus-icon lucide-circle-minus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+                </button>
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Template for new dynamic forms -->
+    <div id="empty-form" class="hidden">
+        <div class="access-form grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 items-center bg-container p-2 rounded relative mt-2">
+
+            {% for hidden in formset.empty_form.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+
+            <div class="flex flex-col gap-1">
+                <span class="text-title text-xs">Usuario</span>
+                {% render_field formset.empty_form.user class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            </div>
+
+            <div class="flex flex-col gap-1 items-center">
+                <span class="text-title text-xs">¿Puede ver?</span>
+                {% render_field formset.empty_form.can_view class='bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            </div>
+
+            <div class="flex items-center justify-center pt-5">
+                {% if formset.can_delete %}
+                    <label class="hidden">Eliminar: {{ formset.empty_form.DELETE }}</label>
+                {% endif %}
+                <button type="button" class="remove-access-form text-red-500 hover:text-red-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-minus-icon lucide-circle-minus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-2 mt-4">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            Confirmar
+        </button>
+        <a href="{% if creating %}{% url 'sales:routes_list_view' %}{% else %}{% url 'sales:route_detail_view' form.instance.id %}{% endif %}"
+            class="border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            Cancelar
+        </a>
+    </div>
+
+</form>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const addButton = document.getElementById("add-access-form");
+        const formsetContainer = document.getElementById("formset-container");
+        const emptyFormTemplate = document.getElementById("empty-form").innerHTML;
+        const totalFormsInput = document.getElementById("id_sales_user_route_access_set-TOTAL_FORMS");
+
+        addButton.addEventListener("click", function () {
+            const formCount = parseInt(totalFormsInput.value);
+            const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, formCount);
+
+            formsetContainer.insertAdjacentHTML('beforeend', newFormHtml);
+            totalFormsInput.value = formCount + 1;
+        });
+
+        formsetContainer.addEventListener("click", function (e) {
+            const removeButton = e.target.closest('.remove-access-form');
+            if (removeButton) {
+                const accessForm = removeButton.closest('.access-form');
+
+                const deleteInput = accessForm.querySelector('input[name$="-DELETE"]');
+                if (deleteInput) {
+                    deleteInput.checked = true;
+                    accessForm.style.display = 'none';
+                } else {
+                    accessForm.remove();
+                }
+            }
+        });
+    });
+</script>
+
+{% endblock %}

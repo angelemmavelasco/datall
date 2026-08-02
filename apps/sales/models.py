@@ -34,6 +34,7 @@ class Route(models.Model):
     route_type = models.ForeignKey('RouteType', on_delete=models.PROTECT, related_name='%(app_label)s_routes', help_text='Tipo de ruta')
     sale_channel = models.ForeignKey('SaleChannel', on_delete=models.PROTECT, related_name='%(app_label)s_routes', help_text='Canal de venta asociado a la ruta')
     notes = models.TextField(null=True, blank=True, help_text='Notas sobre la ruta')
+    is_active = models.BooleanField(default=False, help_text="Indica si la ruta es apta para asignación a un colaborador o esta operando")
     
     class Meta:
         verbose_name = 'Ruta'

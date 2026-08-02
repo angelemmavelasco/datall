@@ -1,0 +1,95 @@
+{% load humanize %}
+<div class="flex flex-col w-full gap-4" id="route-list-content">
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Resumen de rutas</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="Rutas totales a las cuales se tiene acceso general de visualización y reportes">
+            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
+                Rutas registradas
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            </p>
+            <p class="text-xl text-blue-500">
+                <span>
+                    {{ kpis.registered_routes|default:0|floatformat:0|intcomma }}
+                </span>
+            </p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
+            data-title="Rutas que se encuentran en estado activo, no necesariamente con colaborador asignado para venta, simplemente está dentro de los registros disponibles y apta para asignación">
+            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
+                Rutas activas
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            </p>
+            <p class="text-xl text-emerald-500">
+                <span>
+                    {{ kpis.active_routes|default:0|floatformat:0|intcomma }}
+                </span>
+            </p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-left"
+            data-title="Rutas asignadas para venta a colaboradores terceros">
+            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
+                Rutas asignadas
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            </p>
+            <p class="text-xl text-violet-500">
+                <span>
+                    {{ kpis.assigned_routes|default:0|floatformat:0|intcomma }}
+                </span>
+            </p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container custom-tooltip tooltip-right"
+            data-title="Rutas propias asignadas para venta">
+            <p class="text-sm text-strong w-max cursor-pointer flex items-center gap-1">
+                Rutas propias
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            </p>
+            <p class="text-xl text-gray-500">
+                <span>
+                    {{ kpis.own_routes|default:0|floatformat:0|intcomma }}
+                </span>
+            </p>
+        </div>
+    </div>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th
+                        class="min-w-[80px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        ID</th>
+                    <th
+                        class="min-w-[200px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Nombre</th>
+                    <th
+                        class="min-w-[200px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Colaborador asignado</th>
+                    <th
+                        class="min-w-[200px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Gerencia</th>
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Tipo de ruta</th>
+                    <th
+                        class="min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Canal de venta</th>
+                </tr>
+            </thead>
+
+            <tbody id="report-container">
+                {% include "sales/routes/partials/route_list_rows.html" %}
+            </tbody>
+        </table>
+    </div>
+
+</div>

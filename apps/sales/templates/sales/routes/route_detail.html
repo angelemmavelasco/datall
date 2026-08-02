@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}
+Detalle de la ruta
+{% endblock %}
+
+{% block module_name %}
+Detalle de la ruta
+{% endblock %}
+
+{% block module_actions %}
+    {% if can_edit %}
+    <a href="{% url 'sales:route_update_view' route.id %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Editar ruta">
+        Editar
+    </a>
+    {% endif %}
+{% endblock module_actions %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+
+    <p class="text-title text-sm">Información de la ruta</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+
+        <span class="text-title">Ruta</span>
+        <div class="w-full text-body flex items-center">
+            {{ route.id|upper }}
+        </div>
+
+        <span class="text-title">Nombre</span>
+        <div class="w-full text-body flex items-center">
+            {{ route.name|title|default:"-" }}
+        </div>
+
+        <span class="text-title">Gerencia</span>
+        <div class="w-full text-body flex items-center">
+            {% if route.business_unit %}
+                {{ route.business_unit.name|title }}
+            {% else %}
+                <span class="text-body">-</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Tipo de ruta</span>
+        <div class="w-full text-body flex items-center">
+            {% if route.route_type %}
+                {{ route.route_type.name|title }}
+            {% else %}
+                <span class="text-body">-</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Canal de venta</span>
+        <div class="w-full text-body flex items-center">
+            {% if route.sale_channel %}
+                {{ route.sale_channel.name|title }}
+            {% else %}
+                <span class="text-body">-</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title self-start mt-2">Notas</span>
+        <div class="w-full text-body flex items-center">
+            {{ route.notes|default:"--- ---" }}
+        </div>
+    </div>
+
+    {% if can_edit %}
+        <p class="text-title text-sm">Historial de asignaciones</p>
+        <hr class="border-border border">
+
+        {% for assignment in assignment_history %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+
+                <span class="text-title">Colaborador asignado</span>
+                <div class="w-full text-body flex items-center">
+                    {{ assignment.employee.user.first_name|title }} {{ assignment.employee.user.last_name|title }}
+                </div>
+
+                <span class="text-title">Fecha inicio</span>
+                <div class="w-full text-body flex items-center">
+                    {{ assignment.date_start|date:"d/m/Y" }}
+                </div>
+
+                <span class="text-title">Fecha fin</span>
+                <div class="w-full text-body flex items-center">
+                    {% if assignment.date_end %}
+                        {{ assignment.date_end|date:"d/m/Y" }}
+                    {% else %}
+                        --- ---
+                    {% endif %}
+                </div>
+
+                <span class="text-title">Notas</span>
+                <div class="w-full text-body flex items-center">
+                    {{ assignment.notes|default:'--- ---'|title }}
+                </div>
+
+            </div>
+
+
+            {% empty %}
+
+            <div class="grid grid-cols-1 gap-2 items-center bg-container p-2 rounded">
+
+                <span class="text-title">No se han realizado asignaciones a colaboradores</span>
+
+
+            </div>
+
+
+
+        {% endfor %}
+
+    {% endif %}
+
+
+</div>
+
+{% endblock %}

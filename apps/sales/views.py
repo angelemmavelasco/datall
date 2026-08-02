@@ -1,4 +1,3 @@
-# pyrefly: ignore [missing-import]
 from django.contrib import messages
 # pyrefly: ignore [missing-import]
 from django.shortcuts import render, redirect
@@ -6,6 +5,7 @@ from apps.sales.services.products.products_crud import ProductsCrud
 from django.contrib.auth.decorators import login_required
 from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
 from apps.core.models import Reference, ProductClass, Warehouse, Route, ProductCategory, SystemModule
+from apps.sales.models import RouteAssignment
 from django.core.paginator import Paginator
 import pandas as pd
 import io
@@ -15,12 +15,14 @@ from django.http import HttpResponse
 from asgiref.sync import sync_to_async
 import datetime
 import calendar
-from django.db.models import Sum
+from datetime import date
+from django.db.models import Sum, Q
 from decimal import Decimal
 from django.conf import settings
 
-#services
-from .services.routes_service import RoutesService
+from .services.routes_service import RoutesService, RoutesKpisService, ServiceError
+from .filters import RouteFilter
+from .forms import RouteForm, UserRouteAccessFormSet
 
 
 @login_required
@@ -605,7 +607,206 @@ async def export_sale_targets_calculator_data(request):
 
 
 
+@login_required
+def routes_list_view(request):
+    template = 'sales/routes/route_list.html'
+    routes_service = RoutesService(user=request.user)
+    route_kpis_service = RoutesKpisService(routes_service=routes_service)
+    can_create = routes_service._is_full_access
 
+    allowed_routes = routes_service.read_routes()
+
+    route_filter = RouteFilter(request.GET, queryset=allowed_routes)
+    allowed_routes = route_filter.qs
+    kpis = route_kpis_service.stats(qs=allowed_routes)
+
+    paginator = Paginator(allowed_routes, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    query_dict = request.GET.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
+
+    routes = page_obj.object_list
+
+    context = {
+        'routes': routes,
+        'kpis': kpis,
+        'query_string': query_dict.urlencode(),
+        'page_obj': page_obj,
+        'can_create': can_create,
+        'filter': route_filter,
+    }
+
+    if request.htmx:
+        target = request.headers.get('HX-Target')
+        if target == 'route-list-content':
+            return render(request, 'sales/routes/partials/route_list_content.html', context)
+        return render(request, 'sales/routes/partials/route_list_rows.html', context)
+
+    module = SystemModule.objects.filter(url_name='sales:routes_list_view').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description='visualización del listado de rutas',
+        metadata={'route_count': allowed_routes.count()}
+    )
+
+    return render(request, template, context)
+
+
+@login_required
+def route_detail_view(request, route_id: str):
+    template = 'sales/routes/route_detail.html'
+    routes_service = RoutesService(user=request.user)
+
+    route = routes_service.read_route(pk=route_id)
+    if not route:
+        if routes_service.RouteModel.objects.filter(pk=route_id).exists():
+            messages.error(request, 'No tienes permisos para acceder a esta ruta.')
+            return render(request, settings.ACCESS_DENIED_TEMPLATE)
+        return render(request, settings.PAGE_NOT_FOUND_TEMPLATE, status=404)
+
+    can_edit = routes_service.can_modify_route(pk=route_id)
+
+    assignment_history = None
+    if can_edit:
+        assignment_history = routes_service.assignment_history(pk=route_id)
+
+    today = date.today()
+    active_assignment = RouteAssignment.objects.filter(
+        route_id=route_id,
+        date_start__lte=today
+    ).filter(
+        Q(date_end__isnull=True) | Q(date_end__gte=today)
+    ).select_related('employee__user').order_by('-date_start').first()
+
+    context = {
+        'route': route,
+        'assignment_history': assignment_history if assignment_history else None,
+        'can_edit': can_edit,
+        'active_assignment': active_assignment,
+    }
+
+    module = SystemModule.objects.filter(url_name='sales:routes_list_view').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        obj=route,
+        description=f'visualización de detalle de ruta {route.id.upper()}',
+        metadata={'can_edit': can_edit}
+    )
+
+    return render(request, template, context)
+
+
+@login_required
+def route_create_view(request):
+    template = 'sales/routes/route_form.html'
+    routes_service = RoutesService(user=request.user)
+    creating = True
+
+    if not routes_service._is_full_access:
+        messages.error(request, 'No tienes permisos para crear rutas.')
+        return render(request, settings.ACCESS_DENIED_TEMPLATE)
+
+    if request.method == 'POST':
+        form = RouteForm(
+            request.POST,
+            requesting_user=request.user,
+            is_full_access=routes_service._is_full_access
+        )
+        formset = UserRouteAccessFormSet(request.POST)
+
+        if form.is_valid() and formset.is_valid():
+            try:
+                new_route = routes_service.create_route(
+                    route_data=dict(form.cleaned_data),
+                    user_access_data=formset.cleaned_data
+                )
+                messages.success(request, 'Ruta creada correctamente.')
+                return redirect('sales:route_detail_view', route_id=new_route.id)
+            except ServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f'Ocurrió un error inesperado: {str(e)}')
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = RouteForm(
+            requesting_user=request.user,
+            is_full_access=routes_service._is_full_access
+        )
+        formset = UserRouteAccessFormSet()
+
+    context = {
+        'form': form,
+        'formset': formset,
+        'creating': creating,
+    }
+
+    return render(request, template, context)
+
+
+@login_required
+def route_update_view(request, route_id: str):
+    template = 'sales/routes/route_form.html'
+    routes_service = RoutesService(user=request.user)
+    creating = False
+
+    # 1. Validate the user can see the route
+    route_instance = routes_service.read_route(pk=route_id)
+    if not route_instance:
+        if routes_service.RouteModel.objects.filter(pk=route_id).exists():
+            messages.error(request, 'No tienes permisos para editar esta ruta.')
+            return render(request, settings.ACCESS_DENIED_TEMPLATE)
+        return render(request, settings.PAGE_NOT_FOUND_TEMPLATE, status=404)
+
+    # 2. Validate they can modify it
+    if not routes_service._is_full_access and not routes_service.can_modify_route(pk=route_id):
+        messages.error(request, 'No tienes permisos para editar esta ruta.')
+        return render(request, settings.ACCESS_DENIED_TEMPLATE)
+
+    if request.method == 'POST':
+        form = RouteForm(
+            request.POST,
+            instance=route_instance,
+            requesting_user=request.user,
+            is_full_access=routes_service._is_full_access
+        )
+        formset = UserRouteAccessFormSet(request.POST, instance=route_instance)
+
+        if form.is_valid() and formset.is_valid():
+            try:
+                updated_route = routes_service.update_route(
+                    pk=route_id,
+                    route_data=dict(form.cleaned_data),
+                    user_access_data=formset.cleaned_data
+                )
+                messages.success(request, 'Ruta actualizada correctamente.')
+                return redirect('sales:route_detail_view', route_id=updated_route.id)
+            except ServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f'Ocurrió un error inesperado: {str(e)}')
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = RouteForm(
+            instance=route_instance,
+            requesting_user=request.user,
+            is_full_access=routes_service._is_full_access
+        )
+        formset = UserRouteAccessFormSet(instance=route_instance)
+
+    context = {
+        'form': form,
+        'formset': formset,
+        'creating': creating,
+    }
+
+    return render(request, template, context)
 
 
 @login_required
@@ -620,4 +821,6 @@ def sale_list_view(request):
         'allowed_warehouses_by_routes': routes_service.get_allowed_warehouses_by_routes()
     }
     return render(request, template, context)
+
+
     

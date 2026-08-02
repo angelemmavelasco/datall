@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}Rutas{% endblock %}
+
+{% block module_name %}Rutas{% endblock %}
+
+{% block module_actions %}
+
+    {% if can_create %}
+        <a href="{% url 'sales:route_create_view' %}" target="_blank" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Crear una nueva ruta">
+            Nueva ruta
+        </a>
+    {% endif %}
+
+    <button onclick="toggleFilters()"
+        class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+            <path d="M10 5H3" />
+            <path d="M12 19H3" />
+            <path d="M14 3v4" />
+            <path d="M16 17v4" />
+            <path d="M21 12h-9" />
+            <path d="M21 19h-5" />
+            <path d="M21 5h-7" />
+            <path d="M8 10v4" />
+            <path d="M8 12H3" />
+        </svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+
+{% endblock %}
+
+{% block content %}
+{% include "sales/routes/partials/route_list_content.html" %}
+
+{% endblock content %}
+
+{% block filters %}
+<form hx-get="{% url 'sales:routes_list_view' %}" hx-target="#route-list-content" hx-swap="outerHTML" hx-push-url="true" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+        <p class="text-title text-sm">Filtros de rutas</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.search.id_for_label }}" class="text-title">{{ filter.form.search.label }}</label>
+        {% render_field filter.form.search class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.business_unit.id_for_label }}" class="text-title">{{ filter.form.business_unit.label }}</label>
+        {% render_field filter.form.business_unit class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.route_type.id_for_label }}" class="text-title">{{ filter.form.route_type.label }}</label>
+        {% render_field filter.form.route_type class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.sale_channel.id_for_label }}" class="text-title">{{ filter.form.sale_channel.label }}</label>
+        {% render_field filter.form.sale_channel class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.is_active.id_for_label }}" class="text-title">{{ filter.form.is_active.label }}</label>
+        {% render_field filter.form.is_active class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.employee.id_for_label }}" class="text-title">{{ filter.form.employee.label }}</label>
+        {% render_field filter.form.employee class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+    </div>
+
+    <div class="flex gap-2 flex-col">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+</form>
+{% endblock %}

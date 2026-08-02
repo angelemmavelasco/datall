@@ -19,5 +19,9 @@ urlpatterns = [
 
 
     #erp
+    path('routes/', routes_list_view, name='routes_list_view'),
+    path('routes/create/', route_create_view, name='route_create_view'),
+    path('routes/<str:route_id>/', route_detail_view, name='route_detail_view'),
+    path('routes/<str:route_id>/edit/', route_update_view, name='route_update_view'),
     path('sales/', sale_list_view, name='sale_list_view'),
 ]
