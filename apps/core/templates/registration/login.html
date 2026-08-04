@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+    <title>Datall</title>
+    <link rel="icon" type="image/png" href="https://media.datall.com.mx/static/favicon.ico">
+
+    <script>
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        const getThemeColor = (variableName, fallbackColor) => {
+            const color = getComputedStyle(document.documentElement).getPropertyValue(variableName).trim();
+            return color || fallbackColor;
+        };
+    </script>
+
+    <style type="text/tailwindcss">
+        @theme {
+            --color-page: var(--bg-page);
+            --color-body: var(--text-body);
+            --color-container: var(--bg-container);
+            --color-title: var(--text-title);
+            --color-strong: var(--text-strong);
+            --color-muted: var(--text-muted);
+            --color-border: var(--border);
+            --color-placeholder: var(--placeholder);
+            --color-hover: var(--hover);
+
+            --color-msg-error-bg: oklch(80.8% 0.114 19.571);
+            --color-msg-error-txt: oklch(25.8% 0.092 26.042);
+            --color-msg-error-border: oklch(50.5% 0.213 27.518);
+
+            --color-msg-warn-bg: oklch(83.7% 0.128 66.29);
+            --color-msg-warn-txt: oklch(26.6% 0.079 36.259);
+            --color-msg-warn-border: oklch(55.3% 0.195 38.402);
+
+            --color-msg-succ-bg: oklch(86.9% 0.022 252.894);
+            --color-msg-succ-txt: oklch(12.9% 0.042 264.695);
+            --color-msg-succ-border: oklch(37.2% 0.044 257.287);
+
+            --color-chart-green: var(--chart-green);
+            --color-chart-red: var(--chart-red);
+            --color-chart-blue: var(--chart-blue);
+            --color-chart-yellow: var(--chart-yellow);
+            --color-chart-orange: var(--chart-orange);
+            --color-chart-purple: var(--chart-purple);
+        }
+
+        :root {
+            --bg-page: oklch(98.4% 0.003 247.858);
+            --bg-container: oklch(94.6% 0.01 255);
+            --text-title: oklch(44.6% 0.03 256.802);
+            --text-body: oklch(12.9% 0.042 264.695);
+            --text-strong: oklch(37.2% 0.044 257.287);
+            --border: oklch(86.9% 0.022 252.894);
+            --placeholder: oklch(55.4% 0.046 257.417);
+            --hover: oklch(70.7% 0.022 261.325);
+
+            --chart-green: #89E891;
+            --chart-red: #E3583B;
+            --chart-blue: #89CBE8;
+            --chart-yellow: #E5E889;
+            --chart-orange: #E8B789;
+            --chart-purple: #C489E8;
+
+        }
+
+        :root.dark {
+            --bg-page: oklch(13% 0.028 261.692);
+            --bg-container: oklch(18% 0.033 260);
+            --text-title: oklch(70.7% 0.022 261.325);
+            --text-body: oklch(98.4% 0.003 247.858);
+            --text-strong: oklch(78% 0.035 256.788);
+            --border: oklch(27.9% 0.041 260.031);
+            --placeholder: oklch(55.4% 0.046 257.417);
+            --hover: oklch(44.6% 0.03 256.802);
+
+            --chart-green: #43B54B;
+            --chart-red: #B54343;
+            --chart-blue: #435AB5;
+            --chart-yellow: #B5B543;
+            --chart-orange: #B56743;
+            --chart-purple: #A843B5;
+
+        }
+
+        html,
+        body {
+            min-height: 100dvh;
+            background-color: var(--color-page); /* Corregido para usar la variable de tailwind */
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) var(--bg-page);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px; 
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-page);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--hover);
+        }
+    </style>
+
+</head>
+
+<body class="relative min-h-screen flex items-center justify-center overflow-hidden bg-page">
+
+    <div class="relative z-10 w-3/4 max-w-md p-2 bg-container rounded border border-border flex flex-col gap-4 justify-center items-center">
+
+        <div class="w-60">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 500" class="w-full h-auto">
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&amp;display=swap');
+                
+                :root {
+                --svg-color-grafica: var(--text-body, black);
+                --svg-color-dat: var(--text-body, black);
+                --svg-color-all: oklch(55.4% 0.046 257.417);
+                
+                /* Grosores ajustados a la nueva escala (60%) */
+                --grosor-linea: 8px;
+                --grosor-nodo: 9px;
+                }
+                
+                .linea-animada {
+                fill: none;
+                stroke-width: var(--grosor-linea);
+                stroke: var(--svg-color-grafica);
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                }
+
+                .nodo {
+                fill: none;
+                stroke: var(--svg-color-grafica);
+                stroke-width: var(--grosor-nodo);
+                opacity: 0;
+                }
+
+                .texto-logo {
+                font-family: 'Quicksand', sans-serif;
+                font-size: 240px;
+                font-weight: 600;
+                }
+                
+                .dat {
+                letter-spacing: 0.05em;
+                fill: var(--svg-color-dat);
+                opacity: 0;
+                animation: dibujarRTL 2.5s ease-out 1s forwards;
+                }
+                
+                .all {
+                letter-spacing: 0.05em;
+                fill: var(--svg-color-all);
+                opacity: 0;
+                animation: aparecerTexto 1s ease-out 0s forwards;
+                }
+
+                @keyframes aparecerTexto {
+                0% {
+                    opacity: 0;
+                    transform: translateY(30px);
+                }
+                100% {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+                }
+
+                @keyframes dibujarRTL {
+                0% { 
+                    opacity: 1; 
+                    -webkit-clip-path: inset(0 0 0 100%);
+                    clip-path: inset(0 0 0 100%); 
+                }
+                100% { 
+                    opacity: 1; 
+                    -webkit-clip-path: inset(0 0 0 0);
+                    clip-path: inset(0 0 0 0); 
+                }
+                }
+            </style>
+            
+            <text x="50" y="400" class="texto-logo">
+                <tspan class="dat">dat</tspan><tspan class="all">all</tspan>
+            </text>
+
+            <g transform="translate(800, 0)">
+                
+                <mask id="mask-nodos">
+                <rect width="100%" height="100%" fill="white" />
+                <circle cx="60" cy="400" r="10" fill="black" />
+                <circle cx="120" cy="280" r="10" fill="black" />
+                <circle cx="180" cy="340" r="10" fill="black" />
+                <circle cx="240" cy="220" r="10" fill="black" />
+                </mask>
+
+                <path class="linea-animada" mask="url(#mask-nodos)" d="M 60 400 L 120 280 L 180 340 L 240 220" stroke-dasharray="360" stroke-dashoffset="360">
+                <animate attributeName="stroke-dashoffset" from="360" to="0" begin="1s" dur="2.5s" fill="freeze" />
+                </path>
+
+                <circle class="nodo" cx="60" cy="400" r="13">
+                <animate attributeName="opacity" from="0" to="1" begin="1s" dur="0.2s" fill="freeze" />
+                </circle>
+                <circle class="nodo" cx="120" cy="280" r="13">
+                <animate attributeName="opacity" from="0" to="1" begin="1.9s" dur="0.2s" fill="freeze" />
+                </circle>
+                <circle class="nodo" cx="180" cy="340" r="13">
+                <animate attributeName="opacity" from="0" to="1" begin="2.5s" dur="0.2s" fill="freeze" />
+                </circle>
+                <circle class="nodo" cx="240" cy="220" r="13">
+                <animate attributeName="opacity" from="0" to="1" begin="3.4s" dur="0.2s" fill="freeze" />
+                </circle>
+                
+            </g>
+            </svg>
+
+        </div>
+
+
+        <form id="login-form" class="flex flex-col gap-4 w-3/4 items-center justify-center" method="POST" action="{% url 'core:login' %}">
+            {% csrf_token %}
+
+            {% if form.errors %}
+            <div class="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-200">
+                Usuario o contraseña incorrectos.
+            </div>
+            {% endif %}
+
+            <div class="flex items-center gap-2 text-body">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-user-icon lucide-user text-muted">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                </svg>
+                <input id="id_username" name="username" type="text" required placeholder="Usuario"
+                    class="w-full border-b border-border bg-transparent focus:outline-none transition-all text-body placeholder-placeholder">
+            </div>
+
+            <div class="flex items-center gap-2 text-body">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-key-icon lucide-key text-muted">
+                    <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4" />
+                    <path d="m21 2-9.6 9.6" />
+                    <circle cx="7.5" cy="15.5" r="5.5" />
+                </svg>
+                <input id="id_password" name="password" type="password" required placeholder="Contraseña"
+                    class="w-full border-b border-border bg-transparent focus:outline-none transition-all text-body placeholder-placeholder">
+            </div>
+        </form>
+
+        <div class="flex flex-col gap-4 mt-10">
+
+            <button type="submit" form="login-form"
+                class="cursor-pointer w-full text-body hover:text-hover flex items-center gap-2 justify-center transition-colors duration-300 border border-border rounded p-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-log-in-icon lucide-log-in">
+                    <path d="m10 17 5-5-5-5" />
+                    <path d="M15 12H3" />
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                </svg>
+                <span>Ingresar</span>
+            </button>
+
+            <a href="{% url 'core:reset_password' %}"
+                class="cursor-pointer w-full text-body hover:text-hover flex items-center bg-page gap-2 justify-center transition-colors duration-300 border border-border rounded p-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-rotate-ccw-key-icon lucide-rotate-ccw-key">
+                    <path d="M12 7v6" />
+                    <path d="M12 9h2" />
+                    <path d="M3 12a9 9 0 1 0 9-9 9.74 9.74 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                    <circle cx="12" cy="15" r="2" />
+                </svg>
+                ¿Olvidaste tu contraseña?
+            </a>
+        </div>
+
+
+        <footer class="bottom-0 my-20 left-0 text-[10px] w-full z-40 flex items-center justify-center p-2 text-title">
+            <ul class="flex gap-2 md:gap-4 flex-col md:flex-row">
+                <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-copyright-icon lucide-copyright">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M14.83 14.83a4 4 0 1 1 0-5.66" />
+                    </svg>
+                    Datall 2026. Todos los derechos reservados.
+                </li>
+
+                <li class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1 justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-stack-icon lucide-file-stack"><path d="M11 21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1"/><path d="M16 16a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1"/><path d="M21 6a2 2 0 0 0-.586-1.414l-2-2A2 2 0 0 0 17 2h-3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1z"/></svg>
+                    Versión {{ app_version }}
+                </li>
+            </ul>
+        </footer>
+    </div>
+
+
+</body>
+
+</html>

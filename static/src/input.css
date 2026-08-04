@@ -1,0 +1,38 @@
+@import url("https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,200..1000;1,200..1000&display=swap");
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+    --font-sans: "Mulish", system-ui, sans-serif;
+    --font-mono: "Mulish", system-ui, sans-serif;
+
+    --color-body: var(--theme-body);
+    --color-title: var(--theme-title);
+    --color-border: var(--theme-border);
+    --color-hover: var(--theme-hover);
+    --color-container: var(--theme-container);
+    --color-page: var(--theme-page);
+}
+
+:root {
+    color-scheme: light;
+
+    --theme-body: oklch(13% 0.028 261.692);
+    --theme-title: oklch(18% 0.033 260);
+    --theme-border: #cad5e2;
+    --theme-hover: #5d6e87;
+    --theme-container: #f1f5f9;
+    --theme-page: #f8fafc;
+}
+
+:root.dark {
+    color-scheme: dark;
+
+    --theme-body: oklch(98.4% 0.003 247.858);
+    --theme-title: oklch(70.7% 0.022 261.325);
+    --theme-border: oklch(27.9% 0.041 260.031);
+    --theme-hover: oklch(70.7% 0.022 261.325);
+    --theme-container: oklch(18% 0.033 260);
+    --theme-page: oklch(13% 0.028 261.692);
+}

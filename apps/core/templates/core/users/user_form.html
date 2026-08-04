@@ -1,0 +1,373 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load widget_tweaks %}
+
+{% block title %}
+{% if creating %}
+Nuevo usuario
+{% else %}
+Editar usuario
+{% endif %}
+{% endblock %}
+
+{% block module_name %}
+{% if creating %}
+Nuevo usuario
+{% else %}
+Editar usuario
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<form method="POST" enctype="multipart/form-data" class="flex flex-col gap-4">
+    {% csrf_token %}
+
+    <p class="text-title text-sm">Información personal</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title flex items-center gap-1">Nombre (s)
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.first_name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ingresa el nombre(s)' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.first_name.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Primer apellido
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.last_name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ingresa el primer apellido' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.last_name.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Segundo apellido</span>
+        <div>
+            {% render_field form.second_last_name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ingresa el segundo apellido (opcional)' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.second_last_name.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Género
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.gender class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.gender.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Fecha de nacimiento
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.birth_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' type='date' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.birth_date.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Fotografía</span>
+        <div>
+            {% render_field form.photo class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.photo.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Notas</span>
+        <div>
+            {% render_field form.notes class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' rows='3' placeholder='Escribe aquí notas o comentarios adicionales...' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.notes.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Clave Única de Registro de Población (CURP)</span>
+        <div>
+            {% render_field form.unique_personal_id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ej. ABCD990101HDFXYZ99' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.unique_personal_id.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Calle</span>
+        <div>
+            {% render_field form.street class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Nombre de la calle' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.street.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Exterior</span>
+        <div>
+            {% render_field form.street_no class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Número exterior' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.street_no.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Interior (opcional)</span>
+        <div>
+            {% render_field form.apt_suite class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Número interior (opcional)' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.apt_suite.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Ciudad</span>
+        <div>
+            {% render_field form.city class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Nombre de la ciudad' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.city.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Estado</span>
+        <div>
+            {% render_field form.state class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Nombre del estado' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.state.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">País</span>
+        <div>
+            {% render_field form.country class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Nombre del país' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.country.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Código postal</span>
+        <div>
+            {% render_field form.zipcode class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Código postal' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.zipcode.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+
+    <p class="text-title text-sm">Contacto</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title">Teléfono</span>
+        <div>
+            {% render_field form.phone class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Número a 10 dígitos' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.phone.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Correo electrónico
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.email class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' type='email' placeholder='ejemplo@correo.com' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.email.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+
+    {% if can_update_access %}
+
+    <p class="text-title text-sm">Accesos</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        {% if form.username %}
+        <span class="text-title flex items-center gap-1">Nombre de usuario
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.username class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='inicial.apellido' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.username.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+        {% endif %}
+
+        {% if creating and form.password %}
+        <span class="text-title flex items-center">Contraseña
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.password class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' type='password' placeholder='Ingresa una contraseña segura' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.password.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+        {% endif %}
+
+        {% if form.groups %}
+        <span class="text-title self-start mt-2">Grupos autorizados</span>
+        <div>
+            <div class="flex flex-col gap-2 max-h-40 overflow-y-auto bg-page border border-border rounded p-2">
+                {% for checkbox in form.groups %}
+                <label class="flex items-center gap-2 text-xs text-title cursor-pointer hover:bg-hover p-1 rounded">
+                    {{ checkbox.tag }} <span>{{ checkbox.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.groups.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+        {% endif %}
+
+        {% if form.is_superuser %}
+        <div class="flex items-center gap-2 md:col-span-2">
+            <div>
+                {% render_field form.is_superuser class='cursor-pointer w-4 h-4 text-blue-600 bg-page border-border rounded focus:ring-blue-500' %}
+                <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.is_superuser.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+            </div>
+            <span class="text-title">Administrador del sistema</span>
+        </div>
+        {% endif %}
+
+        {% if form.is_staff %}
+        <div class="flex items-center gap-2 md:col-span-2">
+            <div>
+                {% render_field form.is_staff class='cursor-pointer w-4 h-4 text-blue-600 bg-page border-border rounded focus:ring-blue-500' %}
+                <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.is_staff.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+            </div>
+            <span class="text-title">Acceso al panel de administración (Staff)</span>
+        </div>
+        {% endif %}
+
+        {% if form.is_active %}
+        <div class="flex items-center gap-2 md:col-span-2">
+            <div>
+                {% render_field form.is_active class='cursor-pointer w-4 h-4 text-blue-600 bg-page border-border rounded focus:ring-blue-500' %}
+                <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.is_active.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+            </div>
+            <span class="text-title">Activo</span>
+        </div>
+        {% endif %}
+
+
+
+    </div>
+
+    {% endif %}
+
+    <div class="flex flex-col  gap-2 mt-4">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            Confirmar
+        </button>
+        <a href="{% url 'core:user_list_view' %}"
+            class=" border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            Cancelar
+        </a>
+    </div>
+
+</form>
+
+{% endblock %}

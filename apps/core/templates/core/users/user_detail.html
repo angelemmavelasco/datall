@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}
+Perfil de usuario
+{% endblock %}
+
+{% block module_name %}
+Perfil de usuario
+{% endblock %}
+
+{% block module_actions %}
+<a href="{% url 'core:user_update_form_view' user_instance.pk %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Editar usuario">
+    Editar
+</a>
+{% endblock module_actions %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+
+    <p class="text-title text-sm pb-2 border-b border-border">Información personal</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+
+        <div class="w-full md:col-span-2  flex items-center justify-center my-4">
+            {% if user_instance.photo %}
+            <img src="{{ user_instance.photo.url }}" alt="Foto de perfil"
+                style="width: 100px; height: 100px; min-width: 100px; min-height: 100px; object-fit: cover; object-position: top; padding: 4px;"
+                class="rounded-full bg-white">
+            {% else %}
+            <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="lucide lucide-circle-user-icon lucide-circle-user text-muted">
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="10" r="3" />
+                <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
+            </svg>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Nombre (s)</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.first_name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Primer apellido</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.last_name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Segundo apellido</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.second_last_name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Género</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.get_gender_display|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Fecha de nacimiento</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.birth_date|date:"d/m/Y"|default:"-" }}
+        </div>
+
+        <span class="text-title">Notas</span>
+        <div class="w-full  text-title  flex items-center">
+            {{ user_instance.notes|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Clave Única de Registro de Población (CURP)</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.unique_personal_id|default:"-"|upper }}
+        </div>
+
+        <span class="text-title">Calle</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.street|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Exterior</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.street_no|default:"-" }}
+        </div>
+
+        <span class="text-title">Interior (opcional)</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.apt_suite|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Ciudad</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.city|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Estado</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.state|default:"-"|title }}
+        </div>
+
+        <span class="text-title">País</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.country|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Código postal</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.zipcode|default:"-" }}
+        </div>
+    </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border mp">Contacto</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title">Teléfono</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.phone|default:"-" }}
+        </div>
+
+        <span class="text-title">Correo electrónico</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ user_instance.email|default:"-" }}
+        </div>
+    </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border">Puestos asignados</p>
+
+    {% for position in user_positions %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title md:col-span-2 p-2 text-center mt-2 font-bold rounded border border-border">
+            Información general
+        </span>
+        <a href="{% url 'human_resources:employee_details_view' position.id %}" target="_blank"
+            class="underline  md:col-span-2 p-2 text-right">Ver más</a>
+
+        <span class="text-title">Puesto</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ position.position.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Departamento</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ position.position.department.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Estado</span>
+        <div
+            class="w-full  text-body  flex items-center {{ position.is_active|yesno:'text-emerald-500,text-red-500' }}">
+            {{ position.is_active|yesno:"Activo, Inactivo"|default:"-" }}
+        </div>
+
+        <span class="text-title">Fecha de ingreso</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ position.hire_date|date:"d/m/Y"|default:"-" }}
+        </div>
+
+        <span class="text-title">Fecha de baja</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ position.termination_date|date:"d/m/Y"|default:"No aplica" }}
+        </div>
+
+        <span class="text-title">Contrato</span>
+        <div class="w-full  text-body  flex items-center">
+            {% if position.contract_doc %}
+            <a href="{{ position.contract_doc.url }}" class="underline " target="_blank">Ver contrato</a>
+            {% else %}
+            No adjunto
+            {% endif %}
+        </div>
+
+        <span class="text-title">Régimen fiscal asociado a pago o facturación</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ position.get_tax_regime_display|default:"No aplica"|title }}
+        </div>
+
+        <span class="text-title">RFC asociado a pago o facturación</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ position.tax_id|default:"XAXX010101000"|upper }}
+        </div>
+
+        <span class="text-title">Constancia de situación fiscal</span>
+        <div class="w-full  text-body  flex items-center">
+            {% if position.tax_doc %}
+            <a href="{{ position.tax_doc.url }}" class="underline " target="_blank">Ver constancia</a>
+            {% else %}
+            No adjunta
+            {% endif %}
+        </div>
+
+        <span class="text-title">Tipo de contrato</span>
+        <div class="w-full  text-body  flex items-center">
+            {{ position.get_contract_type_display|default:"Otro"|title }}
+        </div>
+
+        <span class="text-title md:col-span-2 p-2 text-center mt-2 font-bold rounded border border-border">Colaboradores
+            a cargo</span>
+
+        {% if position.human_resources_direct_reports.all %}
+        <div
+            class="md:col-span-2 w-full overflow-auto border border-border rounded bg-container max-h-50 relative mt-2">
+            <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+                <thead>
+                    <tr class="border-b border-border text-xs">
+                        <th
+                            class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">
+                            Departamento</th>
+                        <th
+                            class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">
+                            Puesto</th>
+                        <th
+                            class="min-w-[200px] p-2 text-left text-title border-r border-b border-border sticky top-0 z-30 bg-page">
+                            Colaborador</th>
+                        <th
+                            class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">
+                            Ingreso</th>
+                        <th
+                            class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">
+                            Baja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in position.human_resources_direct_reports.all %}
+                    <tr class="hover:bg-hover transition-colors duration-300">
+                        <td class="p-2 text-left text-body border-r border-b border-border">
+                            {{ sub.position.department.name|title }}
+                        </td>
+                        <td class="p-2 text-left text-body border-r border-b border-border">
+                            {{ sub.position.name|title }}
+                        </td>
+                        <td class="p-2 text-left text-body border-r border-b border-border">
+                            {{ sub.user.first_name|title }} {{ sub.user.last_name|title }}
+                        </td>
+                        <td class="p-2 text-center text-body border-r border-b border-border">
+                            {{ sub.hire_date|date:"d/m/Y"|default:"-" }}
+                        </td>
+                        <td class="p-2 text-center text-body border-r border-b border-border">
+                            {{ sub.termination_date|date:"d/m/Y"|default:"-" }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="w-full md:col-span-2 text-body justify-center flex items-center p-4">
+            No hay colaboradores a cargo en este puesto
+        </div>
+        {% endif %}
+
+
+    </div>
+    {% empty %}
+    <div class="w-full col-span-2  text-body  flex items-center justify-center">
+        No hay puestos asignados
+    </div>
+    {% endfor %}
+
+
+
+
+    {% if can_update_access %}
+
+    <p class="text-title text-sm">Accesos</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title">Nombre de usuario</span>
+        <div class="w-full  text-title  flex items-center">
+            {{ user_instance.username|default:"-" }}
+        </div>
+
+        {% if request.user.pk == user_instance.pk %}
+
+        <span class="text-title"></span>
+        <div class="w-full rounded  flex items-center">
+            <a href="{% url 'core:password_change' %}"
+                class="text-strong hover:text-hover transition-colors flex items-center gap-1 underline">
+                Cambiar contraseña
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-circle-arrow-out-up-right">
+                    <path d="M22 12A10 10 0 1 1 12 2" />
+                    <path d="M22 2 12 12" />
+                    <path d="M16 2h6v6" />
+                </svg>
+            </a>
+        </div>
+
+        {% endif %}
+
+        <span class="text-title self-start mt-2">Grupos autorizados</span>
+        <div class="flex flex-col gap-1 max-h-40 overflow-y-auto  md:col-span-1">
+            {% for group in user_instance.groups.all %}
+            <span class=" text-title p-1 border border-border rounded p-1">{{ group.name|title }}</span>
+            {% empty %}
+            <span class=" text-title p-1">-</span>
+            {% endfor %}
+        </div>
+
+        <div class="flex items-center gap-2 md:col-span-2 mt-2">
+            {% if user_instance.is_superuser %}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-emerald-500 lucide lucide-circle-check-icon lucide-circle-check">
+                <circle cx="12" cy="12" r="10" />
+                <path d="m9 12 2 2 4-4" />
+            </svg>
+            {% else %}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-circle-x-icon lucide-circle-x">
+                <circle cx="12" cy="12" r="10" />
+                <path d="m15 9-6 6" />
+                <path d="m9 9 6 6" />
+            </svg>
+            {% endif %}
+            <span class="text-title">Administrador del sistema</span>
+        </div>
+
+        <div class="flex items-center gap-2 md:col-span-2">
+            {% if user_instance.is_staff %}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-emerald-500 lucide lucide-circle-check-icon lucide-circle-check">
+                <circle cx="12" cy="12" r="10" />
+                <path d="m9 12 2 2 4-4" />
+            </svg>
+            {% else %}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-circle-x-icon lucide-circle-x">
+                <circle cx="12" cy="12" r="10" />
+                <path d="m15 9-6 6" />
+                <path d="m9 9 6 6" />
+            </svg>
+            {% endif %}
+            <span class="text-title">Acceso al panel de administración (Staff)</span>
+        </div>
+
+        <div class="flex items-center gap-2 md:col-span-2">
+            {% if user_instance.is_active %}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-emerald-500 lucide lucide-circle-check-icon lucide-circle-check">
+                <circle cx="12" cy="12" r="10" />
+                <path d="m9 12 2 2 4-4" />
+            </svg>
+            {% else %}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-circle-x-icon lucide-circle-x">
+                <circle cx="12" cy="12" r="10" />
+                <path d="m15 9-6 6" />
+                <path d="m9 9 6 6" />
+            </svg>
+            {% endif %}
+            <span class="text-title">Activo</span>
+        </div>
+
+    </div>
+
+    {% endif %}
+</div>
+
+{% endblock %}

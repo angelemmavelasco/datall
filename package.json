@@ -1,0 +1,13 @@
+{
+  "name": "datall-bi",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:css": "npx @tailwindcss/cli -i ./static/src/input.css -o ./static/css/output.css --minify",
+    "watch:css": "npx @tailwindcss/cli -i ./static/src/input.css -o ./static/css/output.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.0.0",
+    "tailwindcss": "^4.0.0"
+  }
+}

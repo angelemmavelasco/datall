@@ -1,0 +1,499 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>
+        {% block title %}
+        {% endblock %}
+    </title>
+
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <link rel="stylesheet" href="{% static 'css/output.css' %}">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+
+<body class="min-h-dvh bg-page text-body font-sans text-xs flex flex-col transition-colors overflow-x-hidden">
+
+
+<div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleMobileMenu()"></div>
+<div id="filter-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeFilters()"></div>
+<div id="notifications-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeNotifications()"></div>
+<div id="novelties-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeNovelties()"></div>
+
+
+<!-- filters -->
+<aside id="filter-sidebar"
+    class="fixed inset-y-0 right-0 z-50 flex w-64 translate-x-full flex-col overflow-y-auto border-l border-border bg-container p-4 transition-transform duration-300">
+    <div class="flex items-center justify-between border-b border-border pb-2 mb-4">
+        <h3 class="text-title tracking-wider">Filtros de búsqueda</h3>
+        <button type="button" onclick="closeFilters()" class="text-muted hover:text-hover cursor-pointer"
+            title="Cerrar filtros">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="lucide lucide-circle-x-icon lucide-circle-x">
+                <circle cx="12" cy="12" r="10" />
+                <path d="m15 9-6 6" />
+                <path d="m9 9 6 6" />
+            </svg>
+        </button>
+    </div>
+    <div class="flex-1">
+        {% block filters %}{% endblock %}
+    </div>
+</aside>
+
+<!-- notifications -->
+<aside id="notifications-sidebar"
+    class="fixed inset-y-0 right-0 z-50 flex w-80 translate-x-full flex-col overflow-y-auto border-l border-border bg-container p-4 transition-transform duration-300">
+    <div class="flex items-center justify-between border-b border-border pb-2 mb-4">
+        <h3 class="text-title tracking-wider flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell-icon lucide-bell"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+            Notificaciones
+        </h3>
+        <button type="button" onclick="closeNotifications()" class="text-muted hover:text-hover cursor-pointer transition-colors"
+            title="Cerrar notificaciones">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="lucide lucide-circle-x-icon lucide-circle-x">
+                <circle cx="12" cy="12" r="10" />
+                <path d="m15 9-6 6" />
+                <path d="m9 9 6 6" />
+            </svg>
+        </button>
+    </div>
+    <div class="flex-1">
+        <ul class="flex flex-col gap-3">
+            {% for notification in notifications %}
+            <li class="border border-border p-3 rounded bg-page hover:border-strong transition-colors cursor-pointer">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs text-strong font-medium">
+                        {{ notification.title|title }}
+                    </span>
+                    <span class="text-[10px] text-muted">
+                        {{ notification.created_at|date:"M d, Y" }}
+                    </span>
+                </div>
+                <p class="text-xs text-body leading-relaxed mt-1">
+                    {{ notification.content|truncatewords:20 }}
+                </p>
+                <a href="" class="text-xs text-muted hover:text-hover cursor-pointer transition-colors">
+                    Ver más
+                </a>
+            </li>
+            {% empty %}
+                <li class="">
+                    <div class="flex items-center justify-center mb-1">
+                        <span class="text-xs text-strong font-medium">
+                            No tienes notificaciones
+                        </span>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</aside>
+
+<!-- novelties -->
+<aside id="novelties-sidebar"
+    class="fixed inset-y-0 right-0 z-50 flex w-80 translate-x-full flex-col overflow-y-auto border-l border-border bg-container p-4 transition-transform duration-300">
+    <div class="flex items-center justify-between border-b border-border pb-2 mb-4">
+        <h3 class="text-title tracking-wider flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-newspaper-icon lucide-newspaper"><path d="M15 18h-5"/><path d="M18 14h-8"/><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0v-9a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="10" y="6" rx="1"/></svg>
+            Novedades
+        </h3>
+        <button type="button" onclick="closeNovelties()" class="text-muted hover:text-hover cursor-pointer transition-colors"
+            title="Cerrar novedades">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="lucide lucide-circle-x-icon lucide-circle-x">
+                <circle cx="12" cy="12" r="10" />
+                <path d="m15 9-6 6" />
+                <path d="m9 9 6 6" />
+            </svg>
+        </button>
+    </div>
+    <a href="" class="mb-3 text-strong hover:text-hover cursor-pointer transition-colors w-fit">
+        Ver todas
+    </a>
+    <div class="flex-1" id="novelties-content">
+        <ul class="flex flex-col gap-3">
+            {% for novelty in recent_novelties %}
+            <li class="border border-border rounded bg-page hover:border-strong transition-colors cursor-pointer group">
+                <a href="" class="block p-3">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs text-strong font-medium group-hover:text-hover transition-colors text-wrap max-w-50">
+                            {{ novelty.title|title }}
+                        </span>
+                        <span class="text-[10px] text-muted">
+                            {{ novelty.created_at|date:"M d, Y" }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-body leading-relaxed mt-1">
+                        {{ novelty.content|truncatewords:30 }}
+                    </p>
+                </a>
+            </li>
+            {% empty %}
+            <li class="border border-border p-3 rounded bg-page hover:border-strong transition-colors cursor-pointer">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs text-strong font-medium">
+                        Próximamente
+                    </span>
+                    <span class="text-[10px] text-muted">
+                        Hoy
+                    </span>
+                </div>
+                <p class="text-xs text-body leading-relaxed mt-1">
+                    Aquí aparecerán las novedades y anuncios importantes.
+                </p>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</aside>
+
+
+<!-- sidebar -->
+<aside id="sidebar"
+    class="fixed inset-y-0 left-0 z-50 flex w-full sm:w-64 -translate-x-full flex-col overflow-y-auto border-r border-border bg-container px-4 pb-4 pt-0 transition-transform duration-300 lg:translate-x-0">
+    
+    <div class="flex justify-end pt-4 lg:hidden">
+        <button type="button" onclick="toggleMobileMenu()" class="text-muted hover:text-hover cursor-pointer p-1" title="Cerrar menú">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+    </div>
+
+    <div class="flex flex-col gap-6 pb-20">
+        <nav class="flex flex-col gap-5" aria-label="Navegacion principal">
+
+            <div class="w-full max-w-50 mx-auto sm:max-w-none sm:w-full sm:mx-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 500" class="w-full h-auto">
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&amp;display=swap');
+                        
+                        :root {
+                        --svg-color-grafica: var(--text-body, #505051);
+                        --svg-color-dat: var(--text-body, #505051);
+                        --svg-color-all: oklch(55.4% 0.046 257.417);
+                        --grosor-linea: 8px;
+                        --grosor-nodo: 9px;
+                        }
+                        .linea-animada {
+                        fill: none;
+                        stroke-width: var(--grosor-linea);
+                        stroke: var(--svg-color-grafica);
+                        stroke-linecap: round;
+                        stroke-linejoin: round;
+                        }
+                        .nodo {
+                        fill: none;
+                        stroke: var(--svg-color-grafica);
+                        stroke-width: var(--grosor-nodo);
+                        }
+                        .texto-logo {
+                        font-family: 'Quicksand', sans-serif;
+                        font-size: 240px;
+                        font-weight: 600;
+                        }
+                        .dat {
+                        letter-spacing: 0.05em;
+                        fill: var(--svg-color-dat);
+                        }
+                        .all {
+                        letter-spacing: 0.05em;
+                        fill: var(--svg-color-all);
+                        }
+                    </style>
+                    
+                    <text x="50" y="400" class="texto-logo">
+                        <tspan class="dat">dat</tspan><tspan class="all">all</tspan>
+                    </text>
+
+                    <g transform="translate(800, 0)">
+                        
+                        <mask id="mask-nodos">
+                        <rect width="100%" height="100%" fill="white" />
+                        <circle cx="60" cy="400" r="10" fill="black" />
+                        <circle cx="120" cy="280" r="10" fill="black" />
+                        <circle cx="180" cy="340" r="10" fill="black" />
+                        <circle cx="240" cy="220" r="10" fill="black" />
+                        </mask>
+
+                        <path class="linea-animada" mask="url(#mask-nodos)" d="M 60 400 L 120 280 L 180 340 L 240 220" />
+
+                        <circle class="nodo" cx="60" cy="400" r="13" />
+                        <circle class="nodo" cx="120" cy="280" r="13" />
+                        <circle class="nodo" cx="180" cy="340" r="13" />
+                        <circle class="nodo" cx="240" cy="220" r="13" />
+                        
+                    </g>
+                    </svg>
+            </div>
+
+            {% if request.user.is_authenticated %}
+            <div class="flex flex-col items-center justify-center -mt-4 mb-2">
+                {% if request.user.photo %}
+                <img src="{{ request.user.photo.url }}" alt="Foto de perfil"
+                    style="width: 80px; height: 80px; min-width: 80px; min-height: 80px; object-fit: cover; object-position: top; padding: 4px;"
+                    class="rounded-full bg-white border border-border">
+                {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-circle-user-icon lucide-circle-user text-muted">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="10" r="3" />
+                    <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
+                </svg>
+                {% endif %}
+            </div>
+
+            <div class="block truncate text-center">
+                <span class="text-title font-semibold">
+                    {{ request.user.first_name|title }} {{ request.user.last_name|title }}
+                </span><br>
+                <span class="text-body text-xs">
+                    @{{ request.user.username }}
+                </span>
+            </div>
+            {% endif %}
+
+            {% if last_data_update %}
+                <p class="block truncate text-center font-light text-[10px]">
+                    Reportes actualizados al<br>
+                    <span class="text-body">
+                        {{ last_data_update.reference }}
+                    </span>
+                </p>
+            {% endif %}
+
+            {% for module in modules %}
+            <section class="flex flex-col gap-2">
+                <p class="text-title font-medium">{{ module.name|title }}</p>
+                <ul class="ml-3 flex flex-col gap-1.5 border-l border-border pl-4 text-body">
+                    {% for submodule in module.submodules.all %}
+                    <li>
+                        <a href="{% url submodule.url_name %}" class="block hover:text-hover transition-colors text-sm py-2 border-b border-border md:border-none">
+                            {{ submodule.name|title }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endfor %}
+        </nav>
+    </div>
+</aside>
+
+<!-- Content Wrapper -->
+<div class="flex flex-col min-h-dvh lg:pl-64 w-full">
+
+    <header class="sticky top-0 z-30 flex flex-col gap-0">
+        <div class="flex flex-col md:flex-row items-center justify-center md:justify-between gap-2 md:gap-4 p-2 bg-page border-b border-border">
+            <h1 class="text-sm w-full text-center md:text-left md:w-fit font-medium">
+                {% block module_name %}
+                {% endblock %}
+            </h1>
+
+            <ul class="flex items-center justify-between md:justify-end gap-4 md:gap-6 w-full md:w-fit">
+
+                <li onclick="toggleMobileMenu()" class="hover:text-hover cursor-pointer transition-colors flex flex-col items-center gap-1 md:flex-row lg:hidden" title="Abrir menú">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layout-grid-icon lucide-layout-grid"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                    <span class="text-[10px] md:text-xs">Menú</span>
+                </li>
+
+                <li onclick="toggleNotifications()" class="hover:text-hover cursor-pointer transition-colors flex flex-col md:flex-row items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+                    <span class="text-[10px] md:text-xs">Notificaciones</span>
+                </li>
+                <li onclick="toggleNovelties()" class="hover:text-hover cursor-pointer transition-colors flex flex-col md:flex-row items-center gap-1">
+                    <div class="relative flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-newspaper"><path d="M15 18h-5"/><path d="M18 14h-8"/><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0v-9a2 2 0 0 1 2-2h2"/><rect width="8" height="4" x="10" y="6" rx="1"/></svg>
+                        {% if has_novelties %}
+                        <span class="absolute -top-0.5 -right-1 flex h-2 w-2 items-center justify-center">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-600"></span>
+                        </span>
+                        {% endif %}
+                    </div>
+                    <span class="text-[10px] md:text-xs">Novedades</span>
+                </li>
+                <li>
+                    <a href="{% url 'core:user_detail_view' request.user.id %}" class="hover:text-hover cursor-pointer transition-colors flex flex-col md:flex-row items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <span class="text-[10px] md:text-xs">Perfil</span>
+                    </a>
+                </li>
+                <li>
+                    <button id="toggle-theme" type="button" class="cursor-pointer hover:text-hover transition-colors flex flex-col md:flex-row items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun-moon"><path d="M12 2v2"/><path d="M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715"/><path d="M16 12a4 4 0 0 0-4-4"/><path d="m19 5-1.256 1.256"/><path d="M20 12h2"/></svg>
+                        <span class="text-[10px] md:text-xs">Tema</span>
+                    </button>
+                </li>
+                {% if request.user.is_superuser %}
+                    <li>
+                        <a href="{% url 'admin:index' %}" class="hover:text-hover cursor-pointer transition-colors flex flex-col md:flex-row items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wrench-icon lucide-wrench"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/></svg>
+                            <span class="text-[10px] md:text-xs">Administración</span>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <div class=" flex justify-end items-center">
+            <details class="relative md:hidden">
+                <summary class="list-none hover:text-hover cursor-pointer transition-colors flex items-center gap-1 border border-border rounded px-2 py-1 bg-container my-1 mr-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-plus"><path d="M16 5H3"/><path d="M11 12H3"/><path d="M16 19H3"/><path d="M18 9v6"/><path d="M21 12h-6"/></svg>
+                    <span class="text-sm">Acciones</span>
+                </summary>
+                <div id="mobile-actions-container" class="absolute right-0 m-2 min-w-[180px] bg-container border border-border rounded shadow-lg p-2 z-50 flex flex-col gap-2">
+                    {% block module_actions %}{% endblock %}
+                </div>
+            </details>
+            <div id="desktop-actions-container" class="hidden md:flex items-center justify-end gap-3 w-full flex-wrap bg-page  p-2">
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow p-2 mb-10">
+        {% if messages %}
+        {% for message in messages %}
+        <div id="alert-message" class="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-3xl items-center justify-between gap-2 rounded border p-3 text-sm shadow-sm
+{% if message.tags == 'error' %} bg-rose-200 text-rose-700 border-rose-700
+{% elif message.tags == 'warning' %} bg-yellow-200 text-yellow-700 border-yellow-700
+{% else %} bg-sky-200 text-sky-700 border-sky-700 {% endif %}">
+            
+            <div class="flex items-center gap-2">
+                {% if message.tags == 'error' %}
+                <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M4.929 4.929 19.07 19.071" />
+                </svg>
+                {% elif message.tags == 'warning' %}
+                <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" x2="12" y1="8" y2="12" />
+                    <line x1="12" x2="12.01" y1="16" y2="16" />
+                </svg>
+                {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m9 12 2 2 4-4" />
+                </svg>
+                {% endif %}
+
+                <span>{{ message }}</span>
+            </div>
+
+            <button onclick="this.closest('#alert-message').remove()" class="shrink-0 hover:opacity-75 transition-opacity" title="Cerrar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            </button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        <div class="mx-auto w-full max-w-7xl">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer class="bg-container border-t border-border mt-auto w-full">
+        <ul class="flex flex-col md:flex-row items-center justify-center gap-4 p-2 text-title">
+            <li>Soporte</li>
+            <li>Versión 1.0</li>
+            <li>Datall 2026. Todos los derechos reservados</li>
+        </ul>
+    </footer>
+
+</div>
+
+<script>
+    const toggleBtn = document.getElementById('toggle-theme');
+    if(toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
+    }
+
+    function toggleMobileMenu() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('mobile-overlay');
+        if (sidebar) {
+            sidebar.classList.toggle('-translate-x-full');
+        }
+        if (overlay) {
+            overlay.classList.toggle('hidden');
+        }
+    }
+
+    function toggleFilters() {
+        const sidebar = document.getElementById('filter-sidebar');
+        const overlay = document.getElementById('filter-overlay');
+        if(sidebar) sidebar.classList.toggle('translate-x-full');
+        if(overlay) overlay.classList.toggle('hidden');
+    }
+
+    function closeFilters() {
+        const sidebar = document.getElementById('filter-sidebar');
+        const overlay = document.getElementById('filter-overlay');
+        if(sidebar) sidebar.classList.add('translate-x-full');
+        if(overlay) overlay.classList.add('hidden');
+    }
+
+    function toggleNotifications() {
+        const sidebar = document.getElementById('notifications-sidebar');
+        const overlay = document.getElementById('notifications-overlay');
+        if(sidebar) sidebar.classList.toggle('translate-x-full');
+        if(overlay) overlay.classList.toggle('hidden');
+    }
+
+    function closeNotifications() {
+        const sidebar = document.getElementById('notifications-sidebar');
+        const overlay = document.getElementById('notifications-overlay');
+        if(sidebar) sidebar.classList.add('translate-x-full');
+        if(overlay) overlay.classList.add('hidden');
+    }
+
+    function toggleNovelties() {
+        const sidebar = document.getElementById('novelties-sidebar');
+        const overlay = document.getElementById('novelties-overlay');
+        if(sidebar) sidebar.classList.toggle('translate-x-full');
+        if(overlay) overlay.classList.toggle('hidden');
+    }
+
+    function closeNovelties() {
+        const sidebar = document.getElementById('novelties-sidebar');
+        const overlay = document.getElementById('novelties-overlay');
+        if(sidebar) sidebar.classList.add('translate-x-full');
+        if(overlay) overlay.classList.add('hidden');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const mobileActions = document.getElementById('mobile-actions-container');
+        const desktopActions = document.getElementById('desktop-actions-container');
+        if (mobileActions && desktopActions && mobileActions.children.length > 0) {
+            desktopActions.innerHTML = mobileActions.innerHTML;
+        }
+
+        const alertMessage = document.getElementById('alert-message');
+        if (alertMessage) {
+            setTimeout(() => {
+                if(document.getElementById('alert-message')) document.getElementById('alert-message').remove();
+            }, 7000);
+        }
+    });
+</script>
+</body>
+</html>
