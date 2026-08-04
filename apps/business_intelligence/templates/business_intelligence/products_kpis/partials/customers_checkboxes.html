@@ -1,0 +1,8 @@
+{% for c in customers %}
+<label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+    <input type="checkbox" name="customer" value="{{ c.id }}" {% if c.id|stringformat:"s" in selected_customers %}checked{% endif %}>
+    <span class="searchable-text truncate">{{ c.id|upper }} {{ c.name|title }}</span>
+</label>
+{% empty %}
+<p class="text-xs text-muted p-1">No se encontraron clientes.</p>
+{% endfor %}

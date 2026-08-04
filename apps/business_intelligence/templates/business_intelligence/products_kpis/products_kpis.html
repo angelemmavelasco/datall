@@ -1,18 +1,14 @@
 {% extends 'base.html' %}
+{% load humanize widget_tweaks %}
 
 {% block title %}KPIs por productos{% endblock %}
-
 {% block module_name %}KPIs por productos{% endblock %}
 
 {% block module_actions %}
-
-<button class="hover:text-hover text-strong transition-colors cursor-pointer">Descargar reporte</button>
-
 <button onclick="toggleFilters()"
     class="hover:text-hover text-strong transition-colors cursor-pointer flex items-center gap-2 border border-border rounded p-1">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-        class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal">
         <path d="M10 5H3" />
         <path d="M12 19H3" />
         <path d="M14 3v4" />
@@ -23,11 +19,586 @@
         <path d="M8 10v4" />
         <path d="M8 12H3" />
     </svg>
-    <span>
-        Filtrar
-    </span>
+    <span>Filtrar</span>
 </button>
+{% endblock %}
 
+{% block filters %}
+<form method="GET" action="{% url 'business_intelligence:products_kpis' %}" class="flex flex-col gap-4 text-strong">
 
+    <div class="flex flex-col gap-1 mb-2">
+        <label class="text-strong text-sm">Periodo Inicio</label>
+        {% render_field filter.form.date_start class="p-1 border border-border bg-page rounded text-sm outline-none text-strong placeholder:text-muted focus:border-strong transition-colors w-full" %}
+    </div>
 
+    <div class="flex flex-col gap-1 mb-2">
+        <label class="text-strong text-sm">Periodo Fin</label>
+        {% render_field filter.form.date_end class="p-1 border border-border bg-page rounded text-sm outline-none text-strong placeholder:text-muted focus:border-strong transition-colors w-full" %}
+    </div>
+
+    <!-- Ruta -->
+    <div class="flex flex-col gap-1 mb-2">
+        <label class="text-strong text-sm">Ruta</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar ruta..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full" name="q"
+                hx-get="{% url 'business_intelligence:search_filter_htmx' 'route' %}" hx-include="[name='route']"
+                hx-target="#route-list" hx-trigger="keyup changed delay:500ms, search">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'route-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="route-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1"
+                hx-get="{% url 'business_intelligence:search_filter_htmx' 'route' %}" hx-include="[name='route']"
+                hx-trigger="load">
+                <p class="text-xs text-muted p-1">Cargando...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CEDIS -->
+    <div class="flex flex-col gap-1 mb-2">
+        <label class="text-strong text-sm">CEDIS</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar CEDIS..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full" name="q"
+                hx-get="{% url 'business_intelligence:search_filter_htmx' 'warehouse' %}"
+                hx-include="[name='warehouse']" hx-target="#warehouse-list"
+                hx-trigger="keyup changed delay:500ms, search">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'warehouse-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="warehouse-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1"
+                hx-get="{% url 'business_intelligence:search_filter_htmx' 'warehouse' %}"
+                hx-include="[name='warehouse']" hx-trigger="load">
+                <p class="text-xs text-muted p-1">Cargando...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Región -->
+    <div class="flex flex-col gap-1 mb-2">
+        <label class="text-strong text-sm">Región</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar región..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full" name="q"
+                hx-get="{% url 'business_intelligence:search_filter_htmx' 'region' %}" hx-include="[name='region']"
+                hx-target="#region-list" hx-trigger="keyup changed delay:500ms, search">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'region-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="region-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1"
+                hx-get="{% url 'business_intelligence:search_filter_htmx' 'region' %}" hx-include="[name='region']"
+                hx-trigger="load">
+                <p class="text-xs text-muted p-1">Cargando...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categoría de producto -->
+    <div class="flex flex-col gap-1 mb-2">
+        <label class="text-strong text-sm">Categoría de producto</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar categoría..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full" name="q"
+                hx-get="{% url 'business_intelligence:search_filter_htmx' 'product_category' %}"
+                hx-include="[name='product_category']" hx-target="#category-list"
+                hx-trigger="keyup changed delay:500ms, search">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'category-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="category-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1"
+                hx-get="{% url 'business_intelligence:search_filter_htmx' 'product_category' %}"
+                hx-include="[name='product_category']" hx-trigger="load">
+                <p class="text-xs text-muted p-1">Cargando...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clase de producto -->
+    <div class="flex flex-col gap-1 mb-2">
+        <label class="text-strong text-sm">Clase de producto</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar clase..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full" name="q"
+                hx-get="{% url 'business_intelligence:search_filter_htmx' 'product_class' %}"
+                hx-include="[name='product_class']" hx-target="#class-list"
+                hx-trigger="keyup changed delay:500ms, search">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'class-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="class-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1"
+                hx-get="{% url 'business_intelligence:search_filter_htmx' 'product_class' %}"
+                hx-include="[name='product_class']" hx-trigger="load">
+                <p class="text-xs text-muted p-1">Cargando...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Producto -->
+    <div class="flex flex-col gap-1 mb-2">
+        <label class="text-strong text-sm">Producto</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar producto..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full" name="q"
+                hx-get="{% url 'business_intelligence:search_filter_htmx' 'product' %}" hx-include="[name='product']"
+                hx-target="#product-list" hx-trigger="keyup changed delay:500ms, search">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'product-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="product-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1"
+                hx-get="{% url 'business_intelligence:search_filter_htmx' 'product' %}" hx-include="[name='product']"
+                hx-trigger="load">
+                <p class="text-xs text-muted p-1">Cargando...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cliente  -->
+    <div class="flex flex-col gap-1 mb-4">
+        <label class="text-strong text-sm">Cliente</label>
+        <div class="border border-border rounded bg-page flex flex-col">
+            <input type="text" placeholder="Buscar cliente por nombre o código..."
+                class="p-1 border-b border-border bg-page text-sm outline-none w-full" name="q"
+                hx-get="{% url 'business_intelligence:search_customers_htmx' %}" hx-include="[name='customer']"
+                hx-target="#customer-list" hx-trigger="keyup changed delay:500ms, search">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 border-b border-border transition-colors">
+                <input type="checkbox" onchange="toggleAllCheckboxes(this, 'customer-list')">
+                <span class="text-strong">Seleccionar todo</span>
+            </label>
+            <div id="customer-list" class="max-h-32 overflow-y-auto p-1 flex flex-col gap-1"
+                hx-get="{% url 'business_intelligence:search_customers_htmx' %}" hx-include="[name='customer']"
+                hx-trigger="load">
+                <p class="text-xs text-muted p-1">Cargando clientes...</p>
+            </div>
+        </div>
+    </div>
+
+    <button type="submit"
+        class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full mt-2">
+        Aplicar filtros
+    </button>
+    <a href="?"
+        class="block bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+        filtros</a>
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-4 mb-8">
+
+    <div class="">
+        <div class="flex justify-between items-center">
+            <p class="text-title text-sm mb-2">Resumen de productos</p>
+            <span class="custom-tooltip"
+                data-title="Métricas generales considerando todos los productos seleccionados y el rango de fechas.">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-circle-question-mark-icon lucide-circle-question-mark">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                    <path d="M12 17h.01" />
+                </svg>
+            </span>
+        </div>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- Resumen -->
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Venta Neta</p>
+            <p class="text-xl text-title">$ {{ stats.net_amount|floatformat:2|intcomma }}</p>
+            <p class="text-xs text-muted mt-1">prm: $ {{ stats.avg_price|floatformat:2|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Costo Total</p>
+            <p class="text-xl text-title">$ {{ stats.cost|floatformat:2|intcomma }}</p>
+            <p class="text-xs text-muted mt-1">prm: $ {{ stats.avg_cost|floatformat:2|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Utilidad Total</p>
+            <p class="text-xl text-title">$ {{ stats.profit|floatformat:2|intcomma }}</p>
+            <p class="text-xs text-muted mt-1">prm: $ {{ stats.avg_profit|floatformat:2|intcomma }}</p>
+        </div>
+
+        <div class="border border-border rounded p-2 flex flex-col bg-container">
+            <p class="text-muted text-sm text-strong">Unidades Vendidas</p>
+            <p class="text-xl text-title">{{ stats.quantity|floatformat:2|intcomma }}</p>
+        </div>
+    </div>
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Desempeño a lo largo del tiempo</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="border border-border rounded p-2 flex flex-col bg-container justify-center mb-4">
+        <p class="text-muted text-sm text-strong mb-2">Tipo de visualización</p>
+        <div class="flex gap-2">
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors border border-border">
+                <input type="radio" name="viz_type" value="grouped" checked onchange="updateCharts(this.value)">
+                <span>Conjunto (Consolidado)</span>
+            </label>
+            <label
+                class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors border border-border">
+                <input type="radio" name="viz_type" value="comparative" onchange="updateCharts(this.value)">
+                <span>Comparativo (Por producto)</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Timeline Chart -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="border border-border rounded flex flex-col bg-container h-120 md:col-span-2">
+            <div id="timelineSalesChart" class="w-full h-full min-h-[300px]"></div>
+        </div>
+
+        <div class="border border-border rounded flex flex-col bg-container h-120 md:col-span-2">
+            <div id="timelineMetricsChart" class="w-full h-full min-h-[300px]"></div>
+        </div>
+    </div>
+
+    <div class="">
+        <p class="text-title text-sm mb-2 flex items-center gap-2">
+            Distribución por producto
+        </p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-200 md:h-100">
+        <div class=" border border-border rounded bg-container flex min-h-98 items-center justify-center"
+            id="productClassBarChart">
+        </div>
+
+        <div class=" border border-border rounded bg-container min-h-98 flex items-center justify-center"
+            id="productCategoryChart">
+        </div>
+    </div>
+
+    <div class="">
+        <p class="text-title text-sm mb-2">Desglose de Desempeño</p>
+        <hr class="border-border">
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Top Products por Ruta -->
+        <div class="border border-border rounded p-2 bg-container">
+            <p class="text-title text-sm text-center mt-2 mb-2">Desempeño por Ruta</p>
+
+            <div class="overflow-auto rounded overflow-y-auto h-80">
+                <table class="table-fixed w-full rounded border-separate border-spacing-0">
+                    <thead>
+                        <tr class="bg-container">
+                            <th
+                                class="w-40 p-2 text-left border-r border-b border-border sticky bg-container left-0 top-0 z-10">
+                                Ruta</th>
+                            <th class="w-30 p-2 text-right border-b border-border sticky bg-container top-0">Venta</th>
+                            <th class="w-30 p-2 text-right border-b border-border sticky bg-container top-0">Costo</th>
+                            <th class="w-30 p-2 text-right border-b border-border sticky bg-container top-0">Utilidad
+                            </th>
+                            <th class="w-20 p-2 text-right border-b border-border sticky bg-container top-0">Unidades
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in route_breakdown %}
+                        <tr class="hover:bg-hover transition-colors">
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border truncate"
+                                title="{{ row.id|upper }} - {{ row.name }}">{{ row.id|upper }} - {{ row.name }}</td>
+                            <td class="p-2 text-right">
+                                <div>$ {{ row.net|floatformat:2|intcomma }}</div>
+                                <div class="text-xs text-muted">prm: $ {{ row.avg_price|floatformat:2|intcomma }}</div>
+                            </td>
+                            <td class="p-2 text-right">
+                                <div>$ {{ row.cost|floatformat:2|intcomma }}</div>
+                                <div class="text-xs text-muted">prm: $ {{ row.avg_cost|floatformat:2|intcomma }}</div>
+                            </td>
+                            <td class="p-2 text-right">
+                                <div>$ {{ row.profit|floatformat:2|intcomma }}</div>
+                                <div class="text-xs text-muted">prm: $ {{ row.avg_profit|floatformat:2|intcomma }}</div>
+                            </td>
+                            <td class="p-2 text-right">{{ row.quantity|floatformat:2|intcomma }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Top Products por Cliente -->
+        <div class="border border-border rounded p-2 bg-container">
+            <p class="text-title text-sm text-center mt-2 mb-2">Desempeño por Cliente</p>
+
+            <div class="overflow-auto rounded overflow-y-auto h-80">
+                <table class="table-fixed w-full rounded border-separate border-spacing-0">
+                    <thead>
+                        <tr class="bg-container">
+                            <th
+                                class="w-40 p-2 text-left border-r border-b border-border sticky bg-container left-0 top-0 z-10">
+                                Cliente</th>
+                            <th class="w-30 p-2 text-right border-b border-border sticky bg-container top-0">Venta</th>
+                            <th class="w-30 p-2 text-right border-b border-border sticky bg-container top-0">Costo</th>
+                            <th class="w-30 p-2 text-right border-b border-border sticky bg-container top-0">Utilidad
+                            </th>
+                            <th class="w-20 p-2 text-right border-b border-border sticky bg-container top-0">Unidades
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in customer_breakdown %}
+                        <tr class="hover:bg-hover transition-colors">
+                            <td class="p-2 sticky bg-container left-0 z-10 border-r border-border truncate"
+                                title="{{ row.id|upper }} - {{ row.name }}">{{ row.id|upper }} - {{ row.name }}</td>
+                            <td class="p-2 text-right">
+                                <div>$ {{ row.net|floatformat:2|intcomma }}</div>
+                                <div class="text-xs text-muted">prm: $ {{ row.avg_price|floatformat:2|intcomma }}</div>
+                            </td>
+                            <td class="p-2 text-right">
+                                <div>$ {{ row.cost|floatformat:2|intcomma }}</div>
+                                <div class="text-xs text-muted">prm: $ {{ row.avg_cost|floatformat:2|intcomma }}</div>
+                            </td>
+                            <td class="p-2 text-right">
+                                <div>$ {{ row.profit|floatformat:2|intcomma }}</div>
+                                <div class="text-xs text-muted">prm: $ {{ row.avg_profit|floatformat:2|intcomma }}</div>
+                            </td>
+                            <td class="p-2 text-right">{{ row.quantity|floatformat:2|intcomma }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script> -->
+<script>
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text-body').trim();
+    const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text-title').trim();
+
+    const formatCurrency = (value) => {
+        return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN'
+        }).format(value);
+    };
+
+    const formatNumber = (value) => {
+        return new Intl.NumberFormat('es-MX').format(value);
+    };
+
+    // Load Data
+    const timelineData = {{ timeline_data| safe }};
+    const productClassData = {{ class_data| safe }};
+    const productCategoryData = {{ category_data| safe }};
+
+    let timelineSalesChart, timelineMetricsChart, productClassBarChart, productCategoryChart;
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // Init Echarts
+        timelineSalesChart = echarts.init(document.getElementById('timelineSalesChart'));
+        timelineMetricsChart = echarts.init(document.getElementById('timelineMetricsChart'));
+        productClassBarChart = echarts.init(document.getElementById('productClassBarChart'));
+        productCategoryChart = echarts.init(document.getElementById('productCategoryChart'));
+
+        updateCharts('grouped');
+
+        // Distribution by Class
+        const ProductClassBarOption = {
+            title: {
+                text: 'Venta neta por clase de producto',
+                textStyle: { fontWeight: 'normal', fontSize: 14, color: titleColor }
+            },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' },
+                formatter: function (params) {
+                    if (!params || params.length === 0) return '';
+                    let item = productClassData.sales[params[0].dataIndex];
+                    return `<strong>${params[0].name}</strong><br/>
+                            Venta Neta: <strong>${formatCurrency(item.value)}</strong> (${item.percent}%)<br/>
+                            Costo: ${formatCurrency(item.cost)}<br/>
+                            Utilidad: ${formatCurrency(item.profit)}<br/>
+                            Unidades: ${formatNumber(item.quantity)}`;
+                }
+            },
+            xAxis: {
+                type: 'category',
+                data: productClassData.categories,
+            },
+            yAxis: {
+                type: 'value',
+                splitLine: { lineStyle: { opacity: 0.1 }, show: true }
+            },
+            series: [{
+                data: productClassData.sales.map(s => s.value),
+                type: 'bar',
+            }]
+        };
+        productClassBarChart.setOption(ProductClassBarOption);
+
+        // Distribution by Category
+        const productCategoryOption = {
+            title: {
+                text: 'Venta neta por categoría de producto',
+                textStyle: { fontWeight: 'normal', fontSize: 14, color: titleColor }
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: function (params) {
+                    let item = params.data;
+                    return `<strong>${item.name}</strong><br/>
+                            Venta Neta: <strong>${formatCurrency(item.value)}</strong> (${item.percent}%)<br/>
+                            Costo: ${formatCurrency(item.cost)}<br/>
+                            Utilidad: ${formatCurrency(item.profit)}<br/>
+                            Unidades: ${formatNumber(item.quantity)}`;
+                }
+            },
+            legend: { bottom: '5%', left: 'center' },
+            series: [{
+                name: 'Ventas',
+                type: 'pie',
+                radius: ['45%', '70%'],
+                center: ['50%', '50%'],
+                avoidLabelOverlap: false,
+                padAngle: 5,
+                itemStyle: { borderRadius: 10 },
+                label: { show: false, position: 'center' },
+                emphasis: { label: { show: true, fontSize: 16, fontWeight: 'bold' } },
+                labelLine: { show: false },
+                data: productCategoryData
+            }]
+        };
+        productCategoryChart.setOption(productCategoryOption);
+
+        window.addEventListener('resize', () => {
+            timelineSalesChart.resize();
+            timelineMetricsChart.resize();
+            productClassBarChart.resize();
+            productCategoryChart.resize();
+        });
+    });
+
+    function updateCharts(vizType) {
+        let seriesDataSales = [];
+        let seriesDataMetrics = [];
+
+        if (vizType === 'comparative' && timelineData.comparative.length > 0) {
+            timelineData.comparative.forEach(prod => {
+
+                // Sales timeline
+                seriesDataSales.push({
+                    name: prod.name,
+                    type: 'line',
+                    smooth: true,
+                    data: prod.quantity.map((qty, i) => [timelineData.periods[i], prod.avg_price[i] * qty])
+                });
+
+                // Metrics timeline 
+                // We'll plot avg_price, avg_cost, avg_profit here per product.
+                seriesDataMetrics.push({
+                    name: prod.name + ' (Precio Prom.)',
+                    type: 'line',
+                    smooth: true,
+                    data: prod.avg_price.map((val, i) => [timelineData.periods[i], val])
+                });
+                seriesDataMetrics.push({
+                    name: prod.name + ' (Costo Prom.)',
+                    type: 'line',
+                    smooth: true,
+                    data: prod.avg_cost.map((val, i) => [timelineData.periods[i], val])
+                });
+                seriesDataMetrics.push({
+                    name: prod.name + ' (Utilidad Prom.)',
+                    type: 'line',
+                    smooth: true,
+                    data: prod.avg_profit.map((val, i) => [timelineData.periods[i], val])
+                });
+            });
+        } else {
+            // Grouped
+            let grouped = timelineData.grouped;
+
+            seriesDataSales = [{
+                name: 'Venta Neta',
+                type: 'line',
+                smooth: true,
+                areaStyle: { opacity: 0.2 },
+                data: grouped.quantity.map((qty, i) => [timelineData.periods[i], grouped.avg_price[i] * qty])
+            }];
+
+            seriesDataMetrics = [
+                {
+                    name: 'Precio Promedio',
+                    type: 'line',
+                    smooth: true,
+                    data: grouped.avg_price.map((val, i) => [timelineData.periods[i], val])
+                },
+                {
+                    name: 'Costo Promedio',
+                    type: 'line',
+                    smooth: true,
+                    data: grouped.avg_cost.map((val, i) => [timelineData.periods[i], val])
+                },
+                {
+                    name: 'Utilidad Promedio',
+                    type: 'line',
+                    smooth: true,
+                    data: grouped.avg_profit.map((val, i) => [timelineData.periods[i], val])
+                }
+            ];
+        }
+
+        const commonTooltip = {
+            trigger: 'axis',
+            formatter: function (params) {
+                if (!params || !params.length) return '';
+                let result = `<strong>${params[0].value[0]}</strong><br/>`;
+                params.forEach(p => {
+                    result += `${p.marker} ${p.seriesName}: <strong>${formatCurrency(p.value[1])}</strong><br/>`;
+                });
+                return result;
+            }
+        };
+
+        const timelineSalesOption = {
+            title: { text: 'Evolución de Ventas', textStyle: { fontWeight: 'normal', fontSize: 14, color: titleColor }, left: 10, top: 10 },
+            tooltip: commonTooltip,
+            legend: { top: 40, type: 'scroll' },
+            xAxis: { type: 'category', boundaryGap: false },
+            yAxis: { type: 'value', splitLine: { lineStyle: { opacity: 0.1 } } },
+            grid: { top: 80, bottom: 40, left: 60, right: 40 },
+            series: seriesDataSales
+        };
+
+        const timelineMetricsOption = {
+            title: { text: 'Evolución de Precios, Costos y Utilidad Promedio', textStyle: { fontWeight: 'normal', fontSize: 14, color: titleColor }, left: 10, top: 10 },
+            tooltip: commonTooltip,
+            legend: { top: 40, type: 'scroll' },
+            xAxis: { type: 'category', boundaryGap: false },
+            yAxis: { type: 'value', splitLine: { lineStyle: { opacity: 0.1 } } },
+            grid: { top: 80, bottom: 40, left: 60, right: 40 },
+            series: seriesDataMetrics
+        };
+
+        timelineSalesChart.setOption(timelineSalesOption, true);
+        timelineMetricsChart.setOption(timelineMetricsOption, true);
+    }
+</script>
 {% endblock %}

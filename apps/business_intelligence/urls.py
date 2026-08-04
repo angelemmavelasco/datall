@@ -9,8 +9,8 @@ urlpatterns = [
     path('routes_kpis/', routes_kpis, name='routes_kpis'),
     path('warehouses_kpis/', warehouses_kpis, name='warehouses_kpis'),
     path('products_kpis/', products_kpis, name='products_kpis'),
-
-
+    path('products_kpis/search_customers/', search_customers_htmx, name='search_customers_htmx'),
+    path('products_kpis/search_filter/<str:filter_type>/', search_filter_htmx, name='search_filter_htmx'),
 
     path('customers_kpis/', customers_kpis, name='customers_kpis'),
     path('customers_kpis/export/', export_customers_kpis_data, name='export_customers_kpis_data'),

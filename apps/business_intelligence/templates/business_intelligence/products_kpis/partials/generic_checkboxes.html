@@ -1,0 +1,8 @@
+{% for item in items %}
+<label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+    <input type="checkbox" name="{{ filter_name }}" value="{{ item.id }}" {% if item.id|stringformat:"s" in selected_items %}checked{% endif %}>
+    <span class="searchable-text">{{ item.id|upper }} {{ item.name|title }}</span>
+</label>
+{% empty %}
+<p class="text-xs text-muted p-1">No se encontraron resultados.</p>
+{% endfor %}

@@ -1,4 +1,4 @@
-from apps.core.models import Warehouse, ProductClass, ProductCategory, CustomerType, Region, Route, Employee, SaleTransaction, Customer, SystemModule, Reference
+from apps.core.models import Warehouse, ProductClass, ProductCategory, Product, CustomerType, Region, Route, Employee, SaleTransaction, Customer, SystemModule, Reference
 from apps.core.utils import get_allowed_routes_for_user
 from django.db.models import Sum, Q
 from django.db.models.functions import ExtractYear
@@ -41,8 +41,9 @@ from apps.customers.services.accounts_receivable.accounts_receivable_crud import
 
 
 from apps.data_admin.services.data_history.data_history_crud import ActivityLogger
-
-
+from django.contrib import messages
+from apps.business_intelligence.filters import ProductKPIFilter
+from apps.business_intelligence.services.product_kpis import ProductKpisService
 
 @login_required
 def sales_dashboard(request):
@@ -223,8 +224,140 @@ def warehouses_kpis(request):
 
 @login_required
 def products_kpis(request):
-    context = {}
-    return render(request, 'business_intelligence/products_kpis/products_kpis.html', context)
+    template = 'business_intelligence/products_kpis/products_kpis.html'
+    allowed_routes = get_allowed_routes_for_user(request.user)
+
+    if not allowed_routes.exists():
+        messages.error(request, "No tienes rutas asignadas o permitidas.")
+        return render(request, template, {})
+
+    base_qs = SaleTransaction.objects.filter(route__in=allowed_routes)
+
+    # Set default dates to the current month if not provided
+    get_data = request.GET.copy()
+    today = date.today()
+    if not get_data.get('date_start'):
+        get_data['date_start'] = date(today.year, today.month, 1).strftime('%Y-%m-%d')
+    if not get_data.get('date_end'):
+        last_day = calendar.monthrange(today.year, today.month)[1]
+        get_data['date_end'] = date(today.year, today.month, last_day).strftime('%Y-%m-%d')
+
+    # Inicializar filtro
+    filterset = ProductKPIFilter(get_data, queryset=base_qs)
+    
+    # Procesar servicio con queryset filtrado
+    service = ProductKpisService(sales_qs=filterset.qs)
+    stats = service.get_summary_stats()
+    timeline_data = service.get_timeline_data()
+    category_data = service.get_category_distribution()
+    class_data = service.get_class_distribution()
+    route_breakdown, customer_breakdown = service.get_breakdown_tables()
+
+    context = {
+        'filter': filterset,
+        'stats': stats,
+        'timeline_data': json.dumps(timeline_data),
+        'category_data': json.dumps(category_data),
+        'class_data': json.dumps(class_data),
+        'route_breakdown': route_breakdown,
+        'customer_breakdown': customer_breakdown,
+        'allowed_routes': allowed_routes,
+        'filter_routes': allowed_routes,
+        'filter_warehouses': Warehouse.objects.all(),
+        'filter_regions': Region.objects.all(),
+        'filter_product_categories': ProductCategory.objects.all(),
+        'filter_product_classes': ProductClass.objects.all(),
+        'filter_products': Product.objects.all()[:200], # Limit to avoid huge DOM
+        'selected_routes': get_data.getlist('route'),
+        'selected_warehouses': get_data.getlist('warehouse'),
+        'selected_regions': get_data.getlist('region'),
+        'selected_product_categories': get_data.getlist('product_category'),
+        'selected_product_classes': get_data.getlist('product_class'),
+        'selected_products': get_data.getlist('product'),
+        'selected_customers': get_data.getlist('customer'),
+    }
+
+    module = SystemModule.objects.filter(url_name='business_intelligence:products_kpis').first()
+    ActivityLogger.log_read(
+        user=request.user,
+        module=module,
+        description='visualización de kpis de productos',
+        metadata={'filters': get_data.dict()}
+    )
+
+    return render(request, template, context)
+
+@login_required
+def search_customers_htmx(request):
+    q = request.GET.get('q', '').strip()
+    selected = request.GET.getlist('customer')
+    
+    customers = Customer.objects.all()
+    if q:
+        customers = customers.filter(Q(name__icontains=q) | Q(id__icontains=q))
+    
+    customers_list = list(customers[:100]) # Limit results for performance
+    
+    if selected:
+        selected_qs = Customer.objects.filter(id__in=selected)
+        existing_ids = {str(c.id) for c in customers_list}
+        for sc in selected_qs:
+            if str(sc.id) not in existing_ids:
+                customers_list.insert(0, sc)
+    
+    context = {
+        'customers': customers_list,
+        'selected_customers': selected
+    }
+    return render(request, 'business_intelligence/products_kpis/partials/customers_checkboxes.html', context)
+
+@login_required
+def search_filter_htmx(request, filter_type):
+    q = request.GET.get('q', '').strip()
+    
+    if filter_type == 'route':
+        qs = get_allowed_routes_for_user(request.user)
+        filter_name = 'route'
+    elif filter_type == 'warehouse':
+        qs = Warehouse.objects.all()
+        filter_name = 'warehouse'
+    elif filter_type == 'region':
+        qs = Region.objects.all()
+        filter_name = 'region'
+    elif filter_type == 'product_category':
+        qs = ProductCategory.objects.all()
+        filter_name = 'product_category'
+    elif filter_type == 'product_class':
+        qs = ProductClass.objects.all()
+        filter_name = 'product_class'
+    elif filter_type == 'product':
+        qs = Product.objects.all()
+        filter_name = 'product'
+    else:
+        return HttpResponse("")
+        
+    selected = request.GET.getlist(filter_name)
+    
+    search_qs = qs
+    if q:
+        search_qs = search_qs.filter(Q(name__icontains=q) | Q(id__icontains=q))
+        
+    items_list = list(search_qs[:100])
+    
+    if selected:
+        selected_qs = qs.filter(id__in=selected)
+        existing_ids = {str(item.id) for item in items_list}
+        for sc in selected_qs:
+            if str(sc.id) not in existing_ids:
+                items_list.insert(0, sc)
+        
+    context = {
+        'items': items_list,
+        'selected_items': selected,
+        'filter_name': filter_name
+    }
+    return render(request, 'business_intelligence/products_kpis/partials/generic_checkboxes.html', context)
+
 
 
 @login_required
