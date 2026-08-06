@@ -1,0 +1,85 @@
+<p class="flex items-center justify-center gap-2 w-full">
+        <span class="text-sm pt-2">
+            Ups! Parece que no hay datos para mostrar
+        </span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <style>
+                {#movimientos de ziquierda a derecha#}
+                @keyframes lookAround {
+                0%, 100% { transform: translateX(0); }
+                15%, 35% { transform: translateX(-4px); }
+                45%, 65% { transform: translateX(4px); }
+                75%      { transform: translateX(0); }
+                }
+
+                {#aparicion del signo de interrogación#}
+                @keyframes questionMark {
+                    0%, 45% {
+                        opacity: 0;
+                        /* Inicia un poco más arriba de la cabeza */
+                        transform: translateY(-2px) scale(0.5);
+                    }
+                    55%, 85% {
+                        opacity: 1;
+                        /* Eleva el signo hasta -6px para despegarlo de la cabeza */
+                        transform: translateY(-6px) scale(1);
+                    }
+                    95%, 100% {
+                        opacity: 0;
+                        /* Sube un poco más mientras se desvanece */
+                        transform: translateY(-9px) scale(0.8);
+                    }
+                }
+                {#boca de neutral a triste#}
+                @keyframes mouthNeutral {
+                    0%, 65% { opacity: 1; }
+                    75%, 100% { opacity: 0; }
+                }
+
+                @keyframes mouthSad {
+                    0%, 65% { opacity: 0; }
+                    75%, 100% { opacity: 1; }
+                }
+
+                .head-group {
+                    animation: lookAround 4s ease-in-out infinite;
+                    transform-origin: 12px 14.5px;
+                }
+
+                .q-mark {
+                    animation: questionMark 4s ease-in-out infinite;
+                    transform-origin: 12px 3px;
+                }
+
+                .mouth-neutral {
+                    animation: mouthNeutral 4s ease-in-out infinite;
+                }
+
+                .mouth-sad {
+                    animation: mouthSad 4s ease-in-out infinite;
+                }
+
+            </style>
+
+{#            signo de interrgacion#}
+            <g class="q-mark" opacity="0">
+                <path d="M 10.5 3.2 C 10.5 2 11.2 1.2 12 1.2 C 12.8 1.2 13.5 2 13.5 3 C 13.5 4 12 4.5 12 5.5" />
+                <circle cx="12" cy="6.8" r="0.5" fill="currentColor" />
+            </g>
+
+            <g class="head-group">
+                <!-- Contorno de la cara -->
+                <circle cx="12" cy="14.5" r="7.5" />
+
+                <!-- Ojos -->
+                <circle cx="9.5" cy="13" r="0.75" fill="currentColor" />
+                <circle cx="14.5" cy="13" r="0.75" fill="currentColor" />
+
+                <!-- Boca Neutral -->
+                <line class="mouth-neutral" x1="10" y1="17.5" x2="14" y2="17.5" />
+
+                <!-- Boca Triste -->
+                <path class="mouth-sad" d="M 9.5 18.5 C 10.5 16.5 13.5 16.5 14.5 18.5" opacity="0" />
+            </g>
+        </svg>
+</p>

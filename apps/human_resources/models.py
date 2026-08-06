@@ -1,6 +1,7 @@
 from django.db import models
 from decimal import Decimal
 from apps.core.models import TaxRegimeChoices, PaymentFormChoices, PeriodicityChoices
+from collections import defaultdict
 
 class Department(models.Model):
     id = models.CharField(max_length=3, primary_key=True, help_text='Identificador único del departamento')
@@ -181,7 +182,6 @@ class MonitoringFormQuestion(models.Model):
             f'Nivel {self.get_hierarchy_level_display()}' if self.hierarchy_level else 'General')
         return f'{self.question.label.title()} ({self.form.name.title()} - {target})'
 
-
 class MonitoringFormSubmission(models.Model):
     class SubmissionStatus(models.TextChoices):
         DRAFT = 'draft', 'Borrador'
@@ -198,7 +198,6 @@ class MonitoringFormSubmission(models.Model):
         verbose_name = 'Envío de reporte de desempeño'
         verbose_name_plural = 'Envíos de reportes de desempeño'
         unique_together = ('employee', 'form', 'period_identifier')
-
 
 class MonitoringFormAnswer(models.Model):
     submission = models.ForeignKey('MonitoringFormSubmission', on_delete=models.CASCADE, related_name='answers')
@@ -266,8 +265,21 @@ class Employee(models.Model):
         """
         Returns a flatten list with this employee Id and all the employees that report to this employee directly or indirectly.
         """
-        tree_ids = [self.id]
-        direct_reports = Employee.objects.filter(manager=self)
-        for report in direct_reports:
-            tree_ids.extend(report.get_reporting_tree_ids())
-        return list(set(tree_ids))
+        relations = Employee.objects.values_list('id', 'manager_id')
+        tree = defaultdict(list)
+
+        for emp_id, manager_id in relations:
+            if manager_id:
+                tree[manager_id].append(emp_id)
+
+        tree_ids = {self.id}
+        queue = [self.id]
+
+        while queue:
+            current_id = queue.pop(0)
+            for report_id in tree.get(current_id, []):
+                if report_id not in tree_ids:
+                    tree_ids.add(report_id)
+                    queue.append(report_id)
+
+        return list(tree_ids)

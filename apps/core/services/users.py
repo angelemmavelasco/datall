@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, ClassVar
 
 from django.core.exceptions import ValidationError
 from django.db.models import QuerySet, Count, Q
@@ -35,6 +35,7 @@ class UsersService:
     user: 'UserType'
     user_model: type = field(default_factory=get_user_model)
     _is_full_access: bool = field(init=False)
+    ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = ('acceso_total_usuarios',)
 
     def __post_init__(self):
         self._validate_access()
@@ -51,12 +52,11 @@ class UsersService:
         if not getattr(self.user, 'is_active', True):
             raise UserPermissionError('El usuario se encuentra inactivo.')
 
-    @staticmethod
-    def _get_full_access_groups(context: tuple[str, ...] = ('acceso_total_usuarios',)) -> list[str]:
+    def _get_full_access_groups(self) -> list[str]:
         """
         Recovers a list with the names of the groups who have full acess to the users info.
         """
-        return list(Reference.objects.filter(context__in=context).values_list('value', flat=True))
+        return list(Reference.objects.filter(context__in=self.ACCESS_CONTEXTS).values_list('value', flat=True))
 
     @property
     def has_full_access(self) -> bool:

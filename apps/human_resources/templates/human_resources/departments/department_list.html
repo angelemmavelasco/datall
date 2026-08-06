@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block module_title %}
+Departamentos
+{% endblock %}
+
+{% block module_actions %}
+
+    <a href="" class="text-title hover:text-hover transition-colors cursor-pointer" title="Crear nuevo departamento">
+        Nuevo departamento
+    </a>
+
+
+{% endblock %}
+
+{% block content %}
+
+    <div class="flex flex-col w-full gap-4">
+        <p class="text-title pb-1 border-b border-border">
+            Resumen
+        </p>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+            <div>
+                <p class="text-sm text-title">
+                    Departamentos registrados
+                </p><br>
+                <p class="text-xl text-">
+                    {{ kpis.departments_count|default:0|floatformat:0|intcomma }}
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-title">
+                    Posiciones registradas
+                </p><br>
+                <p class="text-xl text-">
+                    {{ kpis.positions_count|default:0|floatformat:0|intcomma }}
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-title">
+                    Colaboradores activos
+                </p><br>
+                <p class="text-xl text-">
+                    {{ kpis.active_employees_count|default:0|floatformat:0|intcomma }}
+                </p>
+            </div>
+
+            <div>
+                <p class="text-sm text-title">
+                    Colaboradores inactivos
+                </p><br>
+                <p class="text-xl text-">
+                    {{ kpis.inactive_employees_count|default:0|floatformat:0|intcomma }}
+                </p>
+            </div>
+        </div>
+
+        <p class="text-title pb-1 border-b border-border">
+            Listado
+        </p>
+
+
+        <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+            <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+                <thead>
+                    <tr class="border-b border-border text-xs">
+                        <th class="min-w-[50px] w-[50px] max-w-[50px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
+                            ID
+                        </th>
+
+                        <th class="min-w-[150px] max-w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Departamento
+                        </th>
+
+                        <th class="min-w-[50px] max-w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Posiciones
+                        </th>
+
+                        <th class="min-w-[50px] max-w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Colaboradores activos
+                        </th>
+
+                        <th class="min-w-[50px] max-w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Colaboradores inactivos
+                        </th>
+
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for department in departments %}
+                        <td class="p-2 truncate text-center">
+                            {{ department.id|default:'-'|upper }}
+                        </td>
+
+                        <td class="p-2 truncate text-left">
+                            {{ department.name|default:'-'|title }}
+                        </td>
+
+                        <td class="p-2 truncate text-center">
+                            {{ department.departments_count|default:0|floatformat:0|intcomma }}
+                        </td>
+
+                        <td class="p-2 truncate text-center">
+                            {{ department.active_employees_count|default:0|floatformat:0|intcomma }}
+                        </td>
+
+                        <td class="p-2 truncate text-center">
+                            {{ department.inactive_employees_count|default:0|floatformat:0|intcomma }}
+                        </td>
+
+                    {% empty %}
+
+                        <tr class="">
+                            <td colspan="100%" class="py-50">
+                                <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                                    {% include 'layouts/data_not_found.html' %}
+                                </div>
+                            </td>
+                        </tr>
+
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+
+
+
+    </div>
+    
+
+{% endblock %}
