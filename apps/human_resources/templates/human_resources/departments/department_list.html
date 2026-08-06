@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load humanize widget_tweaks %}
 
-{% block module_title %}
+{% block module_name %}
 Departamentos
 {% endblock %}
 
@@ -94,25 +94,31 @@ Departamentos
 
                 <tbody>
                     {% for department in departments %}
-                        <td class="p-2 truncate text-center">
-                            {{ department.id|default:'-'|upper }}
-                        </td>
+                        <tr>
 
-                        <td class="p-2 truncate text-left">
-                            {{ department.name|default:'-'|title }}
-                        </td>
+                            <td class="p-2 truncate text-center">
+                                <a href="{% url 'human_resources:department_detail_view' department.id  %}" class="underline hover:text-hover transition-colors">
+                                    {{ department.id|default:'-'|upper }}
+                                </a>
+                            </td>
 
-                        <td class="p-2 truncate text-center">
-                            {{ department.departments_count|default:0|floatformat:0|intcomma }}
-                        </td>
+                            <td class="p-2 truncate text-left">
+                                {{ department.name|default:'-'|title }}
+                            </td>
 
-                        <td class="p-2 truncate text-center">
-                            {{ department.active_employees_count|default:0|floatformat:0|intcomma }}
-                        </td>
+                            <td class="p-2 truncate text-center">
+                                {{ department.associated_positions_count|default:0|floatformat:0|intcomma }}
+                            </td>
 
-                        <td class="p-2 truncate text-center">
-                            {{ department.inactive_employees_count|default:0|floatformat:0|intcomma }}
-                        </td>
+                            <td class="p-2 truncate text-center">
+                                {{ department.associated_active_employees_count|default:0|floatformat:0|intcomma }}
+                            </td>
+
+                            <td class="p-2 truncate text-center">
+                                {{ department.associated_inactive_employees_count|default:0|floatformat:0|intcomma }}
+                            </td>
+                        </tr>
+
 
                     {% empty %}
 

@@ -4,4 +4,5 @@ app_name = 'human_resources'
 
 urlpatterns = [
     path('departments/', department_list_view, name='department_list_view'),
+    path('departments/<str:pk>/', department_detail_view, name='department_detail_view'),
 ]

@@ -22,7 +22,27 @@ def department_list_view(request):
 @login_required
 def department_detail_view(request, pk: str):
     '''details of a selected department'''
-    pass
+    template = 'human_resources/departments/department_detail.html'
+    department_service = DepartmentsService(user=request.user)
+
+    department = department_service.read_department(pk=pk)
+    # stats breakdown
+    positions = department_service.read_department_positions(department)
+    active_employees = department_service.read_department_employees(department, active=True)
+    inactive_employees = department_service.read_department_employees(department, active=False)
+
+    available_actions = None
+    if department_service.has_full_access:
+        available_actions = 'human_resources/departments/partials/department_detail__actions.html'
+
+    context = {
+        'department': department,
+        'positions': positions,
+        'active_employees': active_employees,
+        'inactive_employees': inactive_employees,
+        'available_actions': available_actions,
+    }
+    return render(request, template, context)
 
 @login_required
 def department_create_view(request):
