@@ -11,7 +11,7 @@ ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', '*').split(
 
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'apps.core.admin_site.CustomAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
