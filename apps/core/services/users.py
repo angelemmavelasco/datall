@@ -39,7 +39,7 @@ class UsersService:
 
     def __post_init__(self):
         self._validate_access()
-        self._is_full_access = self.has_full_access
+        self._is_full_access = self._evaluate_full_access()
 
     def _validate_access(self) -> None:
         '''
@@ -58,10 +58,9 @@ class UsersService:
         """
         return list(Reference.objects.filter(context__in=self.ACCESS_CONTEXTS).values_list('value', flat=True))
 
-    @property
-    def has_full_access(self) -> bool:
+    def _evaluate_full_access(self) -> bool:
         """
-        Validates if the user belongs to the full access groups, is superuser/staff or both.
+        Evaluates if the user belongs to the full access groups, is superuser/staff or both.
         """
         if getattr(self.user, 'is_superuser', False) or getattr(self.user, 'is_staff', False):
             return True
@@ -72,6 +71,13 @@ class UsersService:
             return False
 
         return self.user.groups.filter(name__in=full_access_groups).exists()
+
+    @property
+    def has_full_access(self) -> bool:
+        """
+        Returns the cached full access evaluation to avoid redundant database queries.
+        """
+        return self._is_full_access
 
     def read_users(self) -> QuerySet:
         '''
@@ -105,8 +111,7 @@ class UsersService:
         Create a new user based on provided data.
         Only allowed users (full access or superusers) can do it.
         '''
-        is_superuser = getattr(self.user, 'is_superuser', False)
-        if not self._is_full_access and not is_superuser:
+        if not self._is_full_access:
             raise UserPermissionError('No tienes permisos suficientes para crear usuarios.')
 
         password = data.pop('password', None)

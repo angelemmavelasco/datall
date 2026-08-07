@@ -135,6 +135,11 @@ LOGIN_URL = '/'
 LOGIN_REDIRECT_URL = '/hello-world/'
 LOGOUT_REDIRECT_URL = '/'
 
+# errors handler templates
+ACCESS_DENIED = 'errors/access_denied.html'
+PAGE_NOT_FOUND = 'errors/404.html'
+INTERNAL_SERVER_ERROR = 'errors/500.html'
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.resend.com'
 EMAIL_PORT = 587

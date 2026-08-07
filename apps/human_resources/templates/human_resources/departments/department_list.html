@@ -7,7 +7,7 @@ Departamentos
 
 {% block module_actions %}
 
-    <a href="" class="text-title hover:text-hover transition-colors cursor-pointer" title="Crear nuevo departamento">
+    <a href="{% url 'human_resources:department_create_view' %}" class="text-title hover:text-hover transition-colors cursor-pointer" title="Crear nuevo departamento">
         Nuevo departamento
     </a>
 
@@ -27,7 +27,7 @@ Departamentos
                 <p class="text-sm text-title">
                     Departamentos registrados
                 </p><br>
-                <p class="text-xl text-">
+                <p class="text-xl text-title">
                     {{ kpis.departments_count|default:0|floatformat:0|intcomma }}
                 </p>
             </div>
@@ -36,7 +36,7 @@ Departamentos
                 <p class="text-sm text-title">
                     Posiciones registradas
                 </p><br>
-                <p class="text-xl text-">
+                <p class="text-xl text-violet-500">
                     {{ kpis.positions_count|default:0|floatformat:0|intcomma }}
                 </p>
             </div>
@@ -45,7 +45,7 @@ Departamentos
                 <p class="text-sm text-title">
                     Colaboradores activos
                 </p><br>
-                <p class="text-xl text-">
+                <p class="text-xl text-emerald-500">
                     {{ kpis.active_employees_count|default:0|floatformat:0|intcomma }}
                 </p>
             </div>
@@ -54,7 +54,7 @@ Departamentos
                 <p class="text-sm text-title">
                     Colaboradores inactivos
                 </p><br>
-                <p class="text-xl text-">
+                <p class="text-xl text-red-500">
                     {{ kpis.inactive_employees_count|default:0|floatformat:0|intcomma }}
                 </p>
             </div>

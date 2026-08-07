@@ -6,6 +6,8 @@ from django.db.models.aggregates import Sum
 from apps.human_resources.models import Department
 from apps.core.services.users import UsersService
 from django.db.models import QuerySet, Count, Q
+from django.core.exceptions import ValidationError
+from django.db import transaction, IntegrityError
 from apps.human_resources.services.employees import EmployeesService
 from apps.human_resources.services.positions import PositionsService
 from django.utils import timezone
@@ -102,6 +104,56 @@ class DepartmentsService(UsersService):
         elif active is False:
             return base_qs.exclude(is_active_filter)
         return base_qs
+
+    def create_department(self, **data) -> Department:
+        '''
+        Create a new department based on provided data.
+        Only allowed users (full access) can do it.
+        '''
+        if not self._is_full_access:
+            raise PermissionsError('No tienes permisos suficientes para crear departamentos.')
+
+        try:
+            with transaction.atomic():
+                new_department = self.department_model(**data)
+                new_department.full_clean()
+                new_department.save()
+
+            return new_department
+
+        except ValidationError as e:
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except IntegrityError:
+            raise ServiceError("Ya existe un departamento con esos datos únicos (ej. ID o Nombre).")
+        except Exception as e:
+            raise ServiceError(f"Error al crear el departamento: {str(e)}")
+
+    def update_department(self, *, pk: str, **data) -> Department:
+        department_to_update = self.read_department(pk=pk)
+
+        if not self._is_full_access:
+            raise PermissionsError('No tienes permisos suficientes para actualizar departamentos.')
+
+        disallowed = {'id', 'pk'}
+        for key in disallowed:
+            data.pop(key, None)
+
+        try:
+            with transaction.atomic():
+                for attr, value in data.items():
+                    setattr(department_to_update, attr, value)
+
+                department_to_update.full_clean()
+                department_to_update.save()
+
+            return department_to_update
+
+        except ValidationError as e:
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except IntegrityError:
+            raise ServiceError("Ya existe un departamento con esos datos únicos.")
+        except Exception as e:
+            raise ServiceError(f"Error al actualizar el departamento: {str(e)}")
 
 @dataclass
 class DepartmentsStats:
