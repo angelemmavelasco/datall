@@ -104,7 +104,7 @@
                         <tr>
 
                             <td class="p-2 truncate text-center">
-                                <a href="" class="underline hover:text-hover transition-colors">
+                                <a href="{% url 'human_resources:position_detail_view' position.id %}" class="underline hover:text-hover transition-colors">
                                     {{ position.id|default:'-'|upper }}
                                 </a>
                             </td>

@@ -164,7 +164,24 @@ def position_list_view(request):
 @login_required
 def position_detail_view(request, pk: str):
     '''position and profile details'''
-    pass
+    template = 'human_resources/positions/position_detail.html'
+    position_service = PositionsService(user=request.user)
+
+    available_actions = None
+    if position_service.has_full_access:
+        available_actions = 'human_resources/positions/partials/position_detail__actions.html'
+
+    position = position_service.read_position(pk=pk)
+    active_employees = position_service.read_position_employees(position)
+    skills = position_service.read_position_skills(position)
+
+    context = {
+        'position': position,
+        'available_actions': available_actions,
+        'active_employees': active_employees,
+        'skills': skills,
+    }
+    return render(request, template, context)
 
 @login_required
 def position_create_view(request):

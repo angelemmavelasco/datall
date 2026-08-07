@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}
+	Detalle de posición
+{% endblock %}
+
+{% block module_name %}
+    Detalle de posición: {{ position.name|title }}
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+    <a href="{% url 'human_resources:position_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+
+    <div class="flex flex-col gap-4">
+        <p class="text-title text-sm pb-2 border-b border-border">Información general</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+            <span class="text-title">Identificador</span>
+            <div class="w-full  text-body  flex items-center">
+                {{ position.id|default:"-"|upper }}
+            </div>
+
+            <span class="text-title">Nombre</span>
+            <div class="w-full  text-body  flex items-center">
+                {{ position.name|default:"-"|title }}
+            </div>
+
+            <span class="text-title">Departamento</span>
+            <div class="w-full  text-body  flex items-center">
+                {{ position.department.name|default:"-"|title }}
+            </div>
+
+            <span class="text-title">Descripción</span>
+            <div class="w-full text-body italic bg-page rounded p-1 border-border border">
+                {{ position.description|default:"-"|title|linebreaksbr }}
+            </div>
+
+            <span class="text-title">Nivel jerárquico</span>
+            <div class="w-full text-body flex items-center">
+                {{ position.get_hierarchy_level_display|default:"-"|title }}
+            </div>
+        </div>
+
+        <p class="text-title text-sm pb-2 border-b border-border">Colaboradores</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+            <span class="text-title md:col-span-2">{{ position.associated_active_employees_count|default:0|floatformat:0|intcomma }} colaborador(es) activo(s)</span>
+
+            <ul class="md:col-span-2 w-full max-h-48 overflow-y-auto rounded bg-page p-1 flex flex-col gap-2 border border-border">
+                {% for e in active_employees %}
+                	<li class="pb-1 border-b border-border last:border-b-0 last:pb-0">
+                        <p class="font-medium text-body">{{ e.id|default:'-'|upper }}   {{ e.user.first_name|default:'-'|title }} {{ e.user.last_name|default:'-'|title }}</p>
+                        <p class="italic text-xs text-secondary">Ingreso: {{ e.hire_date|default:'-'|date:'d M Y' }}</p>
+                    </li>
+                {% empty %}
+                    <li class="">
+                        {% include 'layouts/data_not_found.html' %}
+                    </li>
+                {% endfor %}
+            </ul>
+
+        </div>
+
+        <p class="text-title text-sm pb-2 border-b border-border">Perfíl de puesto</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+            <span class="text-title md:col-span-2">{{ position.associated_skills_count|default:0|floatformat:0|intcomma }} habilidades(es) registrada(s)</span>
+
+            <ul class="md:col-span-2 w-full max-h-48 overflow-y-auto rounded bg-page p-1 flex flex-col gap-2 border border-border">
+                {% for s in skills %}
+                	<li class="pb-1 border-b border-border last:border-b-0 last:pb-0">
+                        <p class="font-medium text-body">{{ s.skill.name|default:'-'|title }}</p>
+                        <p class="text-[10px] text-hover">
+                            • Nivel de requrimiento: {{ s.get_requirement_level_display|default:'Requerido'|title }}
+                            • Expertís: {{ s.get_skill_level_display|default:'Básico'|title }}
+                        </p><br>
+                        <p class="text-[10px] ">
+                            <span>
+                                Notas:
+                            </span>
+                            <span class="italic">
+                                {{ s.notes|default:'No especificadas'|title|linebreaksbr }}
+                            </span>
+                        </p>
+                    </li>
+                {% empty %}
+                    <li class="">
+                        {% include 'layouts/data_not_found.html' %}
+                    </li>
+                {% endfor %}
+            </ul>
+
+            <span class="text-title md:col-span-2">{{ position.associated_kpis_count|default:0|floatformat:0|intcomma }} indicadores(es) de desempeño registrado(s)</span>
+
+            <ul class="md:col-span-2 w-full max-h-48 overflow-y-auto rounded bg-page p-1 flex flex-col gap-2 border border-border">
+                {% for k in position.kpis.all %}
+                	<li class="pb-2 border-b border-border last:border-b-0 last:pb-0">
+                        <p class="font-medium text-body">{{ k.name|default:'-'|title }} ({{ k.weight|default:0|floatformat:2|intcomma }} %)</p>
+                        <p class="text-[10px] text-hover">
+                            • Frecuencia: {{ k.get_frequency_display|default:'-'|title }}
+                            • Forma de medición: {{ k.get_unit_display|default:'-'|title }}
+                            • Objetivo: {{ k.target_value|default:0|floatformat:2|intcomma }}
+                        </p><br>
+                        <p class="text-[10px] ">
+                            <span>
+                                Descripción:
+                            </span>
+                            <span class="italic">
+                                {{ k.description|default:'No especificada'|title|linebreaksbr }}
+                            </span>
+                        </p>
+                    </li>
+                {% empty %}
+                    <li class="">
+                        {% include 'layouts/data_not_found.html' %}
+                    </li>
+                {% endfor %}
+            </ul>
+
+        </div>
+
+    </div>
+
+{% endblock %}

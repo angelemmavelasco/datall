@@ -22,6 +22,8 @@
     --color-violet-600: oklch(54.1% 0.281 293.009);
     --color-rose-200: oklch(89.2% 0.058 10.001);
     --color-rose-700: oklch(51.4% 0.222 16.935);
+    --color-gray-500: oklch(55.1% 0.027 264.364);
+    --color-gray-600: oklch(44.6% 0.03 256.802);
     --color-black: #000;
     --color-white: #fff;
     --spacing: 0.25rem;
@@ -978,6 +980,12 @@
   }
   .text-emerald-600 {
     color: var(--color-emerald-600);
+  }
+  .text-gray-500 {
+    color: var(--color-gray-500);
+  }
+  .text-gray-600 {
+    color: var(--color-gray-600);
   }
   .text-hover {
     color: var(--theme-hover);

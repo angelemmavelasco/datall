@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import ClassVar, Optional
 from django.utils import timezone
 
-from apps.human_resources.models import Position
+from apps.human_resources.models import Position, PositionSkill
 from apps.core.services.users import UsersService
 from apps.human_resources.services.employees import EmployeesService
 from django.db.models import QuerySet, Count, Q, When, Value, Case, Sum
@@ -20,6 +20,7 @@ class PermissionsError(ServiceError):
 @dataclass
 class PositionsService(UsersService):
     position_model: type = Position
+    position_skill_model: type = PositionSkill
     ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
         'acceso_total_usuarios',
         'acceso_total_posiciones',
@@ -79,7 +80,7 @@ class PositionsService(UsersService):
         return base_qs
 
     def read_position(self, *, pk: str) -> Optional[Position]:
-        position = self.read_positions().filter(pk=pk).first()
+        position = self.read_positions().prefetch_related('kpis').filter(pk=pk).first()
         if position:
             return position
 
@@ -87,6 +88,23 @@ class PositionsService(UsersService):
             raise PermissionsError(f'No tienes permiso para acceder a la posición con ID "{pk}".')
 
         raise PositionNotFound(f'No se encontró ninguna posición con el ID "{pk}".')
+
+    def read_position_employees(self, position: Position, active: bool | None = True) -> QuerySet:
+        '''returns a list of associated employees, they can be filtered by status'''
+        today = timezone.now().date()
+        employees_service = EmployeesService(user=self.user)
+        base_qs = employees_service.read_employees().filter(position=position)
+        is_active_filter = Q(hire_date__lte=today) & (
+                Q(termination_date__isnull=True) | Q(termination_date__gte=today)
+        )
+        if active is True:
+            return base_qs.filter(is_active_filter)
+        elif active is False:
+            return base_qs.exclude(is_active_filter)
+        return base_qs
+
+    def read_position_skills(self, position: Position) -> QuerySet:
+        return self.position_skill_model.objects.select_related('skill').filter(position=position)
 
 @dataclass
 class PositionsStats:
