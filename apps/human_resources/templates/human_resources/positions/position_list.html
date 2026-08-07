@@ -1,21 +1,21 @@
 {% extends 'base.html' %}
 {% load humanize widget_tweaks %}
 
-{% block module_name %}
-Departamentos
-{% endblock %}
-
 {% block title %}
-Departamentos
+    Puestos y perfiles
+
 {% endblock %}
 
+{% block module_name %}
+    Puestos y perfiles
+{% endblock %}
 
 {% block module_actions %}
 
     {% if available_actions %}
         {% include available_actions %}
     {% endif %}
-
+    
 {% endblock %}
 
 {% block content %}
@@ -26,100 +26,107 @@ Departamentos
         </p>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Departamentos registrados
-                </span><br>
-                <span class="text-xl text-title">
-                    {{ kpis.departments_count|default:0|floatformat:0|intcomma }}
-                </span>
-            </a>
-
             <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
                 <span class="text-sm text-title">
                     Posiciones registradas
                 </span><br>
-                <span class="text-xl text-violet-500">
+                <span class="text-xl text-title">
                     {{ kpis.positions_count|default:0|floatformat:0|intcomma }}
                 </span>
             </a>
 
             <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
                 <span class="text-sm text-title">
-                    Colaboradores activos
+                    Habilidades y competencias
                 </span><br>
-                <span class="text-xl text-emerald-500">
-                    {{ kpis.active_employees_count|default:0|floatformat:0|intcomma }}
+                <span class="text-xl text-violet-500">
+                    {{ kpis.skills_count|default:0|floatformat:0|intcomma }}
                 </span>
             </a>
 
             <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
                 <span class="text-sm text-title">
-                    Colaboradores inactivos
+                    Perfiles de puesto
                 </span><br>
-                <span class="text-xl text-red-500">
-                    {{ kpis.inactive_employees_count|default:0|floatformat:0|intcomma }}
+                <span class="text-xl text-blue-500">
+                    {{ kpis.position_profiles_count|default:0|floatformat:0|intcomma }}
                 </span>
             </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Colaboradores asignados
+                </span><br>
+                <span class="text-xl text-emerald-500">
+                    {{ kpis.assigned_employees_count|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
         </div>
 
         <p class="text-title pb-1 border-b border-border">
             Listado
         </p>
 
-
         <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
             <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
                 <thead>
                     <tr class="border-b border-border text-xs">
-                        <th class=" w-[50px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
+                        <th class="w-[50px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
                             ID
                         </th>
 
-                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        <th class="w-[150px]  p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Posición
+                        </th>
+
+                        <th class="w-[150px]  p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
                             Departamento
                         </th>
 
-                        <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Posiciones
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Habilidades y competecias
                         </th>
 
-                        <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Colaboradores activos
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            KPIs relacionados
                         </th>
 
-                        <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Colaboradores inactivos
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Colaboradores asignados
                         </th>
 
                     </tr>
                 </thead>
 
                 <tbody>
-                    {% for department in departments %}
+                    {% for position in positions %}
                         <tr>
 
                             <td class="p-2 truncate text-center">
-                                <a href="{% url 'human_resources:department_detail_view' department.id  %}" class="underline hover:text-hover transition-colors">
-                                    {{ department.id|default:'-'|upper }}
+                                <a href="" class="underline hover:text-hover transition-colors">
+                                    {{ position.id|default:'-'|upper }}
                                 </a>
                             </td>
 
+                            <td class="p-2 truncate text-left truncate">
+                                {{ position.name|default:'-'|title }}
+                            </td>
+
                             <td class="p-2 truncate text-left">
-                                {{ department.name|default:'-'|title }}
+                                {{ position.department.name|default:'-'|title }}
                             </td>
 
                             <td class="p-2 truncate text-center">
-                                {{ department.associated_positions_count|default:0|floatformat:0|intcomma }}
+                                {{ position.associated_skills_count|default:0|floatformat:0|intcomma }}
                             </td>
 
                             <td class="p-2 truncate text-center">
-                                {{ department.associated_active_employees_count|default:0|floatformat:0|intcomma }}
+                                {{ position.associated_kpis_count|default:0|floatformat:0|intcomma }}
                             </td>
 
                             <td class="p-2 truncate text-center">
-                                {{ department.associated_inactive_employees_count|default:0|floatformat:0|intcomma }}
+                                {{ position.associated_active_employees_count|default:0|floatformat:0|intcomma }}
                             </td>
                         </tr>
 
@@ -143,6 +150,5 @@ Departamentos
 
 
     </div>
-    
 
 {% endblock %}

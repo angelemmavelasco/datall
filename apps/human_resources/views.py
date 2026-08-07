@@ -4,6 +4,8 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib import messages
+
+from .services.positions import PositionsStats, PositionsService
 from .services.departments import DepartmentsService, DepartmentsStats, ServiceError, PermissionsError, DepartmentNotFound
 from .forms import DepartmentForm
 
@@ -15,11 +17,16 @@ def department_list_view(request):
     service = DepartmentsService(user=request.user)
     stats_service = DepartmentsStats(departments_service=service)
 
+    available_actions = None
+    if service.has_full_access:
+        available_actions = 'human_resources/departments/partials/department_list__actions.html'
+
     departments = service.read_departments()
     kpis = stats_service.stats(qs=departments)
     context = {
         'departments': departments,
         'kpis': kpis,
+        'available_actions': available_actions,
     }
     return render(request, template, context)
 
@@ -132,12 +139,27 @@ def department_update_view(request, pk: str):
 
     return render(request, template, context)
 
-
 '''positions'''
 @login_required
 def position_list_view(request):
     '''general list of the registered positions'''
-    pass
+    template = 'human_resources/positions/position_list.html'
+    position_service = PositionsService(user=request.user)
+    kpis_service = PositionsStats(position_service=position_service)
+
+    available_actions = None
+    if position_service.has_full_access:
+        available_actions = 'human_resources/positions/partials/position_list__actions.html'
+
+    positions = position_service.read_positions()
+    kpis = kpis_service.stats(qs=positions)
+
+    context = {
+        'available_actions': available_actions,
+        'positions': positions,
+        'kpis': kpis,
+    }
+    return render(request, template, context)
 
 @login_required
 def position_detail_view(request, pk: str):

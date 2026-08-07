@@ -7,4 +7,6 @@ urlpatterns = [
     path('departments/details/<str:pk>/', department_detail_view, name='department_detail_view'),
     path('departments/create/', department_create_view, name='department_create_view'),
     path('departments/update/<str:pk>/', department_update_view, name='department_update_view'),
+
+    path('positions/', position_list_view, name='position_list_view'),
 ]

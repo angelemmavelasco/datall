@@ -512,6 +512,12 @@
   .w-\[100cqw\] {
     width: 100cqw;
   }
+  .w-\[100px\] {
+    width: 100px;
+  }
+  .w-\[150px\] {
+    width: 150px;
+  }
   .w-fit {
     width: fit-content;
   }
@@ -541,6 +547,9 @@
   }
   .max-w-\[150px\] {
     max-width: 150px;
+  }
+  .max-w-\[1500px\] {
+    max-width: 1500px;
   }
   .max-w-md {
     max-width: var(--container-md);
