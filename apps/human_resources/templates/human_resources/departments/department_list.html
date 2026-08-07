@@ -7,10 +7,9 @@ Departamentos
 
 {% block module_actions %}
 
-    <a href="{% url 'human_resources:department_create_view' %}" class="text-title hover:text-hover transition-colors cursor-pointer" title="Crear nuevo departamento">
-        Nuevo departamento
-    </a>
-
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
 
 {% endblock %}
 
@@ -23,41 +22,41 @@ Departamentos
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 
-            <div>
-                <p class="text-sm text-title">
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
                     Departamentos registrados
-                </p><br>
-                <p class="text-xl text-title">
+                </span><br>
+                <span class="text-xl text-title">
                     {{ kpis.departments_count|default:0|floatformat:0|intcomma }}
-                </p>
-            </div>
+                </span>
+            </a>
 
-            <div>
-                <p class="text-sm text-title">
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
                     Posiciones registradas
-                </p><br>
-                <p class="text-xl text-violet-500">
+                </span><br>
+                <span class="text-xl text-violet-500">
                     {{ kpis.positions_count|default:0|floatformat:0|intcomma }}
-                </p>
-            </div>
+                </span>
+            </a>
 
-            <div>
-                <p class="text-sm text-title">
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
                     Colaboradores activos
-                </p><br>
-                <p class="text-xl text-emerald-500">
+                </span><br>
+                <span class="text-xl text-emerald-500">
                     {{ kpis.active_employees_count|default:0|floatformat:0|intcomma }}
-                </p>
-            </div>
+                </span>
+            </a>
 
-            <div>
-                <p class="text-sm text-title">
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
                     Colaboradores inactivos
-                </p><br>
-                <p class="text-xl text-red-500">
+                </span><br>
+                <span class="text-xl text-red-500">
                     {{ kpis.inactive_employees_count|default:0|floatformat:0|intcomma }}
-                </p>
-            </div>
+                </span>
+            </a>
         </div>
 
         <p class="text-title pb-1 border-b border-border">
