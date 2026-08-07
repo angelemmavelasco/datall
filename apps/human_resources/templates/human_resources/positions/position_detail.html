@@ -40,15 +40,16 @@
                 {{ position.department.name|default:"-"|title }}
             </div>
 
+            <span class="text-title">Nivel jerárquico</span>
+            <div class="w-full text-body flex items-center">
+                {{ position.get_hierarchy_level_display|default:"-"|title }}
+            </div>
+
             <span class="text-title">Descripción</span>
             <div class="w-full text-body italic bg-page rounded p-1 border-border border">
                 {{ position.description|default:"-"|title|linebreaksbr }}
             </div>
 
-            <span class="text-title">Nivel jerárquico</span>
-            <div class="w-full text-body flex items-center">
-                {{ position.get_hierarchy_level_display|default:"-"|title }}
-            </div>
         </div>
 
         <p class="text-title text-sm pb-2 border-b border-border">Colaboradores</p>
