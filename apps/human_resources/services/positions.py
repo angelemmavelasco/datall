@@ -2,10 +2,10 @@ from dataclasses import dataclass
 from typing import ClassVar, Optional
 from django.utils import timezone
 
-from apps.human_resources.models import Position, PositionSkill
+from apps.human_resources.models import Position, PositionSkill, Skill
 from apps.core.services.users import UsersService
 from apps.human_resources.services.employees import EmployeesService
-from django.db.models import QuerySet, Count, Q, When, Value, Case, Sum
+from django.db.models import QuerySet, Count, Q, When, Value, Case, Sum, Prefetch
 
 
 class ServiceError(Exception):
@@ -123,6 +123,50 @@ class PositionsStats:
             position_profiles_count=Count('profile_completed', distinct=True, filter=Q(profile_completed=True)),
             assigned_employees_count=Sum('associated_active_employees_count'),
         )
+
+@dataclass
+class SkillsService(PositionsService):
+    '''dedicated to retrieve information abvout the skill associated to positions'''
+    skill_model: type = Skill
+
+    def read_skills(self) -> QuerySet:
+        '''
+        return a qs with the skills associated.
+        if the user is full access, the queryset will include all existing skills
+        no matter if that skill has associated position with active employees or not, but
+        if the user is no full access, is only be allowed to view
+        positions where there are active employees which the main user has acess to.
+
+        '''
+
+        if self._is_full_access:
+             return self.skill_model.objects.prefetch_related(
+                'position_requirements',
+            ).distinct().order_by('id')
+
+        allowed_positions = self.read_positions()
+        # base filter to know which employees im associated to
+        today = timezone.now().date()
+        is_active_emp = Q(
+            position__employees__hire_date__lte=today,
+        ) & (
+            Q(position__employees__termination_date__isnull=True) |
+            Q(position__employees__termination_date__gte=today)
+        )
+        allowed_employees = EmployeesService(user=self.user).read_employees()
+        filtered_reqs = self.position_skill_model.objects.filter(
+            position__in=allowed_positions,
+            position__employees__in=allowed_employees
+        ).filter(is_active_emp).distinct().select_related('position')
+        base_qs = self.skill_model.objects.filter(
+            position_requirements__in=filtered_reqs
+        ).prefetch_related(
+            Prefetch('position_requirements', queryset=filtered_reqs)
+        ).distinct().order_by('id')
+        return base_qs
+
+    def read_skill(self, pk : int) -> Optional[Skill]:
+        return self.read_skills().filter(pk=pk).first()
 
 
 

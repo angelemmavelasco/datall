@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}
+    Habilidades y competencias
+
+{% endblock %}
+
+{% block module_name %}
+    Habilidades y competencias
+{% endblock %}
+
+{% block module_actions %}
+
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+
+    <a href="" class="hover:text-hover transition-colors flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"><path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></svg>
+        Filtrar
+    </a>
+
+{% endblock %}
+
+
+{% block content %}
+
+    <div class="flex flex-col w-full gap-4">
+        <p class="text-title pb-1 border-b border-border">
+            Listado
+        </p>
+
+        <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+            <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+                <thead>
+                    <tr class="border-b border-border text-xs">
+                        <th class="w-[50px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
+                            ID
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Habilidad
+                        </th>
+
+                        <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Tipo de habilidad
+                        </th>
+
+                        <th class="w-[100px]  p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Posiciones asociadas
+                        </th>
+
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for skill in skills %}
+                        <tr>
+
+                            <td class="p-2 truncate text-center">
+                                <a href="{% url 'human_resources:position_skill_detail_view' skill.id %}" class="underline hover:text-hover transition-colors">
+                                    {{ skill.id|default:'-'|upper }}
+                                </a>
+                            </td>
+
+                            <td class="p-2 truncate text-left truncate">
+                                {{ skill.name|default:'-'|title }}
+                            </td>
+
+                            <td class="p-2 truncate text-center">
+                                {{ skill.get_skill_type_display|default:'-'|title }}
+                            </td>
+
+                            <td class="p-2 truncate text-center">
+                                {{ skill.position_requirements.all|length }}
+                            </td>
+                        </tr>
+
+
+                    {% empty %}
+
+                        <tr class="">
+                            <td colspan="100%" class="py-50">
+                                <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                                    {% include 'layouts/data_not_found.html' %}
+                                </div>
+                            </td>
+                        </tr>
+
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+{% endblock %}

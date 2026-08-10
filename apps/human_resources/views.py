@@ -5,9 +5,10 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib import messages
 
-from .services.positions import PositionsStats, PositionsService
+from .services.positions import PositionsStats, PositionsService, SkillsService
 from .services.departments import DepartmentsService, DepartmentsStats, ServiceError, PermissionsError, DepartmentNotFound
 from .forms import DepartmentForm
+from .filters import DepartmentFilter, PositionFilter
 
 '''departments'''
 @login_required
@@ -22,11 +23,16 @@ def department_list_view(request):
         available_actions = 'human_resources/departments/partials/department_list__actions.html'
 
     departments = service.read_departments()
+    
+    department_filter = DepartmentFilter(request.GET, queryset=departments)
+    departments = department_filter.qs
+    
     kpis = stats_service.stats(qs=departments)
     context = {
         'departments': departments,
         'kpis': kpis,
         'available_actions': available_actions,
+        'filter': department_filter,
     }
     return render(request, template, context)
 
@@ -152,12 +158,17 @@ def position_list_view(request):
         available_actions = 'human_resources/positions/partials/position_list__actions.html'
 
     positions = position_service.read_positions()
+    
+    position_filter = PositionFilter(request.GET, queryset=positions)
+    positions = position_filter.qs
+    
     kpis = kpis_service.stats(qs=positions)
 
     context = {
         'available_actions': available_actions,
         'positions': positions,
         'kpis': kpis,
+        'filter': position_filter,
     }
     return render(request, template, context)
 
@@ -174,7 +185,6 @@ def position_detail_view(request, pk: str):
     position = position_service.read_position(pk=pk)
     active_employees = position_service.read_position_employees(position)
     skills = position_service.read_position_skills(position)
-
     context = {
         'position': position,
         'available_actions': available_actions,
@@ -195,11 +205,35 @@ def position_update_view(request, pk: str):
 @login_required
 def position_skill_list_view(request):
     '''this view is only available at position list view, and only full access can access to that'''
-    pass
+    template = 'human_resources/skills/skill_list.html'
+    skill_service = SkillsService(user=request.user)
+
+    available_actions = None
+    if skill_service.has_full_access:
+        available_actions = 'human_resources/skills/partials/skill_list__actions.html'
+
+    skills = skill_service.read_skills()
+
+    available_actions = None
+    if skill_service.has_full_access:
+        available_actions = 'human_resources/skills/partials/skill_list__actions.html'
+
+    context = {
+        'skills': skills,
+        'available_actions': available_actions,
+    }
+
+    return render(request, template, context)
 
 @login_required
 def position_skill_detail_view(request, pk: int):
-    pass
+    template = 'human_resources/skills/skill_detail.html'
+    skill_service = SkillsService(user=request.user)
+    skill = skill_service.read_skill(pk=pk)
+    context = {
+        'skill': skill,
+    }
+    return render(request, template, context)
 
 @login_required
 def position_skill_create_view(request):

@@ -10,4 +10,7 @@ urlpatterns = [
 
     path('positions/', position_list_view, name='position_list_view'),
     path('positions/<str:pk>/', position_detail_view, name='position_detail_view'),
+
+    path('position-skills/', position_skill_list_view, name='position_skill_list_view'),
+    path('positions-skills/<int:pk>/', position_skill_detail_view, name='position_skill_detail_view'),
 ]

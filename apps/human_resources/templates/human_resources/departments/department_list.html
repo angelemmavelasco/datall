@@ -16,6 +16,41 @@ Departamentos
         {% include available_actions %}
     {% endif %}
 
+    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+
+{% endblock %}
+
+{% block filters %}
+<form method="GET" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.department.id_for_label }}" class="text-title">{{ filter.form.department.label }}</label>
+        {% render_field filter.form.department class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.position.id_for_label }}" class="text-title">{{ filter.form.position.label }}</label>
+        {% render_field filter.form.position class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.employee.id_for_label }}" class="text-title">{{ filter.form.employee.label }}</label>
+        {% render_field filter.form.employee class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+    </div>
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+</form>
 {% endblock %}
 
 {% block content %}
