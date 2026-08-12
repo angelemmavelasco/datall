@@ -7,7 +7,7 @@ from django.contrib import messages
 
 from .services.positions import PositionsStats, PositionsService, SkillsService
 from .services.departments import DepartmentsService, DepartmentsStats, ServiceError, PermissionsError, DepartmentNotFound
-from .forms import DepartmentForm
+from .forms import DepartmentForm, PositionForm, PositionSkillFormSet, PositionKPIFormSet
 from .filters import DepartmentFilter, PositionFilter
 
 '''departments'''
@@ -195,7 +195,54 @@ def position_detail_view(request, pk: str):
 
 @login_required
 def position_create_view(request):
-    pass
+    template = 'human_resources/positions/position_form.html'
+    service = PositionsService(user=request.user)
+    
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para crear posiciones.')
+        return redirect('human_resources:position_list_view')
+
+    if request.method == 'POST':
+        form = PositionForm(request.POST, request.FILES)
+        skills_formset = PositionSkillFormSet(request.POST, request.FILES, prefix='skills')
+        kpis_formset = PositionKPIFormSet(request.POST, request.FILES, prefix='kpis')
+        
+        if form.is_valid() and skills_formset.is_valid() and kpis_formset.is_valid():
+            try:
+                skills_data = [f.cleaned_data for f in skills_formset if f.cleaned_data]
+                kpis_data = [f.cleaned_data for f in kpis_formset if f.cleaned_data]
+
+                new_position = service.create_position(
+                    position_data=form.cleaned_data,
+                    skills_data=skills_data,
+                    kpis_data=kpis_data
+                )
+                messages.success(request, f'Posición {new_position.name} creada correctamente.')
+                return redirect('human_resources:position_detail_view', new_position.pk)
+
+            except PermissionsError as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:position_list_view')
+
+            except ServiceError as e:
+                messages.error(request, str(e))
+
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al crear: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = PositionForm()
+        skills_formset = PositionSkillFormSet(prefix='skills')
+        kpis_formset = PositionKPIFormSet(prefix='kpis')
+
+    context = {
+        'form': form,
+        'skills_formset': skills_formset,
+        'kpis_formset': kpis_formset,
+        'can_update_access': service.has_full_access
+    }
+    return render(request, template, context)
 
 @login_required
 def position_update_view(request, pk: str):

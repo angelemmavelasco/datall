@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from typing import ClassVar, Optional
 from django.utils import timezone
+from django.db import transaction, IntegrityError
+from django.core.exceptions import ValidationError
 
-from apps.human_resources.models import Position, PositionSkill, Skill
+from apps.human_resources.models import Position, PositionSkill, Skill, PositionKPI
 from apps.core.services.users import UsersService
 from apps.human_resources.services.employees import EmployeesService
 from django.db.models import QuerySet, Count, Q, When, Value, Case, Sum, Prefetch
@@ -21,6 +23,7 @@ class PermissionsError(ServiceError):
 class PositionsService(UsersService):
     position_model: type = Position
     position_skill_model: type = PositionSkill
+    position_kpi_model: type = PositionKPI
     ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
         'acceso_total_usuarios',
         'acceso_total_posiciones',
@@ -78,6 +81,49 @@ class PositionsService(UsersService):
             )
 
         return base_qs
+
+    def create_position(self, position_data: dict, skills_data: list, kpis_data: list) -> Position:
+        if not self._is_full_access:
+            raise PermissionsError('No tienes permisos suficientes para crear posiciones.')
+
+        try:
+            with transaction.atomic():
+                new_position = self.position_model(**position_data)
+                new_position.full_clean()
+                new_position.save()
+
+                for skill_data in skills_data:
+                    if skill_data and not skill_data.get('DELETE', False):
+                        skill_data_copy = dict(skill_data)
+                        skill_data_copy.pop('DELETE', None)
+                        skill_data_copy.pop('id', None)
+                        skill_data_copy.pop('position', None)
+                        
+                        position_skill = self.position_skill_model(position=new_position, **skill_data_copy)
+                        position_skill.full_clean()
+                        position_skill.save()
+
+                for kpi_data in kpis_data:
+                    if kpi_data and not kpi_data.get('DELETE', False):
+                        kpi_data_copy = dict(kpi_data)
+                        kpi_data_copy.pop('DELETE', None)
+                        kpi_data_copy.pop('id', None)
+                        kpi_data_copy.pop('position', None)
+                        
+                        position_kpi = self.position_kpi_model(position=new_position, **kpi_data_copy)
+                        position_kpi.full_clean()
+                        position_kpi.save()
+
+            return new_position
+        except ValidationError as e:
+            if hasattr(e, 'message_dict'):
+                messages = [f"{k}: {', '.join(v)}" for k, v in e.message_dict.items()]
+                raise ServiceError(f"Datos inválidos: {'; '.join(messages)}")
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except IntegrityError:
+            raise ServiceError("Ya existe una posición con esos datos únicos.")
+        except Exception as e:
+            raise ServiceError(f"Error al crear la posición: {str(e)}")
 
     def read_position(self, *, pk: str) -> Optional[Position]:
         position = self.read_positions().prefetch_related('kpis').filter(pk=pk).first()

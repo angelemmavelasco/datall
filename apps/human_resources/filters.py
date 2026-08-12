@@ -6,7 +6,7 @@ from .models import Department, Position, Skill
 class DepartmentFilter(django_filters.FilterSet):
     department = django_filters.CharFilter(
         method='filter_department', 
-        label='Departamento (Nombre o ID)'
+        label='Departamento'
     )
     position = django_filters.CharFilter(
         field_name='positions__name', 
@@ -15,7 +15,7 @@ class DepartmentFilter(django_filters.FilterSet):
     )
     employee = django_filters.CharFilter(
         method='filter_employee', 
-        label='Colaborador (Activo o Inactivo)'
+        label='Colaborador'
     )
 
     class Meta:
@@ -38,7 +38,7 @@ class DepartmentFilter(django_filters.FilterSet):
 class PositionFilter(django_filters.FilterSet):
     position = django_filters.CharFilter(
         method='filter_position', 
-        label='Posición (Nombre o ID)'
+        label='Posición'
     )
     employee = django_filters.CharFilter(
         method='filter_employee', 
