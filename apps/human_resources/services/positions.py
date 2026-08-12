@@ -125,6 +125,85 @@ class PositionsService(UsersService):
         except Exception as e:
             raise ServiceError(f"Error al crear la posición: {str(e)}")
 
+    def update_position(self, position: Position, position_data: dict, skills_data: list, kpis_data: list) -> Position:
+        if not self._is_full_access:
+            raise PermissionsError('No tienes permisos suficientes para actualizar posiciones.')
+
+        try:
+            with transaction.atomic():
+                for key, value in position_data.items():
+                    if key != 'id':
+                        setattr(position, key, value)
+                
+                position.full_clean()
+                position.save()
+
+                for skill_data in skills_data:
+                    if not skill_data:
+                        continue
+                    
+                    skill_instance = skill_data.get('id')
+                    should_delete = skill_data.get('DELETE', False)
+                    
+                    if should_delete:
+                        if skill_instance and skill_instance.pk:
+                            skill_instance.delete()
+                        continue
+                        
+                    skill_data_copy = dict(skill_data)
+                    skill_data_copy.pop('DELETE', None)
+                    skill_data_copy.pop('id', None)
+                    skill_data_copy.pop('position', None)
+
+                    if skill_instance and skill_instance.pk:
+                        for k, v in skill_data_copy.items():
+                            setattr(skill_instance, k, v)
+                        skill_instance.full_clean()
+                        skill_instance.save()
+                    else:
+                        position_skill = self.position_skill_model(position=position, **skill_data_copy)
+                        position_skill.full_clean()
+                        position_skill.save()
+
+                for kpi_data in kpis_data:
+                    if not kpi_data:
+                        continue
+                        
+                    kpi_instance = kpi_data.get('id')
+                    should_delete = kpi_data.get('DELETE', False)
+                    
+                    if should_delete:
+                        if kpi_instance and kpi_instance.pk:
+                            kpi_instance.delete()
+                        continue
+                        
+                    kpi_data_copy = dict(kpi_data)
+                    kpi_data_copy.pop('DELETE', None)
+                    kpi_data_copy.pop('id', None)
+                    kpi_data_copy.pop('position', None)
+
+                    if kpi_instance and kpi_instance.pk:
+                        for k, v in kpi_data_copy.items():
+                            setattr(kpi_instance, k, v)
+                        kpi_instance.full_clean()
+                        kpi_instance.save()
+                    else:
+                        position_kpi = self.position_kpi_model(position=position, **kpi_data_copy)
+                        position_kpi.full_clean()
+                        position_kpi.save()
+
+            return position
+
+        except ValidationError as e:
+            if hasattr(e, 'message_dict'):
+                messages = [f"{k}: {', '.join(v)}" for k, v in e.message_dict.items()]
+                raise ServiceError(f"Datos inválidos: {'; '.join(messages)}")
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except IntegrityError:
+            raise ServiceError("Ya existe una posición con esos datos únicos (ID duplicado).")
+        except Exception as e:
+            raise ServiceError(f"Error al actualizar la posición: {str(e)}")
+
     def read_position(self, *, pk: str) -> Optional[Position]:
         position = self.read_positions().prefetch_related('kpis').filter(pk=pk).first()
         if position:
@@ -213,6 +292,48 @@ class SkillsService(PositionsService):
 
     def read_skill(self, pk : int) -> Optional[Skill]:
         return self.read_skills().filter(pk=pk).first()
+
+    def create_skill(self, skill_data: dict) -> Skill:
+        if not self._is_full_access:
+            raise PermissionsError('No tienes permisos suficientes para crear habilidades / competencias.')
+        
+        try:
+            with transaction.atomic():
+                new_skill = self.skill_model(**skill_data)
+                new_skill.full_clean()
+                new_skill.save()
+            return new_skill
+        except ValidationError as e:
+            if hasattr(e, 'message_dict'):
+                messages = [f"{k}: {', '.join(v)}" for k, v in e.message_dict.items()]
+                raise ServiceError(f"Datos inválidos: {'; '.join(messages)}")
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except IntegrityError:
+            raise ServiceError("Ya existe una habilidad con ese nombre.")
+        except Exception as e:
+            raise ServiceError(f"Error al crear la habilidad: {str(e)}")
+
+    def update_skill(self, skill: Skill, skill_data: dict) -> Skill:
+        if not self._is_full_access:
+            raise PermissionsError('No tienes permisos suficientes para actualizar habilidades / competencias.')
+
+        try:
+            with transaction.atomic():
+                for key, value in skill_data.items():
+                    if key != 'id':
+                        setattr(skill, key, value)
+                skill.full_clean()
+                skill.save()
+            return skill
+        except ValidationError as e:
+            if hasattr(e, 'message_dict'):
+                messages = [f"{k}: {', '.join(v)}" for k, v in e.message_dict.items()]
+                raise ServiceError(f"Datos inválidos: {'; '.join(messages)}")
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except IntegrityError:
+            raise ServiceError("Ya existe una habilidad con ese nombre.")
+        except Exception as e:
+            raise ServiceError(f"Error al actualizar la habilidad: {str(e)}")
 
 
 

@@ -14,8 +14,6 @@ from .models import (
     Employee,
 )
 
-# --- Inlines ---
-
 class PositionKPIInline(admin.TabularInline):
     model = PositionKPI
     extra = 1

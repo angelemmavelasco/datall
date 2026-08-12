@@ -5,9 +5,9 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib import messages
 
-from .services.positions import PositionsStats, PositionsService, SkillsService
+from .services.positions import PositionsStats, PositionsService, SkillsService, PositionNotFound
 from .services.departments import DepartmentsService, DepartmentsStats, ServiceError, PermissionsError, DepartmentNotFound
-from .forms import DepartmentForm, PositionForm, PositionSkillFormSet, PositionKPIFormSet
+from .forms import DepartmentForm, PositionForm, PositionSkillFormSet, PositionKPIFormSet, SkillForm
 from .filters import DepartmentFilter, PositionFilter
 
 '''departments'''
@@ -76,6 +76,9 @@ def department_create_view(request):
             try:
                 new_department = service.create_department(**form.cleaned_data)
                 messages.success(request, f'Departamento {new_department.name} creado correctamente.')
+                next_url = request.GET.get('next') or request.POST.get('next')
+                if next_url:
+                    return redirect(next_url)
                 return redirect('human_resources:department_detail_view', new_department.pk)
 
             except PermissionsError as e:
@@ -246,7 +249,63 @@ def position_create_view(request):
 
 @login_required
 def position_update_view(request, pk: str):
-    pass
+    template = 'human_resources/positions/position_form.html'
+    service = PositionsService(user=request.user)
+    
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para actualizar posiciones.')
+        return redirect('human_resources:position_list_view')
+
+    try:
+        position = service.read_position(pk=pk)
+    except PositionNotFound:
+        messages.error(request, 'Posición no encontrada.')
+        return redirect('human_resources:position_list_view')
+
+    if request.method == 'POST':
+        form = PositionForm(request.POST, request.FILES, instance=position)
+        skills_formset = PositionSkillFormSet(request.POST, request.FILES, instance=position, prefix='skills')
+        kpis_formset = PositionKPIFormSet(request.POST, request.FILES, instance=position, prefix='kpis')
+        
+        if form.is_valid() and skills_formset.is_valid() and kpis_formset.is_valid():
+            try:
+                skills_data = [f.cleaned_data for f in skills_formset if f.cleaned_data]
+                kpis_data = [f.cleaned_data for f in kpis_formset if f.cleaned_data]
+
+                updated_position = service.update_position(
+                    position=position,
+                    position_data=form.cleaned_data,
+                    skills_data=skills_data,
+                    kpis_data=kpis_data
+                )
+                messages.success(request, f'Posición {updated_position.name} actualizada correctamente.')
+                return redirect('human_resources:position_detail_view', updated_position.pk)
+
+            except PermissionsError as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:position_list_view')
+
+            except ServiceError as e:
+                messages.error(request, str(e))
+
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al actualizar: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = PositionForm(instance=position)
+        skills_formset = PositionSkillFormSet(instance=position, prefix='skills')
+        kpis_formset = PositionKPIFormSet(instance=position, prefix='kpis')
+
+    context = {
+        'form': form,
+        'skills_formset': skills_formset,
+        'kpis_formset': kpis_formset,
+        'can_update_access': service.has_full_access,
+        'updating': True,
+        'position': position
+    }
+    return render(request, template, context)
 
 '''position skills'''
 @login_required
@@ -277,18 +336,110 @@ def position_skill_detail_view(request, pk: int):
     template = 'human_resources/skills/skill_detail.html'
     skill_service = SkillsService(user=request.user)
     skill = skill_service.read_skill(pk=pk)
+
+    available_actions = None
+    if skill_service.has_full_access:
+        available_actions = 'human_resources/skills/partials/skill_detail__actions.html'
+
     context = {
         'skill': skill,
+        'available_actions': available_actions,
     }
     return render(request, template, context)
 
 @login_required
 def position_skill_create_view(request):
-    pass
+    template = 'human_resources/skills/skill_form.html'
+    service = SkillsService(user=request.user)
+    
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para crear habilidades.')
+        return redirect('human_resources:position_skill_list_view')
+
+    if request.method == 'POST':
+        form = SkillForm(request.POST)
+        if form.is_valid():
+            try:
+                new_skill = service.create_skill(skill_data=form.cleaned_data)
+                messages.success(request, f'Habilidad "{new_skill.name}" creada correctamente.')
+                
+                next_url = request.GET.get('next') or request.POST.get('next')
+                if next_url:
+                    return redirect(next_url)
+                return redirect('human_resources:position_skill_list_view')
+
+            except PermissionsError as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:position_skill_list_view')
+
+            except ServiceError as e:
+                messages.error(request, str(e))
+
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al crear: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = SkillForm()
+
+    context = {
+        'form': form,
+        'can_update_access': service.has_full_access,
+        'updating': False
+    }
+    return render(request, template, context)
 
 @login_required
 def position_skill_update_view(request, pk: int):
-    pass
+    template = 'human_resources/skills/skill_form.html'
+    service = SkillsService(user=request.user)
+    
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para actualizar habilidades.')
+        return redirect('human_resources:position_skill_list_view')
+
+    skill = service.read_skill(pk=pk)
+    if not skill:
+        messages.error(request, 'Habilidad no encontrada.')
+        return redirect('human_resources:position_skill_list_view')
+
+    if request.method == 'POST':
+        form = SkillForm(request.POST, instance=skill)
+        
+        if form.is_valid():
+            try:
+                updated_skill = service.update_skill(
+                    skill=skill,
+                    skill_data=form.cleaned_data
+                )
+                messages.success(request, f'Habilidad "{updated_skill.name}" actualizada correctamente.')
+                
+                next_url = request.GET.get('next') or request.POST.get('next')
+                if next_url:
+                    return redirect(next_url)
+                return redirect('human_resources:position_skill_detail_view', updated_skill.pk)
+
+            except PermissionsError as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:position_skill_list_view')
+
+            except ServiceError as e:
+                messages.error(request, str(e))
+
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al actualizar: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = SkillForm(instance=skill)
+
+    context = {
+        'form': form,
+        'can_update_access': service.has_full_access,
+        'updating': True,
+        'skill': skill
+    }
+    return render(request, template, context)
 
 '''monitoring forms'''
 @login_required

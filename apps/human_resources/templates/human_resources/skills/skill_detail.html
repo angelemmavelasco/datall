@@ -9,6 +9,12 @@
     Detalle de habilidad / competencia: {{ skill.name|title }}
 {% endblock %}
 
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions with skill=skill %}
+    {% endif %}
+{% endblock %}
+
 {% block content %}
 
     <div class="flex flex-col gap-4">

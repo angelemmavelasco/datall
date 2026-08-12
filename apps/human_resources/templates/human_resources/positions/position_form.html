@@ -78,6 +78,10 @@ Nueva posición
         </span>
         <div>
             {% render_field form.department class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' required='required' %}
+            <a href="{% url 'human_resources:department_create_view' %}?next={{ request.path }}" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                Nuevo departamento
+            </a>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.department.errors %}
                 <span class="block">• {{ error }}</span>
@@ -130,11 +134,15 @@ Nueva posición
         {% for skill_form in skills_formset %}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-start bg-container p-2 rounded border border-border">
                 {{ skill_form.id }}
-                {% if skill_form.instance.pk %}{{ skill_form.DELETE }}{% endif %}
+                <!-- {% if skill_form.instance.pk %}{{ skill_form.DELETE }}{% endif %} -->
                 
                 <div class="flex flex-col gap-1">
                     <span class="text-title text-xs">Habilidad</span>
                     {% render_field skill_form.skill class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+                    <a href="{% url 'human_resources:position_skill_create_view' %}?next={{ request.path }}" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px]">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                        Nueva habilidad
+                    </a>
                 </div>
                 <div class="flex flex-col gap-1">
                     <span class="text-title text-xs">Requisito</span>
@@ -161,8 +169,8 @@ Nueva posición
     <!-- KPIs Formset -->
     <div class="flex justify-between items-center mt-4">
         <p class="text-title text-sm">Indicadores (KPIs)</p>
-        <button type="button" onclick="addForm('kpis')" class="text-sm bg-container border border-border text-strong hover:bg-hover p-1 rounded transition-colors cursor-pointer flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        <button type="button" onclick="addForm('kpis')" class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trending-up-icon lucide-trending-up"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></svg>
             Añadir KPI
         </button>
     </div>
