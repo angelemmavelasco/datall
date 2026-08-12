@@ -319,6 +319,10 @@ def position_skill_list_view(request):
         available_actions = 'human_resources/skills/partials/skill_list__actions.html'
 
     skills = skill_service.read_skills()
+    
+    from .filters import SkillFilter
+    skill_filter = SkillFilter(request.GET, queryset=skills, request=request)
+    skills = skill_filter.qs
 
     available_actions = None
     if skill_service.has_full_access:
@@ -326,6 +330,7 @@ def position_skill_list_view(request):
 
     context = {
         'skills': skills,
+        'filter': skill_filter,
         'available_actions': available_actions,
     }
 
