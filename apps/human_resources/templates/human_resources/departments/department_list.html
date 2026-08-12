@@ -29,17 +29,17 @@ Departamentos
 <form method="GET" class="flex flex-col gap-4">
     <div class="flex flex-col gap-1">
         <label for="{{ filter.form.department.id_for_label }}" class="text-title">{{ filter.form.department.label }}</label>
-        {% render_field filter.form.department class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+        {% render_field filter.form.department class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre o Id del departamento" %}
     </div>
 
     <div class="flex flex-col gap-1">
         <label for="{{ filter.form.position.id_for_label }}" class="text-title">{{ filter.form.position.label }}</label>
-        {% render_field filter.form.position class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+        {% render_field filter.form.position class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre del puesto" %}
     </div>
 
     <div class="flex flex-col gap-1">
         <label for="{{ filter.form.employee.id_for_label }}" class="text-title">{{ filter.form.employee.label }}</label>
-        {% render_field filter.form.employee class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+        {% render_field filter.form.employee class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre o Id del colaborador" %}
     </div>
 
     <div class="flex gap-2 flex-col mt-2">
