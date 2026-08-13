@@ -259,6 +259,9 @@
   .top-4 {
     top: calc(var(--spacing) * 4);
   }
+  .top-full {
+    top: 100%;
+  }
   .-right-1 {
     right: calc(var(--spacing) * -1);
   }
@@ -300,6 +303,9 @@
   }
   .z-\[1000\] {
     z-index: 1000;
+  }
+  .z-\[9999\] {
+    z-index: 9999;
   }
   .col-span-2 {
     grid-column: span 2 / span 2;
@@ -391,6 +397,9 @@
   .hidden {
     display: none;
   }
+  .inline-block {
+    display: inline-block;
+  }
   .inline-flex {
     display: inline-flex;
   }
@@ -460,8 +469,17 @@
   .min-h-32 {
     min-height: calc(var(--spacing) * 32);
   }
+  .min-h-\[60vh\] {
+    min-height: 60vh;
+  }
   .min-h-\[70vh\] {
     min-height: 70vh;
+  }
+  .min-h-\[80\] {
+    min-height: 80;
+  }
+  .min-h-\[80vh\] {
+    min-height: 80vh;
   }
   .min-h-dvh {
     min-height: 100dvh;
@@ -495,6 +513,9 @@
   }
   .w-10 {
     width: calc(var(--spacing) * 10);
+  }
+  .w-44 {
+    width: calc(var(--spacing) * 44);
   }
   .w-60 {
     width: calc(var(--spacing) * 60);
@@ -1100,6 +1121,18 @@
   .select-none {
     -webkit-user-select: none;
     user-select: none;
+  }
+  .group-last\:top-auto:is(:where(.group):last-child *) {
+    top: auto;
+  }
+  .group-last\:bottom-full:is(:where(.group):last-child *) {
+    bottom: 100%;
+  }
+  .group-last\:mt-0:is(:where(.group):last-child *) {
+    margin-top: 0px;
+  }
+  .group-last\:mb-1:is(:where(.group):last-child *) {
+    margin-bottom: var(--spacing);
   }
   .group-open\:rotate-180:is(:where(.group):is([open], :popover-open, :open) *) {
     rotate: 180deg;
