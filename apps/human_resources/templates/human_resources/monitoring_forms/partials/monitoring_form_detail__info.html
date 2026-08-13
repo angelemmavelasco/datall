@@ -2,7 +2,7 @@
         <summary class="text-title flex items-center justify-between gap-1 text-sm cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
             <div class="flex items-center gap-1">
                 {% include 'layouts/datall_pet.html' %}
-                <span>¿Qué son los formularios para reportes de desempeño y cómo funcionan?</span>
+                <span>¿Cómo funciona la configuración y diseño de los formularios?</span>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
                 <circle cx="12" cy="12" r="10"/>
@@ -14,58 +14,52 @@
             <p>
                 Los formularios para reportes de desempeño permiten estructurar evaluaciones periódicas para medir entregables, KPIs y competencias dentro de la organización.
             </p><br>
-    
+
+            <p class="font-semibold text-title">Programación de plazos y frecuencia:</p>
             <ul class="list-disc list-inside pl-2 space-y-1">
                 <li>
-                    Programación automática: Configuras la frecuencia (semanal, mensual, etc.) y la ventana de entrega (día, hora de apertura y duración). El sistema habilitará automáticamente los plazos para que los colaboradores respondan a tiempo.
+                    <strong>Programación automática:</strong> Configuras la frecuencia (semanal, mensual, etc.) y la ventana de entrega (día, hora de apertura y duración en horas). El sistema habilitará automáticamente los plazos para responder a tiempo.
                 </li>
                 <li>
-                    Visibilidad y Jerarquía: Cada usuario (líder o colaborador) solo visualizará las preguntas <em>generales</em> del formulario o aquellas asignadas específicamente a su <em>puesto</em>, su <em>nivel jerárquico</em> o al de sus <em>subordinados directos e indirectos</em>.
+                    <strong>Frecuencia y plazos:</strong> Los reportes semanales aplican a todas las semanas, mientras que los mensuales requieren especificar una semana concreta del mes.
                 </li>
             </ul><br>
 
-            <p>
-                Al agregar preguntas al formulario, puedes definir quiénes deberán responderlas según su puesto o nivel dentro de la organización:
-            </p><br>
-
+            <p class="font-semibold text-title">Asignación de preguntas y visibilidad por jerarquía:</p>
             <ul class="list-disc list-inside pl-2 space-y-1">
                 <li>
-                    Preguntas generales: Si dejas en blanco los campos <em>Puesto</em> y <em>Nivel jerárquico</em>, la pregunta se volverá pública y la responderán todos los usuarios asignados al reporte (con al menos una posición asignada dentro de la organización).
+                    <strong>Preguntas generales:</strong> Al dejar en blanco los campos <em>Puesto</em> y <em>Nivel jerárquico</em>, la pregunta se vuelve pública y aplica a todos los colaboradores asignados al reporte.
                 </li>
                 <li>
-                    Preguntas por puesto: Selecciona un puesto específico (ej. <em>Agente de Ventas</em> o <em>Analista</em>). La pregunta solo la visualizará y responderá quien ocupe ese puesto específico (y sus supervisores).
+                    <strong>Preguntas por puesto:</strong> Selecciona un puesto específico (ej. <em>Agente de Ventas</em> o <em>Analista</em>). La pregunta solo la visualizará y responderá quien ocupe ese puesto específico (y sus supervisores en el árbol organizacional).
                 </li>
                 <li>
-                    Preguntas por nivel jerárquico: Selecciona un nivel (ej. <em>Nivel 1</em>) para aplicar la pregunta a todos los puestos pertenecientes a ese nivel organizacional.
+                    <strong>Preguntas por nivel jerárquico:</strong> Selecciona un nivel (ej. <em>Nivel 1</em>) para aplicar la pregunta a todos los puestos pertenecientes a dicho nivel organizacional.
                 </li>
             </ul><br>
 
-            <p>
-                Cada campo / pregunta cuenta con un número de orden, el cual determina la secuencia exacta en la que se mostrarán las preguntas al colaborador al momento de responder la evaluación (de menor a mayor).
-            </p>
-
-            <p>
-                Al seleccionar cada campo / pregunta, esta cuenta con una clasificación de respuesta esperada. Tómalo en cuenta al diseñar el formulario:
-            </p><br>
-
+            <p class="font-semibold text-title">Secuencia y tipos de respuesta esperada:</p>
             <ul class="list-disc list-inside pl-2 space-y-1">
                 <li>
-                    Texto libre (Ej: Descripción detallada de algún proceso)
+                    <strong>Orden de aparición:</strong> Cada pregunta tiene un número de orden que establece la secuencia exacta en la que se mostrarán los campos (de menor a mayor).
                 </li>
                 <li>
-                    Número o cantidad (Ej: Número de ventas, número de incidentes, número de clientes visitados, monto monetario)
+                    <strong>Texto libre:</strong> Para explicaciones detalladas, justificaciones o descripciones de procesos.
                 </li>
                 <li>
-                    Porcentaje (Ej: Avance, alcance de objetivos)
+                    <strong>Número o cantidad:</strong> Para conteos numéricos, montos monetarios, unidades o número de incidentes/clientes.
                 </li>
                 <li>
-                    Escala 1 a 5 (Ej: Nivel de satisfacción, nivel de acuerdo)
+                    <strong>Porcentaje (%):</strong> Para medir nivel de avance o alcance de objetivos.
                 </li>
                 <li>
-                    Si / No (Ej: Cumple con el requisito, no cumple con el requisito, se alcanzó el objetivo, no se alcanzó el objetivo, etc.)
+                    <strong>Escala 1 a 5:</strong> Para calificaciones de desempeño, nivel de satisfacción o grado de acuerdo.
                 </li>
                 <li>
-                    Archivo (Ej: Capturas, fotografías, documentos PDF, excel, etc.)
+                    <strong>Sí / No (Booleano):</strong> Para verificación de cumplimiento de requisitos u objetivos alcanzados.
+                </li>
+                <li>
+                    <strong>Archivo adjunto:</strong> Para adjuntar evidencias fotográficas, documentos PDF, hojas de cálculo o capturas.
                 </li>
             </ul>
         </div>

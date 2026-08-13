@@ -1,0 +1,61 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-sm cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo funciona el listado y la gestión de reportes de desempeño?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2">
+        <p>
+            Este módulo concentra el catálogo de formularios de evaluación y monitoreo de desempeño configurados en la organización. Desde aquí puedes consultar sus horarios de apertura, periodicidad y acciones disponibles.
+        </p><br>
+
+        <p class="font-semibold text-title">Uso de los filtros de búsqueda:</p>
+        <ul class="list-disc list-inside pl-2 space-y-1">
+            <li>
+                <strong>Formulario:</strong> Permite realizar búsquedas por el identificador único (ID) o el nombre del reporte.
+            </li>
+            <li>
+                <strong>Colaborador:</strong> Filtra los formularios que aplican o están asociados a un colaborador en específico.
+            </li>
+            <li>
+                <strong>Puesto:</strong> Muestra únicamente los formularios que contienen preguntas asignadas a los puestos seleccionados.
+            </li>
+            <li>
+                <strong>Nivel jerárquico:</strong> Muestra los formularios que contienen preguntas dirigidas a niveles jerárquicos específicos (Nivel 1 al 5).
+            </li>
+            <li>
+                <strong>Periodicidad de entrega:</strong> Filtra según la frecuencia de emisión (ej. Semanal, Mensual, Trimestral, Anual).
+            </li>
+            <li>
+                <strong>Estado:</strong> Permite consultar formularios activos (vigentes) o inactivos.
+            </li>
+        </ul><br>
+
+        <p class="font-semibold text-title">Acciones y permisos disponibles:</p>
+        <ul class="list-disc list-inside pl-2 space-y-1">
+            <li>
+                <strong>Ver detalles:</strong> Permite inspeccionar la estructura completa del formulario, la programación de plazos y el catálogo de preguntas asociadas.
+            </li>
+            <li>
+                <strong>Historial de envíos:</strong> Da acceso al registro histórico de periodos emitidos y a las respuestas recibidas.
+            </li>
+            <li>
+                <strong>Editar formulario:</strong> (Solo personal autorizado) Permite modificar la información general, plazos y preguntas del reporte.
+            </li>
+            <li>
+                <strong>Nuevo formulario:</strong> (Solo personal autorizado) Permite crear una nueva plantilla de reporte.
+            </li>
+        </ul><br>
+
+        <p class="font-semibold text-title">Privacidad y visibilidad por jerarquía:</p>
+        <p>
+            Los usuarios regulares únicamente visualizarán en esta lista los formularios que contengan preguntas aplicables a su propio puesto/nivel jerárquico o al de los colaboradores a su cargo en el árbol organizacional. Los usuarios con Acceso Total pueden visualizar y gestionar el catálogo completo.
+        </p>
+    </div>
+</details>
