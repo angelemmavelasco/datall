@@ -500,7 +500,7 @@ def monitoring_form_detail_view(request, pk: str):
     context = {
         'monitoring_form': form,
         'has_full_access': service.has_full_access,
-        'questions': form.form_questions.all().select_related('question', 'position'),
+        'questions': service.read_questions(form),
         'available_actions': available_actions,
     }
     return render(request, template, context)

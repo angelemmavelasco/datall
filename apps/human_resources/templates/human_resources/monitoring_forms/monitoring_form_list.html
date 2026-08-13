@@ -225,7 +225,7 @@
                     {% for form in forms %}
                         <tr>
                             <td class="p-1 truncate text-center">
-                                <a href="#" class="underline hover:text-hover transition-colors">
+                                <a href="{% url 'human_resources:monitoring_form_detail_view' form.id %}" class="underline hover:text-hover transition-colors">
                                     {{ form.id|default:'-'|upper }}
                                 </a>
                             </td>

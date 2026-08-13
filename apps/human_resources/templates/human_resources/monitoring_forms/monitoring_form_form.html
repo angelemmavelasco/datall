@@ -20,11 +20,12 @@ Nuevo formulario de monitoreo
 
 {% block content %}
 
+
+
 <form method="POST" enctype="multipart/form-data" class="flex flex-col gap-4">
     {% csrf_token %}
-
-    <p class="text-title text-sm">Información general</p>
-    <hr class="border-border border">
+    {% include 'human_resources/monitoring_forms/partials/monitoring_form_detail__info.html' %}
+    <p class="text-title pb-1 border-b border-border">Información general</p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
         <span class="text-title flex items-center gap-1">Identificador
@@ -59,7 +60,10 @@ Nuevo formulario de monitoreo
             </svg>
         </span>
         <div>
-            {% render_field form.name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Nombre del reporte' required='required' %}
+            {% render_field form.name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ej. Evaluación de Entregables Operativos' required='required' %}
+            <p class="italic text-hover text-[10px]">
+                Nombre descriptivo y general del reporte. No incluyas fechas, versiones o periodicidades.
+            </p>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.name.errors %}
                 <span class="block">• {{ error }}</span>
@@ -70,6 +74,9 @@ Nuevo formulario de monitoreo
         <span class="text-title flex items-center gap-1">Versión</span>
         <div>
             {% render_field form.version class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <p class="italic text-hover text-[10px]">
+                Versión actual del reporte. Funciona como registro auditable y es meramente informativo.
+            </p>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.version.errors %}
                 <span class="block">• {{ error }}</span>
@@ -80,6 +87,9 @@ Nuevo formulario de monitoreo
         <span class="text-title flex items-center gap-1">Periodicidad</span>
         <div>
             {% render_field form.periodicity class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <p class="italic text-hover text-[10px]">
+                Define cada cuánto tiempo se genera un nuevo ciclo de evaluación (ej. semanal, mensual o trimestral)
+            </p>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.periodicity.errors %}
                 <span class="block">• {{ error }}</span>
@@ -87,12 +97,15 @@ Nuevo formulario de monitoreo
             </p>
         </div>
 
-        <span class="text-title flex items-center gap-1">Estado (Activo)</span>
+        <span class="text-title flex items-center gap-1">Estado</span>
         <div>
             <label class="flex items-center gap-2 cursor-pointer text-title">
                 {% render_field form.is_active class="rounded border-border focus:outline-none bg-page" %}
                 {{ form.is_active.label }}
             </label>
+            <p class="italic text-hover text-[10px]">
+                Si está activo, se crearán nuevos reportes según la periodicidad establecida. Si está inactivo, no se crearán nuevos reportes y no serán visibles para ningún usuario.
+            </p>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.is_active.errors %}
                 <span class="block">• {{ error }}</span>
@@ -101,13 +114,15 @@ Nuevo formulario de monitoreo
         </div>
     </div>
 
-    <p class="text-title text-sm mt-4">Configuración de plazos (Schedule)</p>
-    <hr class="border-border border">
+    <p class="text-title pb-1 border-b border-border">Configuración de plazos</p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
         <span class="text-title flex items-center gap-1">Día de apertura</span>
         <div>
             {% render_field schedule_form.open_day class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <p class="italic text-hover text-[10px]">
+               Día de la semana en el que el formulario se habilita automáticamente para responder. 
+            </p>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in schedule_form.open_day.errors %}
                 <span class="block">• {{ error }}</span>
@@ -118,6 +133,9 @@ Nuevo formulario de monitoreo
         <span class="text-title flex items-center gap-1">Semana del mes</span>
         <div>
             {% render_field schedule_form.week_of_month class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <p class="italic text-hover text-[10px]">
+                Semana en que se habilita. Para reportes semanales/quincenales usa 'Todas'. Para mensuales o mayores, selecciona la semana específica (1ª, 2ª, 3ª, 4ª o Última).
+            </p>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in schedule_form.week_of_month.errors %}
                 <span class="block">• {{ error }}</span>
@@ -128,6 +146,9 @@ Nuevo formulario de monitoreo
         <span class="text-title flex items-center gap-1">Hora de apertura</span>
         <div>
             {% render_field schedule_form.open_time type="time" class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <p class="italic text-hover text-[10px]">
+                Hora exacta a partir de la cual el formulario estará disponible para su llenado.
+            </p>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in schedule_form.open_time.errors %}
                 <span class="block">• {{ error }}</span>
@@ -138,6 +159,9 @@ Nuevo formulario de monitoreo
         <span class="text-title flex items-center gap-1">Duración (Horas)</span>
         <div>
             {% render_field schedule_form.duration_hours type="number" class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <p class="italic text-hover text-[10px]">
+                Ventana total en horas que tienen los usuarios para responder antes de que se cierre el plazo (ej. 48 hrs).
+            </p>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in schedule_form.duration_hours.errors %}
                 <span class="block">• {{ error }}</span>
@@ -146,15 +170,15 @@ Nuevo formulario de monitoreo
         </div>
     </div>
 
+
     <!-- Questions Formset -->
-    <div class="flex justify-between items-center mt-4">
-        <p class="text-title text-sm">Preguntas del reporte</p>
+    <div class="flex justify-between items-center mt-4  pb-1 border-b border-border">
+        <p class="text-title">Preguntas del reporte</p>
         <button type="button" onclick="addForm('questions')" class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M264-96v-175q-57-48-88.5-115.57T144-529q0-139.58 98.29-237.29Q340.58-864 481-864q109 0 196 58.5T792-653l66 223q5 17.48-5.5 31.74Q842-384 824-384h-56v120q0 29.7-21.15 50.85Q725.7-192 696-192h-96v96h-72v-168h168v-192h80l-52-173q-22-72-89.5-117.5T481-792q-111 0-188 76.63T216-529q0 58.93 25 111.96Q266-364 311-326l25 22v208h-72Zm232-348Zm-16 108q17 0 27.5-11.1 10.5-11.09 10.5-27.5 0-16.4-10.5-27.4T480-413q-17 0-27.5 10.92Q442-391.15 442-375q0 16.58 10.5 27.79T480-336Zm-29-122h58q0-30 7-45.5t30-35.5q23-21 34-40.5t11-42.5q0-41.16-32-69.58T482-720q-39 0-69.5 21.5T370-640l52 22q6.67-21.1 23.35-34.05Q462.02-665 482.04-665q20.96 0 35.46 13.5T532-618q0 20-14.5 34.5T488-555q-22 21-29.5 40.5T451-458Z"/></svg>
             Añadir pregunta
         </button>
     </div>
-    <hr class="border-border border">
     
     {{ questions_formset.management_form }}
     

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import ClassVar, Optional
 from apps.human_resources.models import MonitoringForm, Position, MonitoringFormSchedule, MonitoringFormQuestion
 from apps.core.services.users import UsersService
-from apps.human_resources.services.employees import EmployeesService
+from apps.human_resources.services.positions import PositionsService
 from django.db.models import QuerySet, Q
 from django.db import transaction, IntegrityError
 from django.core.exceptions import ValidationError
@@ -38,26 +38,40 @@ class MonitoringFormsService(UsersService):
         '''
         Returns forms assigned to the user or any of their subordinates.
         '''
-        emp_service = EmployeesService(user=self.user)
-        my_tree_employees = emp_service.read_employees()
-
-        if not my_tree_employees.exists():
-            return queryset.none()
-
-        position_ids = list(my_tree_employees.values_list('position_id', flat=True).distinct())
+        positions_service = PositionsService(user=self.user)
+        accessible_positions = positions_service.read_positions().values('id')
         
-        hierarchy_levels = list(
-            Position.objects.filter(id__in=position_ids)
-            .exclude(hierarchy_level__isnull=True)
-            .exclude(hierarchy_level='')
-            .values_list('hierarchy_level', flat=True)
-            .distinct()
-        )
+        hierarchy_levels = Position.objects.filter(id__in=accessible_positions)\
+            .exclude(hierarchy_level__isnull=True)\
+            .exclude(hierarchy_level='')\
+            .values('hierarchy_level')
 
         return queryset.filter(
-            Q(form_questions__position__id__in=position_ids) |
+            Q(form_questions__position__id__in=accessible_positions) |
             Q(form_questions__hierarchy_level__in=hierarchy_levels) |
             Q(form_questions__position__isnull=True, form_questions__hierarchy_level__isnull=True)
+        ).distinct()
+
+    def read_questions(self, form: MonitoringForm) -> QuerySet:
+        """
+        Returns only the questions applicable to the user's hierarchy or general ones.
+        """
+        questions_qs = form.form_questions.all().select_related('question', 'position')
+        if self._is_full_access:
+            return questions_qs
+            
+        positions_service = PositionsService(user=self.user)
+        accessible_positions = positions_service.read_positions().values('id')
+        
+        hierarchy_levels = Position.objects.filter(id__in=accessible_positions)\
+            .exclude(hierarchy_level__isnull=True)\
+            .exclude(hierarchy_level='')\
+            .values('hierarchy_level')
+            
+        return questions_qs.filter(
+            Q(position__id__in=accessible_positions) |
+            Q(hierarchy_level__in=hierarchy_levels) |
+            Q(position__isnull=True, hierarchy_level__isnull=True)
         ).distinct()
 
     def read_form(self, *, pk: str) -> Optional[MonitoringForm]:
