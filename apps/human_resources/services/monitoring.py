@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import ClassVar, Optional
-from apps.human_resources.models import MonitoringForm, Position, MonitoringFormSchedule, MonitoringFormQuestion
+from apps.human_resources.models import MonitoringForm, Position, MonitoringFormSchedule, MonitoringFormQuestion, MonitoringFormField
 from apps.core.services.users import UsersService
 from apps.human_resources.services.positions import PositionsService
-from django.db.models import QuerySet, Q
+from django.db.models import QuerySet, Q, Count
 from django.db import transaction, IntegrityError
 from django.core.exceptions import ValidationError
 
@@ -21,6 +21,7 @@ class MonitoringFormsService(UsersService):
     form_model: type = MonitoringForm
     schedule_model: type = MonitoringFormSchedule
     question_model: type = MonitoringFormQuestion
+    field_model: type = MonitoringFormField
     ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
         'acceso_total_usuarios',
         'acceso_total_colaboradores',
@@ -51,6 +52,14 @@ class MonitoringFormsService(UsersService):
             Q(form_questions__hierarchy_level__in=hierarchy_levels) |
             Q(form_questions__position__isnull=True, form_questions__hierarchy_level__isnull=True)
         ).distinct()
+
+    def read_fields(self) -> QuerySet:
+        if not self._is_full_access:
+            raise PermissionsError('No tienes permisos suficientes para acceder al catálogo de campos.')
+            
+        return self.field_model.objects.annotate(
+            report_count=Count('form_questions__form', distinct=True)
+        ).all()
 
     def read_questions(self, form: MonitoringForm) -> QuerySet:
         """

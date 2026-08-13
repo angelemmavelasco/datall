@@ -1,0 +1,49 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-sm cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo funciona el listado y la gestión de campos de formularios?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2">
+        <p>
+            Este módulo concentra el catálogo global de campos o preguntas que pueden ser utilizados dentro de los reportes de desempeño y evaluaciones en toda la organización. Desde aquí puedes visualizar todos los campos disponibles, sus tipos de respuesta y en cuántos reportes están siendo utilizados actualmente.
+        </p><br>
+
+        <p class="font-semibold text-title">Uso de los filtros de búsqueda:</p>
+        <ul class="list-disc list-inside pl-2 space-y-1">
+            <li>
+                <strong>Campo / Pregunta:</strong> Permite buscar coincidencias en el texto principal de la pregunta.
+            </li>
+            <li>
+                <strong>Tipo de respuesta:</strong> Filtra los campos por su formato (ej. Texto libre, Escala 1 a 5, Sí / No, etc.).
+            </li>
+            <li>
+                <strong>Estado:</strong> Permite consultar campos que se encuentran activos para su uso o inactivos.
+            </li>
+        </ul><br>
+
+        <p class="font-semibold text-title">Acciones y permisos disponibles:</p>
+        <ul class="list-disc list-inside pl-2 space-y-1">
+            <li>
+                <strong>Ver detalles:</strong> Permite inspeccionar la configuración específica de la pregunta.
+            </li>
+            <li>
+                <strong>Editar campo:</strong> (Solo personal autorizado) Permite modificar el nombre, tipo de respuesta o estado de la pregunta.
+            </li>
+            <li>
+                <strong>Nuevo campo:</strong> (Solo personal autorizado) Permite dar de alta una nueva pregunta para el catálogo global.
+            </li>
+        </ul><br>
+
+        <p class="font-semibold text-title">Privacidad y visibilidad:</p>
+        <p>
+            Al ser un catálogo administrativo, el listado de campos es de acceso exclusivo para personal con acceso total y muestra todas las preguntas disponibles sin restricción de jerarquía.
+        </p>
+    </div>
+</details>

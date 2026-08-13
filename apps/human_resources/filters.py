@@ -1,7 +1,7 @@
 import django_filters
 from django.db.models import Q
 from django import forms
-from .models import Department, Position, Skill, PositionSkill, Employee, MonitoringForm
+from .models import Department, Position, Skill, PositionSkill, Employee, MonitoringForm, MonitoringFormField
 from .services.employees import EmployeesService
 from .services.positions import PositionsService
 from .services.departments import DepartmentsService
@@ -214,4 +214,45 @@ class MonitoringFormFilter(django_filters.FilterSet):
         return queryset.filter(
             Q(form_questions__position__id__in=position_ids) |
             Q(form_questions__hierarchy_level__in=hierarchy_levels)
+        ).distinct()
+
+class MonitoringFormFieldFilter(django_filters.FilterSet):
+    label = django_filters.CharFilter(
+        method='filter_label',
+        label='Campo / Pregunta'
+    )
+    position = django_filters.ModelMultipleChoiceFilter(
+        field_name='form_questions__position',
+        queryset=Position.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Puesto'
+    )
+    response_type = django_filters.MultipleChoiceFilter(
+        choices=MonitoringFormField.ResponseTypeChoices.choices,
+        widget=forms.CheckboxSelectMultiple,
+        label='Tipo de respuesta'
+    )
+    is_active = django_filters.TypedMultipleChoiceFilter(
+        choices=[('True', 'Activos'), ('False', 'Inactivos')],
+        coerce=lambda x: x == 'True',
+        widget=forms.CheckboxSelectMultiple,
+        label='Estatus'
+    )
+
+    class Meta:
+        model = MonitoringFormField
+        fields = []
+
+    def __init__(self, data=None, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        if not data:
+            data = data.copy() if data is not None else {}
+            data.setlist('is_active', ['True']) if hasattr(data, 'setlist') else data.update({'is_active': ['True']})
+        super().__init__(data, *args, **kwargs)
+        if request:
+            self.filters['position'].queryset = PositionsService(user=request.user).read_positions()
+
+    def filter_label(self, queryset, name, value):
+        return queryset.filter(
+            Q(label__icontains=value)
         ).distinct()

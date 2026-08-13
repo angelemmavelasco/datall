@@ -18,7 +18,7 @@ from .forms import (
     MonitoringFormScheduleForm,
     MonitoringFormQuestionFormSet
 )
-from .filters import DepartmentFilter, PositionFilter, MonitoringFormFilter
+from .filters import DepartmentFilter, PositionFilter, MonitoringFormFilter, MonitoringFormFieldFilter
 
 '''departments'''
 @login_required
@@ -635,8 +635,34 @@ def monitoring_form_update_view(request, pk: str):
 '''monitoring form fields'''
 @login_required
 def monitoring_form_field_list_view(request):
-    '''list of a catalog of fields and wuestion that can be used in monitoring forms'''
-    pass
+    '''list of a catalog of fields and questions that can be used in monitoring forms'''
+    template = 'human_resources/monitoring_form_fields/monitoring_form_field_list.html'
+    monitoring_service = MonitoringFormsService(user=request.user)
+
+    if not monitoring_service.has_full_access:
+        messages.error(request, 'No tienes permisos para acceder al listado de campos y preguntas.')
+        return redirect('human_resources:monitoring_form_list_view')
+    
+    try:
+        fields = monitoring_service.read_fields()
+    except PermissionsError as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:monitoring_form_list_view')
+
+    field_filter = MonitoringFormFieldFilter(request.GET, queryset=fields, request=request)
+    fields = field_filter.qs
+
+    available_actions = None
+    if monitoring_service.has_full_access:
+        available_actions = 'human_resources/monitoring_form_fields/partials/monitoring_form_field_list__actions.html'
+
+    context = {
+        'fields': fields,
+        'filter': field_filter,
+        'has_full_access': monitoring_service.has_full_access,
+        'available_actions': available_actions,
+    }
+    return render(request, template, context)
 
 @login_required
 def monitoring_form_field_detail_view(request, pk: int):

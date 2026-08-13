@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}
+    Campos de formularios
+{% endblock %}
+
+{% block module_name %}
+    Campos de formularios
+{% endblock %}
+
+{% block module_actions %}
+    
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+    
+    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+
+{% endblock %}
+
+{% block filters %}
+    {% include 'human_resources/monitoring_form_fields/partials/monitoring_form_field_list__filters.html' %}
+{% endblock %}
+
+{% block content %}
+
+    {% include 'human_resources/monitoring_form_fields/partials/monitoring_form_field_list__info.html' %}
+
+    <div class="flex flex-col w-full gap-4">
+        
+        <p class="text-title pb-1 border-b border-border">
+            Listado
+        </p>
+
+        <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+            <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+                <thead>
+                    <tr class="border-b border-border text-xs">
+                        <th class="w-[300px] p-1 text-left text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
+                            Campo / pregunta
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Tipo de respuesta
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Reportes asociados
+                        </th>
+
+
+                        <th class="w-[50px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Estado
+                        </th>
+
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Texto guía / descripción
+                        </th>
+
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for field in fields %}
+                        <tr>
+                            <td class="p-1 truncate text-left">
+                                <a href="" class="underline hover:text-hover transition-colors">
+                                    {{ field.label|default:'-'|title }}
+                                </a>
+                            </td>
+
+                            <td class="p-1 truncate text-left">
+                                {{ field.get_response_type_display|default:'-'|title }}
+                            </td>
+
+                            <td class="p-1 truncate text-center">
+                                {{ field.report_count|default:'0' }}
+                            </td>
+
+                            <td class="p-1 truncate text-center">
+                                {{ field.is_active|yesno:'Activo,Inactivo' }}
+                            </td>
+
+                            <td class="p-1 truncate text-left">
+                                {{ field.description|default:'-'|title }}
+                            </td>
+                            
+                        </tr>
+
+                    {% empty %}
+
+                        <tr class="">
+                            <td colspan="100%" class="py-50">
+                                <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                                    {% include 'layouts/data_not_found.html' %}
+                                </div>
+                            </td>
+                        </tr>
+
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
