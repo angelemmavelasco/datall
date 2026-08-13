@@ -1,7 +1,7 @@
 from django import forms
 from django.forms import inlineformset_factory
 from apps.human_resources.models import Department, Skill, Position, PositionSkill, PositionKPI
-from apps.human_resources.models import MonitoringForm, MonitoringFormSchedule, MonitoringFormQuestion
+from apps.human_resources.models import MonitoringForm, MonitoringFormSchedule, MonitoringFormQuestion, MonitoringFormField
 
 class DepartmentForm(forms.ModelForm):
     class Meta:
@@ -48,3 +48,8 @@ MonitoringFormQuestionFormSet = inlineformset_factory(
     extra=1,
     can_delete=True
 )
+
+class MonitoringFormFieldForm(forms.ModelForm):
+    class Meta:
+        model = MonitoringFormField
+        fields = ['label', 'response_type', 'description', 'is_active']

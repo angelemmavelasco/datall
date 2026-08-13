@@ -61,6 +61,56 @@ class MonitoringFormsService(UsersService):
             report_count=Count('form_questions__form', distinct=True)
         ).all()
 
+    def read_field(self, *, pk: int) -> Optional[MonitoringFormField]:
+        '''Returns a single field object or raises FormNotFound if not found or unauthorized.'''
+        if not self._is_full_access:
+            raise PermissionsError('No tienes permisos suficientes para acceder al catálogo de campos.')
+            
+        field = self.read_fields().filter(pk=pk).first()
+        if field:
+            return field
+
+        raise FormNotFound(f'No se encontró ningún campo con el ID "{pk}".')
+
+    def create_field(self, data: dict) -> MonitoringFormField:
+        if not self._is_full_access:
+            raise PermissionsError('No tienes permisos suficientes para crear campos de reportes.')
+
+        try:
+            with transaction.atomic():
+                new_field = self.field_model(**data)
+                new_field.full_clean()
+                new_field.save()
+            return new_field
+        except ValidationError as e:
+            if hasattr(e, 'message_dict'):
+                messages = [f"{k}: {', '.join(v)}" for k, v in e.message_dict.items()]
+                raise ServiceError(f"Datos inválidos: {'; '.join(messages)}")
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except Exception as e:
+            raise ServiceError(f"Error al crear el campo: {str(e)}")
+
+    def update_field(self, field: MonitoringFormField, data: dict) -> MonitoringFormField:
+        if not self._is_full_access:
+            raise PermissionsError('No tienes permisos suficientes para actualizar campos de reportes.')
+
+        try:
+            with transaction.atomic():
+                for key, value in data.items():
+                    if key != 'id':  # Prevent modification of id
+                        setattr(field, key, value)
+                
+                field.full_clean()
+                field.save()
+            return field
+        except ValidationError as e:
+            if hasattr(e, 'message_dict'):
+                messages = [f"{k}: {', '.join(v)}" for k, v in e.message_dict.items()]
+                raise ServiceError(f"Datos inválidos: {'; '.join(messages)}")
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except Exception as e:
+            raise ServiceError(f"Error al actualizar el campo: {str(e)}")
+
     def read_questions(self, form: MonitoringForm) -> QuerySet:
         """
         Returns only the questions applicable to the user's hierarchy or general ones.

@@ -87,7 +87,7 @@
                                 {% if form.schedule %}
                                     <span class="text-xs">
                                     {% if form.schedule.week_of_month != 'every' %}
-                                        {{ form.schedule.get_week_of_month_display }}
+                                        {{ form.schedule.get_week_of_month_display }},
                                     {% endif %}
                                     {{ form.schedule.get_open_day_display }} a las {{ form.schedule.open_time|time:"H:i" }} hrs.<br>
                                     (Duración: {{ form.schedule.duration_hours }}h)

@@ -71,7 +71,7 @@
                     {% for field in fields %}
                         <tr>
                             <td class="p-1 truncate text-left">
-                                <a href="" class="underline hover:text-hover transition-colors">
+                                <a href="{% url 'human_resources:monitoring_form_field_detail_view' field.pk %}" class="underline hover:text-hover transition-colors">
                                     {{ field.label|default:'-'|title }}
                                 </a>
                             </td>

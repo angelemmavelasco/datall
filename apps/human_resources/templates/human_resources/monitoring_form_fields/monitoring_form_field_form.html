@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}
+{% if updating %}
+Editar campo de reporte
+{% else %}
+Nuevo campo de reporte
+{% endif %}
+{% endblock %}
+
+{% block module_name %}
+{% if updating %}
+Editar campo de reporte
+{% else %}
+Nuevo campo de reporte
+{% endif %}
+{% endblock %}
+
+{% block module_actions %}
+<div class="flex gap-2">
+    <a href="{% url 'human_resources:monitoring_form_field_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="POST" enctype="multipart/form-data" class="flex flex-col gap-4">
+    {% csrf_token %}
+    
+    <p class="text-title pb-1 border-b border-border">Información general</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title flex items-center gap-1">Pregunta / Título
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.label class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ej. ¿Se entregó a tiempo?' required='required' %}
+            <p class="italic text-hover text-[10px]">
+                Pregunta o texto que verá el usuario en el formulario.
+            </p>
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.label.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Tipo de respuesta
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.response_type class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' required='required' %}
+            <p class="italic text-hover text-[10px]">
+                Determina qué tipo de campo se mostrará para responder esta pregunta.
+            </p>
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.response_type.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Descripción / Ayuda</span>
+        <div>
+            {% render_field form.description class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' rows='3' %}
+            <p class="italic text-hover text-[10px]">
+                Opcional. Ayuda o guía adicional para orientar la respuesta del usuario.
+            </p>
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.description.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Estado</span>
+        <div>
+            <label class="flex items-center gap-2 cursor-pointer text-title">
+                {% render_field form.is_active class="rounded border-border focus:outline-none bg-page" %}
+                Activo
+            </label>
+            <p class="italic text-hover text-[10px]">
+                Si está activo, podrá ser asociado a nuevos reportes de desempeño.
+            </p>
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.is_active.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex justify-end gap-4 mt-4">
+        <a href="{% if updating %}{% url 'human_resources:monitoring_form_field_detail_view' field.pk %}{% else %}{% url 'human_resources:monitoring_form_field_list_view' %}{% endif %}"
+            class="px-4 py-2 text-sm font-medium text-secondary bg-container border border-border rounded-md hover:bg-hover hover:text-primary transition-colors">
+            Cancelar
+        </a>
+        <button type="submit"
+            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors">
+            {% if updating %}Guardar Cambios{% else %}Crear Campo{% endif %}
+        </button>
+    </div>
+</form>
+{% endblock %}

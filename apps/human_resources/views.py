@@ -16,7 +16,8 @@ from .forms import (
     SkillForm,
     MonitoringFormForm,
     MonitoringFormScheduleForm,
-    MonitoringFormQuestionFormSet
+    MonitoringFormQuestionFormSet,
+    MonitoringFormFieldForm
 )
 from .filters import DepartmentFilter, PositionFilter, MonitoringFormFilter, MonitoringFormFieldFilter
 
@@ -666,15 +667,108 @@ def monitoring_form_field_list_view(request):
 
 @login_required
 def monitoring_form_field_detail_view(request, pk: int):
-    pass
+    template = 'human_resources/monitoring_form_fields/monitoring_form_field_detail.html'
+    service = MonitoringFormsService(user=request.user)
+
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para acceder al listado de campos y preguntas.')
+        return render(request, settings.ACCESS_DENIED)
+
+    try:
+        field = service.read_field(pk=pk)
+    except FormNotFound as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:monitoring_form_field_list_view')
+    except PermissionsError as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:monitoring_form_field_list_view')
+
+    form_questions = field.form_questions.select_related('form', 'position').all()
+
+    context = {
+        'field': field,
+        'form_questions': form_questions,
+        'has_full_access': service.has_full_access,
+    }
+    return render(request, template, context)
 
 @login_required
 def monitoring_form_field_create_view(request):
-    pass
+    template = 'human_resources/monitoring_form_fields/monitoring_form_field_form.html'
+    service = MonitoringFormsService(user=request.user)
+
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para crear campos de reportes.')
+        return render(request, settings.ACCESS_DENIED)
+
+    if request.method == 'POST':
+        form = MonitoringFormFieldForm(request.POST)
+        if form.is_valid():
+            try:
+                new_field = service.create_field(form.cleaned_data)
+                messages.success(request, f'Campo "{new_field.label}" creado exitosamente.')
+                return redirect('human_resources:monitoring_form_field_detail_view', new_field.pk)
+            except ServiceError as e:
+                messages.error(request, str(e))
+            except PermissionsError as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:monitoring_form_field_list_view')
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al crear: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = MonitoringFormFieldForm()
+
+    context = {
+        'form': form,
+        'updating': False,
+    }
+    return render(request, template, context)
 
 @login_required
 def monitoring_form_field_update_view(request, pk: int):
-    pass
+    template = 'human_resources/monitoring_form_fields/monitoring_form_field_form.html'
+    service = MonitoringFormsService(user=request.user)
+
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para actualizar campos de reportes.')
+        return render(request, settings.ACCESS_DENIED)
+
+    try:
+        field = service.read_field(pk=pk)
+    except FormNotFound as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:monitoring_form_field_list_view')
+    except PermissionsError as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:monitoring_form_field_list_view')
+
+    if request.method == 'POST':
+        form = MonitoringFormFieldForm(request.POST, instance=field)
+        if form.is_valid():
+            try:
+                updated_field = service.update_field(field, form.cleaned_data)
+                messages.success(request, f'Campo "{updated_field.label}" actualizado exitosamente.')
+                return redirect('human_resources:monitoring_form_field_detail_view', updated_field.pk)
+            except ServiceError as e:
+                messages.error(request, str(e))
+            except PermissionsError as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:monitoring_form_field_list_view')
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al actualizar: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = MonitoringFormFieldForm(instance=field)
+
+    context = {
+        'form': form,
+        'updating': True,
+        'field': field,
+    }
+    return render(request, template, context)
 
 '''monitoring form submissions'''
 @login_required
