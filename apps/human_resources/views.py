@@ -475,6 +475,7 @@ def monitoring_form_list_view(request):
     context = {
         'forms': forms,
         'filter': form_filter,
+        'has_full_access': monitoring_service.has_full_access,
         'available_actions': available_actions,
     }
     return render(request, template, context)

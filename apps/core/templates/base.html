@@ -297,7 +297,7 @@
 <!-- Content Wrapper -->
 <div class="flex flex-col min-h-dvh lg:pl-64 w-full">
 
-    <header class="sticky top-0 z-30 flex flex-col gap-0">
+    <header class="sticky top-0 z-[35] flex flex-col gap-0">
         <div class="flex flex-col md:flex-row items-center justify-center md:justify-between gap-2 md:gap-4 p-2 bg-page border-b border-border">
             <h1 class="text-sm w-full text-center md:text-left md:w-fit font-medium">
                 {% block module_name %}
@@ -351,12 +351,12 @@
         </div>
 
         <div class=" flex justify-end items-center">
-            <details class="relative md:hidden">
+            <details id="mobile-actions-details" class="relative md:hidden z-50">
                 <summary class="list-none hover:text-hover cursor-pointer transition-colors flex items-center gap-1 border border-border rounded px-2 py-1 bg-container my-1 mr-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-plus"><path d="M16 5H3"/><path d="M11 12H3"/><path d="M16 19H3"/><path d="M18 9v6"/><path d="M21 12h-6"/></svg>
                     <span class="text-sm">Acciones</span>
                 </summary>
-                <div id="mobile-actions-container" class="absolute right-0 m-2 min-w-[180px] bg-container border border-border rounded shadow-lg p-2 z-50 flex flex-col gap-2">
+                <div id="mobile-actions-container" class="absolute right-0 m-2 min-w-[180px] bg-container border border-border rounded shadow-lg p-2 flex flex-col gap-4 text-sm">
                     {% block module_actions %}{% endblock %}
                 </div>
             </details>
@@ -494,6 +494,13 @@
                 if(document.getElementById('alert-message')) document.getElementById('alert-message').remove();
             }, 7000);
         }
+
+        document.addEventListener('click', (e) => {
+            const mobileDetails = document.getElementById('mobile-actions-details');
+            if (mobileDetails && mobileDetails.hasAttribute('open') && !mobileDetails.contains(e.target)) {
+                mobileDetails.removeAttribute('open');
+            }
+        });
     });
 </script>
 </body>

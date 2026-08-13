@@ -289,6 +289,18 @@
   .z-50 {
     z-index: 50;
   }
+  .z-100 {
+    z-index: 100;
+  }
+  .z-\[35\] {
+    z-index: 35;
+  }
+  .z-\[100\] {
+    z-index: 100;
+  }
+  .z-\[1000\] {
+    z-index: 1000;
+  }
   .col-span-2 {
     grid-column: span 2 / span 2;
   }
@@ -696,6 +708,11 @@
   }
   .gap-6 {
     gap: calc(var(--spacing) * 6);
+  }
+  :where(.space-y-0 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: 0;
+    margin-block-end: 0;
   }
   :where(.space-y-0\.5 > :not(:last-child)) {
     --tw-space-y-reverse: 0;
