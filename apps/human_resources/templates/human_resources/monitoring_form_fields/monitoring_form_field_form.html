@@ -105,16 +105,17 @@ Nuevo campo de reporte
         </div>
     </div>
 
-    <!-- Actions -->
-    <div class="flex justify-end gap-4 mt-4">
-        <a href="{% if updating %}{% url 'human_resources:monitoring_form_field_detail_view' field.pk %}{% else %}{% url 'human_resources:monitoring_form_field_list_view' %}{% endif %}"
-            class="px-4 py-2 text-sm font-medium text-secondary bg-container border border-border rounded-md hover:bg-hover hover:text-primary transition-colors">
+    <div class="flex flex-col gap-2 mt-4">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            Confirmar
+        </button>
+        <a href="{% url 'human_resources:monitoring_form_field_list_view' %}"
+            class=" border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
             Cancelar
         </a>
-        <button type="submit"
-            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors">
-            {% if updating %}Guardar Cambios{% else %}Crear Campo{% endif %}
-        </button>
     </div>
 </form>
 {% endblock %}
