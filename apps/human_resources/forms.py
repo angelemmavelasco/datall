@@ -1,6 +1,7 @@
 from django import forms
 from django.forms import inlineformset_factory
 from apps.human_resources.models import Department, Skill, Position, PositionSkill, PositionKPI
+from apps.human_resources.models import MonitoringForm, MonitoringFormSchedule, MonitoringFormQuestion
 
 class DepartmentForm(forms.ModelForm):
     class Meta:
@@ -27,6 +28,23 @@ PositionSkillFormSet = inlineformset_factory(
 PositionKPIFormSet = inlineformset_factory(
     Position, PositionKPI,
     fields=['name', 'description', 'unit', 'target_value', 'weight', 'frequency'],
+    extra=1,
+    can_delete=True
+)
+
+class MonitoringFormForm(forms.ModelForm):
+    class Meta:
+        model = MonitoringForm
+        fields = ['id', 'name', 'version', 'periodicity', 'is_active']
+
+class MonitoringFormScheduleForm(forms.ModelForm):
+    class Meta:
+        model = MonitoringFormSchedule
+        fields = ['open_day', 'week_of_month', 'open_time', 'duration_hours']
+
+MonitoringFormQuestionFormSet = inlineformset_factory(
+    MonitoringForm, MonitoringFormQuestion,
+    fields=['question', 'hierarchy_level', 'position', 'order', 'is_required'],
     extra=1,
     can_delete=True
 )

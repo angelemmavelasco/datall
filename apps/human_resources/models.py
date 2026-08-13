@@ -119,7 +119,6 @@ class PositionSkill(models.Model):
     def __str__(self):
         return f'{self.position.name.title()} -> {self.skill.name.title()} ({self.get_skill_level_display()})'
 
-
 class MonitoringForm(models.Model):
     '''
     the base header to all the different monitoring forms to evaluate skills and kpis
@@ -136,6 +135,52 @@ class MonitoringForm(models.Model):
 
     def __str__(self):
         return f'{self.id.upper()} {self.name.title()} ({self.version})'
+
+class MonitoringFormSchedule(models.Model):
+    class DayOfWeek(models.IntegerChoices):
+        MONDAY = 0, 'Lunes'
+        TUESDAY = 1, 'Martes'
+        WEDNESDAY = 2, 'Miércoles'
+        THURSDAY = 3, 'Jueves'
+        FRIDAY = 4, 'Viernes'
+        SATURDAY = 5, 'Sábado'
+        SUNDAY = 6, 'Domingo'
+
+    class WeekOfMonth(models.TextChoices):
+        FIRST = 'first', 'Primera'
+        SECOND = 'second', 'Segunda'
+        THIRD = 'third', 'Tercera'
+        FOURTH = 'fourth', 'Cuarta'
+        LAST = 'last', 'Última'
+        EVERY = 'every', 'Todas (Para semanales)'
+
+    form = models.OneToOneField('MonitoringForm', on_delete=models.CASCADE, related_name='schedule', help_text='Formulario asociado')
+    open_day = models.IntegerField(choices=DayOfWeek.choices, default=DayOfWeek.FRIDAY, help_text='Día de la semana en que se abre el formulario')
+    week_of_month = models.CharField(max_length=10, choices=WeekOfMonth.choices, default=WeekOfMonth.EVERY, help_text='Semana del mes en la que aplica (útil para mensuales)')
+    open_time = models.TimeField(default="16:00:00", help_text='Hora exacta de apertura (ej. 16:00)')
+    duration_hours = models.PositiveIntegerField(default=48, help_text='Duración en horas del plazo de entrega (ej. 48 para que cierre el domingo a la misma hora)')
+
+    class Meta:
+        verbose_name = 'Programación de reporte de desempeño'
+        verbose_name_plural = 'Programaciones de reportes de desempeño'
+
+    def __str__(self):
+        return f'Horario para {self.form.name}'
+
+class MonitoringPeriod(models.Model):
+    form = models.ForeignKey('MonitoringForm', on_delete=models.CASCADE, related_name='periods')
+    identifier = models.CharField(max_length=50, help_text='Identificador legible (ej. 2026-Semana30)')
+    start_date = models.DateTimeField(help_text='Fecha y hora exacta de inicio del plazo')
+    end_date = models.DateTimeField(help_text='Fecha y hora exacta de fin del plazo')
+    is_active = models.BooleanField(default=True, help_text='Indica si este periodo está vigente/activo')
+
+    class Meta:
+        verbose_name = 'Periodo de evaluación'
+        verbose_name_plural = 'Periodos de evaluaciones'
+        unique_together = ('form', 'identifier')
+
+    def __str__(self):
+        return f'{self.identifier} ({self.form.name})'
 
 class MonitoringFormField(models.Model):
     '''
@@ -190,14 +235,14 @@ class MonitoringFormSubmission(models.Model):
 
     employee = models.ForeignKey('Employee', on_delete=models.PROTECT, related_name='monitoring_submissions')
     form = models.ForeignKey('MonitoringForm', on_delete=models.PROTECT, related_name='submissions')
-    period_identifier = models.CharField(max_length=20, help_text='Identificador del período (ej. 2026-W30 o 2026-07)')
+    period = models.ForeignKey('MonitoringPeriod', on_delete=models.PROTECT, related_name='submissions', help_text='Periodo al que corresponde este envío', null=True) # temporarily null=True in case there's data? It's fine without null=True if no data exists.
     submitted_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=SubmissionStatus.choices, default=SubmissionStatus.DRAFT)
 
     class Meta:
         verbose_name = 'Envío de reporte de desempeño'
         verbose_name_plural = 'Envíos de reportes de desempeño'
-        unique_together = ('employee', 'form', 'period_identifier')
+        unique_together = ('employee', 'form', 'period')
 
 class MonitoringFormAnswer(models.Model):
     submission = models.ForeignKey('MonitoringFormSubmission', on_delete=models.CASCADE, related_name='answers')

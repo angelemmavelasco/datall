@@ -18,4 +18,9 @@ urlpatterns = [
     path('positions-skills/<int:pk>/', position_skill_detail_view, name='position_skill_detail_view'),
     path('position-skills/create/', position_skill_create_view, name='position_skill_create_view'),
     path('position-skills/update/<int:pk>/', position_skill_update_view, name='position_skill_update_view'),
+
+    path('monitoring-forms/', monitoring_form_list_view, name='monitoring_form_list_view'),
+    path('monitoring-forms/details/<str:pk>/', monitoring_form_detail_view, name='monitoring_form_detail_view'),
+    path('monitoring-forms/create/', monitoring_form_create_view, name='monitoring_form_create_view'),
+    path('monitoring-forms/update/<str:pk>/', monitoring_form_update_view, name='monitoring_form_update_view'),
 ]

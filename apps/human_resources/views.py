@@ -5,10 +5,20 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib import messages
 
-from .services.positions import PositionsStats, PositionsService, SkillsService, PositionNotFound
+from .services.positions import PositionsStats, PositionsService, SkillsService, PositionNotFound, ServiceError, PermissionsError
 from .services.departments import DepartmentsService, DepartmentsStats, ServiceError, PermissionsError, DepartmentNotFound
-from .forms import DepartmentForm, PositionForm, PositionSkillFormSet, PositionKPIFormSet, SkillForm
-from .filters import DepartmentFilter, PositionFilter
+from .services.monitoring import MonitoringFormsService, FormNotFound
+from .forms import (
+    DepartmentForm,
+    PositionForm,
+    PositionSkillFormSet,
+    PositionKPIFormSet,
+    SkillForm,
+    MonitoringFormForm,
+    MonitoringFormScheduleForm,
+    MonitoringFormQuestionFormSet
+)
+from .filters import DepartmentFilter, PositionFilter, MonitoringFormFilter
 
 '''departments'''
 @login_required
@@ -450,19 +460,176 @@ def position_skill_update_view(request, pk: int):
 @login_required
 def monitoring_form_list_view(request):
     '''list of the available form to send a performance report (owned and others)'''
-    pass
+    template = 'human_resources/monitoring_forms/monitoring_form_list.html'
+    monitoring_service = MonitoringFormsService(user=request.user)
+    
+    forms = monitoring_service.read_forms()
+    
+    form_filter = MonitoringFormFilter(request.GET, queryset=forms, request=request)
+    forms = form_filter.qs
+
+    available_actions = None
+    if monitoring_service.has_full_access:
+        available_actions = 'human_resources/monitoring_forms/partials/monitoring_form_list__actions.html'
+    
+    context = {
+        'forms': forms,
+        'filter': form_filter,
+        'available_actions': available_actions,
+    }
+    return render(request, template, context)
 
 @login_required
 def monitoring_form_detail_view(request, pk: str):
-    pass
+    template = 'human_resources/monitoring_forms/monitoring_form_detail.html'
+    service = MonitoringFormsService(user=request.user)
+    
+    try:
+        form = service.read_form(pk=pk)
+    except FormNotFound:
+        messages.error(request, 'Formulario no encontrado.')
+        return redirect('human_resources:monitoring_form_list_view')
+    except PermissionsError as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:monitoring_form_list_view')
+
+    available_actions = None
+    if service.has_full_access:
+        available_actions = 'human_resources/monitoring_forms/partials/monitoring_form_detail__actions.html'
+        
+    context = {
+        'monitoring_form': form,
+        'has_full_access': service.has_full_access,
+        'questions': form.form_questions.all().select_related('question', 'position'),
+        'available_actions': available_actions,
+    }
+    return render(request, template, context)
 
 @login_required
 def monitoring_form_create_view(request):
-    pass
+    template = 'human_resources/monitoring_forms/monitoring_form_form.html'
+    service = MonitoringFormsService(user=request.user)
+    
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para crear reportes de desempeño.')
+        return redirect('human_resources:monitoring_form_list_view')
+
+    if request.method == 'POST':
+        form = MonitoringFormForm(request.POST)
+        schedule_form = MonitoringFormScheduleForm(request.POST, prefix='schedule')
+        questions_formset = MonitoringFormQuestionFormSet(request.POST, prefix='questions')
+        
+        if form.is_valid() and schedule_form.is_valid() and questions_formset.is_valid():
+            try:
+                questions_data = [f.cleaned_data for f in questions_formset if f.cleaned_data]
+
+                new_form = service.create_form(
+                    form_data=form.cleaned_data,
+                    schedule_data=schedule_form.cleaned_data,
+                    questions_data=questions_data
+                )
+                messages.success(request, f'Formulario {new_form.name} creado correctamente.')
+                return redirect('human_resources:monitoring_form_detail_view', new_form.pk)
+
+            except PermissionsError as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:monitoring_form_list_view')
+
+            except ServiceError as e:
+                messages.error(request, str(e))
+
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al crear: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = MonitoringFormForm()
+        schedule_form = MonitoringFormScheduleForm(prefix='schedule')
+        questions_formset = MonitoringFormQuestionFormSet(prefix='questions')
+
+    context = {
+        'form': form,
+        'schedule_form': schedule_form,
+        'questions_formset': questions_formset,
+        'can_update_access': service.has_full_access
+    }
+    return render(request, template, context)
 
 @login_required
 def monitoring_form_update_view(request, pk: str):
-    pass
+    template = 'human_resources/monitoring_forms/monitoring_form_form.html'
+    service = MonitoringFormsService(user=request.user)
+    
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para actualizar reportes de desempeño.')
+        return redirect('human_resources:monitoring_form_list_view')
+
+    try:
+        monitoring_form = service.read_form(pk=pk)
+    except FormNotFound:
+        messages.error(request, 'Formulario no encontrado.')
+        return redirect('human_resources:monitoring_form_list_view')
+    except PermissionsError as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:monitoring_form_list_view')
+
+    if request.method == 'POST':
+        form = MonitoringFormForm(request.POST, instance=monitoring_form)
+        schedule_form = MonitoringFormScheduleForm(
+            request.POST, 
+            instance=getattr(monitoring_form, 'schedule', None), 
+            prefix='schedule'
+        )
+        questions_formset = MonitoringFormQuestionFormSet(
+            request.POST, 
+            instance=monitoring_form, 
+            prefix='questions'
+        )
+        
+        if form.is_valid() and schedule_form.is_valid() and questions_formset.is_valid():
+            try:
+                questions_data = [f.cleaned_data for f in questions_formset if f.cleaned_data]
+
+                updated_form = service.update_form(
+                    form=monitoring_form,
+                    form_data=form.cleaned_data,
+                    schedule_data=schedule_form.cleaned_data,
+                    questions_data=questions_data
+                )
+                messages.success(request, f'Formulario {updated_form.name} actualizado correctamente.')
+                return redirect('human_resources:monitoring_form_detail_view', updated_form.pk)
+
+            except PermissionsError as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:monitoring_form_list_view')
+
+            except ServiceError as e:
+                messages.error(request, str(e))
+
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al actualizar: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = MonitoringFormForm(instance=monitoring_form)
+        schedule_form = MonitoringFormScheduleForm(
+            instance=getattr(monitoring_form, 'schedule', None), 
+            prefix='schedule'
+        )
+        questions_formset = MonitoringFormQuestionFormSet(
+            instance=monitoring_form, 
+            prefix='questions'
+        )
+
+    context = {
+        'form': form,
+        'schedule_form': schedule_form,
+        'questions_formset': questions_formset,
+        'can_update_access': service.has_full_access,
+        'updating': True,
+        'monitoring_form': monitoring_form
+    }
+    return render(request, template, context)
 
 '''monitoring form fields'''
 @login_required
