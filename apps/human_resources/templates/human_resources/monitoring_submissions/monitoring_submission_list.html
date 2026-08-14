@@ -38,7 +38,7 @@
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 
-            <a onclick="updateQueryParam('status', 'abierto_para_envio')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if request.GET.status == 'abierto_para_envio' %}bg-blue-500/10 border-blue-500/50{% else %}bg-container border-border{% endif %}">
+            <a onclick="updateQueryParam('status', 'abierto_para_envio')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if 'abierto_para_envio' in selected_statuses %}bg-blue-500/10 border-blue-500/50{% else %}bg-container border-border{% endif %}">
                 <span class="text-sm text-title">
                     Abiertos para envío
                 </span><br>
@@ -47,7 +47,7 @@
                 </span>
             </a>
 
-            <a onclick="updateQueryParam('status', 'enviado_a_tiempo')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if request.GET.status == 'enviado_a_tiempo' %}bg-emerald-500/10 border-emerald-500/50{% else %}bg-container border-border{% endif %}">
+            <a onclick="updateQueryParam('status', 'enviado_a_tiempo')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if 'enviado_a_tiempo' in selected_statuses %}bg-emerald-500/10 border-emerald-500/50{% else %}bg-container border-border{% endif %}">
                 <span class="text-sm text-title">
                     Enviados a tiempo
                 </span><br>
@@ -56,7 +56,7 @@
                 </span>
             </a>
 
-            <a onclick="updateQueryParam('status', 'enviado_fuera_de_tiempo')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if request.GET.status == 'enviado_fuera_de_tiempo' %}bg-red-500/10 border-red-500/50{% else %}bg-container border-border{% endif %}">
+            <a onclick="updateQueryParam('status', 'enviado_fuera_de_tiempo')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if 'enviado_fuera_de_tiempo' in selected_statuses %}bg-red-500/10 border-red-500/50{% else %}bg-container border-border{% endif %}">
                 <span class="text-sm text-title">
                     Enviados fuera de tiempo
                 </span><br>
@@ -65,7 +65,7 @@
                 </span>
             </a>
 
-            <a onclick="updateQueryParam('status', 'pendiente_de_envio')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if request.GET.status == 'pendiente_de_envio' %}bg-ambar-500/10 border-ambar-500/50{% else %}bg-container border-border{% endif %}">
+            <a onclick="updateQueryParam('status', 'pendiente_de_envio')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if 'pendiente_de_envio' in selected_statuses %}bg-ambar-500/10 border-ambar-500/50{% else %}bg-container border-border{% endif %}">
                 <span class="text-sm text-title">
                     Pendientes de envío
                 </span><br>
@@ -74,7 +74,7 @@
                 </span>
             </a>
 
-            <a onclick="updateQueryParam('status', 'proximo_a_abrir')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if request.GET.status == 'proximo_a_abrir' %}bg-violet-500/10 border-violet-500/50{% else %}bg-container border-border{% endif %}">
+            <a onclick="updateQueryParam('status', 'proximo_a_abrir')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if 'proximo_a_abrir' in selected_statuses %}bg-violet-500/10 border-violet-500/50{% else %}bg-container border-border{% endif %}">
                 <span class="text-sm text-title">
                     Próximos a abrir
                 </span><br>

@@ -783,9 +783,8 @@ def monitoring_form_submission_list_view(request):
     filtered_periods = period_filter.qs
     
     expected_submissions = service.read_submissions(filtered_periods)
-    
     employee_q = request.GET.get('employee', '').lower()
-    status_q = request.GET.get('status', '')
+    status_q = request.GET.getlist('status')
     
     filtered_submissions = []
     for es in expected_submissions:
@@ -794,7 +793,7 @@ def monitoring_form_submission_list_view(request):
             if employee_q not in emp_name:
                 continue
                 
-        if status_q and es.status_code != status_q:
+        if status_q and es.status_code not in status_q:
             continue
             
         filtered_submissions.append(es)
@@ -810,6 +809,7 @@ def monitoring_form_submission_list_view(request):
         'kpis': kpis,
         'filter': period_filter,
         'available_actions': available_actions,
+        'selected_statuses': status_q,
     }
     return render(request, template, context)
 

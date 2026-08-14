@@ -271,7 +271,7 @@ class MonitoringSubmissionFilter(django_filters.FilterSet):
         method='filter_dummy',
         label='Colaborador (Nombre o ID)'
     )
-    status = django_filters.ChoiceFilter(
+    status = django_filters.MultipleChoiceFilter(
         choices=[
             ('proximo_a_abrir', 'Próximo a abrir'),
             ('abierto_para_envio', 'Abierto para envío'),
@@ -279,6 +279,7 @@ class MonitoringSubmissionFilter(django_filters.FilterSet):
             ('enviado_fuera_de_tiempo', 'Enviado fuera de tiempo'),
             ('pendiente_de_envio', 'Pendiente de envío')
         ],
+        widget=forms.CheckboxSelectMultiple,
         method='filter_dummy',
         label='Estado de envío'
     )
