@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.utils import timezone
 
 from .services.positions import PositionsStats, PositionsService, SkillsService, PositionNotFound, ServiceError, PermissionsError
 from .services.departments import DepartmentsService, DepartmentsStats, ServiceError, PermissionsError, DepartmentNotFound
@@ -880,6 +881,7 @@ def monitoring_form_submission_create_view(request, period_id: int):
     context = {
         'submission': expected_sub,
         'form': form,
+        'is_closed': expected_sub.is_closed,
     }
     return render(request, template, context)
 
@@ -926,8 +928,20 @@ def monitoring_form_submission_update_view(request, pk: int):
     context = {
         'submission': expected_sub,
         'form': form,
+        'is_closed': expected_sub.is_closed,
     }
     return render(request, template, context)
+
+@login_required
+def monitoring_form_submission_delete_view(request, pk: int):
+    if request.method == 'POST':
+        service = MonitoringSubmissionService(user=request.user)
+        try:
+            service.delete_submission(submission_id=pk)
+            messages.success(request, 'Envío eliminado con éxito.')
+        except Exception as e:
+            messages.error(request, str(e))
+    return redirect('human_resources:monitoring_form_submission_list_view')
 
 '''business units'''
 @login_required

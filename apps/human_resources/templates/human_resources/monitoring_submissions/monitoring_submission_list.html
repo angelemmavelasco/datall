@@ -106,12 +106,12 @@
             <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
                 <thead>
                     <tr class="border-b border-border text-xs">
-                        <th class="w-[200px] p-1 text-left text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
-                            Colaborador
-                        </th>
-
                         <th class="w-[200px] p-1 text-left text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
                             Reporte
+                        </th>
+
+                        <th class="w-[200px] p-1 text-left text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
+                            Colaborador
                         </th>
                         
                         <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
@@ -123,11 +123,19 @@
                         </th>
                         
                         <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Horario de apertura
+                            Abre
+                        </th>
+
+                        <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Cierra
                         </th>
 
                         <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Estado
+                            Estado del envío
+                        </th>
+
+                        <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Estado del reporte
                         </th>
                         
                         <th class="w-[50px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
@@ -140,16 +148,16 @@
                     {% for item in expected_submissions %}
                         <tr class="group">
                             <td class="p-1 truncate text-left">
-                                <span class="font-medium">{{ item.employee.user.first_name|default:'-'|title }} {{ item.employee.user.last_name|default:'-'|title }}</span><br>
-                                <span class="text-xs">{{ item.employee.id }}</span>
+                                <span class="font-medium">{{ item.form.name|default:'-'|title }}</span><br>
+                                <span class="text-xs italic text-hover">ID de reporte: {{ item.form.id|upper }}</span>
                             </td>
 
                             <td class="p-1 truncate text-left">
-                                <span class="font-medium">{{ item.form.name|default:'-'|title }}</span><br>
-                                <span class="text-xs">{{ item.form.id|upper }}</span>
+                                <span class="font-medium">{{ item.employee.user.first_name|default:'-'|title }} {{ item.employee.user.last_name|default:'-'|title }}</span><br>
+                                <span class="text-xs italic text-hover">ID de colaborador: {{ item.employee.id|upper }}</span>
                             </td>
 
-                            <td class="p-1 truncate text-center">
+                            <td class="p-1 truncate text-left">
                                 <span class="text-xs">{{ item.employee.position.name|title }}</span><br>
                                 <span class="text-xs text-muted">Nivel: {{ item.employee.position.get_hierarchy_level_display|default:'N/A' }}</span>
                             </td>
@@ -159,38 +167,55 @@
                             </td>
                             
                             <td class="p-1 truncate text-center">
-                                <span class="text-xs">
-                                    {{ item.period.start_date|date:"d/m/Y H:i" }}<br>
-                                    hasta {{ item.period.end_date|date:"d/m/Y H:i" }}
-                                </span>
+                                <div class="inline-flex items-center justify-center gap-1 text-xs">
+                                    <svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" class="shrink-0"><path d="M193.39-310.43q-70.46-70.59-70.46-171.43 0-100.83 70.5-171.49Q263.94-724 364.66-724q100.72 0 171.38 70.59 70.65 70.58 70.65 171.42 0 100.84-70.58 171.49-70.59 70.65-171.43 70.65-100.83 0-171.29-70.58ZM739.69-212v-434.69L699-606l-37.15-37.15L765.69-747l102.85 102.85L832.77-606l-41.08-41.08V-212h-52ZM499.24-347.09q55.45-55.24 55.45-134.65t-55.24-134.84Q444.21-672 364.8-672t-134.65 55.24q-55.23 55.25-55.23 134.66t55.03 134.83q55.02 55.42 134.44 55.42 79.41 0 134.85-55.24Zm-68.47-35.3 37.54-37.15L391-496.85v-123.3h-52v146l91.77 91.76Zm-66.15-99.53Z"/></svg>
+                                    <span>{{ item.period.start_date|date:"d/m/Y H:i" }} hrs.</span>
+                                </div>
+                            </td>
+
+                            <td class="p-1 truncate text-center">
+                                <div class="inline-flex items-center justify-center gap-1 text-xs">
+                                    <svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" class="shrink-0"><path d="M193.39-310.43q-70.46-70.59-70.46-171.43 0-100.83 70.5-171.49Q263.94-724 364.66-724q100.72 0 171.38 70.59 70.65 70.58 70.65 171.42 0 100.84-70.58 171.49-70.59 70.65-171.43 70.65-100.83 0-171.29-70.58ZM764.69-212 661.85-314.85 697.62-353l41.07 42.08V-747h52v434.69L831.38-353l37.16 37.15L764.69-212ZM499.24-347.09q55.45-55.24 55.45-134.65t-55.24-134.84Q444.21-672 364.8-672t-134.65 55.24q-55.23 55.25-55.23 134.66t55.03 134.83q55.02 55.42 134.44 55.42 79.41 0 134.85-55.24Zm-68.47-35.3 37.54-37.15L391-496.85v-123.3h-52v146l91.77 91.76Zm-66.15-99.53Z"/></svg>
+                                    <span>{{ item.period.end_date|date:"d/m/Y H:i" }} hrs.</span>
+                                </div>
                             </td>
 
                             <td class="p-1 truncate text-center">
                                 {% if item.status_code == 'proximo_a_abrir' %}
-                                    <span class="px-2 py-0.5 bg-violet-500/10 text-violet-500 border border-violet-500/20 rounded-full text-xs">
+                                    <span class="p-1 bg-violet-500/10 text-violet-500 border border-violet-500/20 rounded-full flex items-center gap-1 justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock-arrow-right-icon lucide-clock-arrow-right"><path d="M12 6v6l2 1"/><path d="M13.5 21.885A10 10 0 1 1 22 12"/><path d="M14 18h8"/><path d="m18 22 4-4-4-4"/></svg>
                                         {{ item.status_label }}
                                     </span>
                                 {% elif item.status_code == 'abierto_para_envio' %}
-                                    <span class="px-2 py-0.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-full text-xs">
+                                    <span class="p-1 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-full flex items-center gap-1 justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock-plus-icon lucide-clock-plus"><path d="M12 6v6l3.644 1.822"/><path d="M16 19h6"/><path d="M19 16v6"/><path d="M21.92 13.267a10 10 0 1 0-8.653 8.653"/></svg>
                                         {{ item.status_label }}
                                     </span>
-                                {% elif item.status_code == 'enviado_a_tiempo' %}
-                                    <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full text-xs">
+                                    {% elif item.status_code == 'enviado_a_tiempo' %}
+                                    <span class="p-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full flex items-center gap-1 justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock-check-icon lucide-clock-check"><path d="M12 6v6l4 2"/><path d="M22 12a10 10 0 1 0-11 9.95"/><path d="m22 16-5.5 5.5L14 19"/></svg>
                                         {{ item.status_label }}
                                     </span>
-                                {% elif item.status_code == 'enviado_fuera_de_tiempo' %}
-                                    <span class="px-2 py-0.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full text-xs">
+                                    {% elif item.status_code == 'enviado_fuera_de_tiempo' %}
+                                    <span class="p-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full flex items-center gap-1 justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock-alert-icon lucide-clock-alert"><path d="M12 6v6l4 2"/><path d="M20 12v5"/><path d="M20 21h.01"/><path d="M21.25 8.2A10 10 0 1 0 16 21.16"/></svg>
                                         {{ item.status_label }}
                                     </span>
-                                {% elif item.status_code == 'pendiente_de_envio' %}
-                                    <span class="px-2 py-0.5 bg-ambar-500/10 text-ambar-500 border border-ambar-500/20 rounded-full text-xs">
+                                    {% elif item.status_code == 'pendiente_de_envio' %}
+                                    <span class="p-1 bg-ambar-500/10 text-ambar-500 border border-ambar-500/20 rounded-full flex items-center gap-1 justify-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock-arrow-up-icon lucide-clock-arrow-up"><path d="M12 6v6l1.56.78"/><path d="M13.227 21.925a10 10 0 1 1 8.767-9.588"/><path d="m14 18 4-4 4 4"/><path d="M18 22v-8"/></svg>
                                         {{ item.status_label }}
                                     </span>
                                 {% else %}
-                                    <span class="px-2 py-0.5 bg-slate-500/10 text-slate-500 border border-slate-500/20 rounded-full text-xs">
+                                    <span class="p-1 bg-slate-500/10 text-slate-500 border border-slate-500/20 rounded-full flex items-center gap-1 justify-center">
                                         {{ item.status_label }}
                                     </span>
                                 {% endif %}
+                            </td>
+
+
+                            <td class="p-1 truncate text-center">
+                                {{ item.submission.get_status_display|default:'Sin empezar'|title }}
                             </td>
                             
                             <td class="p-1 text-center">
@@ -200,16 +225,23 @@
                                 
                                 <div id="sub-dropdown-{{ forloop.counter }}" class="action-dropdown-menu hidden fixed z-[9999] w-44 bg-container border border-border rounded shadow-lg p-2 flex flex-col gap-2 text-xs text-left">
                                     
-                                    {% if not item.submission and item.employee.user == request.user %}
-                                        <a href="{% url 'human_resources:monitoring_form_submission_create_view' item.period.id %}?employee={{ item.employee.id }}" class="hover:text-hover transition-colors flex items-center gap-1.5 text-blue-500" title="Realizar reporte">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sticky-note-plus-icon lucide-sticky-note-plus"><path d="M15 3v5a1 1 0 0 0 1 1h5"/><path d="M18 15v6"/><path d="M21 12.356V9a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 15 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7.355"/><path d="M21 18h-6"/></svg>
-                                            Añadir envío
-                                        </a>
-                                    {% elif item.submission.status == 'draft' and item.employee.user == request.user %}
-                                        <a href="{% url 'human_resources:monitoring_form_submission_update_view' item.submission.pk %}" class="hover:text-hover transition-colors flex items-center gap-1.5 text-blue-500" title="Terminar reporte">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen-icon lucide-square-pen"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
-                                            Terminar envío
-                                        </a>
+                                    {% if not item.is_closed %}
+                                        {% if not item.submission and item.employee.user == request.user %}
+                                            <a href="{% url 'human_resources:monitoring_form_submission_create_view' item.period.id %}?employee={{ item.employee.id }}" class="hover:text-hover transition-colors flex items-center gap-1.5 text-blue-500" title="Realizar reporte">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sticky-note-plus-icon lucide-sticky-note-plus"><path d="M15 3v5a1 1 0 0 0 1 1h5"/><path d="M18 15v6"/><path d="M21 12.356V9a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 15 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7.355"/><path d="M21 18h-6"/></svg>
+                                                Añadir envío
+                                            </a>
+                                        {% elif item.submission.status == 'submitted' and item.employee.user == request.user %}
+                                            <a href="{% url 'human_resources:monitoring_form_submission_update_view' item.submission.pk %}" class="hover:text-hover transition-colors flex items-center gap-1.5 text-blue-500" title="Terminar reporte">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen-icon lucide-square-pen"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
+                                                Editar envío
+                                            </a>
+                                        {% elif item.submission.status == 'draft' and item.employee.user == request.user %}
+                                            <a href="{% url 'human_resources:monitoring_form_submission_update_view' item.submission.pk %}" class="hover:text-hover transition-colors flex items-center gap-1.5 text-blue-500" title="Terminar reporte">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen-icon lucide-square-pen"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
+                                                Terminar envío
+                                            </a>
+                                        {% endif %}
                                     {% endif %}
 
                                     <a href="{% url 'human_resources:monitoring_form_submission_detail_view' item.pk %}?employee={{ item.employee.id }}" class="hover:text-hover transition-colors flex items-center gap-1.5 text-emerald-500" title="Ver detalles">
@@ -219,6 +251,7 @@
                                 </div>
 
                             </td>
+
                         </tr>
 
                     {% empty %}

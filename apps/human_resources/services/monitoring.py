@@ -279,6 +279,11 @@ class ExpectedSubmission:
             return self.submission.pk
         return self.period.id
 
+    @property
+    def is_closed(self) -> bool:
+        from django.utils import timezone
+        return timezone.now() > self.period.end_date
+
 @dataclass
 class MonitoringSubmissionService(UsersService):
     ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
@@ -316,7 +321,7 @@ class MonitoringSubmissionService(UsersService):
             Q(form_questions__position__isnull=True, form_questions__hierarchy_level__isnull=True)
         ).distinct()
         
-        return MonitoringPeriod.objects.filter(form__in=applicable_forms).select_related('form')
+        return MonitoringPeriod.objects.filter(form__in=applicable_forms).select_related('form').order_by('-start_date')
         
     def read_submissions(self, periods_qs: QuerySet) -> list:
         emp_service = EmployeesService(user=self.user)
@@ -325,7 +330,9 @@ class MonitoringSubmissionService(UsersService):
         expected_list = []
         now = timezone.now()
         
-        for period in periods_qs:
+        ordered_periods = periods_qs.order_by('-start_date')
+        
+        for period in ordered_periods:
             applicable_employees = self._get_applicable_employees_for_form(period.form, accessible_employees)
             if not applicable_employees:
                 continue
@@ -350,6 +357,23 @@ class MonitoringSubmissionService(UsersService):
                         status_label=status_label
                     )
                 )
+        status_priority = {
+            'abierto_para_envio': 1,
+            'pendiente_de_envio': 1,
+            'enviado_a_tiempo': 2,
+            'enviado_fuera_de_tiempo': 2,
+            'proximo_a_abrir': 3,
+        }
+
+        def get_sort_key(es: ExpectedSubmission):
+            priority = status_priority.get(es.status_code, 4)
+            if priority in (1, 2):
+                dt_key = -es.period.start_date.timestamp()
+            else:
+                dt_key = es.period.start_date.timestamp()
+            return (priority, dt_key, -es.period.id, str(es.employee.id))
+
+        expected_list.sort(key=get_sort_key)
         return expected_list
 
     def read_submission(self, pk: int, employee_id: Optional[str] = None) -> ExpectedSubmission:
@@ -571,6 +595,21 @@ class MonitoringSubmissionService(UsersService):
         
         if answers_to_create:
             MonitoringFormAnswer.objects.bulk_create(answers_to_create)
+
+    @transaction.atomic
+    def delete_submission(self, submission_id: int):
+        sub = MonitoringFormSubmission.objects.select_related('period', 'employee', 'employee__user').filter(pk=submission_id).first()
+        if not sub:
+            raise SubmissionNotFound("Envío no encontrado.")
+            
+        if sub.employee.user != self.user:
+            raise PermissionsError("No tienes permiso para eliminar este envío.")
+            
+        now = timezone.now()
+        if now > sub.period.end_date:
+            raise ServiceError("El periodo de envío ha cerrado. No puedes eliminar el reporte.")
+            
+        sub.delete()
 
     def _compute_status(self, period: MonitoringPeriod, sub: Optional[MonitoringFormSubmission], now) -> tuple[str, str]:
         if sub and sub.status in [MonitoringFormSubmission.SubmissionStatus.SUBMITTED, MonitoringFormSubmission.SubmissionStatus.REVIEWED]:
