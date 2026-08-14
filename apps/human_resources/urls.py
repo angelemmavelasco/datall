@@ -28,4 +28,7 @@ urlpatterns = [
     path('monitoring-forms/details/<str:pk>/', monitoring_form_detail_view, name='monitoring_form_detail_view'),
     path('monitoring-forms/create/', monitoring_form_create_view, name='monitoring_form_create_view'),
     path('monitoring-forms/update/<str:pk>/', monitoring_form_update_view, name='monitoring_form_update_view'),
+
+    path('monitoring-submissions/', monitoring_form_submission_list_view, name='monitoring_form_submission_list_view'),
+    path('monitoring-submissions/details/<str:pk>/', monitoring_form_submission_detail_view, name='monitoring_form_submission_detail_view'),
 ]

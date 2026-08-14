@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from typing import ClassVar, Optional
-from apps.human_resources.models import MonitoringForm, Position, MonitoringFormSchedule, MonitoringFormQuestion, MonitoringFormField
+from apps.human_resources.models import MonitoringForm, Position, MonitoringFormSchedule, MonitoringFormQuestion, MonitoringFormField, MonitoringPeriod, MonitoringFormSubmission
 from apps.core.services.users import UsersService
 from apps.human_resources.services.positions import PositionsService
+from apps.human_resources.services.employees import EmployeesService
+from django.utils import timezone
 from django.db.models import QuerySet, Q, Count
 from django.db import transaction, IntegrityError
 from django.core.exceptions import ValidationError
@@ -253,3 +255,122 @@ class MonitoringFormsService(UsersService):
             raise ServiceError("Error de integridad de datos. Revisa si hay duplicados.")
         except Exception as e:
             raise ServiceError(f"Error al actualizar el formulario: {str(e)}")
+
+
+@dataclass
+class ExpectedSubmission:
+    employee: object
+    period: object
+    form: object
+    submission: Optional[object]
+    status_code: str
+    status_label: str
+
+@dataclass
+class MonitoringSubmissionService(UsersService):
+    ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
+        'acceso_total_usuarios',
+        'acceso_total_colaboradores',
+        'acceso_total_reportes_evaluaciones',
+        'recursos_humanos',
+    )
+    
+    def _get_applicable_employees_for_form(self, form: MonitoringForm, allowed_employees: QuerySet) -> list:
+        questions = form.form_questions.all()
+        applicable = set()
+        for q in questions:
+            if q.position_id:
+                applicable.update(list(allowed_employees.filter(position_id=q.position_id)))
+            elif q.hierarchy_level:
+                applicable.update(list(allowed_employees.filter(position__hierarchy_level=q.hierarchy_level)))
+            else:
+                applicable.update(list(allowed_employees))
+        return list(applicable)
+
+    def read_periods(self) -> QuerySet:
+        emp_service = EmployeesService(user=self.user)
+        accessible_employees = emp_service.read_employees()
+        
+        if not accessible_employees.exists():
+            return MonitoringPeriod.objects.none()
+            
+        position_ids = accessible_employees.values_list('position_id', flat=True)
+        hierarchy_levels = Position.objects.filter(id__in=position_ids).exclude(hierarchy_level__isnull=True).exclude(hierarchy_level='').values_list('hierarchy_level', flat=True)
+        
+        applicable_forms = MonitoringForm.objects.filter(
+            Q(form_questions__position_id__in=position_ids) |
+            Q(form_questions__hierarchy_level__in=hierarchy_levels) |
+            Q(form_questions__position__isnull=True, form_questions__hierarchy_level__isnull=True)
+        ).distinct()
+        
+        return MonitoringPeriod.objects.filter(form__in=applicable_forms).select_related('form')
+        
+    def read_submissions(self, periods_qs: QuerySet) -> list:
+        emp_service = EmployeesService(user=self.user)
+        accessible_employees = emp_service.read_employees().select_related('position', 'user')
+        
+        expected_list = []
+        now = timezone.now()
+        
+        for period in periods_qs:
+            applicable_employees = self._get_applicable_employees_for_form(period.form, accessible_employees)
+            if not applicable_employees:
+                continue
+                
+            existing_submissions = MonitoringFormSubmission.objects.filter(
+                period=period,
+                employee__in=applicable_employees
+            ).select_related('employee', 'form', 'period')
+            
+            subs_by_emp_id = {sub.employee_id: sub for sub in existing_submissions}
+            
+            for emp in applicable_employees:
+                sub = subs_by_emp_id.get(emp.id)
+                status_code, status_label = self._compute_status(period, sub, now)
+                expected_list.append(
+                    ExpectedSubmission(
+                        employee=emp,
+                        period=period,
+                        form=period.form,
+                        submission=sub,
+                        status_code=status_code,
+                        status_label=status_label
+                    )
+                )
+        return expected_list
+        
+    def _compute_status(self, period: MonitoringPeriod, sub: Optional[MonitoringFormSubmission], now) -> tuple[str, str]:
+        if sub and sub.status in [MonitoringFormSubmission.SubmissionStatus.SUBMITTED, MonitoringFormSubmission.SubmissionStatus.REVIEWED]:
+            if sub.submitted_at and sub.submitted_at <= period.end_date:
+                return ('enviado_a_tiempo', 'Enviado a tiempo')
+            else:
+                return ('enviado_fuera_de_tiempo', 'Enviado fuera de tiempo')
+                
+        if now < period.start_date:
+            return ('proximo_a_abrir', 'Próximo a abrir')
+        elif period.start_date <= now <= period.end_date:
+            return ('abierto_para_envio', 'Abierto para envío')
+        else:
+            return ('pendiente_de_envio', 'Pendiente de envío')
+            
+    def calculate_kpis(self, expected_submissions: list) -> dict:
+        kpis = {
+            'open_to_send': 0,
+            'sent_on_time': 0,
+            'sent_out_of_time': 0,
+            'pending_to_send': 0,
+            'next_to_open': 0,
+        }
+        for es in expected_submissions:
+            if es.status_code == 'abierto_para_envio':
+                kpis['open_to_send'] += 1
+            elif es.status_code == 'enviado_a_tiempo':
+                kpis['sent_on_time'] += 1
+            elif es.status_code == 'enviado_fuera_de_tiempo':
+                kpis['sent_out_of_time'] += 1
+            elif es.status_code == 'pendiente_de_envio':
+                kpis['pending_to_send'] += 1
+            elif es.status_code == 'proximo_a_abrir':
+                kpis['next_to_open'] += 1
+        return kpis
+    

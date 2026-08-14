@@ -7,7 +7,7 @@ from django.contrib import messages
 
 from .services.positions import PositionsStats, PositionsService, SkillsService, PositionNotFound, ServiceError, PermissionsError
 from .services.departments import DepartmentsService, DepartmentsStats, ServiceError, PermissionsError, DepartmentNotFound
-from .services.monitoring import MonitoringFormsService, FormNotFound
+from .services.monitoring import MonitoringFormsService, MonitoringSubmissionService, FormNotFound
 from .forms import (
     DepartmentForm,
     PositionForm,
@@ -19,7 +19,7 @@ from .forms import (
     MonitoringFormQuestionFormSet,
     MonitoringFormFieldForm
 )
-from .filters import DepartmentFilter, PositionFilter, MonitoringFormFilter, MonitoringFormFieldFilter
+from .filters import DepartmentFilter, PositionFilter, MonitoringFormFilter, MonitoringFormFieldFilter, MonitoringSubmissionFilter
 
 '''departments'''
 @login_required
@@ -772,9 +772,41 @@ def monitoring_form_field_update_view(request, pk: int):
 
 '''monitoring form submissions'''
 @login_required
-def monitoring_form_submission_view(request):
+def monitoring_form_submission_list_view(request):
     '''submissions made by the employees'''
-    pass
+    template = 'human_resources/monitoring_submissions/monitoring_submission_list.html'
+    
+    service = MonitoringSubmissionService(user=request.user)
+    periods = service.read_periods()
+    
+    period_filter = MonitoringSubmissionFilter(request.GET, queryset=periods, request=request)
+    filtered_periods = period_filter.qs
+    
+    expected_submissions = service.read_submissions(filtered_periods)
+    
+    employee_q = request.GET.get('employee', '').lower()
+    status_q = request.GET.get('status', '')
+    
+    filtered_submissions = []
+    for es in expected_submissions:
+        if employee_q:
+            emp_name = f"{es.employee.user.first_name} {es.employee.user.last_name} {es.employee.id}".lower()
+            if employee_q not in emp_name:
+                continue
+                
+        if status_q and es.status_code != status_q:
+            continue
+            
+        filtered_submissions.append(es)
+        
+    kpis = service.calculate_kpis(filtered_submissions)
+    
+    context = {
+        'expected_submissions': filtered_submissions,
+        'kpis': kpis,
+        'filter': period_filter,
+    }
+    return render(request, template, context)
 
 @login_required
 def monitoring_form_submission_detail_view(request, pk: int):

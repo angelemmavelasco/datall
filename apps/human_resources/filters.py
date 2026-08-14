@@ -1,7 +1,7 @@
 import django_filters
 from django.db.models import Q
 from django import forms
-from .models import Department, Position, Skill, PositionSkill, Employee, MonitoringForm, MonitoringFormField
+from .models import Department, Position, Skill, PositionSkill, Employee, MonitoringForm, MonitoringFormField, MonitoringPeriod
 from .services.employees import EmployeesService
 from .services.positions import PositionsService
 from .services.departments import DepartmentsService
@@ -256,3 +256,42 @@ class MonitoringFormFieldFilter(django_filters.FilterSet):
         return queryset.filter(
             Q(label__icontains=value)
         ).distinct()
+
+class MonitoringSubmissionFilter(django_filters.FilterSet):
+    form = django_filters.CharFilter(
+        method='filter_form',
+        label='Reporte (Nombre o ID)'
+    )
+    period = django_filters.CharFilter(
+        field_name='identifier',
+        lookup_expr='icontains',
+        label='Periodo (Identificador)'
+    )
+    employee = django_filters.CharFilter(
+        method='filter_dummy',
+        label='Colaborador (Nombre o ID)'
+    )
+    status = django_filters.ChoiceFilter(
+        choices=[
+            ('proximo_a_abrir', 'Próximo a abrir'),
+            ('abierto_para_envio', 'Abierto para envío'),
+            ('enviado_a_tiempo', 'Enviado a tiempo'),
+            ('enviado_fuera_de_tiempo', 'Enviado fuera de tiempo'),
+            ('pendiente_de_envio', 'Pendiente de envío')
+        ],
+        method='filter_dummy',
+        label='Estado de envío'
+    )
+
+    class Meta:
+        model = MonitoringPeriod
+        fields = []
+
+    def filter_form(self, queryset, name, value):
+        return queryset.filter(
+            Q(form__id__icontains=value) |
+            Q(form__name__icontains=value)
+        ).distinct()
+
+    def filter_dummy(self, queryset, name, value):
+        return queryset

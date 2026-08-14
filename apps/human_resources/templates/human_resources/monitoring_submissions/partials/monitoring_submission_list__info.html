@@ -1,0 +1,58 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-sm cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo funciona el listado y los estados de los envíos?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2">
+        <p>
+            Este módulo muestra el historial de envíos y los reportes de desempeño pendientes de responder, cruzando de manera inteligente los periodos de evaluación abiertos con los colaboradores a los que aplican.
+        </p><br>
+
+        <p class="font-semibold text-title">Uso de los filtros de búsqueda:</p>
+        <ul class="list-disc list-inside pl-2 space-y-1">
+            <li>
+                <strong>Reporte:</strong> Permite buscar por nombre o identificador único del reporte de desempeño asociado.
+            </li>
+            <li>
+                <strong>Periodo:</strong> Filtra por el identificador del periodo de evaluación (ej. 2026-Semana30).
+            </li>
+            <li>
+                <strong>Colaborador:</strong> Encuentra los reportes específicos de un empleado usando su nombre o código.
+            </li>
+            <li>
+                <strong>Estado de envío:</strong> Filtra la tabla basándose en el estado de cumplimiento del reporte. <em>Tip: Puedes dar clic en las tarjetas de resumen (KPIs) en la parte superior para filtrar rápidamente por estado.</em>
+            </li>
+        </ul><br>
+
+        <p class="font-semibold text-title">Interpretación de Estados (KPIs):</p>
+        <ul class="list-disc list-inside pl-2 space-y-1">
+            <li>
+                <span class="text-violet-500 font-medium">Próximos a abrir:</span> El periodo de evaluación ya fue creado, pero la ventana de tiempo para responder aún no comienza.
+            </li>
+            <li>
+                <span class="text-blue-500 font-medium">Abiertos para envío:</span> La ventana de tiempo está actualmente abierta y el reporte está pendiente o guardado como borrador.
+            </li>
+            <li>
+                <span class="text-emerald-500 font-medium">Enviados a tiempo:</span> El colaborador completó el reporte dentro del plazo establecido.
+            </li>
+            <li>
+                <span class="text-red-500 font-medium">Enviados fuera de tiempo:</span> El colaborador completó el reporte, pero lo hizo después de que la ventana de tiempo ya se había cerrado.
+            </li>
+            <li>
+                <span class="text-ambar-500 font-medium">Pendientes de envío:</span> La ventana de tiempo ya cerró y el reporte nunca fue enviado.
+            </li>
+        </ul><br>
+
+        <p class="font-semibold text-title">Privacidad y visibilidad por jerarquía:</p>
+        <p>
+            Los usuarios regulares únicamente visualizarán los reportes y envíos propios y los de sus colaboradores directos o indirectos (según la estructura organizacional). El personal autorizado (como Recursos Humanos) puede visualizar y gestionar el estatus de cumplimiento de toda la organización.
+        </p>
+    </div>
+</details>

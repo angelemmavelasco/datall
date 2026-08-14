@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}
+    Reportes de desempeño y evaluaciones
+{% endblock %}
+
+{% block module_name %}
+    Reportes de desempeño y evaluaciones
+{% endblock %}
+
+{% block module_actions %}
+    
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+    
+    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+
+{% endblock %}
+
+{% block filters %}
+    {% include 'human_resources/monitoring_submissions/partials/monitoring_submission_list__filters.html' %}
+{% endblock %}
+
+{% block content %}
+    {% include 'human_resources/monitoring_submissions/partials/monitoring_submission_list__info.html' %}
+
+    <div class="flex flex-col w-full gap-4">
+        <p class="text-title pb-1 border-b border-border">
+            Resumen
+        </p>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+            <a onclick="updateQueryParam('status', 'abierto_para_envio')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if request.GET.status == 'abierto_para_envio' %}bg-blue-500/10 border-blue-500/50{% else %}bg-container border-border{% endif %}">
+                <span class="text-sm text-title">
+                    Abiertos para envío
+                </span><br>
+                <span class="text-xl text-blue-500">
+                    {{ kpis.open_to_send|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a onclick="updateQueryParam('status', 'enviado_a_tiempo')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if request.GET.status == 'enviado_a_tiempo' %}bg-emerald-500/10 border-emerald-500/50{% else %}bg-container border-border{% endif %}">
+                <span class="text-sm text-title">
+                    Enviados a tiempo
+                </span><br>
+                <span class="text-xl text-emerald-500">
+                    {{ kpis.sent_on_time|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a onclick="updateQueryParam('status', 'enviado_fuera_de_tiempo')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if request.GET.status == 'enviado_fuera_de_tiempo' %}bg-red-500/10 border-red-500/50{% else %}bg-container border-border{% endif %}">
+                <span class="text-sm text-title">
+                    Enviados fuera de tiempo
+                </span><br>
+                <span class="text-xl text-red-500">
+                    {{ kpis.sent_out_of_time|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a onclick="updateQueryParam('status', 'pendiente_de_envio')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if request.GET.status == 'pendiente_de_envio' %}bg-ambar-500/10 border-ambar-500/50{% else %}bg-container border-border{% endif %}">
+                <span class="text-sm text-title">
+                    Pendientes de envío
+                </span><br>
+                <span class="text-xl text-ambar-500">
+                    {{ kpis.pending_to_send|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a onclick="updateQueryParam('status', 'proximo_a_abrir')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if request.GET.status == 'proximo_a_abrir' %}bg-violet-500/10 border-violet-500/50{% else %}bg-container border-border{% endif %}">
+                <span class="text-sm text-title">
+                    Próximos a abrir
+                </span><br>
+                <span class="text-xl text-violet-500">
+                    {{ kpis.next_to_open|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+        </div>
+    </div>
+    
+    <script>
+        function updateQueryParam(key, value) {
+            const url = new URL(window.location.href);
+            if (url.searchParams.get(key) === value) {
+                url.searchParams.delete(key);
+            } else {
+                url.searchParams.set(key, value);
+            }
+            window.location.href = url.toString();
+        }
+    </script>
+    
+    <div class="flex flex-col w-full gap-4 mt-6">
+        <p class="text-title pb-1 border-b border-border">
+            Listado
+        </p>
+
+        <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+            <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+                <thead>
+                    <tr class="border-b border-border text-xs">
+                        <th class="w-[200px] p-1 text-left text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
+                            Colaborador
+                        </th>
+
+                        <th class="w-[200px] p-1 text-left text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Reporte
+                        </th>
+                        
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Puesto y Nivel
+                        </th>
+
+                        <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Periodo
+                        </th>
+                        
+                        <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Horario de apertura
+                        </th>
+
+                        <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Estado
+                        </th>
+                        
+                        <th class="w-[50px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Acciones
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for item in expected_submissions %}
+                        <tr class="group">
+                            <td class="p-1 truncate text-left">
+                                <span class="font-medium">{{ item.employee.user.first_name|default:'-'|title }} {{ item.employee.user.last_name|default:'-'|title }}</span><br>
+                                <span class="text-xs">{{ item.employee.id }}</span>
+                            </td>
+
+                            <td class="p-1 truncate text-left">
+                                <span class="font-medium">{{ item.form.name|default:'-'|title }}</span><br>
+                                <span class="text-xs">{{ item.form.id|upper }}</span>
+                            </td>
+
+                            <td class="p-1 truncate text-center">
+                                <span class="text-xs">{{ item.employee.position.name|title }}</span><br>
+                                <span class="text-xs text-muted">Nivel: {{ item.employee.position.get_hierarchy_level_display|default:'N/A' }}</span>
+                            </td>
+
+                            <td class="p-1 truncate text-center">
+                                {{ item.period.identifier }}
+                            </td>
+                            
+                            <td class="p-1 truncate text-center">
+                                <span class="text-xs">
+                                    {{ item.period.start_date|date:"d/m/Y H:i" }}<br>
+                                    hasta {{ item.period.end_date|date:"d/m/Y H:i" }}
+                                </span>
+                            </td>
+
+                            <td class="p-1 truncate text-center">
+                                {% if item.status_code == 'proximo_a_abrir' %}
+                                    <span class="px-2 py-0.5 bg-violet-500/10 text-violet-500 border border-violet-500/20 rounded-full text-xs">
+                                        {{ item.status_label }}
+                                    </span>
+                                {% elif item.status_code == 'abierto_para_envio' %}
+                                    <span class="px-2 py-0.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-full text-xs">
+                                        {{ item.status_label }}
+                                    </span>
+                                {% elif item.status_code == 'enviado_a_tiempo' %}
+                                    <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full text-xs">
+                                        {{ item.status_label }}
+                                    </span>
+                                {% elif item.status_code == 'enviado_fuera_de_tiempo' %}
+                                    <span class="px-2 py-0.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full text-xs">
+                                        {{ item.status_label }}
+                                    </span>
+                                {% elif item.status_code == 'pendiente_de_envio' %}
+                                    <span class="px-2 py-0.5 bg-ambar-500/10 text-ambar-500 border border-ambar-500/20 rounded-full text-xs">
+                                        {{ item.status_label }}
+                                    </span>
+                                {% else %}
+                                    <span class="px-2 py-0.5 bg-slate-500/10 text-slate-500 border border-slate-500/20 rounded-full text-xs">
+                                        {{ item.status_label }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            
+                            <td class="p-1 text-center">
+                                <button type="button" onclick="toggleActionDropdown(event, 'sub-dropdown-{{ forloop.counter }}')" class="hover:text-hover text-strong cursor-pointer p-1 rounded inline-flex items-center justify-center transition-colors" title="Acciones">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-ellipsis-icon lucide-circle-ellipsis"><circle cx="12" cy="12" r="10"/><path d="M17 12h.01"/><path d="M12 12h.01"/><path d="M7 12h.01"/></svg>
+                                </button>
+                                
+                                <div id="sub-dropdown-{{ forloop.counter }}" class="action-dropdown-menu hidden fixed z-[9999] w-44 bg-container border border-border rounded shadow-lg p-2 flex flex-col gap-2 text-xs text-left">
+                                    {% if item.submission %}
+                                        <a href="#" class="hover:text-hover transition-colors flex items-center gap-1.5 text-emerald-500" title="Ver envío">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-icon lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                                            Ver envío
+                                        </a>
+                                    {% endif %}
+                                    
+                                    {% if item.status_code == 'abierto_para_envio' %}
+                                        <a href="#" class="hover:text-hover transition-colors flex items-center gap-1.5 text-blue-500" title="Realizar reporte">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                                            Realizar reporte
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+
+                    {% empty %}
+
+                        <tr class="">
+                            <td colspan="100%" class="py-50">
+                                <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                                    {% include 'layouts/data_not_found.html' %}
+                                </div>
+                            </td>
+                        </tr>
+
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function toggleActionDropdown(event, dropdownId) {
+            event.stopPropagation();
+            const menu = document.getElementById(dropdownId);
+            if (!menu) return;
+
+            const isCurrentlyHidden = menu.classList.contains('hidden');
+
+            document.querySelectorAll('.action-dropdown-menu').forEach(m => m.classList.add('hidden'));
+
+            if (isCurrentlyHidden) {
+                menu.classList.remove('hidden');
+                const rect = event.currentTarget.getBoundingClientRect();
+                const menuHeight = menu.offsetHeight;
+                const menuWidth = menu.offsetWidth;
+
+                let left = rect.right - menuWidth;
+                if (left < 10) left = 10;
+
+                let top = rect.bottom + 4;
+                if (top + menuHeight > window.innerHeight - 10) {
+                    top = rect.top - menuHeight - 4;
+                }
+
+                menu.style.top = `${top}px`;
+                menu.style.left = `${left}px`;
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.action-dropdown-menu')) {
+                document.querySelectorAll('.action-dropdown-menu').forEach(m => m.classList.add('hidden'));
+            }
+        });
+
+        document.addEventListener('scroll', function() {
+            document.querySelectorAll('.action-dropdown-menu').forEach(m => m.classList.add('hidden'));
+        }, true);
+    </script>
+
+{% endblock %}
