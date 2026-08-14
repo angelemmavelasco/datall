@@ -31,4 +31,6 @@ urlpatterns = [
 
     path('monitoring-submissions/', monitoring_form_submission_list_view, name='monitoring_form_submission_list_view'),
     path('monitoring-submissions/details/<int:pk>/', monitoring_form_submission_detail_view, name='monitoring_form_submission_detail_view'),
+    path('monitoring-submissions/create/<int:period_id>/', monitoring_form_submission_create_view, name='monitoring_form_submission_create_view'),
+    path('monitoring-submissions/update/<int:pk>/', monitoring_form_submission_update_view, name='monitoring_form_submission_update_view'),
 ]

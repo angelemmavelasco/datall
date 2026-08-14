@@ -1,0 +1,17 @@
+{% if field.question.response_type == 'boolean' %}
+    <label class="flex items-center gap-2 cursor-pointer text-body mt-1">
+        {{ field.bound_field }}
+        <span>Sí, aplica</span>
+    </label>
+{% else %}
+    {{ field.bound_field }}
+    {% if field.question.response_type == 'file' and field.answer_value %}
+        <span class="text-xs text-muted mt-1 block">Archivo actual: {{ field.answer_value.display }}</span>
+    {% endif %}
+{% endif %}
+
+{% if field.bound_field.errors %}
+    {% for error in field.bound_field.errors %}
+        <span class="text-xs text-red-500 mt-1">{{ error }}</span>
+    {% endfor %}
+{% endif %}

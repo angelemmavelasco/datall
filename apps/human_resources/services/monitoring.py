@@ -460,6 +460,118 @@ class MonitoringSubmissionService(UsersService):
             position_questions=position_questions
         )
         
+    @transaction.atomic
+    def create_submission(self, period_id: int, employee_id: str, data: dict, is_draft: bool = False) -> MonitoringFormSubmission:
+        period = MonitoringPeriod.objects.select_related('form').filter(pk=period_id).first()
+        if not period:
+            raise SubmissionNotFound("Periodo no encontrado.")
+            
+        emp_service = EmployeesService(user=self.user)
+        accessible_employees = emp_service.read_employees()
+        employee = accessible_employees.filter(pk=employee_id).first()
+        
+        if not employee:
+            raise PermissionsError("Colaborador no encontrado o sin acceso.")
+            
+        if employee.user != self.user:
+            raise PermissionsError("No tienes permiso para realizar envíos en nombre de otro colaborador.")
+            
+        applicable = self._get_applicable_employees_for_form(period.form, Employee.objects.filter(pk=employee.id))
+        if not applicable:
+            raise PermissionsError('El reporte seleccionado no aplica para este colaborador.')
+            
+        now = timezone.now()
+        if now < period.start_date and not is_draft:
+            raise ServiceError("La ventana de envío aún no está abierta. Solo puedes guardar borradores.")
+            
+        sub = MonitoringFormSubmission.objects.filter(period=period, employee=employee).first()
+        if sub and sub.status != MonitoringFormSubmission.SubmissionStatus.DRAFT:
+            if now > period.end_date:
+                raise ServiceError("El periodo de envío ha cerrado y el reporte ya fue enviado. No puedes hacer modificaciones.")
+            
+        if not sub:
+            sub = MonitoringFormSubmission(period=period, employee=employee, form=period.form)
+            
+        sub.status = MonitoringFormSubmission.SubmissionStatus.DRAFT if is_draft else MonitoringFormSubmission.SubmissionStatus.SUBMITTED
+        if not is_draft:
+            sub.submitted_at = now
+            
+        sub.save()
+        self._save_answers(sub, data)
+        return sub
+
+    @transaction.atomic
+    def update_submission(self, submission_id: int, data: dict, is_draft: bool = False) -> MonitoringFormSubmission:
+        sub = MonitoringFormSubmission.objects.select_related('period', 'employee', 'employee__user').filter(pk=submission_id).first()
+        if not sub:
+            raise SubmissionNotFound("Envío no encontrado.")
+            
+        if sub.employee.user != self.user:
+            raise PermissionsError("No tienes permiso para realizar envíos en nombre de otro colaborador.")
+            
+        now = timezone.now()
+        if sub.status != MonitoringFormSubmission.SubmissionStatus.DRAFT:
+            if now > sub.period.end_date:
+                raise ServiceError("El periodo de envío ha cerrado y el reporte ya fue enviado. No puedes hacer modificaciones.")
+
+        if now < sub.period.start_date and not is_draft:
+            raise ServiceError("La ventana de envío aún no está abierta. Solo puedes guardar borradores.")
+            
+        sub.status = MonitoringFormSubmission.SubmissionStatus.DRAFT if is_draft else MonitoringFormSubmission.SubmissionStatus.SUBMITTED
+        if not is_draft:
+            sub.submitted_at = now
+            
+        sub.save()
+        self._save_answers(sub, data)
+        return sub
+
+    def _save_answers(self, sub: MonitoringFormSubmission, data: dict):
+        employee_position = sub.employee.position
+        hierarchy_level = employee_position.hierarchy_level if employee_position else None
+
+        questions_qs = MonitoringFormQuestion.objects.filter(
+            form=sub.form
+        ).filter(
+            Q(position=employee_position) |
+            (Q(position__isnull=True) & Q(hierarchy_level=hierarchy_level)) |
+            (Q(position__isnull=True) & (Q(hierarchy_level__isnull=True) | Q(hierarchy_level='')))
+        ).select_related('question')
+        
+        answers_to_create = []
+        for q in questions_qs:
+            raw_val = data.get(f'question_{q.id}')
+            if raw_val is not None and str(raw_val).strip() != '':
+                display_val = str(raw_val)
+                if q.question.response_type == MonitoringFormField.ResponseTypeChoices.BOOLEAN:
+                    bool_val = str(raw_val).lower() in ['true', '1', 'on']
+                    display_val = "Sí" if bool_val else "No"
+                    raw_val = bool_val
+                elif q.question.response_type == MonitoringFormField.ResponseTypeChoices.PERCENTAGE:
+                    display_val = f"{raw_val}%"
+                elif q.question.response_type == MonitoringFormField.ResponseTypeChoices.SCALE_1_5:
+                    display_val = f"{raw_val}/5"
+                    
+                value_json = {
+                    "answer": raw_val,
+                    "display": display_val
+                }
+                
+                ans = MonitoringFormAnswer.objects.filter(submission=sub, question=q).first()
+                if ans:
+                    ans.value = value_json
+                    ans.save()
+                else:
+                    answers_to_create.append(MonitoringFormAnswer(
+                        submission=sub,
+                        question=q,
+                        value=value_json
+                    ))
+            else:
+                MonitoringFormAnswer.objects.filter(submission=sub, question=q).delete()
+        
+        if answers_to_create:
+            MonitoringFormAnswer.objects.bulk_create(answers_to_create)
+
     def _compute_status(self, period: MonitoringPeriod, sub: Optional[MonitoringFormSubmission], now) -> tuple[str, str]:
         if sub and sub.status in [MonitoringFormSubmission.SubmissionStatus.SUBMITTED, MonitoringFormSubmission.SubmissionStatus.REVIEWED]:
             if sub.submitted_at and sub.submitted_at <= period.end_date:

@@ -17,10 +17,10 @@ from .forms import (
     MonitoringFormForm,
     MonitoringFormScheduleForm,
     MonitoringFormQuestionFormSet,
-    MonitoringFormFieldForm
+    MonitoringFormFieldForm,
+    MonitoringSubmissionForm
 )
 from .filters import DepartmentFilter, PositionFilter, MonitoringFormFilter, MonitoringFormFieldFilter, MonitoringSubmissionFilter
-
 '''departments'''
 @login_required
 def department_list_view(request):
@@ -841,12 +841,93 @@ def monitoring_form_submission_detail_view(request, pk: int):
     return render(request, template, context)
 
 @login_required
-def monitoring_form_submission_create_view(request):
-    pass
+def monitoring_form_submission_create_view(request, period_id: int):
+    template = 'human_resources/monitoring_submissions/monitoring_submission_form.html'
+    service = MonitoringSubmissionService(user=request.user)
+    
+    employee_id = request.GET.get('employee')
+    try:
+        expected_sub = service.read_submission(pk=period_id, employee_id=employee_id)
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:monitoring_form_submission_list_view')
+        
+    if request.method == 'POST':
+        form = MonitoringSubmissionForm(request.POST, request.FILES, questions=expected_sub.questions)
+        is_draft = 'save_draft' in request.POST
+        
+        if is_draft or form.is_valid():
+            try:
+                data = form.cleaned_data if not is_draft else request.POST
+                sub = service.create_submission(
+                    period_id=period_id, 
+                    employee_id=expected_sub.employee.id, 
+                    data=data, 
+                    is_draft=is_draft
+                )
+                messages.success(request, 'Borrador guardado.' if is_draft else 'Reporte enviado con éxito.')
+                return redirect('human_resources:monitoring_form_submission_list_view')
+            except Exception as e:
+                messages.error(request, str(e))
+        else:
+            messages.error(request, 'Por favor completa todos los campos requeridos para confirmar.')
+    else:
+        form = MonitoringSubmissionForm(questions=expected_sub.questions)
+        
+    for q in expected_sub.questions:
+        q.bound_field = form[f'question_{q.id}']
+        
+    context = {
+        'submission': expected_sub,
+        'form': form,
+    }
+    return render(request, template, context)
 
 @login_required
 def monitoring_form_submission_update_view(request, pk: int):
-    pass
+    template = 'human_resources/monitoring_submissions/monitoring_submission_form.html'
+    service = MonitoringSubmissionService(user=request.user)
+    
+    try:
+        expected_sub = service.read_submission(pk=pk)
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:monitoring_form_submission_list_view')
+        
+    initial_data = {}
+    if expected_sub.submission:
+        for q in expected_sub.questions:
+            if q.answer_value:
+                initial_data[f'question_{q.id}'] = q.answer_value.get('answer')
+                
+    if request.method == 'POST':
+        form = MonitoringSubmissionForm(request.POST, request.FILES, questions=expected_sub.questions)
+        is_draft = 'save_draft' in request.POST
+        if is_draft or form.is_valid():
+            try:
+                data = form.cleaned_data if not is_draft else request.POST
+                sub = service.update_submission(
+                    submission_id=pk, 
+                    data=data, 
+                    is_draft=is_draft
+                )
+                messages.success(request, 'Borrador actualizado.' if is_draft else 'Reporte modificado con éxito.')
+                return redirect('human_resources:monitoring_form_submission_list_view')
+            except Exception as e:
+                messages.error(request, str(e))
+        else:
+            messages.error(request, 'Por favor completa todos los campos requeridos para confirmar.')
+    else:
+        form = MonitoringSubmissionForm(questions=expected_sub.questions, initial=initial_data)
+        
+    for q in expected_sub.questions:
+        q.bound_field = form[f'question_{q.id}']
+        
+    context = {
+        'submission': expected_sub,
+        'form': form,
+    }
+    return render(request, template, context)
 
 '''business units'''
 @login_required

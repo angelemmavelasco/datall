@@ -73,15 +73,31 @@ class MonitoringSubmissionForm(forms.Form):
                 response_type = q.question.response_type
                 is_required = q.is_required
                 
+                base_attrs = {
+                    'class': 'w-full bg-page border border-border p-2 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 text-body'
+                }
+                
                 if response_type == MonitoringFormField.ResponseTypeChoices.TEXT:
-                    self.fields[field_name] = forms.CharField(required=is_required, widget=forms.Textarea(attrs={'rows': 3}))
+                    attrs = base_attrs.copy()
+                    attrs['rows'] = 3
+                    self.fields[field_name] = forms.CharField(required=is_required, widget=forms.Textarea(attrs=attrs))
                 elif response_type == MonitoringFormField.ResponseTypeChoices.NUMBER:
-                    self.fields[field_name] = forms.FloatField(required=is_required, widget=forms.NumberInput())
+                    self.fields[field_name] = forms.FloatField(required=is_required, widget=forms.NumberInput(attrs=base_attrs))
                 elif response_type == MonitoringFormField.ResponseTypeChoices.PERCENTAGE:
-                    self.fields[field_name] = forms.FloatField(required=is_required, widget=forms.NumberInput())
+                    attrs = base_attrs.copy()
+                    attrs['step'] = '0.01'
+                    self.fields[field_name] = forms.FloatField(required=is_required, widget=forms.NumberInput(attrs=attrs))
                 elif response_type == MonitoringFormField.ResponseTypeChoices.SCALE_1_5:
-                    self.fields[field_name] = forms.IntegerField(required=is_required, min_value=1, max_value=5, widget=forms.NumberInput(attrs={'min': 1, 'max': 5}))
+                    attrs = base_attrs.copy()
+                    attrs.update({'min': 1, 'max': 5})
+                    self.fields[field_name] = forms.IntegerField(required=is_required, min_value=1, max_value=5, widget=forms.NumberInput(attrs=attrs))
                 elif response_type == MonitoringFormField.ResponseTypeChoices.BOOLEAN:
-                    self.fields[field_name] = forms.BooleanField(required=False)
+                    checkbox_attrs = {
+                        'class': 'w-4 h-4 text-emerald-500 bg-page border-border rounded focus:ring-emerald-500'
+                    }
+                    self.fields[field_name] = forms.BooleanField(required=False, widget=forms.CheckboxInput(attrs=checkbox_attrs))
                 elif response_type == MonitoringFormField.ResponseTypeChoices.FILE:
-                    self.fields[field_name] = forms.FileField(required=False) # Skipped file required validation temporarily as requested
+                    file_attrs = {
+                        'class': 'w-full text-body file:bg-container file:border-0 file:text-emerald-500 file:font-medium file:cursor-pointer file:py-1 file:px-3 file:rounded'
+                    }
+                    self.fields[field_name] = forms.FileField(required=False, widget=forms.ClearableFileInput(attrs=file_attrs))

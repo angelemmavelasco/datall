@@ -13,6 +13,7 @@
     --color-amber-500: oklch(76.9% 0.188 70.08);
     --color-yellow-200: oklch(94.5% 0.129 101.54);
     --color-yellow-700: oklch(55.4% 0.135 66.442);
+    --color-emerald-400: oklch(76.5% 0.177 163.223);
     --color-emerald-500: oklch(69.6% 0.17 162.48);
     --color-emerald-600: oklch(59.6% 0.145 163.225);
     --color-sky-200: oklch(90.1% 0.058 230.902);
@@ -1130,6 +1131,9 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  .opacity-50 {
+    opacity: 50%;
+  }
   .opacity-75 {
     opacity: 75%;
   }
@@ -1207,6 +1211,32 @@
   .group-\[\.htmx-request\]\:hidden:is(:where(.group):is(.htmx-request) *) {
     display: none;
   }
+  .file\:cursor-pointer::file-selector-button {
+    cursor: pointer;
+  }
+  .file\:rounded::file-selector-button {
+    border-radius: 0.25rem;
+  }
+  .file\:border-0::file-selector-button {
+    border-style: var(--tw-border-style);
+    border-width: 0px;
+  }
+  .file\:bg-container::file-selector-button {
+    background-color: var(--theme-container);
+  }
+  .file\:px-3::file-selector-button {
+    padding-inline: calc(var(--spacing) * 3);
+  }
+  .file\:py-1::file-selector-button {
+    padding-block: var(--spacing);
+  }
+  .file\:font-medium::file-selector-button {
+    --tw-font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-medium);
+  }
+  .file\:text-emerald-500::file-selector-button {
+    color: var(--color-emerald-500);
+  }
   .last\:border-b-0:last-child {
     border-bottom-style: var(--tw-border-style);
     border-bottom-width: 0px;
@@ -1221,11 +1251,33 @@
       --tw-scale-z: 101%;
       scale: var(--tw-scale-x) var(--tw-scale-y);
     }
+    .hover\:border-emerald-500\/20:hover {
+      border-color: color-mix(in srgb, oklch(69.6% 0.17 162.48) 20%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:border-emerald-500\/20:hover {
+        border-color: color-mix(in oklab, var(--color-emerald-500) 20%, transparent);
+      }
+    }
+    .hover\:border-red-500\/20:hover {
+      border-color: color-mix(in srgb, oklch(63.7% 0.237 25.331) 20%, transparent);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:border-red-500\/20:hover {
+        border-color: color-mix(in oklab, var(--color-red-500) 20%, transparent);
+      }
+    }
     .hover\:bg-hover:hover {
       background-color: var(--theme-hover);
     }
+    .hover\:text-emerald-400:hover {
+      color: var(--color-emerald-400);
+    }
     .hover\:text-hover:hover {
       color: var(--theme-hover);
+    }
+    .hover\:text-red-400:hover {
+      color: var(--color-red-400);
     }
     .hover\:underline:hover {
       text-decoration-line: underline;
@@ -1234,8 +1286,15 @@
       opacity: 75%;
     }
   }
+  .focus\:ring-1:focus {
+    --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
   .focus\:ring-blue-500:focus {
     --tw-ring-color: var(--color-blue-500);
+  }
+  .focus\:ring-emerald-500:focus {
+    --tw-ring-color: var(--color-emerald-500);
   }
   .focus\:outline-none:focus {
     --tw-outline-style: none;
