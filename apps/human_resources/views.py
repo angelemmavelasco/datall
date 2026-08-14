@@ -783,22 +783,32 @@ def monitoring_form_submission_list_view(request):
     filtered_periods = period_filter.qs
     
     expected_submissions = service.read_submissions(filtered_periods)
-    employee_q = request.GET.get('employee', '').lower()
+    employee_q = request.GET.getlist('employee')
+    position_q = request.GET.getlist('position')
+    department_q = request.GET.getlist('department')
+    hierarchy_q = request.GET.getlist('hierarchy_level')
     status_q = request.GET.getlist('status')
     
     filtered_submissions = []
     for es in expected_submissions:
-        if employee_q:
-            emp_name = f"{es.employee.user.first_name} {es.employee.user.last_name} {es.employee.id}".lower()
-            if employee_q not in emp_name:
-                continue
+        if employee_q and str(es.employee.id) not in employee_q:
+            continue
+            
+        if position_q and str(es.employee.position.id) not in position_q:
+            continue
+            
+        if department_q and str(es.employee.position.department.id) not in department_q:
+            continue
+            
+        if hierarchy_q and es.employee.position.hierarchy_level not in hierarchy_q:
+            continue
                 
         if status_q and es.status_code not in status_q:
             continue
             
         filtered_submissions.append(es)
         
-    kpis = service.calculate_kpis(filtered_submissions)
+    kpis = service.stats(filtered_submissions)
 
     available_actions = None
     if service.has_full_access:

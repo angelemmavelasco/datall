@@ -55,7 +55,7 @@ class PositionFilter(django_filters.FilterSet):
     hierarchy_level = django_filters.MultipleChoiceFilter(
         choices=Position.HierarchyLevelChoices.choices,
         widget=forms.CheckboxSelectMultiple,
-        label='Nivel de Jerarquía'
+        label='Nivel jerárquico'
     )
     skills = django_filters.ModelMultipleChoiceFilter(
         field_name='position_skills__skill',
@@ -267,9 +267,29 @@ class MonitoringSubmissionFilter(django_filters.FilterSet):
         lookup_expr='icontains',
         label='Periodo (Identificador)'
     )
-    employee = django_filters.CharFilter(
+    employee = django_filters.ModelMultipleChoiceFilter(
+        queryset=Employee.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
         method='filter_dummy',
-        label='Colaborador (Nombre o ID)'
+        label='Colaborador'
+    )
+    position = django_filters.ModelMultipleChoiceFilter(
+        queryset=Position.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
+        method='filter_dummy',
+        label='Puesto'
+    )
+    department = django_filters.ModelMultipleChoiceFilter(
+        queryset=Department.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
+        method='filter_dummy',
+        label='Departamento'
+    )
+    hierarchy_level = django_filters.MultipleChoiceFilter(
+        choices=Position.HierarchyLevelChoices.choices,
+        widget=forms.CheckboxSelectMultiple,
+        method='filter_dummy',
+        label='Nivel jerárquico'
     )
     status = django_filters.MultipleChoiceFilter(
         choices=[
@@ -287,6 +307,14 @@ class MonitoringSubmissionFilter(django_filters.FilterSet):
     class Meta:
         model = MonitoringPeriod
         fields = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if hasattr(self, 'request') and self.request:
+            user = self.request.user
+            self.filters['employee'].queryset = EmployeesService(user=user).read_employees().order_by('user__first_name')
+            self.filters['position'].queryset = PositionsService(user=user).read_positions().order_by('name')
+            self.filters['department'].queryset = DepartmentsService(user=user).read_departments().order_by('name')
 
     def filter_form(self, queryset, name, value):
         return queryset.filter(

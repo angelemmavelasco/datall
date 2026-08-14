@@ -14,6 +14,11 @@
     {% if available_actions %}
         {% include available_actions %}
     {% endif %}
+
+    <a href="{% url 'human_resources:monitoring_form_submission_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw-clock-icon lucide-rotate-ccw-clock"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+        <span>Historial de envíos</span>
+    </a>
     
     <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
@@ -108,7 +113,7 @@
                                         Ver detalles
                                     </a>
                                     
-                                    <a href="#" class="hover:text-hover transition-colors flex items-center gap-1.5 text-blue-500" title="Historial de envíos">
+                                    <a href="{% url 'human_resources:monitoring_form_submission_list_view' %}?form={{ form.id }}" class="hover:text-hover transition-colors flex items-center gap-1.5 text-blue-500" title="Historial de envíos">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layout-list-icon lucide-layout-list"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><path d="M14 4h7"/><path d="M14 9h7"/><path d="M14 15h7"/><path d="M14 20h7"/></svg>
                                         Historial de envíos
                                     </a>

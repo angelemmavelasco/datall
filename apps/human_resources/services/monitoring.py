@@ -353,7 +353,7 @@ class MonitoringSubmissionService(UsersService):
         else:
             return ('pendiente_de_envio', 'Pendiente de envío')
             
-    def calculate_kpis(self, expected_submissions: list) -> dict:
+    def stats(self, expected_submissions: list) -> dict:
         kpis = {
             'open_to_send': 0,
             'sent_on_time': 0,
