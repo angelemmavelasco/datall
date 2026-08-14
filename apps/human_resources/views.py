@@ -825,7 +825,20 @@ def monitoring_form_submission_list_view(request):
 
 @login_required
 def monitoring_form_submission_detail_view(request, pk: int):
-    pass
+    template = 'human_resources/monitoring_submissions/monitoring_submission_detail.html'
+    service = MonitoringSubmissionService(user=request.user)
+    
+    employee_id = request.GET.get('employee')
+    try:
+        submission = service.read_submission(pk=pk, employee_id=employee_id)
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:monitoring_form_submission_list_view')
+        
+    context = {
+        'submission': submission,
+    }
+    return render(request, template, context)
 
 @login_required
 def monitoring_form_submission_create_view(request):

@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from typing import ClassVar, Optional
-from apps.human_resources.models import MonitoringForm, Position, MonitoringFormSchedule, MonitoringFormQuestion, MonitoringFormField, MonitoringPeriod, MonitoringFormSubmission
+from apps.human_resources.models import MonitoringForm, Position, MonitoringFormSchedule, MonitoringFormQuestion, MonitoringFormField, MonitoringPeriod, MonitoringFormSubmission, Employee, MonitoringFormAnswer
 from apps.core.services.users import UsersService
 from apps.human_resources.services.positions import PositionsService
 from apps.human_resources.services.employees import EmployeesService
 from django.utils import timezone
-from django.db.models import QuerySet, Q, Count
+from django.db.models import QuerySet, Q, Count, Case, When, Value, IntegerField
 from django.db import transaction, IntegrityError
 from django.core.exceptions import ValidationError
 
@@ -13,6 +13,9 @@ class ServiceError(Exception):
     pass
 
 class FormNotFound(ServiceError):
+    pass
+
+class SubmissionNotFound(ServiceError):
     pass
 
 class PermissionsError(ServiceError):
@@ -265,6 +268,16 @@ class ExpectedSubmission:
     submission: Optional[object]
     status_code: str
     status_label: str
+    questions: Optional[list] = None
+    general_questions: Optional[list] = None
+    hierarchy_questions: Optional[list] = None
+    position_questions: Optional[list] = None
+
+    @property
+    def pk(self) -> int:
+        if self.submission and hasattr(self.submission, 'pk') and self.submission.pk:
+            return self.submission.pk
+        return self.period.id
 
 @dataclass
 class MonitoringSubmissionService(UsersService):
@@ -338,6 +351,114 @@ class MonitoringSubmissionService(UsersService):
                     )
                 )
         return expected_list
+
+    def read_submission(self, pk: int, employee_id: Optional[str] = None) -> ExpectedSubmission:
+        pk_int = int(pk)
+
+        submission = MonitoringFormSubmission.objects.filter(pk=pk_int).select_related(
+            'period', 'employee', 'form', 'employee__position', 'employee__user'
+        ).first()
+
+        if submission:
+            period = submission.period
+            employee = submission.employee
+        else:
+            period = MonitoringPeriod.objects.filter(pk=pk_int).select_related('form').first()
+            if not period:
+                raise SubmissionNotFound(f'No se encontró ningún reporte o periodo de evaluación con ID "{pk_int}".')
+
+            emp_service = EmployeesService(user=self.user)
+            accessible_employees = emp_service.read_employees().select_related('position', 'user')
+
+            if employee_id:
+                employee = accessible_employees.filter(pk=employee_id).first()
+                if not employee:
+                    if Employee.objects.filter(pk=employee_id).exists():
+                        raise PermissionsError(f'No tienes permiso para acceder a los reportes del colaborador con ID "{employee_id}".')
+                    raise SubmissionNotFound(f'No se encontró ningún colaborador con ID "{employee_id}".')
+            else:
+                employee = accessible_employees.filter(user=self.user).first()
+                if not employee:
+                    applicable = self._get_applicable_employees_for_form(period.form, accessible_employees)
+                    if applicable:
+                        employee = applicable[0]
+                    else:
+                        employee = accessible_employees.first()
+
+            if not employee:
+                raise SubmissionNotFound('No se encontró ningún colaborador asociado para consultar este reporte.')
+
+        emp_service = EmployeesService(user=self.user)
+        accessible_employees = emp_service.read_employees()
+        if not accessible_employees.filter(pk=employee.id).exists():
+            raise PermissionsError(f'No tienes permiso para acceder al reporte del colaborador con ID "{employee.id}".')
+
+        applicable = self._get_applicable_employees_for_form(period.form, Employee.objects.filter(pk=employee.id))
+        if not applicable:
+            raise PermissionsError('El reporte seleccionado no aplica para este colaborador.')
+
+        now = timezone.now()
+        status_code, status_label = self._compute_status(period, submission, now)
+
+        employee_position = employee.position
+        hierarchy_level = employee_position.hierarchy_level if employee_position else None
+
+        questions_qs = MonitoringFormQuestion.objects.filter(
+            form=period.form
+        ).filter(
+            Q(position=employee_position) |
+            (Q(position__isnull=True) & Q(hierarchy_level=hierarchy_level)) |
+            (Q(position__isnull=True) & (Q(hierarchy_level__isnull=True) | Q(hierarchy_level='')))
+        ).select_related('question', 'position', 'form')
+
+        if hierarchy_level:
+            priority_cases = [
+                When(position__isnull=True, hierarchy_level__isnull=True, then=Value(1)),
+                When(position__isnull=True, hierarchy_level='', then=Value(1)),
+                When(position__isnull=True, hierarchy_level=hierarchy_level, then=Value(2)),
+                When(position=employee_position, then=Value(3)),
+            ]
+        else:
+            priority_cases = [
+                When(position__isnull=True, hierarchy_level__isnull=True, then=Value(1)),
+                When(position__isnull=True, hierarchy_level='', then=Value(1)),
+                When(position=employee_position, then=Value(2)),
+            ]
+
+        questions = list(
+            questions_qs.annotate(
+                priority=Case(
+                    *priority_cases,
+                    default=Value(4),
+                    output_field=IntegerField()
+                )
+            ).order_by('priority', 'order', 'id')
+        )
+
+        answers_dict = {} #attach answers to the questions if exist
+        if submission:
+            answers = MonitoringFormAnswer.objects.filter(submission=submission)
+            answers_dict = {ans.question_id: ans.value for ans in answers}
+        
+        for q in questions:
+            q.answer_value = answers_dict.get(q.id)
+
+        general_questions = [q for q in questions if getattr(q, 'priority', 4) == 1]
+        hierarchy_questions = [q for q in questions if getattr(q, 'priority', 4) == 2]
+        position_questions = [q for q in questions if getattr(q, 'priority', 4) == 3]
+
+        return ExpectedSubmission(
+            employee=employee,
+            period=period,
+            form=period.form,
+            submission=submission,
+            status_code=status_code,
+            status_label=status_label,
+            questions=questions,
+            general_questions=general_questions,
+            hierarchy_questions=hierarchy_questions,
+            position_questions=position_questions
+        )
         
     def _compute_status(self, period: MonitoringPeriod, sub: Optional[MonitoringFormSubmission], now) -> tuple[str, str]:
         if sub and sub.status in [MonitoringFormSubmission.SubmissionStatus.SUBMITTED, MonitoringFormSubmission.SubmissionStatus.REVIEWED]:

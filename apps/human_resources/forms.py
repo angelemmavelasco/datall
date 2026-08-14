@@ -63,3 +63,25 @@ class MonitoringFormFieldForm(forms.ModelForm):
     class Meta:
         model = MonitoringFormField
         fields = ['label', 'response_type', 'description', 'is_active']
+
+class MonitoringSubmissionForm(forms.Form):
+    def __init__(self, *args, questions=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if questions:
+            for q in questions:
+                field_name = f'question_{q.id}'
+                response_type = q.question.response_type
+                is_required = q.is_required
+                
+                if response_type == MonitoringFormField.ResponseTypeChoices.TEXT:
+                    self.fields[field_name] = forms.CharField(required=is_required, widget=forms.Textarea(attrs={'rows': 3}))
+                elif response_type == MonitoringFormField.ResponseTypeChoices.NUMBER:
+                    self.fields[field_name] = forms.FloatField(required=is_required, widget=forms.NumberInput())
+                elif response_type == MonitoringFormField.ResponseTypeChoices.PERCENTAGE:
+                    self.fields[field_name] = forms.FloatField(required=is_required, widget=forms.NumberInput())
+                elif response_type == MonitoringFormField.ResponseTypeChoices.SCALE_1_5:
+                    self.fields[field_name] = forms.IntegerField(required=is_required, min_value=1, max_value=5, widget=forms.NumberInput(attrs={'min': 1, 'max': 5}))
+                elif response_type == MonitoringFormField.ResponseTypeChoices.BOOLEAN:
+                    self.fields[field_name] = forms.BooleanField(required=False)
+                elif response_type == MonitoringFormField.ResponseTypeChoices.FILE:
+                    self.fields[field_name] = forms.FileField(required=False) # Skipped file required validation temporarily as requested

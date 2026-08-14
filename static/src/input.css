@@ -19,7 +19,7 @@
     color-scheme: light;
 
     --theme-body: oklch(13% 0.028 261.692);
-    --theme-title: oklch(18% 0.033 260);
+    --theme-title: oklch(39.636% 0.00813 17.197 / 0.785);
     --theme-border: #cad5e2;
     --theme-hover: #5d6e87;
     --theme-container: #f1f5f9;

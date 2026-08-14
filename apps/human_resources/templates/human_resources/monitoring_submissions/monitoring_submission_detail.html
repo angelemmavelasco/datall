@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}
+	Detalle de envío de reporte de desempeño
+{% endblock %}
+
+{% block module_name %}
+    {{ submission.form.name|title }} {{ submission.period.identifier|title }}
+{% endblock %}
+
+{% block module_actions %}
+        <a href="" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+            {% if not submission.submission and submission.employee.user == request.user %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sticky-note-plus-icon lucide-sticky-note-plus"><path d="M15 3v5a1 1 0 0 0 1 1h5"/><path d="M18 15v6"/><path d="M21 12.356V9a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 15 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7.355"/><path d="M21 18h-6"/></svg>
+                <span>Añadir envío</span>
+            {% elif submission.submission.status == 'draft' and submission.employee.user == request.user %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen-icon lucide-square-pen"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
+                <span>Terminar envío</span>
+            {% elif submission.submission.status == 'reviewed' %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-digit-icon lucide-file-digit"><path d="M4 12V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 16h2v6"/><path d="M10 22h4"/><rect x="2" y="16" width="4" height="6" rx="2"/></svg>
+                <span>Ver revisión</span>
+            {% endif %}
+        </a>
+
+        
+
+    <a href="{% url 'human_resources:monitoring_form_submission_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+
+    <div class="flex flex-col gap-4">
+        <p class="text-title pb-2 border-b border-border">Información general</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+            <span class="text-title">Identificador del reporte</span>
+            <div class="w-full  text-body  flex items-center">
+                {{ submission.form.id|default:"-"|upper }}
+            </div>
+
+            <span class="text-title">Nombre del reporte</span>
+            <div class="w-full  text-body  flex items-center">
+                {{ submission.form.name|default:"-"|title }}
+            </div>
+
+            <span class="text-title">Colaborador asignado</span>
+            <div class="w-full  text-body  flex items-center">
+                {{ submission.employee.user.first_name|default:"-"|title }} {{ submission.employee.user.last_name|default:"-"|title }}
+            </div>
+
+            <span class="text-title">Posición</span>
+            <div class="w-full  text-body  flex items-center">
+                {{ submission.employee.position.name|default:"-"|title }}
+            </div>
+
+            <span class="text-title">Departamento</span>
+            <div class="w-full  text-body  flex items-center">
+                {{ submission.employee.position.department.name|default:"-"|title }}
+            </div>
+
+            <span class="text-title">Nivel jerárquico</span>
+            <div class="w-full text-body flex items-center">
+                {{ submission.employee.position.get_hierarchy_level_display|default:"-"|title }}
+            </div>
+
+            <span class="text-title">Periodo evaluado</span>
+            <div class="w-full text-body flex items-center">
+                {{ submission.period.identifier|default:"-"|title }}
+            </div>
+
+            <span class="text-title">Plazo de entrega</span>
+            <div class="w-full text-body flex items-center">
+                Abre: {{ submission.period.start_date|default:"-" }} <br>
+                Cierra: {{ submission.period.end_date|default:"-" }}
+            </div>
+
+            <span class="text-title">Estado del envío</span>
+            <div class="w-full text-body flex items-center">
+                {% if submission.status_code == 'proximo_a_abrir' %}
+                    <span class="px-2 py-0.5 bg-violet-500/10 text-violet-500 border border-violet-500/20 rounded-full text-xs">
+                        {{ submission.status_label }}
+                    </span>
+                {% elif submission.status_code == 'abierto_para_envio' %}
+                    <span class="px-2 py-0.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-full text-xs">
+                        {{ submission.status_label }}
+                    </span>
+                {% elif submission.status_code == 'enviado_a_tiempo' %}
+                    <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full text-xs">
+                        {{ submission.status_label }}
+                    </span>
+                {% elif submission.status_code == 'enviado_fuera_de_tiempo' %}
+                    <span class="px-2 py-0.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full text-xs">
+                        {{ submission.status_label }}
+                    </span>
+                {% elif submission.status_code == 'pendiente_de_envio' %}
+                    <span class="px-2 py-0.5 bg-ambar-500/10 text-ambar-500 border border-ambar-500/20 rounded-full text-xs">
+                        {{ submission.status_label }}
+                    </span>
+                {% else %}
+                    <span class="px-2 py-0.5 bg-slate-500/10 text-slate-500 border border-slate-500/20 rounded-full text-xs">
+                        {{ submission.status_label }}
+                    </span>
+                {% endif %}
+            </div>
+
+            <span class="text-title">Estado del reporte</span>
+            <div class="w-full text-body flex items-center">
+                {% if not submission.submission %}
+                    <span class="px-2 py-0.5 bg-slate-500/10 text-slate-500 border border-slate-500/20 rounded-full text-xs">
+                        Sin empezar
+                    </span>
+                {% elif submission.submission.status == 'draft' %}
+                    <span class="px-2 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full text-xs">
+                        {{ submission.submission.get_status_display }}
+                    </span>
+                {% elif submission.submission.status == 'submitted' %}
+                    <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full text-xs">
+                        {{ submission.submission.get_status_display }}
+                    </span>
+                {% elif submission.submission.status == 'reviewed' %}
+                    <span class="px-2 py-0.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-full text-xs">
+                        {{ submission.submission.get_status_display }}
+                    </span>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <p class="text-title pb-2 border-b border-border">Evaluación general y de nivel {{ submission.submission.employee.position.get_hierarchy_level_display }}</p>
+        <div class="grid grid-cols-1 gap-4 items-center bg-container p-3 rounded border border-border">
+            {% for field in submission.general_questions %}
+                <div class="flex flex-col gap-1">
+                    <span class="text-title">{{ field.question.label|title }}</span>
+                    <span class="text-xs text-muted">Aplica a toda la organización</span>
+                    {% if field.answer_value %}
+                        <div class="mt-1 text-body bg-page text-body border border-border p-1 rounded">
+                            {{ field.answer_value.display }}
+                        </div>
+                    {% else %}
+                        <div class="mt-1 text-xs text-amber-500 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-alert"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                            Sin responder
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            {% for field in submission.hierarchy_questions %}
+                <div class="flex flex-col gap-1">
+                    <span class="text-title">{{ field.question.label|title }}</span>
+                    {% if field.answer_value %}
+                        <div class="mt-1 text-body bg-page text-body border border-border p-1 rounded">
+                            {{ field.answer_value.display }}
+                        </div>
+                    {% else %}
+                        <div class="mt-1 text-xs text-amber-500 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-alert"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                            Sin responder
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            {% if not submission.general_questions and not submission.hierarchy_questions %}
+                <p class="text-body col-span-full text-center">Sin preguntas en esta sección</p>
+            {% endif %}
+        </div>
+
+        <p class="text-title pb-2 border-b border-border">Evaluación de {{ submission.employee.position.name|default:"-"|lower }}</p>
+        <div class="grid grid-cols-1 gap-4 items-center bg-container p-3 rounded border border-border">
+            {% for field in submission.position_questions %}
+                <div class="flex flex-col gap-1">
+                    <span class="text-title">{{ field.question.label|title }}</span>
+                    {% if field.answer_value %}
+                        <div class="mt-1 text-body bg-page border border-border p-1 rounded">
+                            {{ field.answer_value.display }}
+                        </div>
+                    {% else %}
+                        <div class="mt-1 text-xs text-amber-500 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-alert"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                            Sin responder
+                        </div>
+                    {% endif %}
+                </div>
+            {% empty %}
+                <p class="text-body col-span-full text-center">Sin preguntas en esta evaluación</p>
+            {% endfor %}
+        </div>
+
+    </div>
+
+
+{% endblock %}
