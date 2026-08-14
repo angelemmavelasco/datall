@@ -800,11 +800,16 @@ def monitoring_form_submission_list_view(request):
         filtered_submissions.append(es)
         
     kpis = service.calculate_kpis(filtered_submissions)
+
+    available_actions = None
+    if service.has_full_access:
+        available_actions = 'human_resources/monitoring_submissions/partials/monitoring_submission_list__actions.html'
     
     context = {
         'expected_submissions': filtered_submissions,
         'kpis': kpis,
         'filter': period_filter,
+        'available_actions': available_actions,
     }
     return render(request, template, context)
 
