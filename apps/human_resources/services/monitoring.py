@@ -281,7 +281,8 @@ class ExpectedSubmission:
 
     @property
     def is_closed(self) -> bool:
-        from django.utils import timezone
+        if not self.submission or self.submission.status == 'draft':
+            return False
         return timezone.now() > self.period.end_date
 
 @dataclass
@@ -565,20 +566,23 @@ class MonitoringSubmissionService(UsersService):
         for q in questions_qs:
             raw_val = data.get(f'question_{q.id}')
             if raw_val is not None and str(raw_val).strip() != '':
-                display_val = str(raw_val)
-                if q.question.response_type == MonitoringFormField.ResponseTypeChoices.BOOLEAN:
-                    bool_val = str(raw_val).lower() in ['true', '1', 'on']
-                    display_val = "Sí" if bool_val else "No"
-                    raw_val = bool_val
-                elif q.question.response_type == MonitoringFormField.ResponseTypeChoices.PERCENTAGE:
-                    display_val = f"{raw_val}%"
-                elif q.question.response_type == MonitoringFormField.ResponseTypeChoices.SCALE_1_5:
-                    display_val = f"{raw_val}/5"
-                    
-                value_json = {
-                    "answer": raw_val,
-                    "display": display_val
-                }
+                if isinstance(raw_val, dict):
+                    value_json = raw_val
+                else:
+                    display_val = str(raw_val)
+                    if q.question.response_type == MonitoringFormField.ResponseTypeChoices.BOOLEAN:
+                        bool_val = str(raw_val).lower() in ['true', '1', 'on']
+                        display_val = "Sí" if bool_val else "No"
+                        raw_val = bool_val
+                    elif q.question.response_type == MonitoringFormField.ResponseTypeChoices.PERCENTAGE:
+                        display_val = f"{raw_val}%"
+                    elif q.question.response_type == MonitoringFormField.ResponseTypeChoices.SCALE_1_5:
+                        display_val = f"{raw_val}/5"
+                        
+                    value_json = {
+                        "answer": raw_val,
+                        "display": display_val
+                    }
                 
                 ans = MonitoringFormAnswer.objects.filter(submission=sub, question=q).first()
                 if ans:
@@ -628,9 +632,16 @@ class MonitoringSubmissionService(UsersService):
     def stats(self, expected_submissions: list) -> dict:
         kpis = {
             'open_to_send': 0,
+
             'sent_on_time': 0,
+            'sent_on_time_pct': 0, #which is the percentage of completed reports/submissions vs assigned tasks
+
             'sent_out_of_time': 0,
+            'sent_out_of_time_pct': 0,
+
             'pending_to_send': 0,
+            'pending_to_send_pct': 0,
+
             'next_to_open': 0,
         }
         for es in expected_submissions:
@@ -644,5 +655,12 @@ class MonitoringSubmissionService(UsersService):
                 kpis['pending_to_send'] += 1
             elif es.status_code == 'proximo_a_abrir':
                 kpis['next_to_open'] += 1
+        
+        effective_submissions = kpis['open_to_send'] + kpis['sent_on_time'] + kpis['sent_out_of_time'] + kpis['pending_to_send']
+
+        kpis['sent_on_time_pct'] = (kpis['sent_on_time'] / effective_submissions) * 100 if effective_submissions > 0 else 0
+        kpis['sent_out_of_time_pct'] = (kpis['sent_out_of_time'] / effective_submissions) * 100 if effective_submissions > 0 else 0
+        kpis['pending_to_send_pct'] = (kpis['pending_to_send'] / effective_submissions) * 100 if effective_submissions > 0 else 0
+        
         return kpis
     

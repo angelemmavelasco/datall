@@ -19,7 +19,9 @@ from .forms import (
     MonitoringFormScheduleForm,
     MonitoringFormQuestionFormSet,
     MonitoringFormFieldForm,
-    MonitoringSubmissionForm
+    MonitoringSubmissionForm,
+    MonitoringFormField,
+    FileWrapper
 )
 from .filters import DepartmentFilter, PositionFilter, MonitoringFormFilter, MonitoringFormFieldFilter, MonitoringSubmissionFilter
 '''departments'''
@@ -856,10 +858,17 @@ def monitoring_form_submission_create_view(request, period_id: int):
     if request.method == 'POST':
         form = MonitoringSubmissionForm(request.POST, request.FILES, questions=expected_sub.questions)
         is_draft = 'save_draft' in request.POST
+        is_valid = form.is_valid()
         
-        if is_draft or form.is_valid():
+        if is_draft or is_valid:
             try:
-                data = form.cleaned_data if not is_draft else request.POST
+                if is_draft:
+                    data = request.POST.dict()
+                    if hasattr(form, 'cleaned_data'):
+                        data.update(form.cleaned_data)
+                else:
+                    data = form.cleaned_data
+                    
                 sub = service.create_submission(
                     period_id=period_id, 
                     employee_id=expected_sub.employee.id, 
@@ -900,14 +909,25 @@ def monitoring_form_submission_update_view(request, pk: int):
     if expected_sub.submission:
         for q in expected_sub.questions:
             if q.answer_value:
-                initial_data[f'question_{q.id}'] = q.answer_value.get('answer')
+                if q.question.response_type == MonitoringFormField.ResponseTypeChoices.FILE:
+                    initial_data[f'question_{q.id}'] = FileWrapper(q.answer_value)
+                else:
+                    initial_data[f'question_{q.id}'] = q.answer_value.get('answer')
                 
     if request.method == 'POST':
-        form = MonitoringSubmissionForm(request.POST, request.FILES, questions=expected_sub.questions)
+        form = MonitoringSubmissionForm(request.POST, request.FILES, questions=expected_sub.questions, initial=initial_data)
         is_draft = 'save_draft' in request.POST
-        if is_draft or form.is_valid():
+        is_valid = form.is_valid()
+        
+        if is_draft or is_valid:
             try:
-                data = form.cleaned_data if not is_draft else request.POST
+                if is_draft:
+                    data = request.POST.dict()
+                    if hasattr(form, 'cleaned_data'):
+                        data.update(form.cleaned_data)
+                else:
+                    data = form.cleaned_data
+                    
                 sub = service.update_submission(
                     submission_id=pk, 
                     data=data, 

@@ -50,6 +50,9 @@
             <a onclick="updateQueryParam('status', 'enviado_a_tiempo')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if 'enviado_a_tiempo' in selected_statuses %}bg-emerald-500/10 border-emerald-500/50{% else %}bg-container border-border{% endif %}">
                 <span class="text-sm text-title">
                     Enviados a tiempo
+                    <em class="text-xs text-title ">
+                        {{ kpis.sent_on_time_pct|default:0|floatformat:2|intcomma }}%
+                    </em>
                 </span><br>
                 <span class="text-xl text-emerald-500">
                     {{ kpis.sent_on_time|default:0|floatformat:0|intcomma }}
@@ -59,6 +62,9 @@
             <a onclick="updateQueryParam('status', 'enviado_fuera_de_tiempo')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if 'enviado_fuera_de_tiempo' in selected_statuses %}bg-red-500/10 border-red-500/50{% else %}bg-container border-border{% endif %}">
                 <span class="text-sm text-title">
                     Enviados fuera de tiempo
+                    <em class="text-xs text-title ">
+                        {{ kpis.sent_out_of_time_pct|default:0|floatformat:2|intcomma }}%
+                    </em>
                 </span><br>
                 <span class="text-xl text-red-500">
                     {{ kpis.sent_out_of_time|default:0|floatformat:0|intcomma }}
@@ -68,6 +74,9 @@
             <a onclick="updateQueryParam('status', 'pendiente_de_envio')" class="border rounded p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer {% if 'pendiente_de_envio' in selected_statuses %}bg-ambar-500/10 border-ambar-500/50{% else %}bg-container border-border{% endif %}">
                 <span class="text-sm text-title">
                     Pendientes de envío
+                    <em class="text-xs text-title ">
+                        {{ kpis.pending_to_send_pct|default:0|floatformat:2|intcomma }}%
+                    </em>
                 </span><br>
                 <span class="text-xl text-ambar-500">
                     {{ kpis.pending_to_send|default:0|floatformat:0|intcomma }}
@@ -148,12 +157,14 @@
                     {% for item in expected_submissions %}
                         <tr class="group">
                             <td class="p-1 truncate text-left">
-                                <span class="font-medium">{{ item.form.name|default:'-'|title }}</span><br>
-                                <span class="text-xs italic text-hover">ID de reporte: {{ item.form.id|upper }}</span>
+                                <a href="{% url 'human_resources:monitoring_form_submission_detail_view' item.pk %}?employee={{ item.employee.id }}">
+                                    <span class="underline">{{ item.form.name|default:'-'|title }}</span><br>
+                                    <span class="text-xs italic text-hover">ID de reporte: {{ item.form.id|upper }}</span>
+                                </a>
                             </td>
 
                             <td class="p-1 truncate text-left">
-                                <span class="font-medium">{{ item.employee.user.first_name|default:'-'|title }} {{ item.employee.user.last_name|default:'-'|title }}</span><br>
+                                <span class="">{{ item.employee.user.first_name|default:'-'|title }} {{ item.employee.user.last_name|default:'-'|title }}</span><br>
                                 <span class="text-xs italic text-hover">ID de colaborador: {{ item.employee.id|upper }}</span>
                             </td>
 
