@@ -2,6 +2,7 @@ services:
   db:
     image: postgres:16-alpine
     container_name: datall_bi_db
+    restart: always
     env_file:
       - .env
     environment:
@@ -11,22 +12,18 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - datall_bi_postgres_data:/var/lib/postgresql/data
 
   web:
     build: .
     container_name: datall_bi_web
-    command: python manage.py runserver 0.0.0.0:8000
+    restart: always
     env_file:
       - .env
-    volumes:
-      - .:/app
-      - /app/node_modules
-
     ports:
       - "8090:8000"
     depends_on:
       - db
 
 volumes:
-  postgres_data:
+  datall_bi_postgres_data:
