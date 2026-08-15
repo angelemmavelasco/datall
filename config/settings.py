@@ -92,7 +92,7 @@ TIME_ZONE = 'America/Mexico_City'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
@@ -117,7 +117,7 @@ if USE_R2:
             "BACKEND": "storages.backends.s3.S3Storage",
         },
         "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
 else:
@@ -126,7 +126,7 @@ else:
             "BACKEND": "django.core.files.storage.FileSystemStorage",
         },
         "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
 
