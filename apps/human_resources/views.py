@@ -1108,24 +1108,6 @@ def monitoring_form_submission_delete_view(request, pk: int):
             messages.error(request, str(e))
     return redirect('human_resources:monitoring_form_submission_list_view')
 
-'''business units'''
-@login_required
-def business_unit_list_view(request):
-    '''list of the registered business units (warehouses before)'''
-    pass
-
-@login_required
-def business_unit_detail_view(request, pk: str):
-    pass
-
-@login_required
-def business_unit_create_view(request):
-    pass
-
-@login_required
-def business_unit_update_view(request, pk: str):
-    pass
-
 '''employees'''
 @login_required
 def employee_list_view(request):

@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block module_name %}
+Unidades de Negocio
+{% endblock %}
+
+{% block title %}
+Unidades de Negocio
+{% endblock %}
+
+{% block module_actions %}
+
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+
+    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+
+{% endblock %}
+
+{% block filters %}
+<form method="GET" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.id.id_for_label }}" class="text-title">{{ filter.form.id.label }}</label>
+        {% render_field filter.form.id class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="ID de la gerencia" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.name.id_for_label }}" class="text-title">{{ filter.form.name.label }}</label>
+        {% render_field filter.form.name class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre de la gerencia" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.parent.id_for_label }}" class="text-title">{{ filter.form.parent.label }}</label>
+        {% render_field filter.form.parent class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+    </div>
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block content %}
+
+    <div class="flex flex-col w-full gap-4">
+        <p class="text-title pb-1 border-b border-border">
+            Resumen
+        </p>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Gerencias registradas
+                </span><br>
+                <span class="text-xl text-title">
+                    {{ kpis.business_units_count|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Colaboradores activos
+                </span><br>
+                <span class="text-xl text-emerald-500">
+                    {{ kpis.active_employees_count|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Colaboradores inactivos
+                </span><br>
+                <span class="text-xl text-red-500">
+                    {{ kpis.inactive_employees_count|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+        </div>
+
+        <p class="text-title pb-1 border-b border-border">
+            Listado
+        </p>
+
+
+        <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+            <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+                <thead>
+                    <tr class="border-b border-border text-xs">
+                        <th class=" w-[50px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
+                            ID
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Gerencia
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Responsable
+                        </th>
+
+                        <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Unidades hijas
+                        </th>
+
+                        <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Colaboradores activos
+                        </th>
+
+                        <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Colaboradores inactivos
+                        </th>
+
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for bu in business_units %}
+                        <tr>
+
+                            <td class="p-2 truncate text-center">
+                                <a href="{% url 'human_resources:business_unit_detail_view' bu.id  %}" class="underline hover:text-hover transition-colors">
+                                    {{ bu.id|default:'-'|upper }}
+                                </a>
+                            </td>
+
+                            <td class="p-2 truncate text-left">
+                                {{ bu.name|default:'-'|title }}
+                            </td>
+
+                            <td class="p-2 truncate text-left">
+                                {% if bu.manager %}
+                                    {{ bu.manager.user.first_name|default:'-'|title }} {{ bu.manager.user.last_name|default:''|title }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+
+                            <td class="p-2 truncate text-center">
+                                {{ bu.sub_units_count|default:0|floatformat:0|intcomma }}
+                            </td>
+
+                            <td class="p-2 truncate text-center">
+                                {{ bu.associated_active_employees_count|default:0|floatformat:0|intcomma }}
+                            </td>
+
+                            <td class="p-2 truncate text-center">
+                                {{ bu.associated_inactive_employees_count|default:0|floatformat:0|intcomma }}
+                            </td>
+                        </tr>
+
+
+                    {% empty %}
+
+                        <tr class="">
+                            <td colspan="100%" class="py-50">
+                                <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                                    {% include 'layouts/data_not_found.html' %}
+                                </div>
+                            </td>
+                        </tr>
+
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+    
+{% endblock %}

@@ -1,85 +1,109 @@
 <p class="flex items-center justify-center gap-2 w-full">
-        <span class="text-sm pt-2">
-            Ups! Parece que no hay datos para mostrar
-        </span>
-        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-            <style>
-                {#movimientos de ziquierda a derecha#}
-                @keyframes lookAround {
+    <span class="text-sm">
+        Parece que no hay datos para mostrar
+    </span>
+    <!-- Agregué overflow="visible" para que el signo de interrogación no se corte al subir, 
+         y un stroke-width de 1.5 para equilibrar ambos diseños -->
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" overflow="visible">
+        <style>
+            /* Movimientos de izquierda a derecha */
+            @keyframes lookAround {
                 0%, 100% { transform: translateX(0); }
                 15%, 35% { transform: translateX(-4px); }
                 45%, 65% { transform: translateX(4px); }
                 75%      { transform: translateX(0); }
+            }
+
+            /* Aparición del signo de interrogación (elevado para despegarlo de la cabeza de Dana) */
+            @keyframes questionMark {
+                0%, 45% {
+                    opacity: 0;
+                    transform: translateY(-7px) scale(0.5);
                 }
-
-                {#aparicion del signo de interrogación#}
-                @keyframes questionMark {
-                    0%, 45% {
-                        opacity: 0;
-                        /* Inicia un poco más arriba de la cabeza */
-                        transform: translateY(-2px) scale(0.5);
-                    }
-                    55%, 85% {
-                        opacity: 1;
-                        /* Eleva el signo hasta -6px para despegarlo de la cabeza */
-                        transform: translateY(-6px) scale(1);
-                    }
-                    95%, 100% {
-                        opacity: 0;
-                        /* Sube un poco más mientras se desvanece */
-                        transform: translateY(-9px) scale(0.8);
-                    }
+                55%, 85% {
+                    opacity: 1;
+                    transform: translateY(-12px) scale(1);
                 }
-                {#boca de neutral a triste#}
-                @keyframes mouthNeutral {
-                    0%, 65% { opacity: 1; }
-                    75%, 100% { opacity: 0; }
+                95%, 100% {
+                    opacity: 0;
+                    transform: translateY(-15px) scale(0.8);
                 }
+            }
 
-                @keyframes mouthSad {
-                    0%, 65% { opacity: 0; }
-                    75%, 100% { opacity: 1; }
-                }
+            /* Flotación original de Dana */
+            @keyframes float {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-1.5px); }
+            }
 
-                .head-group {
-                    animation: lookAround 4s ease-in-out infinite;
-                    transform-origin: 12px 14.5px;
-                }
+            /* Parpadeo de ojos original de Dana */
+            @keyframes blink {
+                0%, 92%, 100% { transform: scaleY(1); }
+                96% { transform: scaleY(0.1); }
+            }
 
-                .q-mark {
-                    animation: questionMark 4s ease-in-out infinite;
-                    transform-origin: 12px 3px;
-                }
+            /* Boca de neutral a triste */
+            @keyframes mouthNeutral {
+                0%, 65% { opacity: 1; }
+                75%, 100% { opacity: 0; }
+            }
 
-                .mouth-neutral {
-                    animation: mouthNeutral 4s ease-in-out infinite;
-                }
+            @keyframes mouthSad {
+                0%, 65% { opacity: 0; }
+                75%, 100% { opacity: 1; }
+            }
 
-                .mouth-sad {
-                    animation: mouthSad 4s ease-in-out infinite;
-                }
+            .dana-float {
+                animation: float 4s ease-in-out infinite;
+            }
 
-            </style>
+            .head-group {
+                animation: lookAround 4s ease-in-out infinite;
+                transform-origin: 12px 14.5px;
+            }
 
-{#            signo de interrgacion#}
-            <g class="q-mark" opacity="0">
-                <path d="M 10.5 3.2 C 10.5 2 11.2 1.2 12 1.2 C 12.8 1.2 13.5 2 13.5 3 C 13.5 4 12 4.5 12 5.5" />
-                <circle cx="12" cy="6.8" r="0.5" fill="currentColor" />
-            </g>
+            .dana-eye {
+                transform-origin: center;
+                transform-box: fill-box;
+                animation: blink 5s infinite;
+            }
 
+            .q-mark {
+                animation: questionMark 4s ease-in-out infinite;
+                transform-origin: 12px 3px;
+            }
+
+            .mouth-neutral {
+                animation: mouthNeutral 4s ease-in-out infinite;
+            }
+
+            .mouth-sad {
+                animation: mouthSad 4s ease-in-out infinite;
+            }
+        </style>
+
+        <!-- Signo de interrogación -->
+        <g class="q-mark" opacity="0">
+            <path d="M 10.5 3.2 C 10.5 2 11.2 1.2 12 1.2 C 12.8 1.2 13.5 2 13.5 3 C 13.5 4 12 4.5 12 5.5" />
+            <circle cx="12" cy="6.8" r="0.5" fill="currentColor" />
+        </g>
+
+        <!-- Animaciones combinadas: Flotar (Dana) + Mirar a los lados (Not Found) -->
+        <g class="dana-float">
             <g class="head-group">
-                <!-- Contorno de la cara -->
-                <circle cx="12" cy="14.5" r="7.5" />
+                <!-- Contorno de la cara de Dana -->
+                <path d="M7 2h10q5 0 5 8q0 10-3 10q-2 0-3-2H8q-1 2-3 2q-3 0-3-10q0-8 5-8z" />
+                
+                <!-- Ojos parpadeantes de Dana -->
+                <line class="dana-eye" x1="8" y1="7" x2="8" y2="13" />
+                <line class="dana-eye" x1="16" y1="7" x2="16" y2="13" />
+                
+                <!-- Boca / Nariz Neutral de Dana (V normal) -->
+                <path class="mouth-neutral" d="M10.5 15l1.5 1.5l1.5-1.5" />
 
-                <!-- Ojos -->
-                <circle cx="9.5" cy="13" r="0.75" fill="currentColor" />
-                <circle cx="14.5" cy="13" r="0.75" fill="currentColor" />
-
-                <!-- Boca Neutral -->
-                <line class="mouth-neutral" x1="10" y1="17.5" x2="14" y2="17.5" />
-
-                <!-- Boca Triste -->
-                <path class="mouth-sad" d="M 9.5 18.5 C 10.5 16.5 13.5 16.5 14.5 18.5" opacity="0" />
+                <!-- Boca / Nariz Triste de Dana (V al revés) -->
+                <path class="mouth-sad" d="M10.5 16.5l1.5-1.5l1.5 1.5" opacity="0" />
             </g>
-        </svg>
+        </g>
+    </svg>
 </p>
