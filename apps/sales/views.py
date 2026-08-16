@@ -14,7 +14,12 @@ from .services.routes import (
     ServiceError as RouteServiceError,
 )
 from .filters import WarehouseFilter, RouteFilter
-from .forms import WarehouseForm, RouteForm
+from .forms import (
+    WarehouseForm,
+    RouteForm,
+    RouteAssignmentFormSet,
+    UserRouteAccessFormSet,
+)
 
 
 @login_required
@@ -241,9 +246,19 @@ def route_create_view(request):
 
     if request.method == 'POST':
         form = RouteForm(request.POST)
-        if form.is_valid():
+        assignments_formset = RouteAssignmentFormSet(request.POST, prefix='assignments')
+        accesses_formset = UserRouteAccessFormSet(request.POST, prefix='accesses')
+
+        if form.is_valid() and assignments_formset.is_valid() and accesses_formset.is_valid():
             try:
-                new_route = service.create_route(**form.cleaned_data)
+                assignments_data = [f.cleaned_data for f in assignments_formset if f.cleaned_data]
+                accesses_data = [f.cleaned_data for f in accesses_formset if f.cleaned_data]
+
+                new_route = service.create_route(
+                    route_data=form.cleaned_data,
+                    assignments_data=assignments_data,
+                    accesses_data=accesses_data,
+                )
                 messages.success(request, f'Ruta {new_route.id} creada correctamente.')
                 next_url = request.GET.get('next') or request.POST.get('next')
                 if next_url:
@@ -263,9 +278,14 @@ def route_create_view(request):
             messages.error(request, 'Por favor revisa los errores en el formulario.')
     else:
         form = RouteForm()
+        assignments_formset = RouteAssignmentFormSet(prefix='assignments')
+        accesses_formset = UserRouteAccessFormSet(prefix='accesses')
 
     context = {
         'form': form,
+        'assignments_formset': assignments_formset,
+        'accesses_formset': accesses_formset,
+        'can_update_access': service.has_full_access,
     }
     return render(request, template, context)
 
@@ -293,9 +313,20 @@ def route_update_view(request, pk: str):
 
     if request.method == 'POST':
         form = RouteForm(request.POST, instance=route_instance)
-        if form.is_valid():
+        assignments_formset = RouteAssignmentFormSet(request.POST, instance=route_instance, prefix='assignments')
+        accesses_formset = UserRouteAccessFormSet(request.POST, instance=route_instance, prefix='accesses')
+
+        if form.is_valid() and assignments_formset.is_valid() and accesses_formset.is_valid():
             try:
-                updated_route = service.update_route(pk=pk, **form.cleaned_data)
+                assignments_data = [f.cleaned_data for f in assignments_formset if f.cleaned_data]
+                accesses_data = [f.cleaned_data for f in accesses_formset if f.cleaned_data]
+
+                updated_route = service.update_route(
+                    pk=pk,
+                    route_data=form.cleaned_data,
+                    assignments_data=assignments_data,
+                    accesses_data=accesses_data,
+                )
                 messages.success(request, f"Ruta {updated_route.id} actualizada correctamente.")
                 return redirect('sales:route_detail_view', updated_route.pk)
 
@@ -312,10 +343,15 @@ def route_update_view(request, pk: str):
             messages.error(request, 'Por favor revisa los errores en el formulario.')
     else:
         form = RouteForm(instance=route_instance)
+        assignments_formset = RouteAssignmentFormSet(instance=route_instance, prefix='assignments')
+        accesses_formset = UserRouteAccessFormSet(instance=route_instance, prefix='accesses')
 
     context = {
         'form': form,
+        'assignments_formset': assignments_formset,
+        'accesses_formset': accesses_formset,
         'updating': route_instance,
+        'can_update_access': service.has_full_access,
     }
     return render(request, template, context)
 

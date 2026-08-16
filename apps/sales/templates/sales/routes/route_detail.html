@@ -64,16 +64,15 @@ Ruta {{ route.id|upper }} - {{ route.name|title }}
         </div>
     </div>
 
-    <p class="text-title text-sm pb-2 border-b border-border mt-2">Asignación actual</p>
+    <p class="text-title text-sm pb-2 border-b border-border">Asignación actual</p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
         {% if route.current_employee_id %}
             <span class="text-title">Colaborador</span>
             <div class="w-full text-body flex items-center">
                 <a href="{% url 'human_resources:employee_detail_view' route.current_employee_id %}" class="underline hover:text-hover transition-colors font-medium">
-                    {{ route.current_employee_first_name|title }} {{ route.current_employee_last_name|title }}
+                    {{ route.current_employee_id|upper }} {{ route.current_employee_first_name|title }} {{ route.current_employee_last_name|title }}
                 </a>
-                <span class="ml-2 font-mono text-xs text-secondary">({{ route.current_employee_id|upper }})</span>
             </div>
 
             <span class="text-title">Fecha de inicio de asignación</span>
@@ -86,5 +85,93 @@ Ruta {{ route.id|upper }} - {{ route.name|title }}
             </div>
         {% endif %}
     </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border">Historial de asignaciones</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title md:col-span-2">{{ route.route_assignments.all|length|default:0|floatformat:0|intcomma }} asignación(es) registrada(s)</span>
+
+        <ul class="md:col-span-2 w-full max-h-48 overflow-y-auto rounded bg-page p-1 flex flex-col gap-2 border border-border">
+            {% for a in route.route_assignments.all %}
+                <li class="pb-2 border-b border-border last:border-b-0 last:pb-0">
+                    <div class="flex items-center justify-between">
+                        <p class="font-medium text-body">
+                            <a href="{% url 'human_resources:employee_detail_view' a.employee.id %}" class="underline hover:text-hover transition-colors">
+                                {{ a.employee.id|upper }} {{ a.employee.user.first_name|title }} {{ a.employee.user.last_name|title }}
+                            </a>
+                        </p>
+                        {% if not a.date_end %}
+                            <span class="text-xs text-emerald-500 font-medium">Activa actualmente</span>
+                        {% else %}
+                            <span class="text-xs text-secondary">Finalizada</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-[10px] text-hover">
+                        • Inicio: {{ a.date_start|date:'d M Y' }}
+                        • Fin: {{ a.date_end|date:'d M Y'|default:'Sin fecha de término' }}
+                        {% if a.employee.position %}
+                            • Posición: {{ a.employee.position.name|title }}
+                        {% endif %}
+                        {% if a.employee.business_unit %}
+                            • Gerencia: {{ a.employee.business_unit.name|title }}
+                        {% endif %}
+                    </p>
+                    {% if a.notes %}
+                        <p class="text-[10px] mt-1">
+                            <span>Notas: </span>
+                            <span class="italic">{{ a.notes|linebreaksbr }}</span>
+                        </p>
+                    {% endif %}
+                </li>
+            {% empty %}
+                <li class="py-4">
+                    {% include 'layouts/data_not_found.html' %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border">Accesos y permisos de usuarios</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title md:col-span-2">{{ route.userrouteaccess_set.all|length|default:0|floatformat:0|intcomma }} usuario(s) con acceso específico</span>
+
+        <ul class="md:col-span-2 w-full max-h-48 overflow-y-auto rounded bg-page p-1 flex flex-col gap-2 border border-border">
+            {% for u in route.userrouteaccess_set.all %}
+                <li class="pb-2 border-b border-border last:border-b-0 last:pb-0">
+                    <div class="flex items-center justify-between">
+                        <p class="font-medium text-body">
+                            {{ u.user.first_name|title }} {{ u.user.last_name|title }}
+                            <span class="text-xs text-secondary font-mono">(@{{ u.user.username|lower }})</span>
+                        </p>
+                        <div class="flex items-center gap-2 text-xs">
+                            {% if u.can_view %}
+                                <span class="text-emerald-500">Lectura</span>
+                            {% else %}
+                                <span class="text-secondary">Sin lectura</span>
+                            {% endif %}
+                            <span>•</span>
+                            {% if u.can_edit %}
+                                <span class="text-violet-500 font-medium">Edición</span>
+                            {% else %}
+                                <span class="text-secondary">Solo lectura</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if u.notes %}
+                        <p class="text-[10px] mt-1">
+                            <span>Notas: </span>
+                            <span class="italic">{{ u.notes|linebreaksbr }}</span>
+                        </p>
+                    {% endif %}
+                </li>
+            {% empty %}
+                <li class="py-4">
+                    {% include 'layouts/data_not_found.html' %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
 </div>
 {% endblock %}
