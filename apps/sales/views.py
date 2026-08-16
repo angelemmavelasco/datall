@@ -157,10 +157,6 @@ def route_type_update_view(request):
     pass
 
 @login_required
-def route_type_delete_view(request):
-    pass
-
-@login_required
 def sale_channel_list_view(request):
     pass
 
