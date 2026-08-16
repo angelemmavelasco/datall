@@ -44,4 +44,6 @@ urlpatterns = [
     path('employees/details/<str:pk>/', employee_detail_view, name='employee_detail_view'),
     path('employees/create/', employee_create_view, name='employee_create_view'),
     path('employees/update/<str:pk>/', employee_update_view, name='employee_update_view'),
+
+    path('org-chart/', org_chart_view, name='org_chart_view'),
 ]

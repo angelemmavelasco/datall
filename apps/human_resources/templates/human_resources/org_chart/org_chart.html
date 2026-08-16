@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Organigrama
+{% endblock %}
+
+{% block module_name %}
+Organigrama
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+
+    <button type="button" onclick="copyTreeToClipboard()"
+        class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1"
+        title="Copiar organigrama en formato texto">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy-icon lucide-copy">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+        </svg>
+        <span id="copy-btn-label">Copiar texto</span>
+    </button>
+
+    <button type="button" onclick="downloadTreeTxt()"
+        class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1"
+        title="Descargar organigrama como archivo .txt">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" x2="12" y1="15" y2="3" />
+        </svg>
+        <span>Descargar .txt</span>
+    </button>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-4">
+    <div class="flex items-center bg-container border border-border rounded p-2">
+        <input type="text" id="tree-search-input" onkeyup="filterTreeContent()"
+            placeholder="Buscar por colaborador, puesto, departamento o gerencia..."
+            class="w-full bg-page border border-border rounded p-1 text-xs text-title placeholder-muted focus:outline-none">
+    </div>
+
+    <textarea id="raw-tree-data" class="hidden">{{ tree_text }}</textarea>
+    <template id="raw-tree-html">{{ tree_html|safe }}</template>
+
+    <div id="view-terminal" class="flex flex-col w-full border border-border rounded overflow-hidden">
+        <div class="bg-page p-4 overflow-x-auto max-h-[75vh] text-xs leading-relaxed select-text" id="terminal-content"
+            style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
+            <pre class="whitespace-pre text-title tracking-normal m-0" id="tree-pre"
+                style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">{{ tree_html|safe }}</pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showDjangoAlert(message, type = 'success') {
+        const existingAlert = document.getElementById('alert-message');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+
+        const alertDiv = document.createElement('div');
+        alertDiv.id = 'alert-message';
+        alertDiv.className = 'fixed inset-x-4 top-4 z-50 mx-auto flex max-w-3xl items-center justify-between gap-2 rounded border p-3 text-sm shadow-sm bg-sky-200 text-sky-700 border-sky-700 transition-all duration-300';
+
+        alertDiv.innerHTML = `
+            <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="20" height="20" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m9 12 2 2 4-4" />
+                </svg>
+                <span>${message}</span>
+            </div>
+            <button onclick="this.closest('#alert-message').remove()" class="shrink-0 hover:opacity-75 transition-opacity cursor-pointer" title="Cerrar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x">
+                    <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>
+                </svg>
+            </button>
+        `;
+
+        document.body.prepend(alertDiv);
+
+        setTimeout(() => {
+            if (alertDiv && alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+    // Copy tree text to clipboard
+    function copyTreeToClipboard() {
+        const text = document.getElementById('raw-tree-data').value;
+        if (!text) return;
+
+        navigator.clipboard.writeText(text).then(() => {
+            showDjangoAlert('Organigrama copiado al portapapeles');
+            const btnLabel = document.getElementById('copy-btn-label');
+            if (btnLabel) {
+                const originalText = btnLabel.textContent;
+                btnLabel.textContent = '¡Copiado!';
+                setTimeout(() => {
+                    btnLabel.textContent = originalText;
+                }, 2000);
+            }
+        }).catch(err => {
+            console.error('Error al copiar:', err);
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showDjangoAlert('Organigrama copiado al portapapeles');
+        });
+    }
+
+    function downloadTreeTxt() {
+        const text = document.getElementById('raw-tree-data').value;
+        if (!text) return;
+
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10);
+        a.href = url;
+        a.download = `organigrama_${dateStr}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showDjangoAlert('Descargando archivo organigrama.txt');
+    }
+
+    function filterTreeContent() {
+        const query = document.getElementById('tree-search-input').value.trim().toLowerCase();
+        const preElem = document.getElementById('tree-pre');
+        const originalHtml = document.getElementById('raw-tree-html').innerHTML;
+        const originalText = document.getElementById('raw-tree-data').value;
+
+        if (!query) {
+            preElem.innerHTML = originalHtml;
+            return;
+        }
+
+        const htmlLines = originalHtml.split('\n');
+        const textLines = originalText.split('\n');
+
+        const filteredLines = htmlLines.map((hLine, idx) => {
+            const plain = textLines[idx] || '';
+            if (plain.toLowerCase().includes(query)) {
+                return `<span class="text-emerald-500 font-bold">&gt;&gt; </span>${hLine}`;
+            }
+            return hLine;
+        });
+
+        preElem.innerHTML = filteredLines.join('\n');
+    }
+</script>
+{% endblock %}

@@ -1,4 +1,5 @@
 from datetime import date
+from collections import defaultdict
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -11,6 +12,7 @@ from .services.departments import DepartmentsService, DepartmentsStats, ServiceE
 from .services.monitoring import MonitoringFormsService, MonitoringSubmissionService, FormNotFound
 from .services.business_units import BusinessUnitsService, BusinessUnitsStats, BusinessUnitNotFound, ServiceError as BUServiceError, PermissionsError as BUPermissionsError
 from .services.employees import EmployeesService, EmployeesStats, EmployeeNotFound, ServiceError as EmpServiceError, PermissionsError as EmpPermissionsError
+from .services.org_chart import OrgChartService
 
 from .forms import (
     DepartmentForm,
@@ -1241,3 +1243,19 @@ def employee_update_view(request, pk: str):
         'can_update_access': service.has_full_access
     }
     return render(request, template, context)
+
+@login_required
+def org_chart_view(request):
+    template = 'human_resources/org_chart/org_chart.html'
+    service = OrgChartService(user=request.user)
+
+    available_actions = None
+    tree_data = service.generate_tree_data()
+
+    context = {
+        'tree_text': tree_data['tree_text'],
+        'tree_html': tree_data['tree_html'],
+        'available_actions': available_actions,
+    }
+    return render(request, template, context)
+
