@@ -1,10 +1,15 @@
 from django import forms
 from django.forms import inlineformset_factory
-from apps.human_resources.models import Department, Skill, Position, PositionSkill, PositionKPI
+from apps.human_resources.models import Department, Skill, Position, PositionSkill, PositionKPI, BusinessUnit
 from apps.human_resources.models import MonitoringForm, MonitoringFormSchedule, MonitoringFormQuestion, MonitoringFormField
 from django.core.files.storage import default_storage
 import uuid
 import os
+
+class BusinessUnitForm(forms.ModelForm):
+    class Meta:
+        model = BusinessUnit
+        fields = ['id', 'name', 'parent', 'manager']
 
 class DepartmentForm(forms.ModelForm):
     class Meta:

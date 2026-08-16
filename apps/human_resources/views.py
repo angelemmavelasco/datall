@@ -9,6 +9,8 @@ from django.utils import timezone
 from .services.positions import PositionsStats, PositionsService, SkillsService, PositionNotFound, ServiceError, PermissionsError
 from .services.departments import DepartmentsService, DepartmentsStats, ServiceError, PermissionsError, DepartmentNotFound
 from .services.monitoring import MonitoringFormsService, MonitoringSubmissionService, FormNotFound
+from .services.business_units import BusinessUnitsService, BusinessUnitsStats, BusinessUnitNotFound, ServiceError as BUServiceError, PermissionsError as BUPermissionsError
+
 from .forms import (
     DepartmentForm,
     PositionForm,
@@ -21,9 +23,152 @@ from .forms import (
     MonitoringFormFieldForm,
     MonitoringSubmissionForm,
     MonitoringFormField,
-    FileWrapper
+    FileWrapper,
+    BusinessUnitForm
 )
-from .filters import DepartmentFilter, PositionFilter, MonitoringFormFilter, MonitoringFormFieldFilter, MonitoringSubmissionFilter
+from .filters import (
+    DepartmentFilter,
+    PositionFilter,
+    MonitoringFormFilter,
+    MonitoringFormFieldFilter,
+    MonitoringSubmissionFilter,
+    BusinessUnitFilter)
+
+'''business units'''
+@login_required
+def business_unit_list_view(request):
+    template = 'human_resources/business_units/business_unit_list.html'
+    service = BusinessUnitsService(user=request.user)
+    stats_service = BusinessUnitsStats(business_units_service=service)
+
+    available_actions = None
+    if service.has_full_access:
+        available_actions = 'human_resources/business_units/partials/business_unit_list__actions.html'
+
+    business_units = service.read_business_units()
+    
+    bu_filter = BusinessUnitFilter(request.GET, queryset=business_units)
+    business_units = bu_filter.qs
+    
+    kpis = stats_service.stats(qs=business_units)
+    context = {
+        'business_units': business_units,
+        'kpis': kpis,
+        'available_actions': available_actions,
+        'filter': bu_filter,
+    }
+    return render(request, template, context)
+
+@login_required
+def business_unit_detail_view(request, pk: str):
+    template = 'human_resources/business_units/business_unit_detail.html'
+    service = BusinessUnitsService(user=request.user)
+
+    try:
+        business_unit = service.read_business_unit(pk=pk)
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:business_unit_list_view')
+
+    active_employees = service.read_business_unit_employees(business_unit, active=True)
+    inactive_employees = service.read_business_unit_employees(business_unit, active=False)
+
+    available_actions = None
+    if service.has_full_access:
+        available_actions = 'human_resources/business_units/partials/business_unit_detail__actions.html'
+
+    context = {
+        'business_unit': business_unit,
+        'active_employees': active_employees,
+        'inactive_employees': inactive_employees,
+        'available_actions': available_actions,
+    }
+    return render(request, template, context)
+
+@login_required
+def business_unit_create_view(request):
+    template = 'human_resources/business_units/business_unit_form.html'
+    service = BusinessUnitsService(user=request.user)
+    
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para crear unidades de negocio.')
+        return redirect('human_resources:business_unit_list_view')
+
+    if request.method == 'POST':
+        form = BusinessUnitForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                new_bu = service.create_business_unit(**form.cleaned_data)
+                messages.success(request, f'Unidad de Negocio {new_bu.name} creada correctamente.')
+                next_url = request.GET.get('next') or request.POST.get('next')
+                if next_url:
+                    return redirect(next_url)
+                return redirect('human_resources:business_unit_detail_view', new_bu.pk)
+            except BUPermissionsError as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:business_unit_list_view')
+            except BUServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al crear: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = BusinessUnitForm()
+
+    context = {
+        'form': form,
+        'can_update_access': service.has_full_access
+    }
+    return render(request, template, context)
+
+@login_required
+def business_unit_update_view(request, pk: str):
+    template = 'human_resources/business_units/business_unit_form.html'
+    service = BusinessUnitsService(user=request.user)
+
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para actualizar unidades de negocio.')
+        return redirect('human_resources:business_unit_list_view')
+
+    try:
+        bu_instance = service.read_business_unit(pk=pk)
+    except BusinessUnitNotFound:
+        messages.error(request, "La unidad de negocio solicitada no existe.")
+        return redirect('human_resources:business_unit_list_view')
+    except BUPermissionsError:
+        messages.error(request, "No tienes permisos para actualizar esta unidad de negocio.")
+        return redirect('human_resources:business_unit_list_view')
+    except BUServiceError as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:business_unit_list_view')
+
+    if request.method == 'POST':
+        form = BusinessUnitForm(request.POST, request.FILES, instance=bu_instance)
+        if form.is_valid():
+            try:
+                updated_bu = service.update_business_unit(pk=pk, **form.cleaned_data)
+                messages.success(request, "Unidad de Negocio actualizada correctamente.")
+                return redirect('human_resources:business_unit_detail_view', updated_bu.pk)
+            except (BUPermissionsError, BusinessUnitNotFound) as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:business_unit_list_view')
+            except BUServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, str(e))
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = BusinessUnitForm(instance=bu_instance)
+
+    context = {
+        'form': form,
+        'updating': bu_instance
+    }
+
+    return render(request, template, context)
+
 '''departments'''
 @login_required
 def department_list_view(request):

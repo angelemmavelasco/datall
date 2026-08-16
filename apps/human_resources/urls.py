@@ -3,6 +3,11 @@ from .views import *
 app_name = 'human_resources'
 
 urlpatterns = [
+    path('business-units/', business_unit_list_view, name='business_unit_list_view'),
+    path('business-units/details/<str:pk>/', business_unit_detail_view, name='business_unit_detail_view'),
+    path('business-units/create/', business_unit_create_view, name='business_unit_create_view'),
+    path('business-units/update/<str:pk>/', business_unit_update_view, name='business_unit_update_view'),
+
     path('departments/', department_list_view, name='department_list_view'),
     path('departments/details/<str:pk>/', department_detail_view, name='department_detail_view'),
     path('departments/create/', department_create_view, name='department_create_view'),

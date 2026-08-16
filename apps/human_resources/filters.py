@@ -1,10 +1,18 @@
 import django_filters
 from django.db.models import Q
 from django import forms
-from .models import Department, Position, Skill, PositionSkill, Employee, MonitoringForm, MonitoringFormField, MonitoringPeriod
+from .models import Department, Position, Skill, PositionSkill, Employee, MonitoringForm, MonitoringFormField, MonitoringPeriod, BusinessUnit
 from .services.employees import EmployeesService
 from .services.positions import PositionsService
 from .services.departments import DepartmentsService
+
+class BusinessUnitFilter(django_filters.FilterSet):
+    id = django_filters.CharFilter(lookup_expr='icontains')
+    name = django_filters.CharFilter(lookup_expr='icontains')
+
+    class Meta:
+        model = BusinessUnit
+        fields = ['id', 'name', 'parent']
 
 class DepartmentFilter(django_filters.FilterSet):
     department = django_filters.CharFilter(
