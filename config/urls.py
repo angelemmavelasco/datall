@@ -7,6 +7,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('apps.core.urls')),
     path('human_resources/', include('apps.human_resources.urls')),
+    path('sales/', include('apps.sales.urls')),
 ]
 
 if settings.DEBUG:
