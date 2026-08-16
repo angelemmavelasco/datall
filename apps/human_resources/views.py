@@ -25,7 +25,8 @@ from .forms import (
     MonitoringSubmissionForm,
     MonitoringFormField,
     FileWrapper,
-    BusinessUnitForm
+    BusinessUnitForm,
+    EmployeeForm
 )
 from .filters import (
     DepartmentFilter,
@@ -1158,8 +1159,85 @@ def employee_detail_view(request, pk: str):
 
 @login_required
 def employee_create_view(request):
-    pass
+    template = 'human_resources/employees/employee_form.html'
+    service = EmployeesService(user=request.user)
+
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para registrar colaboradores.')
+        return redirect('human_resources:employee_list_view')
+
+    if request.method == 'POST':
+        form = EmployeeForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                new_employee = service.create_employee(**form.cleaned_data)
+                messages.success(request, f'Colaborador {new_employee.id} registrado correctamente.')
+                next_url = request.GET.get('next') or request.POST.get('next')
+                if next_url:
+                    return redirect(next_url)
+                return redirect('human_resources:employee_detail_view', new_employee.pk)
+            except EmpPermissionsError as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:employee_list_view')
+            except EmpServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al registrar: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = EmployeeForm()
+
+    context = {
+        'form': form,
+        'can_update_access': service.has_full_access,
+        'updating': None
+    }
+    return render(request, template, context)
 
 @login_required
 def employee_update_view(request, pk: str):
-    pass
+    template = 'human_resources/employees/employee_form.html'
+    service = EmployeesService(user=request.user)
+
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para actualizar colaboradores.')
+        return redirect('human_resources:employee_list_view')
+
+    try:
+        employee_instance = service.read_employee(pk=pk)
+    except EmployeeNotFound:
+        messages.error(request, "El colaborador solicitado no existe.")
+        return redirect('human_resources:employee_list_view')
+    except EmpPermissionsError:
+        messages.error(request, "No tienes permisos para actualizar este colaborador.")
+        return redirect('human_resources:employee_list_view')
+    except EmpServiceError as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:employee_list_view')
+
+    if request.method == 'POST':
+        form = EmployeeForm(request.POST, request.FILES, instance=employee_instance)
+        if form.is_valid():
+            try:
+                updated_employee = service.update_employee(pk=pk, **form.cleaned_data)
+                messages.success(request, f"Colaborador {updated_employee.id} actualizado correctamente.")
+                return redirect('human_resources:employee_detail_view', updated_employee.pk)
+            except (EmpPermissionsError, EmployeeNotFound) as e:
+                messages.error(request, str(e))
+                return redirect('human_resources:employee_list_view')
+            except EmpServiceError as e:
+                messages.error(request, str(e))
+            except Exception as e:
+                messages.error(request, str(e))
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = EmployeeForm(instance=employee_instance)
+
+    context = {
+        'form': form,
+        'updating': employee_instance,
+        'can_update_access': service.has_full_access
+    }
+    return render(request, template, context)

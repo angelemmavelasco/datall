@@ -1,10 +1,24 @@
 from django import forms
 from django.forms import inlineformset_factory
-from apps.human_resources.models import Department, Skill, Position, PositionSkill, PositionKPI, BusinessUnit
+from apps.human_resources.models import Department, Skill, Position, PositionSkill, PositionKPI, BusinessUnit, Employee
 from apps.human_resources.models import MonitoringForm, MonitoringFormSchedule, MonitoringFormQuestion, MonitoringFormField
 from django.core.files.storage import default_storage
 import uuid
 import os
+
+class EmployeeForm(forms.ModelForm):
+    class Meta:
+        model = Employee
+        fields = [
+            'id', 'user', 'position', 'manager', 'business_unit',
+            'hire_date', 'termination_date', 'contract_type',
+            'contract_doc', 'tax_doc', 'tax_regime', 'tax_id',
+            'payment_form', 'payroll_payment_amount', 'payroll_frequency'
+        ]
+        widgets = {
+            'hire_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'termination_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+        }
 
 class BusinessUnitForm(forms.ModelForm):
     class Meta:

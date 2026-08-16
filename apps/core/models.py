@@ -138,6 +138,7 @@ class Submodule(models.Model):
     name = models.CharField(max_length=100, help_text="Nombre del submódulo visible al usuario")
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name='submodules', help_text="Módulo al que pertenece el submódulo")
     url_name = models.CharField(max_length=150, help_text="Url asociada al submódulo, de formato app_label:url_name")
+    icon = models.TextField(blank=True, default='', help_text="Código SVG del ícono del submódulo")
     allowed_groups = models.ManyToManyField(Group, blank=True, related_name='accessible_submodules', help_text="Grupos autorizados para acceder al submódulo")
     allowed_users = models.ManyToManyField(User, blank=True, related_name='accessible_submodules', help_text="Usuarios autorizados para acceder al submódulo")
     order = models.PositiveIntegerField(default=0, help_text="Orden de aparición del submódulo en el menú")

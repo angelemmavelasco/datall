@@ -3,6 +3,8 @@ from typing import ClassVar, Optional
 import statistics
 from decimal import Decimal
 
+from django.db import transaction, IntegrityError
+from django.core.exceptions import ValidationError
 from django.db.models import QuerySet, When, Case, Value, BooleanField, Q, Count
 from django.utils import timezone
 
@@ -83,6 +85,56 @@ class EmployeesService(UsersService):
             raise PermissionsError(f'No tienes permiso para acceder al colaborador con ID "{pk}".')
 
         raise EmployeeNotFound(f'No se encontró ningún colaborador con el ID "{pk}".')
+
+    def create_employee(self, **data) -> Employee:
+        '''
+        Create a new employee based on provided data.
+        Only allowed users (full access) can do it.
+        '''
+        if not self._is_full_access:
+            raise PermissionsError('No tienes permisos suficientes para registrar colaboradores.')
+
+        try:
+            with transaction.atomic():
+                new_employee = self.employee_model(**data)
+                new_employee.full_clean()
+                new_employee.save()
+
+            return new_employee
+
+        except ValidationError as e:
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except IntegrityError:
+            raise ServiceError("Ya existe un colaborador con esos datos únicos o combinación activa de usuario y puesto.")
+        except Exception as e:
+            raise ServiceError(f"Error al registrar el colaborador: {str(e)}")
+
+    def update_employee(self, *, pk: str, **data) -> Employee:
+        employee_to_update = self.read_employee(pk=pk)
+
+        if not self._is_full_access:
+            raise PermissionsError('No tienes permisos suficientes para actualizar colaboradores.')
+
+        disallowed = {'id', 'pk'}
+        for key in disallowed:
+            data.pop(key, None)
+
+        try:
+            with transaction.atomic():
+                for key, value in data.items():
+                    setattr(employee_to_update, key, value)
+
+                employee_to_update.full_clean()
+                employee_to_update.save()
+
+            return employee_to_update
+
+        except ValidationError as e:
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except IntegrityError:
+            raise ServiceError("Ya existe un colaborador con esos datos únicos o combinación activa de usuario y puesto.")
+        except Exception as e:
+            raise ServiceError(f"Error al actualizar el colaborador: {str(e)}")
 
 
 @dataclass

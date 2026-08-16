@@ -282,8 +282,11 @@
                 <ul class="ml-3 flex flex-col gap-1.5 border-l border-border pl-4 text-body">
                     {% for submodule in module.submodules.all %}
                     <li>
-                        <a href="{% url submodule.url_name %}" class="block hover:text-hover transition-colors text-sm py-2 border-b border-border md:border-none">
-                            {{ submodule.name|title }}
+                        <a href="{% url submodule.url_name %}" class="flex items-center gap-1 hover:text-hover transition-colors text-sm py-2 border-b border-border md:border-none">
+                            {% if submodule.icon %}
+                                {{ submodule.icon|safe }}
+                            {% endif %}
+                            <span>{{ submodule.name|title }}</span>
                         </a>
                     </li>
                     {% endfor %}
