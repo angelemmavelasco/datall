@@ -57,7 +57,193 @@ Organigrama
     </div>
 </div>
 
+<!-- Contact Details Modal -->
+<div id="contact-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+    <div class="bg-container border border-border rounded shadow-xl w-full max-w-md overflow-hidden"
+         onclick="event.stopPropagation()">
+        
+        <div class="flex items-center justify-between p-3 border-b border-border bg-page">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-border flex items-center justify-center p-2 text-xs shrink-0" id="contact-modal-avatar">
+                    --
+                </div>
+                <div class="flex flex-col min-w-0 p-1">
+                    <h3 class=" text-title truncate" id="contact-modal-pos">Posición</h3>
+                    <p class="text-[11px] text-muted truncate" id="contact-modal-name">Nombre del colaborador</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeContactModal()" class="text-muted hover:text-title p-1 rounded hover:bg-hover transition-colors cursor-pointer shrink-0" title="Cerrar">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            </button>
+        </div>
+
+        <div class="p-4 flex flex-col gap-3">
+            <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span class="bg-page border border-border text-muted px-2 py-0.5 rounded" id="contact-modal-dept">
+                    Departamento
+                </span>
+                <span class="bg-page border border-border text-blue-500 dark:text-blue-400 px-2 py-0.5 rounded" id="contact-modal-bu">
+                    Gerencia
+                </span>
+            </div>
+
+            <div class="flex flex-col gap-3 bg-page border border-border rounded p-3 text-xs">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 text-muted shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-phone text-emerald-500">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                        <span class="font-medium text-title">Teléfono:</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 truncate">
+                        <a id="contact-modal-phone-link" href="#" class="text-blue-500 hover:underline font-mono truncate">--</a>
+                        <button type="button" id="copy-phone-btn" onclick="copyContactValue('phone')" class="hover:text-hover text-muted p-1 rounded hover:bg-hover transition-colors cursor-pointer" title="Copiar teléfono">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy">
+                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="border-t border-border/50"></div>
+
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 text-muted shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail text-blue-500">
+                            <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                        </svg>
+                        <span class="font-medium text-title">Correo:</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 truncate">
+                        <a id="contact-modal-email-link" href="#" class="text-blue-500 hover:underline truncate">--</a>
+                        <button type="button" id="copy-email-btn" onclick="copyContactValue('email')" class="hover:text-hover text-muted p-1 rounded hover:bg-hover transition-colors cursor-pointer" title="Copiar correo">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy">
+                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <a id="contact-modal-profile-link" href="#" class="p-3 hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-external-link">
+                    <path d="M15 3h6v6"/><path d="10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                </svg>
+                <span>Ver expediente</span>
+            </a>
+    </div>
+</div>
+
 <script>
+    let currentContactData = { phone: '', email: '' };
+
+    function openContactModal(data) {
+        currentContactData.phone = data.phone || '';
+        currentContactData.email = data.email || '';
+
+        document.getElementById('contact-modal-pos').textContent = data.pos || 'Sin Posición';
+        document.getElementById('contact-modal-name').textContent = data.name || 'Sin Usuario';
+        document.getElementById('contact-modal-dept').textContent = 'Dpto: ' + (data.dept || 'Sin Departamento');
+        document.getElementById('contact-modal-bu').textContent = 'Gerencia: ' + (data.bu || 'Sin Gerencia');
+
+        // Initials avatar
+        const names = (data.name || '').trim().split(' ');
+        const initials = names.length >= 2 ? (names[0][0] + names[1][0]).toUpperCase() : (data.name ? data.name[0].toUpperCase() : '--');
+        document.getElementById('contact-modal-avatar').textContent = initials;
+
+        // Phone
+        const phoneLink = document.getElementById('contact-modal-phone-link');
+        const copyPhoneBtn = document.getElementById('copy-phone-btn');
+        if (data.phone) {
+            phoneLink.textContent = data.phone;
+            phoneLink.href = 'tel:' + data.phone;
+            phoneLink.classList.remove('text-muted', 'pointer-events-none');
+            copyPhoneBtn.classList.remove('hidden');
+        } else {
+            phoneLink.textContent = 'No registrado';
+            phoneLink.removeAttribute('href');
+            phoneLink.classList.add('text-muted', 'pointer-events-none');
+            copyPhoneBtn.classList.add('hidden');
+        }
+
+        // Email
+        const emailLink = document.getElementById('contact-modal-email-link');
+        const copyEmailBtn = document.getElementById('copy-email-btn');
+        if (data.email) {
+            emailLink.textContent = data.email;
+            emailLink.href = 'mailto:' + data.email;
+            emailLink.classList.remove('text-muted', 'pointer-events-none');
+            copyEmailBtn.classList.remove('hidden');
+        } else {
+            emailLink.textContent = 'No registrado';
+            emailLink.removeAttribute('href');
+            emailLink.classList.add('text-muted', 'pointer-events-none');
+            copyEmailBtn.classList.add('hidden');
+        }
+
+        // Profile link: only shown if user has hierarchy permission (subordinate or self)
+        const profileLink = document.getElementById('contact-modal-profile-link');
+        if (data.canView === 'true' && data.empId) {
+            profileLink.href = `/human_resources/employees/details/${data.empId}/`;
+            profileLink.classList.remove('hidden');
+            profileLink.classList.add('flex');
+        } else {
+            profileLink.classList.add('hidden');
+            profileLink.classList.remove('flex');
+        }
+
+        const modal = document.getElementById('contact-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeContactModal() {
+        const modal = document.getElementById('contact-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    }
+
+    function copyContactValue(field) {
+        const val = field === 'phone' ? currentContactData.phone : currentContactData.email;
+        if (!val) return;
+        navigator.clipboard.writeText(val).then(() => {
+            showDjangoAlert(`${field === 'phone' ? 'Teléfono' : 'Correo'} copiado al portapapeles`);
+        });
+    }
+
+    // Event delegation for position buttons and modal backdrop click
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.contact-node-btn');
+        if (btn) {
+            e.preventDefault();
+            openContactModal({
+                pos: btn.dataset.pos,
+                name: btn.dataset.name,
+                dept: btn.dataset.dept,
+                bu: btn.dataset.bu,
+                email: btn.dataset.email,
+                phone: btn.dataset.phone,
+                empId: btn.dataset.empid,
+                canView: btn.dataset.canview,
+            });
+            return;
+        }
+
+        const modal = document.getElementById('contact-modal');
+        if (modal && !modal.classList.contains('hidden') && e.target === modal) {
+            closeContactModal();
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeContactModal();
+        }
+    });
+
     function showDjangoAlert(message, type = 'success') {
         const existingAlert = document.getElementById('alert-message');
         if (existingAlert) {

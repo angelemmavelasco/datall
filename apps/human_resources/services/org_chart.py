@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections import defaultdict
 from typing import ClassVar
 
@@ -7,6 +7,7 @@ from django.db.models import Q
 
 from apps.core.services.users import UsersService
 from apps.human_resources.models import Employee
+from apps.human_resources.services.employees import EmployeesService
 
 
 class ServiceError(Exception):
@@ -25,6 +26,12 @@ class OrgChartService(UsersService):
         'acceso_total_colaboradores',
         'recursos_humanos',
     )
+    accessible_employee_ids: set = field(init=False)
+
+    def __post_init__(self):
+        super().__post_init__()
+        emp_service = EmployeesService(user=self.user)
+        self.accessible_employee_ids = set(emp_service.read_employees().values_list('id', flat=True))
 
     def get_employees_queryset(self):
         """
@@ -54,7 +61,23 @@ class OrgChartService(UsersService):
             full_name = 'Sin Usuario'
 
         if html:
-            return f'<strong class="font-bold text-title">{pos}</strong> » {bu}, dpto. {dept}: <span class="text-blue-500">{full_name}</span>'
+            email = (emp.user.email or '').strip() if emp.user else ''
+            phone = (emp.user.phone or '').strip() if emp.user else ''
+            emp_id = emp.id
+            can_view = "true" if emp.id in self.accessible_employee_ids else "false"
+            return (
+                f'<button type="button" '
+                f'class="contact-node-btn font-bold text-title hover:text-hover hover:underline cursor-pointer transition-colors inline text-left p-0 bg-transparent border-0 font-mono" '
+                f'data-pos="{pos}" '
+                f'data-name="{full_name}" '
+                f'data-dept="{dept}" '
+                f'data-bu="{bu}" '
+                f'data-email="{email}" '
+                f'data-phone="{phone}" '
+                f'data-empid="{emp_id}" '
+                f'data-canview="{can_view}" '
+                f'title="Clic para ver contacto de {full_name}">{pos}</button> » {bu}, dpto. {dept}: <span class="text-blue-500">{full_name}</span>'
+            )
         return f"{pos}, {dept} (gerencia: {bu}): {full_name}"
 
     def render_tree_nodes(self, nodes: list[dict], prefix: str = "", html: bool = False) -> list[str]:
