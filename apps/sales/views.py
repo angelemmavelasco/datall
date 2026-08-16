@@ -21,7 +21,6 @@ from .forms import (
     UserRouteAccessFormSet,
 )
 
-
 @login_required
 def warehouse_list_view(request):
     template = 'sales/warehouses/warehouse_list.html'
@@ -41,7 +40,6 @@ def warehouse_list_view(request):
         'available_actions': available_actions,
     }
     return render(request, template, context)
-
 
 @login_required
 def warehouse_detail_view(request, pk: str):
@@ -63,7 +61,6 @@ def warehouse_detail_view(request, pk: str):
         'available_actions': available_actions,
     }
     return render(request, template, context)
-
 
 @login_required
 def warehouse_create_view(request):
@@ -103,7 +100,6 @@ def warehouse_create_view(request):
         'form': form,
     }
     return render(request, template, context)
-
 
 @login_required
 def warehouse_update_view(request, pk: str):
@@ -152,42 +148,6 @@ def warehouse_update_view(request, pk: str):
     return render(request, template, context)
 
 @login_required
-def route_type_list_view(request):
-    pass
-
-@login_required
-def route_type_detail_view(request):
-    pass
-
-@login_required
-def route_type_create_view(request):
-    pass
-
-@login_required
-def route_type_update_view(request):
-    pass
-
-@login_required
-def sale_channel_list_view(request):
-    pass
-
-@login_required
-def sale_channel_detail_view(request):
-    pass
-
-@login_required
-def sale_channel_create_view(request):
-    pass
-
-@login_required
-def sale_channel_update_view(request):
-    pass
-
-@login_required
-def sale_channel_delete_view(request):
-    pass
-
-@login_required
 def route_list_view(request):
     template = 'sales/routes/route_list.html'
     service = RoutesService(user=request.user)
@@ -233,7 +193,6 @@ def route_detail_view(request, pk: str):
         'available_actions': available_actions,
     }
     return render(request, template, context)
-
 
 @login_required
 def route_create_view(request):
@@ -288,7 +247,6 @@ def route_create_view(request):
         'can_update_access': service.has_full_access,
     }
     return render(request, template, context)
-
 
 @login_required
 def route_update_view(request, pk: str):
@@ -354,43 +312,3 @@ def route_update_view(request, pk: str):
         'can_update_access': service.has_full_access,
     }
     return render(request, template, context)
-
-@login_required
-def route_assignment_list_view(request):
-    pass
-
-@login_required
-def route_assignment_detail_view(request):
-    pass
-
-@login_required
-def route_assignment_create_view(request):
-    pass
-
-@login_required
-def route_assignment_update_view(request):
-    pass
-
-@login_required
-def route_assignment_delete_view(request):
-    pass
-
-@login_required
-def user_route_access_list_view(request):
-    pass
-
-@login_required
-def user_route_access_detail_view(request):
-    pass
-
-@login_required
-def user_route_access_create_view(request):
-    pass
-
-@login_required
-def user_route_access_update_view(request):
-    pass
-
-@login_required
-def user_route_access_delete_view(request):
-    pass
