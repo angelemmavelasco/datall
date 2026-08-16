@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block module_name %}
+Centro de distribución {{ warehouse.name|title }}
+{% endblock %}
+
+{% block title %}
+Centro de distribución {{ warehouse.name|title }}
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+    <a href="{% url 'sales:warehouse_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    <p class="text-title text-sm pb-2 border-b border-border">Información general</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title">Identificador</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ warehouse.id|default:"-"|upper }}
+        </div>
+
+        <span class="text-title">Nombre</span>
+        <div class="w-full text-body flex items-center">
+            {{ warehouse.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Tipo de centro</span>
+        <div class="w-full text-body flex items-center">
+            {{ warehouse.get_warehouse_type_display|default:"-"|title }}
+        </div>
+    </div>
+</div>
+{% endblock %}

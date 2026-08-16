@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from .services.warehouses import WarehousesService
 from .filters import WarehouseFilter
 
@@ -22,9 +23,25 @@ def warehouse_list_view(request):
     }
     return render(request, template, context)
 
+
 @login_required
-def warehouse_detail_view(request):
-    pass
+def warehouse_detail_view(request, pk: str):
+    template = 'sales/warehouses/warehouse_detail.html'
+    service = WarehousesService(user=request.user)
+
+    try:
+        warehouse = service.read_warehouse(pk=pk)
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect('sales:warehouse_list_view')
+
+    available_actions = None
+
+    context = {
+        'warehouse': warehouse,
+        'available_actions': available_actions,
+    }
+    return render(request, template, context)
 
 @login_required
 def warehouse_create_view(request):

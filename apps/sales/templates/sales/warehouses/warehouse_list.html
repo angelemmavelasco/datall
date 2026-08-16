@@ -154,7 +154,9 @@ Centros de distribución
                 {% for warehouse in warehouses %}
                     <tr class="hover:bg-hover/50 transition-colors">
                         <td class="p-2 truncate text-center font-mono">
-                            {{ warehouse.id|default:'-'|upper }}
+                            <a href="{% url 'sales:warehouse_detail_view' warehouse.id %}" class="underline hover:text-hover transition-colors">
+                                {{ warehouse.id|default:'-'|upper }}
+                            </a>
                         </td>
 
                         <td class="p-2 truncate text-left">
