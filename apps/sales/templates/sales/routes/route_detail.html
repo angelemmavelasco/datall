@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block module_name %}
+Ruta {{ route.id|upper }} - {{ route.name|title }}
+{% endblock %}
+
+{% block title %}
+Ruta {{ route.id|upper }} - {{ route.name|title }}
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+    <a href="{% url 'sales:route_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    <p class="text-title text-sm pb-2 border-b border-border">Información general</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title">Identificador</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ route.id|default:"-"|upper }}
+        </div>
+
+        <span class="text-title">Nombre de la ruta</span>
+        <div class="w-full text-body flex items-center">
+            {{ route.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Gerencia (Unidad de negocio)</span>
+        <div class="w-full text-body flex items-center">
+            {{ route.business_unit.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Tipo de ruta</span>
+        <div class="w-full text-body flex items-center">
+            {{ route.route_type.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Canal de venta</span>
+        <div class="w-full text-body flex items-center">
+            {{ route.sale_channel.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Estatus</span>
+        <div class="w-full text-body flex items-center">
+            {% if route.is_active %}
+                <span class="text-emerald-500 font-medium">Activa</span>
+            {% else %}
+                <span class="text-secondary">Inactiva</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Notas</span>
+        <div class="w-full text-body flex items-center text-sm">
+            {{ route.notes|default:"Sin notas registradas"|linebreaksbr }}
+        </div>
+    </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border mt-2">Asignación actual</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        {% if route.current_employee_id %}
+            <span class="text-title">Colaborador</span>
+            <div class="w-full text-body flex items-center">
+                <a href="{% url 'human_resources:employee_detail_view' route.current_employee_id %}" class="underline hover:text-hover transition-colors font-medium">
+                    {{ route.current_employee_first_name|title }} {{ route.current_employee_last_name|title }}
+                </a>
+                <span class="ml-2 font-mono text-xs text-secondary">({{ route.current_employee_id|upper }})</span>
+            </div>
+
+            <span class="text-title">Fecha de inicio de asignación</span>
+            <div class="w-full text-body flex items-center font-mono">
+                {{ route.current_assignment_date_start|default:"-"|date:"d M Y" }}
+            </div>
+        {% else %}
+            <div class="col-span-2 text-center py-4 text-secondary italic text-sm">
+                Esta ruta no tiene ningún colaborador asignado actualmente.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -13,3 +13,26 @@ class WarehouseForm(forms.ModelForm):
     class Meta:
         model = Warehouse
         fields = ['id', 'name', 'warehouse_type']
+
+
+class RouteForm(forms.ModelForm):
+    class Meta:
+        model = Route
+        fields = [
+            'id',
+            'name',
+            'business_unit',
+            'route_type',
+            'sale_channel',
+            'is_active',
+            'notes',
+        ]
+        widgets = {
+            'notes': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def clean_id(self):
+        route_id = self.cleaned_data.get('id')
+        if route_id:
+            return route_id.strip().upper()
+        return route_id

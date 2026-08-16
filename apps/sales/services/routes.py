@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
+from django.core.exceptions import ValidationError
+from django.db import transaction, IntegrityError
 from django.utils import timezone
 from django.db.models import (
     Q,
@@ -214,3 +216,72 @@ class RoutesService(UsersService):
             raise PermissionsError(f'No tienes permiso para acceder a la ruta con ID "{pk}".')
 
         raise RouteNotFound(f'No se encontró ninguna ruta con el ID "{pk}".')
+
+    def create_route(self, **data) -> Route:
+        """
+        creates a new route
+        """
+        if not self.has_full_access:
+            raise PermissionsError('No tienes permisos suficientes para crear rutas.')
+
+        try:
+            with transaction.atomic():
+                new_route = self.route_model(**data)
+                new_route.full_clean()
+                new_route.save()
+
+            return new_route
+
+        except ValidationError as e:
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except IntegrityError:
+            raise ServiceError("Ya existe una ruta con ese identificador (ID).")
+        except Exception as e:
+            raise ServiceError(f"Error al crear la ruta: {str(e)}")
+
+    def update_route(self, *, pk: str, **data) -> Route:
+        """
+        updates an existing route
+        """
+        route_to_update = self.read_route(pk=pk)
+
+        if not self.has_full_access:
+            raise PermissionsError('No tienes permisos suficientes para actualizar rutas.')
+
+        disallowed = {'id', 'pk'}
+        for key in disallowed:
+            data.pop(key, None)
+
+        try:
+            with transaction.atomic():
+                for attr, value in data.items():
+                    setattr(route_to_update, attr, value)
+
+                route_to_update.full_clean()
+                route_to_update.save()
+
+            return route_to_update
+
+        except ValidationError as e:
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except IntegrityError:
+            raise ServiceError("Ya existe una ruta con esos datos únicos.")
+        except Exception as e:
+            raise ServiceError(f"Error al actualizar la ruta: {str(e)}")
+
+    def delete_route(self, *, pk: str) -> None:
+        """
+        deletes a route by id
+        """
+        route_to_delete = self.read_route(pk=pk)
+
+        if not self.has_full_access:
+            raise PermissionsError('No tienes permisos suficientes para eliminar rutas.')
+
+        try:
+            with transaction.atomic():
+                route_to_delete.delete()
+        except IntegrityError:
+            raise ServiceError("No se puede eliminar la ruta porque tiene asignaciones u otros registros asociados.")
+        except Exception as e:
+            raise ServiceError(f"Error al eliminar la ruta: {str(e)}")
