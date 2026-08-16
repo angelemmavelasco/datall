@@ -1137,7 +1137,24 @@ def employee_list_view(request):
 
 @login_required
 def employee_detail_view(request, pk: str):
-    pass
+    template = 'human_resources/employees/employee_detail.html'
+    service = EmployeesService(user=request.user)
+
+    try:
+        employee = service.read_employee(pk=pk)
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect('human_resources:employee_list_view')
+
+    available_actions = None
+    if service.has_full_access:
+        available_actions = 'human_resources/employees/partials/employee_detail__actions.html'
+
+    context = {
+        'employee': employee,
+        'available_actions': available_actions,
+    }
+    return render(request, template, context)
 
 @login_required
 def employee_create_view(request):
