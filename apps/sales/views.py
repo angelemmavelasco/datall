@@ -1,10 +1,26 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from .services.warehouses import WarehousesService
+from .filters import WarehouseFilter
+
 
 @login_required
 def warehouse_list_view(request):
     template = 'sales/warehouses/warehouse_list.html'
-    return render(request, template)
+    service = WarehousesService(user=request.user)
+
+    available_actions = None
+
+    warehouses = service.read_warehouses()
+    warehouse_filter = WarehouseFilter(request.GET, queryset=warehouses)
+    warehouses = warehouse_filter.qs
+
+    context = {
+        'warehouses': warehouses,
+        'filter': warehouse_filter,
+        'available_actions': available_actions,
+    }
+    return render(request, template, context)
 
 @login_required
 def warehouse_detail_view(request):

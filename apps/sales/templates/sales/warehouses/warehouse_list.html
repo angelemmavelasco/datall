@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block module_name %}
+Centros de distribución
+{% endblock %}
+
+{% block title %}
+Centros de distribución
+{% endblock %}
+
+{% block module_actions %}
+
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+
+    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+
+{% endblock %}
+
+{% block filters %}
+<form method="GET" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.name.id_for_label }}" class="text-title">{{ filter.form.name.label }}</label>
+        {% render_field filter.form.name class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre o ID del centro" %}
+    </div>
+
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.warehouse_type.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong" placeholder="Buscar">
+            <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
+                {% for choice in filter.form.warehouse_type %}
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                        {{ choice.tag }}
+                        <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">
+            Aplicar filtros
+        </button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">
+            Limpiar filtros
+        </a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const normalizeString = (str) => {
+                return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            };
+
+            const filterGroups = document.querySelectorAll('.filter-group');
+
+            filterGroups.forEach(group => {
+                const searchInput = group.querySelector('.filter-search');
+                const selectAllCheckbox = group.querySelector('.filter-select-all');
+                const optionsList = group.querySelectorAll('.filter-option');
+                
+                const updateSelectAllState = () => {
+                    if (!selectAllCheckbox) return;
+                    const visibleOptions = Array.from(optionsList).filter(opt => opt.style.display !== 'none');
+                    const allVisibleChecked = visibleOptions.length > 0 && visibleOptions.every(opt => {
+                        const cb = opt.querySelector('input[type="checkbox"], input[type="radio"]');
+                        return cb && cb.checked;
+                    });
+                    selectAllCheckbox.checked = allVisibleChecked;
+                };
+
+                if (searchInput) {
+                    searchInput.addEventListener('input', function(e) {
+                        const term = normalizeString(e.target.value);
+                        optionsList.forEach(option => {
+                            const labelSpan = option.querySelector('.option-label');
+                            if (labelSpan) {
+                                const labelText = normalizeString(labelSpan.textContent);
+                                if (labelText.includes(term)) {
+                                    option.style.display = '';
+                                } else {
+                                    option.style.display = 'none';
+                                }
+                            }
+                        });
+                        updateSelectAllState();
+                    });
+                }
+
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.addEventListener('change', function(e) {
+                        const isChecked = e.target.checked;
+                        optionsList.forEach(option => {
+                            if (option.style.display !== 'none') {
+                                const checkbox = option.querySelector('input[type="checkbox"], input[type="radio"]');
+                                if (checkbox && !checkbox.disabled) {
+                                    checkbox.checked = isChecked;
+                                }
+                            }
+                        });
+                    });
+                    
+                    optionsList.forEach(option => {
+                        const checkbox = option.querySelector('input[type="checkbox"], input[type="radio"]');
+                        if (checkbox) {
+                            checkbox.addEventListener('change', updateSelectAllState);
+                        }
+                    });
+
+                    updateSelectAllState();
+                }
+            });
+        });
+    </script>
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-4">
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-[100px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        ID
+                    </th>
+
+                    <th class="w-[250px] p-2 text-left text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Centro de distribución
+                    </th>
+
+                    <th class="w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Tipo
+                    </th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for warehouse in warehouses %}
+                    <tr class="hover:bg-hover/50 transition-colors">
+                        <td class="p-2 truncate text-center font-mono">
+                            {{ warehouse.id|default:'-'|upper }}
+                        </td>
+
+                        <td class="p-2 truncate text-left">
+                            {{ warehouse.name|default:'-'|title }}
+                        </td>
+
+                        <td class="p-2 truncate text-center">
+                            {{ warehouse.get_warehouse_type_display|default:'-'|title }}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="100%" class="py-50">
+                            <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                                {% include 'layouts/data_not_found.html' %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
