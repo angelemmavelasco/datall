@@ -7,12 +7,42 @@ from .services.positions import PositionsService
 from .services.departments import DepartmentsService
 
 class BusinessUnitFilter(django_filters.FilterSet):
-    id = django_filters.CharFilter(lookup_expr='icontains')
-    name = django_filters.CharFilter(lookup_expr='icontains')
+    business_unit = django_filters.CharFilter(
+        method='filter_business_unit',
+        label='Gerencia'
+    )
+    manager = django_filters.CharFilter(
+        method='filter_manager',
+        label='Responsable'
+    )
+    employee = django_filters.CharFilter(
+        method='filter_employee',
+        label='Colaborador'
+    )
 
     class Meta:
         model = BusinessUnit
-        fields = ['id', 'name', 'parent']
+        fields = []
+
+    def filter_business_unit(self, queryset, name, value):
+        return queryset.filter(
+            Q(id__icontains=value) |
+            Q(name__icontains=value)
+        ).distinct()
+
+    def filter_manager(self, queryset, name, value):
+        return queryset.filter(
+            Q(manager__user__first_name__icontains=value) |
+            Q(manager__user__last_name__icontains=value) |
+            Q(manager__user__username__icontains=value)
+        ).distinct()
+
+    def filter_employee(self, queryset, name, value):
+        return queryset.filter(
+            Q(employees__user__first_name__icontains=value) |
+            Q(employees__user__last_name__icontains=value) |
+            Q(employees__user__username__icontains=value)
+        ).distinct()
 
 class DepartmentFilter(django_filters.FilterSet):
     department = django_filters.CharFilter(

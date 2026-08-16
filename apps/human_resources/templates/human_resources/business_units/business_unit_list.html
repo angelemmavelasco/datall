@@ -27,18 +27,18 @@ Unidades de Negocio
 {% block filters %}
 <form method="GET" class="flex flex-col gap-4">
     <div class="flex flex-col gap-1">
-        <label for="{{ filter.form.id.id_for_label }}" class="text-title">{{ filter.form.id.label }}</label>
-        {% render_field filter.form.id class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="ID de la gerencia" %}
+        <label for="{{ filter.form.business_unit.id_for_label }}" class="text-title">{{ filter.form.business_unit.label }}</label>
+        {% render_field filter.form.business_unit class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre o Id de la gerencia" %}
     </div>
 
     <div class="flex flex-col gap-1">
-        <label for="{{ filter.form.name.id_for_label }}" class="text-title">{{ filter.form.name.label }}</label>
-        {% render_field filter.form.name class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre de la gerencia" %}
+        <label for="{{ filter.form.manager.id_for_label }}" class="text-title">{{ filter.form.manager.label }}</label>
+        {% render_field filter.form.manager class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre o usuario del responsable" %}
     </div>
 
     <div class="flex flex-col gap-1">
-        <label for="{{ filter.form.parent.id_for_label }}" class="text-title">{{ filter.form.parent.label }}</label>
-        {% render_field filter.form.parent class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
+        <label for="{{ filter.form.employee.id_for_label }}" class="text-title">{{ filter.form.employee.label }}</label>
+        {% render_field filter.form.employee class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre o Id del colaborador" %}
     </div>
 
     <div class="flex gap-2 flex-col mt-2">
