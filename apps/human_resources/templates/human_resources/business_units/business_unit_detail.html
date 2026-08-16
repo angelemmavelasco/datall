@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}
+	Detalle de gerencia
+{% endblock %}
+
+{% block module_name %}
+    Gerencia {{ business_unit.name|title }}
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+    <a href="{% url 'human_resources:business_unit_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+
+    <div class="flex flex-col gap-4">
+        <p class="text-title text-sm pb-2 border-b border-border">Información general</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+            <span class="text-title">Identificador</span>
+            <div class="w-full text-body flex items-center">
+                {{ business_unit.id|default:"-"|upper }}
+            </div>
+
+            <span class="text-title">Nombre</span>
+            <div class="w-full text-body flex items-center">
+                {{ business_unit.name|default:"-"|title }}
+            </div>
+
+            <span class="text-title">Gerencia padre</span>
+            <div class="w-full text-body flex items-center">
+                {% if business_unit.parent %}
+                    <a href="{% url 'human_resources:business_unit_detail_view' business_unit.parent.pk %}" class="hover:text-hover transition-colors">
+                        {{ business_unit.parent.id|upper }} - {{ business_unit.parent.name|title }}
+                    </a>
+                {% else %}
+                    -
+                {% endif %}
+            </div>
+
+            <span class="text-title">Responsable</span>
+            <div class="w-full text-body flex items-center">
+                {% if business_unit.manager %}
+                    {{ business_unit.manager.user.first_name|default:"-"|title }} {{ business_unit.manager.user.last_name|default:""|title }}
+                {% else %}
+                    -
+                {% endif %}
+            </div>
+        </div>
+
+        <p class="text-title text-sm pb-2 border-b border-border">Desglose</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+            <span class="text-title md:col-span-2">{{ business_unit.sub_units_count|default:0|floatformat:0|intcomma }} unidad(es) hija(s)</span>
+
+            <ul class="md:col-span-2 w-full max-h-48 overflow-y-auto rounded bg-page p-1 flex flex-col gap-2 border border-border">
+                {% for u in business_unit.sub_units.all %}
+                	<li class="pb-1 border-b border-border last:border-b-0 last:pb-0">
+                        <a href="{% url 'human_resources:business_unit_detail_view' u.pk %}" class="font-medium text-body hover:text-hover transition-colors">
+                            {{ u.id|default:'-'|upper }} - {{ u.name|default:'-'|title }}
+                        </a>
+                        <p class="italic text-xs text-secondary">Responsable: {{ u.manager.user.first_name|default:'Sin asignar'|title }} {{ u.manager.user.last_name|default:''|title }}</p>
+                    </li>
+                {% empty %}
+                    <li>
+                        {% include 'layouts/data_not_found.html' %}
+                    </li>
+                {% endfor %}
+            </ul>
+
+            <span class="text-title md:col-span-2">{{ business_unit.associated_active_employees_count|default:0|floatformat:0|intcomma }} colaborador(es) activo(s)</span>
+
+            <ul class="md:col-span-2 w-full max-h-48 overflow-y-auto rounded bg-page p-1 flex flex-col gap-2 border border-border">
+                {% for e in active_employees %}
+                	<li class="pb-1 border-b border-border last:border-b-0 last:pb-0">
+                        <p class="font-medium text-body">{{ e.id|default:'-'|upper }}   {{ e.user.first_name|default:'-'|title }} {{ e.user.last_name|default:'-'|title }}</p>
+                        <p class="italic text-xs text-secondary">Posición: {{ e.position.name|default:'-'|title }}</p>
+                    </li>
+                {% empty %}
+                    <li>
+                        {% include 'layouts/data_not_found.html' %}
+                    </li>
+                {% endfor %}
+            </ul>
+
+            <span class="text-title md:col-span-2">{{ business_unit.associated_inactive_employees_count|default:0|floatformat:0|intcomma }} colaborador(es) inactivo(s)</span>
+
+            <ul class="md:col-span-2 w-full max-h-48 overflow-y-auto rounded bg-page p-1 flex flex-col gap-2 border border-border">
+                {% for e in inactive_employees %}
+                	<li class="pb-1 border-b border-border last:border-b-0 last:pb-0">
+                        <p class="font-medium text-body">{{ e.id|default:'-'|upper }}   {{ e.user.first_name|default:'-'|title }} {{ e.user.last_name|default:'-'|title }}</p>
+                        <p class="italic text-xs text-secondary">Posición: {{ e.position.name|default:'-'|title }}</p>
+                    </li>
+                {% empty %}
+                    <li>
+                        {% include 'layouts/data_not_found.html' %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+    </div>
+
+{% endblock %}
