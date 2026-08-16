@@ -67,7 +67,7 @@ class OrgChartService(UsersService):
             can_view = "true" if emp.id in self.accessible_employee_ids else "false"
             return (
                 f'<button type="button" '
-                f'class="contact-node-btn font-bold text-title hover:text-hover hover:underline cursor-pointer transition-colors inline text-left p-0 bg-transparent border-0 font-mono" '
+                f'class="contact-node-btn font-bold text-title hover:text-hover hover:underline border border-border rounded p-1 cursor-pointer transition-colors inline text-left bg-transparent border-0 font-mono" '
                 f'data-pos="{pos}" '
                 f'data-name="{full_name}" '
                 f'data-dept="{dept}" '
