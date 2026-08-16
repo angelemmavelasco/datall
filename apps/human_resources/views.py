@@ -10,6 +10,7 @@ from .services.positions import PositionsStats, PositionsService, SkillsService,
 from .services.departments import DepartmentsService, DepartmentsStats, ServiceError, PermissionsError, DepartmentNotFound
 from .services.monitoring import MonitoringFormsService, MonitoringSubmissionService, FormNotFound
 from .services.business_units import BusinessUnitsService, BusinessUnitsStats, BusinessUnitNotFound, ServiceError as BUServiceError, PermissionsError as BUPermissionsError
+from .services.employees import EmployeesService, EmployeesStats, EmployeeNotFound, ServiceError as EmpServiceError, PermissionsError as EmpPermissionsError
 
 from .forms import (
     DepartmentForm,
@@ -32,7 +33,8 @@ from .filters import (
     MonitoringFormFilter,
     MonitoringFormFieldFilter,
     MonitoringSubmissionFilter,
-    BusinessUnitFilter)
+    BusinessUnitFilter,
+    EmployeeFilter)
 
 '''business units'''
 @login_required
@@ -1111,7 +1113,27 @@ def monitoring_form_submission_delete_view(request, pk: int):
 '''employees'''
 @login_required
 def employee_list_view(request):
-    pass
+    template = 'human_resources/employees/employee_list.html'
+    service = EmployeesService(user=request.user)
+    stats_service = EmployeesStats(employee_service=service)
+
+    available_actions = None
+    if service.has_full_access:
+        available_actions = 'human_resources/employees/partials/employee_list__actions.html'
+
+    employees = service.read_employees()
+    employee_filter = EmployeeFilter(request.GET, queryset=employees, request=request)
+    employees = employee_filter.qs
+
+    kpis = stats_service.stats(qs=employees)
+
+    context = {
+        'employees': employees,
+        'kpis': kpis,
+        'available_actions': available_actions,
+        'filter': employee_filter,
+    }
+    return render(request, template, context)
 
 @login_required
 def employee_detail_view(request, pk: str):

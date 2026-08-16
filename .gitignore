@@ -11,3 +11,4 @@ venv/
 .venv/
 .env
 users/
+seed_*.py

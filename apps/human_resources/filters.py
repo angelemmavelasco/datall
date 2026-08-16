@@ -5,6 +5,82 @@ from .models import Department, Position, Skill, PositionSkill, Employee, Monito
 from .services.employees import EmployeesService
 from .services.positions import PositionsService
 from .services.departments import DepartmentsService
+from .services.business_units import BusinessUnitsService
+
+class EmployeeFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(
+        method='filter_name',
+        label='Colaborador'
+    )
+    position = django_filters.ModelMultipleChoiceFilter(
+        field_name='position',
+        queryset=Position.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Posición'
+    )
+    department = django_filters.ModelMultipleChoiceFilter(
+        field_name='position__department',
+        queryset=Department.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Departamento'
+    )
+    hierarchy_level = django_filters.MultipleChoiceFilter(
+        field_name='position__hierarchy_level',
+        choices=Position.HierarchyLevelChoices.choices,
+        widget=forms.CheckboxSelectMultiple,
+        label='Nivel jerárquico'
+    )
+    business_unit = django_filters.ModelMultipleChoiceFilter(
+        field_name='business_unit',
+        queryset=BusinessUnit.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Gerencia'
+    )
+    hire_date_start = django_filters.DateFilter(
+        field_name='hire_date',
+        lookup_expr='gte',
+        label='Contratación (Desde)',
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    hire_date_end = django_filters.DateFilter(
+        field_name='hire_date',
+        lookup_expr='lte',
+        label='Contratación (Hasta)',
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    termination_date_start = django_filters.DateFilter(
+        field_name='termination_date',
+        lookup_expr='gte',
+        label='Terminación (Desde)',
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    termination_date_end = django_filters.DateFilter(
+        field_name='termination_date',
+        lookup_expr='lte',
+        label='Terminación (Hasta)',
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+
+    class Meta:
+        model = Employee
+        fields = []
+
+    def __init__(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+        if request:
+            self.filters['position'].queryset = PositionsService(user=request.user).read_positions()
+            self.filters['department'].queryset = DepartmentsService(user=request.user).read_departments()
+            self.filters['business_unit'].queryset = BusinessUnitsService(user=request.user).read_business_units()
+
+    def filter_name(self, queryset, name, value):
+        return queryset.filter(
+            Q(id__icontains=value) |
+            Q(user__first_name__icontains=value) |
+            Q(user__last_name__icontains=value) |
+            Q(user__second_last_name__icontains=value) |
+            Q(user__username__icontains=value)
+        ).distinct()
 
 class BusinessUnitFilter(django_filters.FilterSet):
     business_unit = django_filters.CharFilter(
