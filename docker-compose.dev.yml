@@ -1,0 +1,12 @@
+services:
+  web:
+    build: .
+    container_name: datall_bi_web
+    restart: always
+    env_file:
+      - .env
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8090:8000"
