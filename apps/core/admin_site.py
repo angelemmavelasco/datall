@@ -39,6 +39,7 @@ class ThemedAdminSite(admin.AdminSite):
                     'MonitoringForm',
                     'MonitoringFormField',
                     'MonitoringFormQuestion',
+                    'MonitoringPeriod',
                 ]
             },
             {
@@ -48,6 +49,29 @@ class ThemedAdminSite(admin.AdminSite):
                     'MonitoringFormSubmission',
                     'MonitoringFormAnswer',
                 ]
+            },
+            {
+                'name': 'Inventario',
+                'app_label': 'sales_inventario',
+                'models': [
+                    'Warehouse',
+                ]
+            },
+            {
+                'name': 'Rutas',
+                'app_label': 'sales_rutas',
+                'models': [
+                    'Route',
+                    'RouteType',
+                    'SaleChannel',
+                    'RouteAssignment',
+                    'UserRouteAccess',
+                ]
+            },
+            {
+                'name': 'Ventas',
+                'app_label': 'sales_ventas',
+                'models': []
             }
         ]
 
