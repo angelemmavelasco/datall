@@ -243,4 +243,59 @@ def module_update_view(request, pk: int):
     pass
 
 
+@login_required
+def upload_options_list_view(request):
+    template = 'core/uploads/upload_options_list.html'
 
+    upload_options = [
+        {
+            'key': 'product',
+            'title': 'Catálogo de Productos',
+            'model_name': 'Product',
+            'app_label': 'Inventario / Productos',
+            'description': 'Actualización e importación del catálogo maestro de productos, precios, costos y clases de producto.',
+            'icon': 'box',
+            'tags': ['CSV / Excel', 'Mapeo de Clases', 'Upsert'],
+        },
+        {
+            'key': 'customer',
+            'title': 'Catálogo de Clientes',
+            'model_name': 'Customer',
+            'app_label': 'Clientes',
+            'description': 'Importación masiva de clientes, tipos de cliente, condiciones comerciales y fechas de registro.',
+            'icon': 'users',
+            'tags': ['CSV / Excel', 'Mapeo de Tipos', 'Preserva Líderes'],
+        },
+        {
+            'key': 'saletransaction',
+            'title': 'Transacciones de Venta',
+            'model_name': 'SaleTransaction',
+            'app_label': 'Ventas',
+            'description': 'Carga transaccional de ventas por producto, cliente, ruta y centro de distribución con cálculo de utilidades.',
+            'icon': 'receipt',
+            'tags': ['CSV / Excel', 'Doble Perspectiva', 'Alto Volumen'],
+        },
+        {
+            'key': 'accountsreceivable',
+            'title': 'Cuentas por Cobrar',
+            'model_name': 'AccountsReceivable',
+            'app_label': 'Clientes / Cartera',
+            'description': 'Importación de documentos de cartera, saldos corrientes y desglose de antigüedad de saldos vencidos.',
+            'icon': 'landmark',
+            'tags': ['CSV / Excel', 'Antigüedad 15/30/60d', 'Saldos'],
+        },
+        {
+            'key': 'stock',
+            'title': 'Existencias (Stock)',
+            'model_name': 'Stock',
+            'app_label': 'Inventario / Stock',
+            'description': 'Carga masiva de existencias físicas por centro de distribución, números de lote y fechas de caducidad.',
+            'icon': 'warehouse',
+            'tags': ['CSV / Excel', 'Por Almacén', 'Control de Lotes'],
+        },
+    ]
+
+    context = {
+        'upload_options': upload_options,
+    }
+    return render(request, template, context)

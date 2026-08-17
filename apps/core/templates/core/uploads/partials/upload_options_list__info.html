@@ -1,0 +1,58 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-sm cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo funciona el centro de carga masiva (ETL) e importación de datos?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2 space-y-2 text-xs">
+        <p>
+            Este módulo centraliza la carga y actualización masiva de datos (ETL) para las distintas entidades del sistema. Permite procesar archivos tabulares de gran volumen de forma rápida y segura.
+        </p><br>
+
+        <p class="font-semibold text-title">Fases del procesamiento de archivos:</p>
+        <ol class="list-decimal list-inside pl-2 space-y-1">
+            <li>
+                <strong>Extracción y validación:</strong> Puedes subir archivos en formato <code>.xlsx</code> o <code>.csv</code>. El sistema detecta la codificación de caracteres y valida que el archivo no esté vacío.
+            </li>
+            <li>
+                <strong>Mapeo por Referencias:</strong> Se homologan automáticamente los nombres de columnas de tu archivo de origen hacia los campos del modelo, utilizando las reglas configuradas en el catálogo de <em>Referencias</em>.
+            </li>
+            <li>
+                <strong>Resolución de llaves foráneas:</strong> Los valores textuales (ej. tipos de cliente, clases de producto, rutas) se traducen a sus IDs correspondientes.
+            </li>
+            <li>
+                <strong>Carga:</strong> La inserción se ejecuta en una transacción  por lotes (con actualización de conflictos). Si un registro ya existe por su identificador único, se actualiza; si no, se crea.
+            </li>
+        </ol><br>
+
+        <p class="font-semibold text-title">Catálogos disponibles para importación:</p>
+        <ul class="list-disc list-inside pl-2 space-y-1">
+            <li>
+                <strong>Catálogo de Productos:</strong> Actualiza precios, costos, nombres y clases de producto.
+            </li>
+            <li>
+                <strong>Catálogo de Clientes:</strong> Registra clientes, límites de crédito, días de crédito y tipos de cliente.
+            </li>
+            <li>
+                <strong>Transacciones de Venta:</strong> Carga ventas históricas y operativas vinculadas a clientes, productos y rutas.
+            </li>
+            <li>
+                <strong>Cuentas por Cobrar:</strong> Actualiza la cartera de saldos y antigüedades vencidas (1-15d, 16-30d, 31-60d, +60d).
+            </li>
+            <li>
+                <strong>Existencias (Stock):</strong> Carga inventario físico por almacén, lote y fecha de caducidad.
+            </li>
+        </ul><br>
+
+        <p class="font-semibold text-title">Auditoría y trazabilidad:</p>
+        <p>
+            Cada proceso de importación registra automáticamente una entrada en el historial de actividades, detallando la fecha, el usuario que ejecutó la carga, el nombre del archivo y el resultado de la operación.
+        </p>
+    </div>
+</details>
