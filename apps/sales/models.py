@@ -105,3 +105,62 @@ class UserRouteAccess(models.Model):
 
     def __str__(self):
         return f'{self.user.first_name.title()} {self.user.last_name.title()} -> {self.route.id.upper()} {self.route.name.title()}'
+
+class SaleTransaction(models.Model):
+    doc_id = models.CharField(max_length=255, default='')
+    sale_date = models.DateField()
+    cost = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal('0.00'))
+    net_amount = models.DecimalField(max_digits=18, decimal_places=6, default=Decimal('0.00'))
+    gross_amount= models.DecimalField(max_digits=18, decimal_places=6, default=Decimal('0.00'))
+    profit= models.DecimalField(max_digits=18, decimal_places=6, default=Decimal('0.00'))
+    quantity = models.DecimalField(max_digits=18, decimal_places=4, default=Decimal('0.0000'))
+    customer = models.ForeignKey('customers.Customer',on_delete=models.PROTECT,related_name="sale_transactions")
+    route = models.ForeignKey('Route',on_delete=models.PROTECT,related_name="sale_transactions",blank=True,null=True)
+    warehouse = models.ForeignKey('Warehouse',on_delete=models.PROTECT,related_name="sale_transactions",blank=True,null=True)
+    product_class = models.ForeignKey('products.ProductClass',on_delete=models.PROTECT,related_name="sale_transactions")
+    product = models.ForeignKey('products.Product', on_delete=models.PROTECT,related_name="sale_transactions",blank=True,null=True)
+
+    class Meta:
+        verbose_name = "Transacción de venta"
+        verbose_name_plural = "Transacciones de venta"
+        indexes = [
+            models.Index(fields=["sale_date"]),
+            models.Index(fields=["doc_id"]),
+            models.Index(fields=["route", "sale_date"]),
+            models.Index(fields=["customer", "sale_date"]),
+        ]
+
+
+    def __str__(self):
+        if not self.quantity:
+            return f"{self.doc_id.upper()} {self.sale_date}"
+        
+        return (
+            f"{self.doc_id.upper()} ({self.sale_date}) | "
+            f"Prd: {self.product_id} x {self.quantity} | "
+            f"Cedis: {self.warehouse_id} | Ruta: {self.route_id}"
+        )
+
+
+class SaleTarget(models.Model):
+    period = models.DateField()
+    route = models.ForeignKey('Route', on_delete=models.PROTECT, related_name='sale_targets')
+    warehouse = models.ForeignKey('Warehouse', on_delete=models.PROTECT, related_name='sale_targets')
+    product_class = models.ForeignKey('products.ProductClass', on_delete=models.PROTECT, related_name='sale_targets')
+    target_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal('0.00'))
+    is_valid_for_comission = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Objetivo de venta'
+        verbose_name_plural = 'Objetivos de venta'
+        constraints = [
+            models.UniqueConstraint(
+                fields=["period", "route", "product_class"],
+                name="unique_sale_target_per_period_route_class"
+            )
+        ]
+
+    def __str__(self):
+        route = self.route_id
+        cls_name = (self.product_class_id or "").title()
+        return f'Ruta {route}, clase {cls_name}, periodo {self.period:%b %Y}'
