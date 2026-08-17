@@ -10,6 +10,7 @@ urlpatterns = [
     path('sales/', include('apps.sales.urls')),
     path('customers/', include('apps.customers.urls')),
     path('products/', include('apps.products.urls')),
+    path('analytics/', include('apps.analytics.urls')),
 ]
 
 if settings.DEBUG:
