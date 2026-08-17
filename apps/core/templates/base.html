@@ -348,12 +348,14 @@
                     </div>
                     <span class="text-[10px] md:text-xs">Novedades</span>
                 </li>
-                <li>
-                    <a href="{% url 'core:user_detail_view' request.user.id %}" class="hover:text-hover cursor-pointer transition-colors flex flex-col md:flex-row items-center gap-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        <span class="text-[10px] md:text-xs">Perfil</span>
-                    </a>
-                </li>
+                {% if request.user.is_authenticated %}
+                    <li>
+                        <a href="{% url 'core:user_detail_view' request.user.id %}" class="hover:text-hover cursor-pointer transition-colors flex flex-col md:flex-row items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <span class="text-[10px] md:text-xs">Perfil</span>
+                        </a>
+                    </li>
+                {% endif %}
                 <li>
                     <button id="toggle-theme" type="button" class="cursor-pointer hover:text-hover transition-colors flex flex-col md:flex-row items-center gap-1">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun-moon"><path d="M12 2v2"/><path d="M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715"/><path d="M16 12a4 4 0 0 0-4-4"/><path d="m19 5-1.256 1.256"/><path d="M20 12h2"/></svg>

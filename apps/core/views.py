@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
@@ -8,8 +9,42 @@ from .forms import UserForm
 from .models import User
 from .services.users import UsersService, UsersKPIsService, ServiceError, UserNotFoundError, UserPermissionError
 
+def error_400_view(request, exception=None):
+    context = {
+        'LOGIN_REDIRECT_URL': getattr(settings, 'LOGIN_REDIRECT_URL', '/hello-world/'),
+        'exception': str(exception) if exception else None,
+    }
+    template_name = getattr(settings, 'BAD_REQUEST', getattr(settings, 'PAGE_NOT_FOUND', 'errors/404.html'))
+    return render(request, template_name, context, status=400)
 
-# Create your views here.
+
+def error_403_view(request, exception=None):
+    context = {
+        'email': getattr(settings, 'SUPPORT_EMAIL', getattr(settings, 'DEFAULT_FROM_EMAIL', 'soporte@datall.com.mx')),
+        'LOGIN_REDIRECT_URL': getattr(settings, 'LOGIN_REDIRECT_URL', '/hello-world/'),
+        'exception': str(exception) if exception else None,
+    }
+    template_name = getattr(settings, 'ACCESS_DENIED', 'errors/access_denied.html')
+    return render(request, template_name, context, status=403)
+
+
+def error_404_view(request, exception=None):
+    context = {
+        'LOGIN_REDIRECT_URL': getattr(settings, 'LOGIN_REDIRECT_URL', '/hello-world/'),
+        'exception': str(exception) if exception else None,
+    }
+    template_name = getattr(settings, 'PAGE_NOT_FOUND', 'errors/404.html')
+    return render(request, template_name, context, status=404)
+
+
+def error_500_view(request):
+    context = {
+        'LOGIN_REDIRECT_URL': getattr(settings, 'LOGIN_REDIRECT_URL', '/hello-world/'),
+        'email': getattr(settings, 'SUPPORT_EMAIL', getattr(settings, 'DEFAULT_FROM_EMAIL', 'soporte@datall.com.mx')),
+    }
+    template_name = getattr(settings, 'INTERNAL_SERVER_ERROR', 'errors/500.html')
+    return render(request, template_name, context, status=500)
+
 @login_required
 def hello_world(request):
     template = 'hello_world.html'
@@ -206,4 +241,6 @@ def module_create_view(request):
 @login_required
 def module_update_view(request, pk: int):
     pass
+
+
 

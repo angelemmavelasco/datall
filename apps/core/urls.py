@@ -40,5 +40,10 @@ urlpatterns = [
     path('users/<int:pk>/', user_detail_view, name='user_detail_view'),
     path('users/create/', user_create_form_view, name='user_create_form_view'),
     path('users/<int:pk>/update/', user_update_form_view, name='user_update_form_view'),
+
+    # Error preview routes
+    path('403/', error_403_view, name='error_403'),
+    path('404/', error_404_view, name='error_404'),
+    path('500/', error_500_view, name='error_500'),
 ]
 

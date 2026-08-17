@@ -175,6 +175,7 @@ LOGOUT_REDIRECT_URL = '/'
 ACCESS_DENIED = 'errors/access_denied.html'
 PAGE_NOT_FOUND = 'errors/404.html'
 INTERNAL_SERVER_ERROR = 'errors/500.html'
+SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'soporte@datall.com.mx')
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.resend.com'

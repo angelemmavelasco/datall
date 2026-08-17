@@ -9,8 +9,11 @@ from .services import (
     CustomerNotFound,
     PermissionsError,
     ServiceError,
+    AccountsReceivablesService,
+    AccountsReceivablesStats,
+    AccountsReceivableNotFound,
 )
-from .filters import CustomerFilter
+from .filters import CustomerFilter, AccountsReceivableFilter
 from .forms import CustomerForm, CustomerAssignmentFormSet, CustomerClassMarginFormSet
 
 
@@ -56,7 +59,6 @@ def customer_list_view(request):
 
     return render(request, template, context)
 
-
 @login_required
 def customer_detail_view(request, pk: str):
     template = 'customers/customer_detail.html'
@@ -80,7 +82,6 @@ def customer_detail_view(request, pk: str):
         'available_actions': available_actions,
     }
     return render(request, template, context)
-
 
 @login_required
 def customer_create_view(request):
@@ -239,3 +240,88 @@ def customer_filter_options_view(request):
             'selected_ids': selected_ids,
         }
     )
+
+@login_required
+def ar_list_view(request):
+    template = 'customers/accounts_receivable/ar_list.html'
+    service = AccountsReceivablesService(user=request.user)
+    stats_service = AccountsReceivablesStats(accounts_receivables_service=service)
+
+    available_actions = None
+    if service.has_full_access:
+        available_actions = 'customers/accounts_receivable/partials/ar_list__actions.html'
+
+    perspective = request.GET.get('perspective', 'current_customers')
+    if perspective == 'emitting_routes':
+        ars_qs = service.read_ars_by_allowed_routes()
+    else:
+        ars_qs = service.read_ars_by_allowed_customers()
+
+    ar_filter = AccountsReceivableFilter(request.GET, queryset=ars_qs, request=request)
+    ars_qs = ar_filter.qs
+
+    paginator = Paginator(ars_qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    query_dict = request.GET.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
+
+    accounts_receivable = page_obj.object_list
+    kpis = stats_service.stats(qs=ars_qs)
+
+    selected_customer_ids = request.GET.getlist('customer')
+    customers_service = CustomersService(user=request.user)
+    customers_base = customers_service.read_customers()
+    if selected_customer_ids:
+        sel_qs = customers_base.filter(pk__in=selected_customer_ids)
+        rem_qs = customers_base.exclude(pk__in=selected_customer_ids)[:30]
+        initial_customers = list(sel_qs) + list(rem_qs)
+    else:
+        initial_customers = list(customers_base[:30])
+
+    context = {
+        'accounts_receivable': accounts_receivable,
+        'kpis': kpis,
+        'query_string': query_dict.urlencode(),
+        'page_obj': page_obj,
+        'available_actions': available_actions,
+        'filter': ar_filter,
+        'initial_customers': initial_customers,
+        'selected_customer_ids': selected_customer_ids,
+        'current_perspective': perspective,
+    }
+
+    if request.htmx:
+        target = request.headers.get('HX-Target')
+        if target == 'ar-list-content':
+            return render(request, 'customers/accounts_receivable/partials/ar_list_content.html', context)
+        return render(request, 'customers/accounts_receivable/partials/ar_list_rows.html', context)
+
+    return render(request, template, context)
+
+
+@login_required
+def ar_detail_view(request, pk: str | int):
+    template = 'customers/accounts_receivable/ar_detail.html'
+    service = AccountsReceivablesService(user=request.user)
+
+    try:
+        ar_obj = service.read_ar(pk=pk)
+    except (AccountsReceivableNotFound, PermissionsError) as e:
+        messages.error(request, str(e))
+        return redirect('customers:ar_list_view')
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al cargar la cuenta por cobrar: {str(e)}")
+        return redirect('customers:ar_list_view')
+
+    available_actions = None
+    if service.has_full_access:
+        available_actions = 'customers/accounts_receivable/partials/ar_detail__actions.html'
+
+    context = {
+        'ar': ar_obj,
+        'available_actions': available_actions,
+    }
+    return render(request, template, context)
