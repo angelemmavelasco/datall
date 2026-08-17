@@ -248,8 +248,6 @@ def ar_list_view(request):
     stats_service = AccountsReceivablesStats(accounts_receivables_service=service)
 
     available_actions = None
-    if service.has_full_access:
-        available_actions = 'customers/accounts_receivable/partials/ar_list__actions.html'
 
     perspective = request.GET.get('perspective', 'current_customers')
     if perspective == 'emitting_routes':
@@ -317,8 +315,6 @@ def ar_detail_view(request, pk: str | int):
         return redirect('customers:ar_list_view')
 
     available_actions = None
-    if service.has_full_access:
-        available_actions = 'customers/accounts_receivable/partials/ar_detail__actions.html'
 
     context = {
         'ar': ar_obj,

@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block module_name %}
+Cuenta por cobrar: {{ ar.doc_id|default:ar.id|upper }}
+{% endblock %}
+
+{% block title %}
+Cuenta por cobrar: {{ ar.doc_id|default:ar.id|upper }}
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+    <a href="{% url 'customers:ar_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    <p class="text-title text-sm pb-2 border-b border-border">Información del documento</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title">Folio / Documento</span>
+        <div class="w-full text-body flex items-center font-mono font-medium">
+            {{ ar.doc_id|default:"-"|upper }}
+        </div>
+
+        <span class="text-title">Concepto</span>
+        <div class="w-full text-body flex items-center">
+            {{ ar.description|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Fecha de emisión</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ ar.issue_date|default:"-"|date:"d M Y" }}
+        </div>
+
+        <span class="text-title">Fecha de vencimiento / pago</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ ar.due_date|default:"-"|date:"d M Y" }}
+        </div>
+
+        <span class="text-title">Saldo total</span>
+        <div class="w-full text-body flex items-center font-mono font-semibold text-base">
+            ${{ ar.total_balance|default:0|floatformat:2|intcomma }}
+        </div>
+    </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border">Cliente y asignación</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title">Cliente</span>
+        <div class="w-full text-body flex items-center">
+            <a href="{% url 'customers:customer_detail_view' ar.customer.id %}" class="underline hover:text-hover transition-colors font-medium">
+                {{ ar.customer.id|upper }} - {{ ar.customer.name|title }}
+            </a>
+        </div>
+
+        <span class="text-title">Tipo de cliente</span>
+        <div class="w-full text-body flex items-center">
+            {{ ar.customer.customer_type.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Ruta emisora</span>
+        <div class="w-full text-body flex items-center">
+            {% if ar.route %}
+                <a href="{% url 'sales:route_detail_view' ar.route.id %}" class="underline hover:text-hover transition-colors font-medium">
+                    {{ ar.route.id|upper }} - {{ ar.route.name|title }}
+                </a>
+            {% else %}
+                <span class="text-secondary italic">Sin ruta asociada</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Gerencia (Unidad de negocio)</span>
+        <div class="w-full text-body flex items-center">
+            {{ ar.route.business_unit.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Canal de venta</span>
+        <div class="w-full text-body flex items-center">
+            {{ ar.route.sale_channel.name|default:"-"|title }}
+        </div>
+    </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border">Antigüedad y desglose de saldos</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title">Saldo al corriente</span>
+        <div class="w-full text-emerald-500 font-mono font-medium flex items-center">
+            ${{ ar.current_balance|default:0|floatformat:2|intcomma }}
+        </div>
+
+        <span class="text-title">Vencido (1 a 15 días)</span>
+        <div class="w-full text-amber-500 font-mono flex items-center">
+            ${{ ar.balance_15|default:0|floatformat:2|intcomma }}
+        </div>
+
+        <span class="text-title">Vencido (16 a 30 días)</span>
+        <div class="w-full text-orange-500 font-mono flex items-center">
+            ${{ ar.balance_30|default:0|floatformat:2|intcomma }}
+        </div>
+
+        <span class="text-title">Vencido (31 a 60 días)</span>
+        <div class="w-full text-red-500 font-mono flex items-center">
+            ${{ ar.balance_60|default:0|floatformat:2|intcomma }}
+        </div>
+
+        <span class="text-title">Vencido (+60 días)</span>
+        <div class="w-full text-rose-600 font-mono font-semibold flex items-center">
+            ${{ ar.past_due|default:0|floatformat:2|intcomma }}
+        </div>
+
+        <span class="text-title font-semibold pt-2 border-t border-border">Total exigible / Cartera</span>
+        <div class="w-full text-body font-mono font-bold text-base pt-2 border-t border-border flex items-center">
+            ${{ ar.total_balance|default:0|floatformat:2|intcomma }}
+        </div>
+    </div>
+</div>
+{% endblock %}

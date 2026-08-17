@@ -1,0 +1,98 @@
+{% load humanize %}
+
+{% for ar in accounts_receivable %}
+    <tr>
+        <td class="p-2 truncate text-center font-mono text-xs">
+            <a href="{% url 'customers:ar_detail_view' ar.id %}" class="underline hover:text-hover transition-colors font-medium">
+                {{ ar.doc_id|default:ar.id|upper }}
+            </a>
+        </td>
+
+        <td class="p-2 truncate text-left">
+            <p class="font-medium text-body truncate">
+                <a href="{% url 'customers:customer_detail_view' ar.customer.id %}" class="underline hover:text-hover transition-colors">
+                    {{ ar.customer.id|upper }} - {{ ar.customer.name|title }}
+                </a>
+            </p>
+        </td>
+
+        <td class="p-2 truncate text-left text-xs">
+            {% if ar.route %}
+                <a href="{% url 'sales:route_detail_view' ar.route.id %}" class="underline hover:text-hover transition-colors">
+                    {{ ar.route.id|upper }} {{ ar.route.name|title }}
+                </a>
+            {% else %}
+                <span class="text-secondary italic">Sin ruta</span>
+            {% endif %}
+        </td>
+
+        <td class="p-2 truncate text-left text-xs">
+            {{ ar.route.business_unit.name|default:'-'|title }}
+        </td>
+
+        <td class="p-2 truncate text-center text-xs font-mono">
+            {{ ar.issue_date|default:'-'|date:'d M Y' }}
+        </td>
+
+        <td class="p-2 truncate text-center text-xs font-mono">
+            {{ ar.due_date|default:'-'|date:'d M Y' }}
+        </td>
+
+        <td class="p-2 truncate text-right font-mono text-xs">
+            ${{ ar.current_balance|default:0|floatformat:2|intcomma }}
+        </td>
+
+        <td class="p-2 truncate text-right font-mono text-xs text-amber-500">
+            ${{ ar.balance_15|default:0|floatformat:2|intcomma }}
+        </td>
+
+        <td class="p-2 truncate text-right font-mono text-xs text-orange-500">
+            ${{ ar.balance_30|default:0|floatformat:2|intcomma }}
+        </td>
+
+        <td class="p-2 truncate text-right font-mono text-xs text-red-500">
+            ${{ ar.balance_60|default:0|floatformat:2|intcomma }}
+        </td>
+
+        <td class="p-2 truncate text-right font-mono text-xs text-rose-600 font-medium">
+            ${{ ar.past_due|default:0|floatformat:2|intcomma }}
+        </td>
+
+        <td class="p-2 truncate text-right font-mono text-xs font-semibold text-body">
+            ${{ ar.total_balance|default:0|floatformat:2|intcomma }}
+        </td>
+    </tr>
+{% empty %}
+    <tr>
+        <td colspan="100%" class="py-50">
+            <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                {% include 'layouts/data_not_found.html' %}
+            </div>
+        </td>
+    </tr>
+{% endfor %}
+
+{% if page_obj.has_next %}
+<tr id="load-more-row-{{ page_obj.number }}">
+    <td colspan="100%" class="p-4 border-t border-border">
+        <div class="sticky left-1/2 -translate-x-1/2 w-max">
+            <button hx-get="{{ request.path }}?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}"
+                    hx-target="#load-more-row-{{ page_obj.number }}"
+                    hx-swap="outerHTML"
+                    class="group hover:text-hover text-strong transition-colors cursor-pointer border border-border rounded p-1 bg-page">
+                
+                <div class="flex items-center gap-2 group-[.htmx-request]:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down-icon lucide-circle-chevron-down"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg>
+                    <span>Mostrar más</span>
+                </div>
+
+                <div class="hidden items-center gap-2 group-[.htmx-request]:flex">
+                    {% include 'layouts/loading_animation_icon.html' %}
+                    <span class="text-strong">Cargando...</span>
+                </div>
+
+            </button>
+        </div>
+    </td>
+</tr>
+{% endif %}

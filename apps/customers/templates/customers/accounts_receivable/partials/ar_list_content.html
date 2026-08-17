@@ -1,0 +1,121 @@
+{% load humanize %}
+
+<div class="flex flex-col w-full gap-4" id="ar-list-content">
+    <p class="text-title pb-1 border-b border-border">
+        Resumen
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Saldo total en cartera
+            </span><br>
+            <span class="text-xl font-mono text-title">
+                ${{ kpis.total_balance|default:0|floatformat:2|intcomma }}
+            </span>
+            <p class="text-[11px] text-secondary mt-1">
+                {{ kpis.ars_count|default:0|floatformat:0|intcomma }} documento(s)
+            </p>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Saldo al corriente
+            </span><br>
+            <span class="text-xl font-mono text-emerald-500">
+                ${{ kpis.current_balance|default:0|floatformat:2|intcomma }}
+            </span>
+            <p class="text-[11px] text-secondary mt-1">
+                Sin vencimiento
+            </p>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Vencido (1 a 30 días)
+            </span><br>
+            <span class="text-xl font-mono text-amber-500">
+                ${{ kpis.balance_15|add:kpis.balance_30|default:0|floatformat:2|intcomma }}
+            </span>
+            <p class="text-[11px] text-secondary mt-1">
+                1-15d: ${{ kpis.balance_15|default:0|floatformat:0|intcomma }} | 16-30d: ${{ kpis.balance_30|default:0|floatformat:0|intcomma }}
+            </p>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Vencido (+30 días)
+            </span><br>
+            <span class="text-xl font-mono text-red-500">
+                ${{ kpis.balance_60|add:kpis.past_due|default:0|floatformat:2|intcomma }}
+            </span>
+            <p class="text-[11px] text-secondary mt-1">
+                +60d: ${{ kpis.past_due|default:0|floatformat:0|intcomma }}
+            </p>
+        </a>
+    </div>
+
+    <p class="text-title pb-1 border-b border-border">
+        Listado
+    </p>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Documento
+                    </th>
+
+                    <th class="w-[220px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Cliente
+                    </th>
+
+                    <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Ruta emisora
+                    </th>
+
+                    <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Gerencia
+                    </th>
+
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Emisión
+                    </th>
+
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Vencimiento
+                    </th>
+
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Al corriente
+                    </th>
+
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        1 - 15 días
+                    </th>
+
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        16 - 30 días
+                    </th>
+
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        31 - 60 días
+                    </th>
+
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        + 60 días
+                    </th>
+
+                    <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Saldo total
+                    </th>
+                </tr>
+            </thead>
+
+            <tbody id="ar-report-container">
+                {% include "customers/accounts_receivable/partials/ar_list_rows.html" %}
+            </tbody>
+        </table>
+    </div>
+</div>
