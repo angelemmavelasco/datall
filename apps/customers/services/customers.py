@@ -4,6 +4,7 @@ from typing import ClassVar
 from django.core.exceptions import ValidationError
 from django.db import transaction, IntegrityError
 from django.utils import timezone
+from decimal import Decimal
 from django.db.models import (
     Q,
     QuerySet,
@@ -15,6 +16,9 @@ from django.db.models import (
     Value,
     BooleanField,
     Prefetch,
+    Count,
+    Sum,
+    Avg,
 )
 
 from apps.core.services.users import UsersService
@@ -172,3 +176,44 @@ class CustomersService(UsersService):
             raise PermissionsError(f'No tienes permiso para acceder al cliente con ID "{pk}".')
 
         raise CustomerNotFound(f'No se encontró ningún cliente con el ID "{pk}".')
+
+@dataclass
+class CustomersStats:
+    '''dedicated only to give general stats about customers'''
+    customers_service: CustomersService
+
+    @property
+    def _base_qs(self) -> QuerySet:
+        return self.customers_service.read_customers()
+
+    def stats(self, *, qs: QuerySet = None) -> dict:
+        base_qs = qs if qs is not None else self._base_qs
+
+        agg = base_qs.aggregate(
+            customers_count=Count('pk', distinct=True),
+            assigned_customers_count=Count(
+                'pk',
+                filter=Q(current_route_id__isnull=False),
+                distinct=True
+            ),
+            unassigned_customers_count=Count(
+                'pk',
+                filter=Q(current_route_id__isnull=True),
+                distinct=True
+            ),
+            opinion_leaders_count=Count(
+                'pk',
+                filter=Q(opinion_leader=True),
+                distinct=True
+            ),
+            total_credit_limit=Sum('credit_limit'),
+            avg_credit_limit=Avg('credit_limit'),
+            avg_credit_days=Avg('credit_days'),
+        )
+
+        agg['total_credit_limit'] = agg['total_credit_limit'] or Decimal('0.00')
+        agg['avg_credit_limit'] = agg['avg_credit_limit'] or Decimal('0.00')
+        agg['avg_credit_days'] = agg['avg_credit_days'] or 0
+
+        return agg
+

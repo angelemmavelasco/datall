@@ -1,5 +1,6 @@
 from .customers import (
     CustomersService,
+    CustomersStats,
     ServiceError,
     PermissionsError,
     CustomerNotFound,
@@ -8,6 +9,7 @@ from .customers import (
 
 __all__ = [
     'CustomersService',
+    'CustomersStats',
     'ServiceError',
     'PermissionsError',
     'CustomerNotFound',

@@ -1,6 +1,7 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from decimal import Decimal
-from django.db.models import Q
+from django.db.models import Q, F
 
 class CustomerType(models.Model):
     id = models.CharField(max_length=100, primary_key=True, help_text='Identificador unico del tipo de cliente')
@@ -10,6 +11,9 @@ class CustomerType(models.Model):
     class Meta:
         verbose_name = 'Tipo de cliente'
         verbose_name_plural = 'Tipos de cliente'
+
+    def __str__(self):
+        return f'{self.id.upper()} - {self.name.title()}'
 
 class Customer(models.Model):
     id = models.CharField(max_length=100, primary_key=True, help_text='Identificador del cliente')
@@ -28,6 +32,9 @@ class Customer(models.Model):
         verbose_name_plural = 'Clientes'
         indexes = [models.Index(fields=["registration_date"])]
 
+    def __str__(self):
+        return f'{self.id.upper()} - {self.name.title()}'
+
 class CustomerAssignment(models.Model):
     customer = models.ForeignKey('Customer', on_delete=models.CASCADE, related_name='assignments', help_text='Cliente a asignar')
     route = models.ForeignKey('sales.Route', on_delete=models.PROTECT, related_name='assignments', help_text='Ruta a la que se asigna el cliente')
@@ -40,15 +47,48 @@ class CustomerAssignment(models.Model):
         verbose_name_plural = 'Asignaciones de clientes'
         constraints = [
             models.UniqueConstraint(
-                fields=["customer", "route", "start_date"],
-                name="unique_customer_assignment"
-            ),
-            models.UniqueConstraint(
                 fields=["customer"],
                 condition=Q(end_date__isnull=True),
                 name="unique_active_assignment_per_customer"
             ),
+            models.CheckConstraint(
+                check=Q(end_date__isnull=True) | Q(end_date__gte=F('start_date')),
+                name="customer_assignment_end_date_gte_start_date"
+            ),
         ]
+
+    def clean(self):
+        super().clean()
+
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError({
+                'end_date': 'La fecha de fin no puede ser anterior a la fecha de inicio.'
+            })
+
+        if self.customer_id and self.start_date:
+            qs = CustomerAssignment.objects.filter(customer_id=self.customer_id)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+
+            if not self.end_date:
+                overlapping = qs.filter(
+                    Q(end_date__isnull=True) | Q(end_date__gte=self.start_date)
+                )
+            else:
+                overlapping = qs.filter(
+                    Q(end_date__isnull=True, start_date__lte=self.end_date) |
+                    Q(end_date__isnull=False, start_date__lte=self.end_date, end_date__gte=self.start_date)
+                )
+
+            if overlapping.exists():
+                first_overlap = overlapping.first()
+                overlap_route = first_overlap.route.id.upper() if first_overlap.route else ''
+                raise ValidationError(
+                    f'Ya existe una asignación para este cliente ({overlap_route}) que se empalma o es simultánea con el rango de fechas seleccionado ({self.start_date} - {self.end_date or "Presente"}).'
+                )
+
+    def __str__(self):
+        return f'{self.customer.id.upper()} -> {self.route.id.upper()}'
 
 # class CustomerClassMargin(models.Model):
 #     customer = models.ForeignKey('Customer', on_delete=models.CASCADE, related_name='class_margins')

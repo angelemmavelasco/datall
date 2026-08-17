@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block module_name %}
+Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
+{% endblock %}
+
+{% block title %}
+Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+    <a href="{% url 'customers:customer_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    <p class="text-title text-sm pb-2 border-b border-border">Información general</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title">Identificador</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ customer.id|default:"-"|upper }}
+        </div>
+
+        <span class="text-title">Nombre / Razón Social</span>
+        <div class="w-full text-body flex items-center">
+            {{ customer.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Tipo de cliente</span>
+        <div class="w-full text-body flex items-center">
+            {{ customer.customer_type.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Fecha de registro</span>
+        <div class="w-full text-body flex items-center">
+            {{ customer.registration_date|default:"-"|date:"d M Y" }}
+        </div>
+
+        <span class="text-title">Línea de crédito</span>
+        <div class="w-full text-body flex items-center font-mono">
+            ${{ customer.credit_limit|default:0|floatformat:2|intcomma }}
+        </div>
+
+        <span class="text-title">Días de crédito</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ customer.credit_days|default:0 }} días
+        </div>
+
+        <span class="text-title">Líder de opinión</span>
+        <div class="w-full text-body flex items-center">
+            {% if customer.opinion_leader %}
+                <span class="text-violet-500 font-medium">Sí</span>
+            {% else %}
+                <span class="text-secondary">No</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border">Asignación actual de ruta</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        {% if customer.current_route_id %}
+            <span class="text-title">Ruta asignada</span>
+            <div class="w-full text-body flex items-center">
+                <a href="{% url 'sales:route_detail_view' customer.current_route_id %}" class="underline hover:text-hover transition-colors font-medium">
+                    {{ customer.current_route_id|upper }} - {{ customer.current_route_name|title }}
+                </a>
+            </div>
+
+            <span class="text-title">Gerencia (Unidad de negocio)</span>
+            <div class="w-full text-body flex items-center">
+                {{ customer.current_route_business_unit|default:"-"|title }}
+            </div>
+
+            <span class="text-title">Canal de venta</span>
+            <div class="w-full text-body flex items-center">
+                {{ customer.current_route_sale_channel|default:"-"|title }}
+            </div>
+
+            <span class="text-title">Fecha de inicio de asignación</span>
+            <div class="w-full text-body flex items-center font-mono">
+                {{ customer.current_assignment_start_date|default:"-"|date:"d M Y" }}
+            </div>
+        {% else %}
+            <div class="col-span-2 text-center py-4 text-secondary italic text-sm">
+                Este cliente no tiene ninguna ruta asignada actualmente.
+            </div>
+        {% endif %}
+    </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border">Historial de asignaciones</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title md:col-span-2">{{ customer.assignments.all|length|default:0|floatformat:0|intcomma }} asignación(es) registrada(s)</span>
+
+        <ul class="md:col-span-2 w-full max-h-48 overflow-y-auto rounded bg-page p-1 flex flex-col gap-2 border border-border">
+            {% for a in customer.assignments.all %}
+                <li class="pb-2 border-b border-border last:border-b-0 last:pb-0">
+                    <div class="flex items-center justify-between">
+                        <p class="font-medium text-body">
+                            <a href="{% url 'sales:route_detail_view' a.route.id %}" class="underline hover:text-hover transition-colors">
+                                {{ a.route.id|upper }} - {{ a.route.name|title }}
+                            </a>
+                        </p>
+                        {% if not a.end_date %}
+                            <span class="text-xs text-emerald-500 font-medium">Activa actualmente</span>
+                        {% else %}
+                            <span class="text-xs text-secondary">Finalizada</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-[10px] text-hover">
+                        • Inicio: {{ a.start_date|date:'d M Y' }}
+                        • Fin: {{ a.end_date|date:'d M Y'|default:'Sin fecha de término' }}
+                        {% if a.route.business_unit %}
+                            • Gerencia: {{ a.route.business_unit.name|title }}
+                        {% endif %}
+                        {% if a.route.sale_channel %}
+                            • Canal: {{ a.route.sale_channel.name|title }}
+                        {% endif %}
+                    </p>
+                    {% if a.notes %}
+                        <p class="text-[10px] mt-1">
+                            <span>Notas: </span>
+                            <span class="italic">{{ a.notes|linebreaksbr }}</span>
+                        </p>
+                    {% endif %}
+                </li>
+            {% empty %}
+                <li class="py-4">
+                    {% include 'layouts/data_not_found.html' %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

@@ -72,6 +72,20 @@ class ThemedAdminSite(admin.AdminSite):
                 'name': 'Ventas',
                 'app_label': 'sales_ventas',
                 'models': []
+            },
+            {
+                'name': 'Clientes',
+                'app_label': 'customers_clientes',
+                'models': [
+                    'Customer',
+                    'CustomerType',
+                    'CustomerAssignment',
+                ]
+            },
+            {
+                'name': 'Convenios',
+                'app_label': 'customers_convenios',
+                'models': []
             }
         ]
 
