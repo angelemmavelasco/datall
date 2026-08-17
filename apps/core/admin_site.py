@@ -97,6 +97,17 @@ class ThemedAdminSite(admin.AdminSite):
                 'name': 'Convenios',
                 'app_label': 'customers_convenios',
                 'models': []
+            },
+            {
+                'name': 'Configuración del Sistema',
+                'app_label': 'core_configuracion',
+                'models': [
+                    'Module',
+                    'Submodule',
+                    'Reference',
+                    'User',
+                    'Group',
+                ]
             }
         ]
 

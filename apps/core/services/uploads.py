@@ -1,7 +1,13 @@
+from __future__ import annotations
+
 import io
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, ClassVar, Callable, Optional
+from typing import TYPE_CHECKING, ClassVar, Callable, Optional, Any
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
@@ -69,10 +75,13 @@ class BaseETLHelper:
         return True, ""
 
     @classmethod
-    def read_file_to_dataframe(cls, file_obj) -> tuple[bool, pd.DataFrame | str]:
+    def read_file_to_dataframe(cls, file_obj) -> tuple[bool, Optional[object] | str]:
         """
         reads a CSV or Excel file safely into a pandas DataFrame with string dtypes to preserve raw values.
         """
+        if pd is None:
+            return False, "La librería 'pandas' no está instalada en el entorno."
+
         is_valid, validation_msg = cls.validate_file(file_obj)
         if not is_valid:
             return False, validation_msg
