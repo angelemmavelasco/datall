@@ -27,6 +27,7 @@ from ..models import (
     CustomerType,
     Customer,
     CustomerAssignment,
+    CustomerClassMargin,
 )
 
 class ServiceError(Exception):
@@ -46,6 +47,7 @@ class CustomersService(UsersService):
     customer_model: type = Customer
     customer_type_model: type = CustomerType
     customer_assignment_model: type = CustomerAssignment
+    customer_class_margin_model: type = CustomerClassMargin
     ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
         'acceso_total_clientes',
         'clientes',
@@ -148,6 +150,13 @@ class CustomersService(UsersService):
                     'route__sale_channel',
                     'route__route_type'
                 ).order_by('-start_date'),
+            ),
+            Prefetch(
+                'class_margins',
+                queryset=self.customer_class_margin_model.objects.select_related(
+                    'product_class',
+                    'product_class__product_category',
+                ).order_by('product_class__name', 'product_class__id'),
             )
         ).order_by('name', 'id')
 
@@ -181,10 +190,11 @@ class CustomersService(UsersService):
         self,
         customer_data: dict = None,
         assignments_data: list = None,
+        class_margins_data: list = None,
         **kwargs
     ) -> Customer:
         """
-        creates a new customer along with optional route assignments
+        creates a new customer along with optional route assignments and class margins
         """
         if not self.has_full_access:
             raise PermissionsError('No tienes permisos suficientes para registrar clientes.')
@@ -210,6 +220,18 @@ class CustomersService(UsersService):
                             assignment.full_clean()
                             assignment.save()
 
+                if class_margins_data:
+                    for margin_data in class_margins_data:
+                        if margin_data and not margin_data.get('DELETE', False):
+                            margin_copy = dict(margin_data)
+                            margin_copy.pop('DELETE', None)
+                            margin_copy.pop('id', None)
+                            margin_copy.pop('customer', None)
+
+                            margin = self.customer_class_margin_model(customer=new_customer, **margin_copy)
+                            margin.full_clean()
+                            margin.save()
+
             return new_customer
 
         except ValidationError as e:
@@ -228,10 +250,11 @@ class CustomersService(UsersService):
         pk: str,
         customer_data: dict = None,
         assignments_data: list = None,
+        class_margins_data: list = None,
         **kwargs
     ) -> Customer:
         """
-        updates an existing customer along with route assignments
+        updates an existing customer along with route assignments and class margins
         """
         customer_to_update = self.read_customer(pk=pk)
 
@@ -280,6 +303,34 @@ class CustomersService(UsersService):
                             new_assignment = self.customer_assignment_model(customer=customer_to_update, **assign_copy)
                             new_assignment.full_clean()
                             new_assignment.save()
+
+                if class_margins_data is not None:
+                    for margin_data in class_margins_data:
+                        if not margin_data:
+                            continue
+
+                        margin_instance = margin_data.get('id')
+                        should_delete = margin_data.get('DELETE', False)
+
+                        if should_delete:
+                            if margin_instance and getattr(margin_instance, 'pk', None):
+                                margin_instance.delete()
+                            continue
+
+                        margin_copy = dict(margin_data)
+                        margin_copy.pop('DELETE', None)
+                        margin_copy.pop('id', None)
+                        margin_copy.pop('customer', None)
+
+                        if margin_instance and getattr(margin_instance, 'pk', None):
+                            for k, v in margin_copy.items():
+                                setattr(margin_instance, k, v)
+                            margin_instance.full_clean()
+                            margin_instance.save()
+                        else:
+                            new_margin = self.customer_class_margin_model(customer=customer_to_update, **margin_copy)
+                            new_margin.full_clean()
+                            new_margin.save()
 
             return customer_to_update
 

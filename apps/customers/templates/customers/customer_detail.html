@@ -140,5 +140,49 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
             {% endfor %}
         </ul>
     </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border">Márgenes mínimos por clase de producto</p>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[60vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-[220px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Clase de producto
+                    </th>
+                    <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Categoría
+                    </th>
+                    <th class="w-[140px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Margen mínimo
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for margin in customer.class_margins.all %}
+                    <tr>
+                        <td class="p-2 truncate text-left text-xs">
+                            <span class="font-medium text-body">{{ margin.product_class.id|upper }}</span>
+                            <span class="text-secondary">- {{ margin.product_class.name|title }}</span>
+                        </td>
+                        <td class="p-2 truncate text-center text-xs">
+                            {{ margin.product_class.product_category.name|default:"-"|title }}
+                        </td>
+                        <td class="p-2 truncate text-right font-mono text-xs font-medium">
+                            {{ margin.min_margin_percentage|default:0|floatformat:2 }}%
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="100%" class="py-50">
+                            <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                                {% include 'layouts/data_not_found.html' %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

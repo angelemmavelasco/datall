@@ -11,7 +11,7 @@ from .services import (
     ServiceError,
 )
 from .filters import CustomerFilter
-from .forms import CustomerForm, CustomerAssignmentFormSet
+from .forms import CustomerForm, CustomerAssignmentFormSet, CustomerClassMarginFormSet
 
 
 @login_required
@@ -94,13 +94,16 @@ def customer_create_view(request):
     if request.method == 'POST':
         form = CustomerForm(request.POST)
         assignments_formset = CustomerAssignmentFormSet(request.POST, prefix='assignments')
+        class_margins_formset = CustomerClassMarginFormSet(request.POST, prefix='class_margins')
 
-        if form.is_valid() and assignments_formset.is_valid():
+        if form.is_valid() and assignments_formset.is_valid() and class_margins_formset.is_valid():
             try:
                 assignments_data = [f.cleaned_data for f in assignments_formset if f.cleaned_data]
+                class_margins_data = [f.cleaned_data for f in class_margins_formset if f.cleaned_data]
                 new_customer = service.create_customer(
                     customer_data=form.cleaned_data,
                     assignments_data=assignments_data,
+                    class_margins_data=class_margins_data,
                 )
                 messages.success(request, f'Cliente {new_customer.id} registrado correctamente.')
                 next_url = request.GET.get('next') or request.POST.get('next')
@@ -122,10 +125,12 @@ def customer_create_view(request):
     else:
         form = CustomerForm()
         assignments_formset = CustomerAssignmentFormSet(prefix='assignments')
+        class_margins_formset = CustomerClassMarginFormSet(prefix='class_margins')
 
     context = {
         'form': form,
         'assignments_formset': assignments_formset,
+        'class_margins_formset': class_margins_formset,
         'can_update_access': service.has_full_access,
         'updating': None,
     }
@@ -158,14 +163,19 @@ def customer_update_view(request, pk: str):
         assignments_formset = CustomerAssignmentFormSet(
             request.POST, instance=customer_instance, prefix='assignments'
         )
+        class_margins_formset = CustomerClassMarginFormSet(
+            request.POST, instance=customer_instance, prefix='class_margins'
+        )
 
-        if form.is_valid() and assignments_formset.is_valid():
+        if form.is_valid() and assignments_formset.is_valid() and class_margins_formset.is_valid():
             try:
                 assignments_data = [f.cleaned_data for f in assignments_formset if f.cleaned_data]
+                class_margins_data = [f.cleaned_data for f in class_margins_formset if f.cleaned_data]
                 updated_customer = service.update_customer(
                     pk=pk,
                     customer_data=form.cleaned_data,
                     assignments_data=assignments_data,
+                    class_margins_data=class_margins_data,
                 )
                 messages.success(request, f"Cliente {updated_customer.id} actualizado correctamente.")
                 return redirect('customers:customer_detail_view', updated_customer.pk)
@@ -186,10 +196,14 @@ def customer_update_view(request, pk: str):
         assignments_formset = CustomerAssignmentFormSet(
             instance=customer_instance, prefix='assignments'
         )
+        class_margins_formset = CustomerClassMarginFormSet(
+            instance=customer_instance, prefix='class_margins'
+        )
 
     context = {
         'form': form,
         'assignments_formset': assignments_formset,
+        'class_margins_formset': class_margins_formset,
         'updating': customer_instance,
         'can_update_access': service.has_full_access,
     }
