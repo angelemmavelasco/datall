@@ -134,6 +134,12 @@ class SaleTransactionFilter(django_filters.FilterSet):
         widget=forms.CheckboxSelectMultiple,
         label='Ruta'
     )
+    business_unit = django_filters.ModelMultipleChoiceFilter(
+        field_name='route__business_unit',
+        queryset=BusinessUnit.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Gerencia'
+    )
     warehouse = django_filters.ModelMultipleChoiceFilter(
         field_name='warehouse',
         queryset=Warehouse.objects.all(),
@@ -181,6 +187,7 @@ class SaleTransactionFilter(django_filters.FilterSet):
         if request:
             from .services.routes import RoutesService
             self.filters['route'].queryset = RoutesService(user=request.user).read_routes()
+            self.filters['business_unit'].queryset = BusinessUnitsService(user=request.user).read_business_units()
             self.filters['warehouse'].queryset = Warehouse.objects.all()
             self.filters['customer'].queryset = Customer.objects.all().order_by('name', 'id')
             self.filters['product'].queryset = Product.objects.all().order_by('name', 'id')
