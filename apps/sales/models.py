@@ -144,11 +144,11 @@ class SaleTransaction(models.Model):
 
 class SaleTarget(models.Model):
     period = models.DateField()
-    route = models.ForeignKey('Route', on_delete=models.PROTECT, related_name='sale_targets')
-    warehouse = models.ForeignKey('Warehouse', on_delete=models.PROTECT, related_name='sale_targets')
-    product_class = models.ForeignKey('products.ProductClass', on_delete=models.PROTECT, related_name='sale_targets')
-    target_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal('0.00'))
-    is_valid_for_comission = models.BooleanField(default=True)
+    route = models.ForeignKey('Route', on_delete=models.PROTECT, related_name='sale_targets', help_text='Ruta del objetivo')
+    business_unit = models.ForeignKey('human_resources.BusinessUnit', on_delete=models.PROTECT, null=True, blank=True, related_name='sale_targets', help_text='Unidad de negocio del objetivo')
+    product_class = models.ForeignKey('products.ProductClass', on_delete=models.PROTECT, related_name='sale_targets', help_text='Clase de producto del objetivo')
+    target_amount = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal('0.00'), help_text='Monto objetivo')
+    is_valid_for_comission = models.BooleanField(default=True, help_text='Indica si el objetivo es válido para comisiones')
 
     class Meta:
         verbose_name = 'Objetivo de venta'

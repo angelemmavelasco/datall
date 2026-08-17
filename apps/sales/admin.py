@@ -113,12 +113,12 @@ class SaleTargetAdmin(admin.ModelAdmin):
     list_display = (
         'period',
         'route',
-        'warehouse',
+        'business_unit',
         'product_class',
         'target_amount',
         'is_valid_for_comission',
     )
-    list_filter = ('period', 'warehouse', 'is_valid_for_comission')
-    search_fields = ('route__id', 'route__name', 'product_class__name', 'warehouse__name')
-    autocomplete_fields = ['route', 'warehouse', 'product_class']
+    list_filter = ('period', 'business_unit', 'is_valid_for_comission')
+    search_fields = ('route__id', 'route__name', 'product_class__name', 'business_unit__name')
+    autocomplete_fields = ['route', 'business_unit', 'product_class']
     ordering = ('-period', 'route')

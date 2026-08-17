@@ -8,6 +8,7 @@ from apps.sales.models import (
     Route,
     RouteAssignment,
     UserRouteAccess,
+    SaleTarget,
 )
 
 
@@ -64,3 +65,36 @@ UserRouteAccessFormSet = inlineformset_factory(
     extra=1,
     can_delete=True,
 )
+
+
+class SaleTargetForm(forms.ModelForm):
+    period = forms.DateField(
+        widget=forms.DateInput(format='%Y-%m', attrs={'type': 'month'}),
+        input_formats=['%Y-%m', '%Y-%m-%d'],
+        label='Periodo (Mes)',
+    )
+
+    class Meta:
+        model = SaleTarget
+        fields = [
+            'period',
+            'route',
+            'business_unit',
+            'product_class',
+            'target_amount',
+            'is_valid_for_comission',
+        ]
+        widgets = {
+            'target_amount': forms.NumberInput(attrs={'step': '0.01', 'min': '0'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.period:
+            self.initial['period'] = self.instance.period.strftime('%Y-%m')
+
+    def clean_period(self):
+        period = self.cleaned_data.get('period')
+        if period:
+            return period.replace(day=1)
+        return period

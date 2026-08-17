@@ -17,6 +17,13 @@ from .sale_transactions import (
     ServiceError as SaleTransactionServiceError,
     PermissionsError as SaleTransactionPermissionsError,
 )
+from .sale_targets import (
+    SaleTargetsService,
+    SaleTargetsStats,
+    SaleTargetNotFound,
+    ServiceError as SaleTargetServiceError,
+    PermissionsError as SaleTargetPermissionsError,
+)
 
 __all__ = [
     'WarehousesService',
@@ -32,4 +39,9 @@ __all__ = [
     'SaleTransactionNotFound',
     'SaleTransactionServiceError',
     'SaleTransactionPermissionsError',
+    'SaleTargetsService',
+    'SaleTargetsStats',
+    'SaleTargetNotFound',
+    'SaleTargetServiceError',
+    'SaleTargetPermissionsError',
 ]

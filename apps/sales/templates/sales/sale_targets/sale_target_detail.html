@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block module_name %}
+Objetivo de venta: Ruta {{ target.route_id|upper }} - {{ target.product_class_id|upper }} ({{ target.period|date:'M Y'|upper }})
+{% endblock %}
+
+{% block title %}
+Objetivo de venta: {{ target.route_id|upper }}
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+    <a href="{% url 'sales:sale_target_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    <p class="text-title text-sm pb-2 border-b border-border">Información del objetivo de venta</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title">Periodo</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ target.period|default:"-"|date:'M Y'|upper }}
+        </div>
+
+        <span class="text-title">Ruta</span>
+        <div class="w-full text-body flex items-center">
+            {% if target.route %}
+                <a href="{% url 'sales:route_detail_view' target.route.id %}" class="underline hover:text-hover transition-colors font-medium">
+                    {{ target.route.id|upper }} {{ target.route.name|title }}
+                </a>
+            {% else %}
+                <span class="text-secondary italic">Sin ruta</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Gerencia asignada</span>
+        <div class="w-full text-body flex items-center">
+            {% if target.business_unit %}
+                <a href="{% url 'human_resources:business_unit_detail_view' target.business_unit.id %}" class="underline hover:text-hover transition-colors">
+                    {{ target.business_unit.id|upper }} - {{ target.business_unit.name|title }}
+                </a>
+            {% else %}
+                <span class="text-secondary italic">-</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Clase de producto</span>
+        <div class="w-full text-body flex items-center">
+            {{ target.product_class.id|upper }} - {{ target.product_class.name|title }}
+        </div>
+
+        <span class="text-title">Categoría de producto</span>
+        <div class="w-full text-body flex items-center">
+            {{ target.product_class.product_category.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Monto objetivo</span>
+        <div class="w-full text-body flex items-center font-mono font-medium text-emerald-500">
+            ${{ target.target_amount|default:0|floatformat:2|intcomma }}
+        </div>
+
+        <span class="text-title">Aplica para comisión</span>
+        <div class="w-full text-body flex items-center">
+            {% if target.is_valid_for_comission %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500 lucide lucide-circle-check-big-icon lucide-circle-check-big"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>
+            {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

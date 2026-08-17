@@ -1,0 +1,84 @@
+{% load humanize %}
+
+{% for target in targets %}
+    <tr>
+        <td class="p-2 truncate text-center text-xs ">
+            <a href="{% url 'sales:sale_target_detail_view' target.id %}" class="underline hover:text-hover transition-colors">
+                {{ target.period|default:'-'|date:'M Y'|title }}
+            </a>
+        </td>
+
+        <td class="p-2 truncate text-left text-xs">
+            {% if target.route %}
+                <a href="{% url 'sales:route_detail_view' target.route.id %}" class="underline hover:text-hover transition-colors">
+                    {{ target.route.id|upper }} {{ target.route.name|title }}
+                </a>
+            {% else %}
+                <span class="text-secondary italic">Sin ruta</span>
+            {% endif %}
+        </td>
+
+        <td class="p-2 truncate text-left text-xs">
+            {% if target.business_unit %}
+                <a href="{% url 'human_resources:business_unit_detail_view' target.business_unit.id %}" class="underline hover:text-hover transition-colors">
+                    {{ target.business_unit.name|title }}
+                </a>
+            {% else %}
+                <span class="text-secondary italic">-</span>
+            {% endif %}
+        </td>
+
+        <td class="p-2 truncate text-left text-xs ">
+            {% if target.product_class %}
+                <span title="{{ target.product_class.name }}">{{ target.product_class.name|title }}</span>
+            {% else %}
+                <span class="text-secondary italic">-</span>
+            {% endif %}
+        </td>
+
+        <td class="p-2 truncate text-right  text-xs">
+            ${{ target.target_amount|default:0|floatformat:2|intcomma }}
+        </td>
+
+        <td class="p-2 flex justify-center">
+            {% if target.is_valid_for_comission %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500 lucide lucide-circle-check-big-icon lucide-circle-check-big"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>
+            {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            {% endif %}
+        </td>
+    </tr>
+{% empty %}
+    <tr>
+        <td colspan="100%" class="py-50">
+            <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                {% include 'layouts/data_not_found.html' %}
+            </div>
+        </td>
+    </tr>
+{% endfor %}
+
+{% if page_obj.has_next %}
+<tr id="load-more-row-{{ page_obj.number }}">
+    <td colspan="100%" class="p-4 border-t border-border">
+        <div class="sticky left-1/2 -translate-x-1/2 w-max">
+            <button hx-get="{{ request.path }}?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}"
+                    hx-target="#load-more-row-{{ page_obj.number }}"
+                    hx-swap="outerHTML"
+                    class="group hover:text-hover text-strong transition-colors cursor-pointer border border-border rounded p-1 bg-page">
+                
+                <div class="flex items-center gap-2 group-[.htmx-request]:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down-icon lucide-circle-chevron-down"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg>
+                    <span>Mostrar más</span>
+                </div>
+
+                <div class="hidden items-center gap-2 group-[.htmx-request]:flex">
+                    {% include 'layouts/loading_animation_icon.html' %}
+                    <span class="text-strong">Cargando...</span>
+                </div>
+
+            </button>
+        </div>
+    </td>
+</tr>
+{% endif %}

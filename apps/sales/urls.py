@@ -10,6 +10,9 @@ from .views import (
     route_update_view,
     sale_transaction_list_view,
     sale_transaction_detail_view,
+    sale_target_list_view,
+    sale_target_detail_view,
+    sale_target_update_view,
 )
 
 app_name = 'sales'
@@ -27,4 +30,8 @@ urlpatterns = [
 
     path('transactions/', sale_transaction_list_view, name='sale_transaction_list_view'),
     path('transactions/<str:pk>/', sale_transaction_detail_view, name='sale_transaction_detail_view'),
+
+    path('targets/', sale_target_list_view, name='sale_target_list_view'),
+    path('targets/<int:pk>/', sale_target_detail_view, name='sale_target_detail_view'),
+    path('targets/<int:pk>/update/', sale_target_update_view, name='sale_target_update_view'),
 ]

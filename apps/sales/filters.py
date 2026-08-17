@@ -8,7 +8,7 @@ from apps.human_resources.services.employees import EmployeesService
 from apps.human_resources.services.business_units import BusinessUnitsService
 from apps.customers.models import Customer
 from apps.products.models import Product, ProductClass, ProductCategory
-from .models import Warehouse, Route, RouteType, SaleChannel, SaleTransaction
+from .models import Warehouse, Route, RouteType, SaleChannel, SaleTransaction, SaleTarget
 
 
 class WarehouseFilter(django_filters.FilterSet):
@@ -194,3 +194,80 @@ class SaleTransactionFilter(django_filters.FilterSet):
             Q(product__id__icontains=value) |
             Q(product__name__icontains=value)
         ).distinct()
+
+class SaleTargetFilter(django_filters.FilterSet):
+    search = django_filters.CharFilter(
+        method='filter_search',
+        label='Búsqueda general'
+    )
+    route = django_filters.ModelMultipleChoiceFilter(
+        field_name='route',
+        queryset=Route.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Ruta'
+    )
+    business_unit = django_filters.ModelMultipleChoiceFilter(
+        field_name='business_unit',
+        queryset=BusinessUnit.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Gerencia'
+    )
+    product_class = django_filters.ModelMultipleChoiceFilter(
+        field_name='product_class',
+        queryset=ProductClass.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Clase de producto'
+    )
+    is_valid_for_comission = django_filters.TypedMultipleChoiceFilter(
+        choices=[('True', 'Aplica comisión'), ('False', 'No aplica comisión')],
+        coerce=lambda x: x == 'True',
+        widget=forms.CheckboxSelectMultiple,
+        label='Aplica comisión'
+    )
+    period_from = django_filters.DateFilter(
+        method='filter_period_from',
+        label='Periodo (Desde)',
+        input_formats=['%Y-%m', '%Y-%m-%d'],
+        widget=forms.DateInput(format='%Y-%m', attrs={'type': 'month'})
+    )
+    period_to = django_filters.DateFilter(
+        method='filter_period_to',
+        label='Periodo (Hasta)',
+        input_formats=['%Y-%m', '%Y-%m-%d'],
+        widget=forms.DateInput(format='%Y-%m', attrs={'type': 'month'})
+    )
+
+    class Meta:
+        model = SaleTarget
+        fields = []
+
+    def __init__(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+        if request:
+            from .services.routes import RoutesService
+            self.filters['route'].queryset = RoutesService(user=request.user).read_routes()
+            self.filters['business_unit'].queryset = BusinessUnitsService(user=request.user).read_business_units()
+            self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
+
+    def filter_search(self, queryset, name, value):
+        return queryset.filter(
+            Q(route__id__icontains=value) |
+            Q(route__name__icontains=value) |
+            Q(business_unit__id__icontains=value) |
+            Q(business_unit__name__icontains=value) |
+            Q(product_class__id__icontains=value) |
+            Q(product_class__name__icontains=value)
+        ).distinct()
+
+    def filter_period_from(self, queryset, name, value):
+        if value:
+            return queryset.filter(period__gte=value.replace(day=1))
+        return queryset
+
+    def filter_period_to(self, queryset, name, value):
+        if value:
+            import calendar
+            _, last_day = calendar.monthrange(value.year, value.month)
+            return queryset.filter(period__lte=value.replace(day=last_day))
+        return queryset

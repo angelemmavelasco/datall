@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.utils import timezone
 from .services.warehouses import (
     WarehousesService,
     WarehouseNotFound,
@@ -21,14 +22,22 @@ from .services.sale_transactions import (
     ServiceError as SaleTransactionServiceError,
     PermissionsError as SaleTransactionPermissionsError,
 )
+from .services.sale_targets import (
+    SaleTargetsService,
+    SaleTargetsStats,
+    SaleTargetNotFound,
+    ServiceError as SaleTargetServiceError,
+    PermissionsError as SaleTargetPermissionsError,
+)
 from apps.customers.services.customers import CustomersService
 from apps.products.services.products import ProductsService
-from .filters import WarehouseFilter, RouteFilter, SaleTransactionFilter
+from .filters import WarehouseFilter, RouteFilter, SaleTransactionFilter, SaleTargetFilter
 from .forms import (
     WarehouseForm,
     RouteForm,
     RouteAssignmentFormSet,
     UserRouteAccessFormSet,
+    SaleTargetForm,
 )
 
 @login_required
@@ -397,5 +406,124 @@ def sale_transaction_detail_view(request, pk: str):
     context = {
         'transaction': transaction_obj,
         'can_view_cost': service.has_full_access,
+    }
+    return render(request, template, context)
+
+@login_required
+def sale_target_list_view(request):
+    template = 'sales/sale_targets/sale_target_list.html'
+    service = SaleTargetsService(user=request.user)
+    stats_service = SaleTargetsStats(sale_targets_service=service)
+
+    query_dict = request.GET.copy()
+    if 'period_from' not in request.GET and 'period_to' not in request.GET:
+        current_month = timezone.localdate().strftime('%Y-%m')
+        query_dict['period_from'] = current_month
+        query_dict['period_to'] = current_month
+
+    targets_qs = service.read_sale_targets()
+    target_filter = SaleTargetFilter(query_dict, queryset=targets_qs, request=request)
+    targets_qs = target_filter.qs
+
+    paginator = Paginator(targets_qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    if 'page' in query_dict:
+        del query_dict['page']
+
+    targets = page_obj.object_list
+    kpis = stats_service.stats(qs=targets_qs)
+
+    context = {
+        'targets': targets,
+        'kpis': kpis,
+        'query_string': query_dict.urlencode(),
+        'page_obj': page_obj,
+        'filter': target_filter,
+    }
+
+    if request.htmx:
+        target = request.headers.get('HX-Target')
+        if target == 'sale-target-list-content':
+            return render(request, 'sales/sale_targets/partials/sale_target_list_content.html', context)
+        return render(request, 'sales/sale_targets/partials/sale_target_list_rows.html', context)
+
+    return render(request, template, context)
+
+@login_required
+def sale_target_detail_view(request, pk: int):
+    template = 'sales/sale_targets/sale_target_detail.html'
+    service = SaleTargetsService(user=request.user)
+
+    available_actions = None
+    if service.has_full_access:
+        available_actions = 'sales/sale_targets/partials/sale_target_detail__actions.html'
+
+    try:
+        target_obj = service.read_sale_target(pk=pk)
+    except (SaleTargetNotFound, PermissionsError, SaleTargetPermissionsError) as e:
+        messages.error(request, str(e))
+        return redirect('sales:sale_target_list_view')
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al cargar el objetivo de venta: {str(e)}")
+        return redirect('sales:sale_target_list_view')
+
+    context = {
+        'target': target_obj,
+        'available_actions': available_actions,
+    }
+    return render(request, template, context)
+
+@login_required
+def sale_target_update_view(request, pk: int):
+    template = 'sales/sale_targets/sale_target_form.html'
+    service = SaleTargetsService(user=request.user)
+
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para actualizar objetivos de venta.')
+        return redirect('sales:sale_target_detail_view', pk=pk)
+
+    try:
+        target_instance = service.read_sale_target(pk=pk)
+    except SaleTargetNotFound:
+        messages.error(request, "El objetivo de venta solicitado no existe.")
+        return redirect('sales:sale_target_list_view')
+    except (PermissionsError, SaleTargetPermissionsError):
+        messages.error(request, "No tienes permisos para actualizar este objetivo de venta.")
+        return redirect('sales:sale_target_list_view')
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect('sales:sale_target_list_view')
+
+    if request.method == 'POST':
+        form = SaleTargetForm(request.POST, instance=target_instance)
+
+        if form.is_valid():
+            try:
+                updated_target = service.update_sale_target(
+                    pk=pk,
+                    target_data=form.cleaned_data,
+                )
+                messages.success(request, f"Objetivo de venta para ruta {updated_target.route_id} actualizado correctamente.")
+                return redirect('sales:sale_target_detail_view', updated_target.pk)
+
+            except (SaleTargetPermissionsError, PermissionsError) as e:
+                messages.error(request, str(e))
+                return redirect('sales:sale_target_list_view')
+
+            except (SaleTargetServiceError, ServiceError) as e:
+                messages.error(request, str(e))
+
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al actualizar: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = SaleTargetForm(instance=target_instance)
+
+    context = {
+        'form': form,
+        'updating': target_instance,
     }
     return render(request, template, context)
