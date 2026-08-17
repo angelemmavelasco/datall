@@ -247,6 +247,29 @@ def module_update_view(request, pk: int):
 def upload_options_list_view(request):
     template = 'core/uploads/upload_options_list.html'
 
+    if request.method == 'POST':
+        model_key = request.POST.get('model_key', '').strip()
+        file_obj = request.FILES.get('file')
+
+        if not model_key:
+            messages.error(request, 'No se especificó la entidad o catálogo a importar.')
+            return redirect('core:upload_options_list_view')
+
+        if not file_obj:
+            messages.error(request, 'Debes seleccionar un archivo para importar (.xlsx, .xls, .csv).')
+            return redirect('core:upload_options_list_view')
+
+        from apps.core.services.uploads import UploadsService
+        service = UploadsService(user=request.user)
+        result = service.process_upload(model_key=model_key, file_obj=file_obj)
+
+        if result.success:
+            messages.success(request, result.message)
+        else:
+            messages.error(request, result.message)
+
+        return redirect('core:upload_options_list_view')
+
     upload_options = [
         {
             'key': 'product',
@@ -299,3 +322,4 @@ def upload_options_list_view(request):
         'upload_options': upload_options,
     }
     return render(request, template, context)
+

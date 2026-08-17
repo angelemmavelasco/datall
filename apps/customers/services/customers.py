@@ -361,6 +361,230 @@ class CustomersService(UsersService):
         except Exception as e:
             raise ServiceError(f"Error al eliminar el cliente: {str(e)}")
 
+    def _clean_customers(self, file_obj) -> tuple[bool, str | object]:
+        try:
+            import pandas as pd
+        except ImportError:
+            return False, "La librería 'pandas' no está instalada en el entorno."
+
+        from apps.core.services.uploads import BaseETLHelper
+        from django.contrib.contenttypes.models import ContentType
+        from apps.core.models import Reference
+        import datetime
+
+        is_valid, df_or_err = BaseETLHelper.read_file_to_dataframe(file_obj)
+        if not is_valid:
+            return False, df_or_err
+
+        df = df_or_err
+        df = BaseETLHelper.apply_reference_column_mappings(
+            df,
+            self.customer_model,
+            submodule_name='importacion',
+            context='columna'
+        )
+        df = BaseETLHelper.resolve_foreign_key_columns(df, self.customer_model)
+
+        if 'route' in df.columns and 'route_id' not in df.columns:
+            df.rename(columns={'route': 'route_id'}, inplace=True)
+
+        if 'id' not in df.columns:
+            return False, f"El archivo debe contener una columna identificadora mapeada a 'id'. Columnas encontradas: {', '.join(df.columns)}"
+
+        valid_types = set(self.customer_type_model.objects.values_list('id', flat=True))
+        default_type = 'otr' if 'otr' in valid_types else (next(iter(valid_types)) if valid_types else 'otr')
+
+        if 'customer_type_id' in df.columns:
+            ct_type = ContentType.objects.get_for_model(self.customer_type_model)
+            type_references = Reference.objects.filter(
+                content_type=ct_type,
+                context__icontains='valor',
+            )
+            type_map = {}
+            for ref in type_references:
+                k = str(ref.key).strip().lower()
+                v = str(ref.value).strip() if getattr(ref, 'value', '') else str(getattr(ref, 'reference', '')).strip()
+                if k and v:
+                    type_map[k] = v
+            
+            raw_series = df['customer_type_id'].astype(str).str.strip().str.lower()
+            if type_map:
+                mapped_series = raw_series.map(type_map).fillna(raw_series)
+            else:
+                mapped_series = raw_series
+
+            df['customer_type_id'] = mapped_series.apply(
+                lambda x: x if x in valid_types else default_type
+            )
+        else:
+            df['customer_type_id'] = default_type
+
+        if 'registration_date' in df.columns:
+            df['registration_date'] = pd.to_datetime(df['registration_date'], errors='coerce')
+            df['registration_date'] = df['registration_date'].fillna(pd.Timestamp('2020-01-01')).dt.date
+        else:
+            df['registration_date'] = datetime.datetime.strptime('2020-01-01', '%Y-%m-%d').date()
+
+        if 'credit_limit' in df.columns:
+            df['credit_limit'] = pd.to_numeric(
+                df['credit_limit'].astype(str).str.replace(r'[$, ]', '', regex=True),
+                errors='coerce'
+            ).fillna(0.0)
+
+        if 'credit_days' in df.columns:
+            df['credit_days'] = pd.to_numeric(
+                df['credit_days'],
+                errors='coerce'
+            ).fillna(0).astype(int)
+
+        df['id'] = df['id'].astype(str).str.strip()
+        if 'name' in df.columns:
+            df['name'] = df['name'].astype(str).str.strip()
+
+        df = df.where(pd.notnull(df), None)
+
+        return True, df
+
+
+    def bulk_create_customers(self, file_obj) -> object:
+        from apps.core.services.uploads import ImportResult, PermissionsError
+        from apps.sales.models import Route
+        from django.db import transaction
+
+        if not self.has_full_access:
+            raise PermissionsError('No tienes permisos suficientes para realizar cargas masivas de clientes.')
+
+        is_valid, df_or_err = self._clean_customers(file_obj)
+        if not is_valid:
+            return ImportResult(success=False, message=df_or_err)
+
+        df = df_or_err
+
+        created_count = 0
+        updated_count = 0
+        total_processed = 0
+
+        model_fields = [f.name for f in self.customer_model._meta.get_fields() if not f.is_relation]
+        model_fields.extend([f.attname for f in self.customer_model._meta.get_fields() if f.is_relation and hasattr(f, 'attname')])
+        
+        valid_columns = [col for col in df.columns if col in model_fields and col != 'opinion_leader']
+
+        ids_in_df = df['id'].dropna().astype(str).tolist()
+        existing_customers = self.customer_model.objects.in_bulk(ids_in_df)
+
+        today = timezone.now().date()
+        yesterday = today - timezone.timedelta(days=1)
+
+        active_assignments = {
+            assign.customer_id: assign
+            for assign in self.customer_assignment_model.objects.filter(
+                customer_id__in=ids_in_df,
+                end_date__isnull=True
+            )
+        }
+        valid_routes = set(Route.objects.values_list('id', flat=True))
+        valid_routes_map = {str(r).strip().lower(): r for r in valid_routes}
+
+        customers_to_create = []
+        customers_to_update = []
+        assignments_to_update = []
+        assignments_to_create = []
+
+        for _, row in df.iterrows():
+            cid = str(row.get('id')).strip()
+            if not cid or cid in ('None', 'nan', 'null', ''):
+                continue
+
+            data = {}
+            for col in valid_columns:
+                val = row[col]
+                if val is not None and str(val).lower() != 'nan':
+                    data[col] = val
+            data['id'] = cid
+            raw_route = row.get('route_id')
+            route_id = None
+            if raw_route is not None:
+                route_str = str(raw_route).strip()
+                if route_str.lower() not in ('none', 'nan', 'null', ''):
+                    route_id = valid_routes_map.get(route_str.lower())
+
+            total_processed += 1
+
+            if cid in existing_customers:
+                customer = existing_customers[cid]
+                for key, value in data.items():
+                    if key != 'opinion_leader':
+                        setattr(customer, key, value)
+                customers_to_update.append(customer)
+                updated_count += 1
+
+                if route_id is not None:
+                    current_assignment = active_assignments.get(cid)
+                    if current_assignment:
+                        if str(current_assignment.route_id) != str(route_id):
+                            current_assignment.end_date = yesterday
+                            assignments_to_update.append(current_assignment)
+                            
+                            assignments_to_create.append(
+                                self.customer_assignment_model(
+                                    customer_id=cid,
+                                    route_id=route_id,
+                                    start_date=today
+                                )
+                            )
+                    else:
+                        assignments_to_create.append(
+                            self.customer_assignment_model(
+                                customer_id=cid,
+                                route_id=route_id,
+                                start_date=today
+                            )
+                        )
+            else:
+                customer = self.customer_model(**data)
+                customers_to_create.append(customer)
+                created_count += 1
+
+                if route_id is not None:
+                    assignments_to_create.append(
+                        self.customer_assignment_model(
+                            customer_id=cid,
+                            route_id=route_id,
+                            start_date=today
+                        )
+                    )
+
+
+        try:
+            with transaction.atomic():
+                if customers_to_create:
+                    self.customer_model.objects.bulk_create(customers_to_create, batch_size=500)
+                
+                if customers_to_update:
+                    update_fields = [col for col in valid_columns if col != 'id' and col != 'opinion_leader']
+                    if update_fields:
+                        self.customer_model.objects.bulk_update(customers_to_update, update_fields, batch_size=500)
+                
+                if assignments_to_update:
+                    self.customer_assignment_model.objects.bulk_update(assignments_to_update, ['end_date'], batch_size=500)
+                
+                if assignments_to_create:
+                    self.customer_assignment_model.objects.bulk_create(assignments_to_create, batch_size=500)
+            
+            return ImportResult(
+                success=True,
+                message=f"Importación exitosa. Se crearon {created_count} clientes y se actualizaron {updated_count}.",
+                total_processed=total_processed,
+                created_count=created_count,
+                updated_count=updated_count
+            )
+        except Exception as e:
+            return ImportResult(
+                success=False,
+                message=f"Error durante la inserción/actualización masiva: {str(e)}",
+                total_processed=total_processed,
+                errors=[str(e)]
+            )
 
 @dataclass
 class CustomersStats:

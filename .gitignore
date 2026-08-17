@@ -13,3 +13,4 @@ venv/
 users/
 seed_*.py
 legacy_code
+db.*

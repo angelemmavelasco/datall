@@ -136,31 +136,38 @@ class BaseETLHelper:
         cls,
         df: pd.DataFrame,
         model: type[models.Model],
-        submodule_name: str = 'importación de datos',
+        submodule_name: str = 'importacion',
         context: str = 'columna'
     ) -> pd.DataFrame:
         """
-        renames DataFrame columns according to the Reference mapping rules for the target model.
+        renames DataFrame columns according to the Reference mapping rules for the target model (case-insensitive).
         """
         ctype = ContentType.objects.get_for_model(model)
 
-        references = Reference.objects.filter(
-            content_type=ctype
-        )
-        if submodule_name:
-            references = references.filter(submodule__name__icontains=submodule_name)
+        references = Reference.objects.filter(content_type=ctype)
         if context:
             references = references.filter(context__icontains=context)
 
+        if submodule_name:
+            submodule_refs = references.filter(submodule__name__icontains=submodule_name)
+            if submodule_refs.exists():
+                references = submodule_refs
+
         column_map = {}
         for ref in references:
-            raw_key = str(ref.key).strip()
-            target_val = str(ref.value).strip() if hasattr(ref, 'value') else str(getattr(ref, 'reference', '')).strip()
+            raw_key = str(ref.key).strip().lower()
+            target_val = str(ref.value).strip() if hasattr(ref, 'value') and ref.value else str(getattr(ref, 'reference', '')).strip()
             if raw_key and target_val:
                 column_map[raw_key] = target_val
 
-        if column_map:
-            df.rename(columns=column_map, inplace=True)
+        new_columns = {}
+        for col in df.columns:
+            cleaned_col = str(col).strip().lower()
+            if cleaned_col in column_map:
+                new_columns[col] = column_map[cleaned_col]
+
+        if new_columns:
+            df.rename(columns=new_columns, inplace=True)
 
         return df
 
@@ -258,14 +265,20 @@ class UploadsService(UsersService):
         """
         validates permissions, verifies file integrity, and dispatches to the corresponding domain service.
         """
-        self.validate_permission()
+        try:
+            self.validate_permission()
+        except PermissionsError as e:
+            return ImportResult(success=False, message=str(e))
 
-        #validation
+        if not model_key:
+            return ImportResult(success=False, message="No se especificó la entidad o catálogo a importar.")
+
+        # validation
         is_valid, validation_msg = BaseETLHelper.validate_file(file_obj)
         if not is_valid:
             return ImportResult(success=False, message=validation_msg)
 
-        #registry lookup
+        # registry lookup
         importers = self.get_registered_importers()
         normalized_key = model_key.lower().strip()
         importer = importers.get(normalized_key)
@@ -276,11 +289,12 @@ class UploadsService(UsersService):
                 message=f'No se encontró un procesador de importación registrado para la entidad "{model_key}".'
             )
 
-        #exec
+        # exec
         try:
             return importer(file_obj)
         except Exception as e:
             return ImportResult(
                 success=False,
-                message=f'Ocurrió un error durante la ejecución de la importación: {str(e)}'
+                message=f'Ocurrió un error durante la ejecución de la importación: {str(e)}',
+                errors=[str(e)]
             )

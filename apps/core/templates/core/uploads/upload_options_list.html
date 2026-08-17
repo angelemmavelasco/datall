@@ -17,7 +17,6 @@
         Catálogos y entidades disponibles
     </p>
 
-    <!-- Options Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for option in upload_options %}
         <div class="bg-container border border-border rounded p-4 flex flex-col justify-between gap-4 hover:border-strong hover:scale-100.5 transition-all duration-200 group">
@@ -43,7 +42,7 @@
                 </div>
 
                 <div class="flex flex-col gap-1">
-                    <h3 class="text-title">
+                    <h3 class="text-title font-medium">
                         {{ option.title }}
                     </h3>
                     <p class="text-body text-xs leading-relaxed">
@@ -60,7 +59,9 @@
                 </div>
             </div>
 
-            <button type="button"class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+            <button type="button"
+                    onclick="openUploadModal('{{ option.key }}', '{{ option.title }}', '{{ option.app_label }}')"
+                    class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1 font-medium">
                 <span>Importar</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </button>
@@ -68,4 +69,274 @@
         {% endfor %}
     </div>
 </div>
+
+<div id="upload-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+    <div class="bg-container border border-border rounded shadow-xl w-full max-w-md overflow-hidden flex flex-col transition-all"
+         onclick="event.stopPropagation()">
+        
+        <div id="upload-loading-view" class="hidden flex flex-col items-center justify-center py-10 p-2 gap-4 text-center select-none">
+            <div class="text-hover scale-150 py-2">
+                {% include 'layouts/loading_animation_icon.html' %}
+            </div>
+            <div class="flex flex-col gap-1.5 max-w-xs">
+                <span class="text-title font-medium text-sm">Importando registros...</span>
+                <p class="text-xs text-muted leading-relaxed">
+                    Procesando el archivo tabular, homologando referencias y actualizando la base de datos. Por favor, espera un momento.
+                </p>
+            </div>
+        </div>
+
+        <div id="upload-modal-content" class="flex flex-col">
+            <div class="flex items-center justify-between p-3 border-b border-border bg-page">
+                <div class="flex items-center gap-2 min-w-0">
+                    <div class="p-1 rounded bg-container border border-border text-title shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload text-muted">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" x2="12" y1="3" y2="15"/>
+                        </svg>
+                    </div>
+                    <div class="flex flex-col min-w-0">
+                        <h3 class="text-title font-medium truncate text-xs" id="modal-catalog-title">Importar Datos</h3>
+                        <span class="text-[10px] text-muted truncate" id="modal-catalog-app">Selecciona el archivo tabular</span>
+                    </div>
+                </div>
+                <button type="button" onclick="closeUploadModal()" class="text-muted hover:text-hover cursor-pointer p-1 transition-colors shrink-0" title="Cerrar modal">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="m15 9-6 6"/>
+                        <path d="m9 9 6 6"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="upload-form" method="POST" enctype="multipart/form-data" action="{% url 'core:upload_options_list_view' %}" class="flex flex-col">
+                {% csrf_token %}
+                <input type="hidden" name="model_key" id="modal-model-key" value="">
+                <input type="file" id="modal-file-input" name="file" accept=".xlsx,.xls,.csv" class="hidden">
+
+                <div class="p-4 flex flex-col gap-3 text-xs">
+                    <div id="dropzone-container"
+                         onclick="document.getElementById('modal-file-input').click()"
+                         class="border border-border hover:border-strong rounded p-2 text-center cursor-pointer bg-page hover:bg-hover/20 transition-all flex flex-col items-center justify-center gap-2 group select-none">
+                        <div class="text-muted group-hover:text-hover transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-up">
+                                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+                                <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+                                <path d="M12 12v6"/>
+                                <path d="m15 15-3-3-3 3"/>
+                            </svg>
+                        </div>
+                        <div class="flex flex-col gap-0.5">
+                            <span class="text-title">Seleccionar archivo</span>
+                            <span class="text-[10px] text-muted">Formatos compatibles: .xlsx, .xls o .csv</span>
+                        </div>
+                    </div>
+
+                    <div id="selected-file-container" class="hidden flex items-center justify-between p-2 rounded bg-page border border-border">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <div class="p-2 rounded bg-container border border-border text-emerald-500 shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-spreadsheet">
+                                    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+                                    <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+                                    <path d="M8 13h2"/>
+                                    <path d="M14 13h2"/>
+                                    <path d="M8 17h2"/>
+                                    <path d="M14 17h2"/>
+                                </svg>
+                            </div>
+                            <div class="flex flex-col min-w-0">
+                                <span id="selected-file-name" class="text-title text-wrap">archivo.xlsx</span>
+                                <span id="selected-file-size" class="text-[10px] text-muted font-mono">0 KB</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="clearSelectedFile()" class="text-muted hover:text-hover cursor-pointer p-1 rounded hover:bg-hover transition-colors shrink-0" title="Eliminar archivo">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <p class="text-[10px] text-muted leading-relaxed">
+                        * El proceso ejecutará una carga atómica por lotes con homologación de referencias y actualización de registros existentes.
+                    </p>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 p-3 border-t border-border bg-page text-xs">
+                    <button type="button"
+                            onclick="closeUploadModal()"
+                            class="text-muted hover:text-hover cursor-pointer transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                            id="upload-submit-btn"
+                            disabled
+                            class="opacity-40 cursor-not-allowed hover:text-hover text-strong transition-colors flex items-center gap-1 font-medium">
+                        <span id="upload-submit-text">Confirmar</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function resetModalViews() {
+        const modalContent = document.getElementById('upload-modal-content');
+        const loadingView = document.getElementById('upload-loading-view');
+        if (modalContent) modalContent.classList.remove('hidden');
+        if (loadingView) {
+            loadingView.classList.add('hidden');
+            loadingView.classList.remove('flex');
+        }
+    }
+
+    function isCurrentlyUploading() {
+        const loadingView = document.getElementById('upload-loading-view');
+        return loadingView && !loadingView.classList.contains('hidden');
+    }
+
+    function openUploadModal(key, title, appLabel) {
+        document.getElementById('modal-model-key').value = key;
+        document.getElementById('modal-catalog-title').textContent = title;
+        document.getElementById('modal-catalog-app').textContent = appLabel;
+        
+        clearSelectedFile();
+        resetModalViews();
+
+        const modal = document.getElementById('upload-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeUploadModal() {
+        if (isCurrentlyUploading()) return;
+
+        const modal = document.getElementById('upload-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        clearSelectedFile();
+        resetModalViews();
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function handleFileSelection(file) {
+        if (!file) return;
+
+        const fileNameSpan = document.getElementById('selected-file-name');
+        const fileSizeSpan = document.getElementById('selected-file-size');
+        const dropzone = document.getElementById('dropzone-container');
+        const filePreview = document.getElementById('selected-file-container');
+        const submitBtn = document.getElementById('upload-submit-btn');
+
+        fileNameSpan.textContent = file.name;
+        fileSizeSpan.textContent = formatFileSize(file.size);
+
+        dropzone.classList.add('hidden');
+        filePreview.classList.remove('hidden');
+
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+        submitBtn.classList.add('cursor-pointer');
+    }
+
+    function clearSelectedFile() {
+        const fileInput = document.getElementById('modal-file-input');
+        const dropzone = document.getElementById('dropzone-container');
+        const filePreview = document.getElementById('selected-file-container');
+        const submitBtn = document.getElementById('upload-submit-btn');
+
+        if (fileInput) fileInput.value = '';
+        if (dropzone) dropzone.classList.remove('hidden');
+        if (filePreview) filePreview.classList.add('hidden');
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-40', 'cursor-not-allowed');
+            submitBtn.classList.remove('cursor-pointer');
+            document.getElementById('upload-submit-text').textContent = 'Confirmar';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const fileInput = document.getElementById('modal-file-input');
+        const dropzone = document.getElementById('dropzone-container');
+        const uploadForm = document.getElementById('upload-form');
+        const modal = document.getElementById('upload-modal');
+
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    handleFileSelection(e.target.files[0]);
+                }
+            });
+        }
+
+        if (dropzone) {
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.add('border-strong', 'bg-hover/20');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.remove('border-strong', 'bg-hover/20');
+                }, false);
+            });
+
+            dropzone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files && files.length > 0) {
+                    fileInput.files = files;
+                    handleFileSelection(files[0]);
+                }
+            });
+        }
+
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', (e) => {
+                const modalContent = document.getElementById('upload-modal-content');
+                const loadingView = document.getElementById('upload-loading-view');
+                const submitBtn = document.getElementById('upload-submit-btn');
+
+                if (submitBtn) submitBtn.disabled = true;
+
+                if (modalContent) modalContent.classList.add('hidden');
+                if (loadingView) {
+                    loadingView.classList.remove('hidden');
+                    loadingView.classList.add('flex');
+                }
+            });
+        }
+
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal && !isCurrentlyUploading()) {
+                    closeUploadModal();
+                }
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden') && !isCurrentlyUploading()) {
+                closeUploadModal();
+            }
+        });
+    });
+</script>
 {% endblock %}
+
