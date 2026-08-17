@@ -55,6 +55,12 @@ class ThemedAdminSite(admin.AdminSite):
                 'app_label': 'sales_inventario',
                 'models': [
                     'Warehouse',
+                    'Product',
+                    'ProductCategory',
+                    'ProductClass',
+                    'ProductProperty',
+                    'ProductPropertyValue',
+                    'Stock',
                 ]
             },
             {
@@ -71,7 +77,10 @@ class ThemedAdminSite(admin.AdminSite):
             {
                 'name': 'Ventas',
                 'app_label': 'sales_ventas',
-                'models': []
+                'models': [
+                    'SaleTransaction',
+                    'SaleTarget',
+                ]
             },
             {
                 'name': 'Clientes',

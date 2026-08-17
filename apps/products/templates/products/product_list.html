@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}
+    Productos
+{% endblock %}
+
+{% block module_name %}
+    Productos
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+
+    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"><path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+{% endblock %}
+
+{% block content %}
+    {% include "products/partials/product_list_content.html" %}
+{% endblock %}
+
+{% block filters %}
+<form hx-get="{% url 'products:product_list_view' %}" hx-target="#product-list-content" hx-swap="outerHTML" hx-push-url="true" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.name.id_for_label }}" class="text-title">{{ filter.form.name.label }}</label>
+        {% render_field filter.form.name class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre, ID o código de barras" %}
+    </div>
+
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.product_category.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong" placeholder="Buscar categoría">
+            <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
+                {% for choice in filter.form.product_category %}
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                        {{ choice.tag }}
+                        <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.product_class.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong" placeholder="Buscar clase">
+            <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
+                {% for choice in filter.form.product_class %}
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                        {{ choice.tag }}
+                        <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.is_active.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-1">
+            {% for choice in filter.form.is_active %}
+                <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                    {{ choice.tag }}
+                    <span class="option-label truncate">{{ choice.choice_label }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const normalizeString = (str) => {
+                return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            };
+
+            const initFilters = () => {
+                const filterGroups = document.querySelectorAll('.filter-group');
+
+                filterGroups.forEach(group => {
+                    const searchInput = group.querySelector('.filter-search');
+                    const selectAllCheckbox = group.querySelector('.filter-select-all');
+                    const optionsList = group.querySelectorAll('.filter-option');
+                    
+                    const updateSelectAllState = () => {
+                        if (!selectAllCheckbox) return;
+                        const visibleOptions = Array.from(optionsList).filter(opt => opt.style.display !== 'none');
+                        const allVisibleChecked = visibleOptions.length > 0 && visibleOptions.every(opt => {
+                            const cb = opt.querySelector('input[type="checkbox"]');
+                            return cb && cb.checked;
+                        });
+                        selectAllCheckbox.checked = allVisibleChecked;
+                    };
+
+                    if (searchInput) {
+                        searchInput.addEventListener('input', function(e) {
+                            const term = normalizeString(e.target.value);
+                            optionsList.forEach(option => {
+                                const labelSpan = option.querySelector('.option-label');
+                                if (labelSpan) {
+                                    const labelText = normalizeString(labelSpan.textContent);
+                                    if (labelText.includes(term)) {
+                                        option.style.display = '';
+                                    } else {
+                                        option.style.display = 'none';
+                                    }
+                                }
+                            });
+                            updateSelectAllState();
+                        });
+                    }
+
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.addEventListener('change', function(e) {
+                            const isChecked = e.target.checked;
+                            optionsList.forEach(option => {
+                                if (option.style.display !== 'none') {
+                                    const checkbox = option.querySelector('input[type="checkbox"]');
+                                    if (checkbox && !checkbox.disabled) {
+                                        checkbox.checked = isChecked;
+                                    }
+                                }
+                            });
+                        });
+                        
+                        optionsList.forEach(option => {
+                            const checkbox = option.querySelector('input[type="checkbox"]');
+                            if (checkbox) {
+                                checkbox.addEventListener('change', updateSelectAllState);
+                            }
+                        });
+
+                        updateSelectAllState();
+                    }
+                });
+            };
+
+            initFilters();
+            document.body.addEventListener('htmx:afterSwap', initFilters);
+        });
+    </script>
+</form>
+{% endblock %}

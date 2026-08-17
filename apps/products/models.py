@@ -48,12 +48,12 @@ class ProductProperty(models.Model):
 
 class Product(models.Model):
     id = models.CharField(primary_key=True, max_length=255, help_text='Identificador del producto')
-    barcode = models.CharField(blank=True, null=True, max_length=255, help_text='Código de barras del producto')
-    name = models.CharField(max_length=255, null=True, blank=True, help_text='Nombre del producto')
+    barcode = models.CharField(blank=True, default='', max_length=255, help_text='Código de barras del producto')
+    name = models.CharField(max_length=255, default='', blank=True, help_text='Nombre del producto')
     product_class = models.ForeignKey('ProductClass', on_delete=models.PROTECT, related_name='products', null=True, blank=True, help_text='Clase del producto')
     cost = models.DecimalField(max_digits=14, decimal_places=4, default=Decimal('0.00'), blank=True, help_text='Costo del producto')
     price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'), blank=True, help_text='Precio del producto')
-    unit_of_measure = models.CharField(max_length=255, null=True, blank=True, help_text='Unidad de medida del producto')
+    unit_of_measure = models.CharField(max_length=255, default='', blank=True, help_text='Unidad de medida del producto')
     is_active = models.BooleanField(default=True, help_text='Indica si el producto está activo')
     properties = models.ManyToManyField('ProductProperty',through='ProductPropertyValue',related_name='products',blank=True,help_text='Propiedades del producto')
 

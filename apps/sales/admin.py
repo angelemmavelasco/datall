@@ -6,6 +6,8 @@ from .models import (
     Route,
     RouteAssignment,
     UserRouteAccess,
+    SaleTransaction,
+    SaleTarget,
 )
 
 
@@ -85,3 +87,38 @@ class UserRouteAccessAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ['user', 'route']
     ordering = ('user', 'route')
+
+
+@admin.register(SaleTransaction)
+class SaleTransactionAdmin(admin.ModelAdmin):
+    list_display = (
+        'doc_id',
+        'sale_date',
+        'customer',
+        'route',
+        'warehouse',
+        'product',
+        'quantity',
+        'gross_amount',
+        'net_amount',
+    )
+    list_filter = ('sale_date', 'warehouse', 'route')
+    search_fields = ('doc_id', 'customer__id', 'customer__name', 'product__id', 'product__name')
+    autocomplete_fields = ['customer', 'route', 'warehouse', 'product', 'product_class']
+    ordering = ('-sale_date', 'doc_id')
+
+
+@admin.register(SaleTarget)
+class SaleTargetAdmin(admin.ModelAdmin):
+    list_display = (
+        'period',
+        'route',
+        'warehouse',
+        'product_class',
+        'target_amount',
+        'is_valid_for_comission',
+    )
+    list_filter = ('period', 'warehouse', 'is_valid_for_comission')
+    search_fields = ('route__id', 'route__name', 'product_class__name', 'warehouse__name')
+    autocomplete_fields = ['route', 'warehouse', 'product_class']
+    ordering = ('-period', 'route')

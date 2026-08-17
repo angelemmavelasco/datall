@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block module_name %}
+Producto: {{ product.id|upper }} - {{ product.name|title }}
+{% endblock %}
+
+{% block title %}
+Producto: {{ product.id|upper }} - {{ product.name|title }}
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+    <a href="{% url 'products:product_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    <p class="text-title text-sm pb-2 border-b border-border">Información general</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title">Identificador</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ product.id|default:"-"|upper }}
+        </div>
+
+        <span class="text-title">Nombre / Descripción</span>
+        <div class="w-full text-body flex items-center">
+            {{ product.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Código de barras</span>
+        <div class="w-full text-body flex items-center font-mono text-secondary">
+            {{ product.barcode|default:"-" }}
+        </div>
+
+        <span class="text-title">Clase de producto</span>
+        <div class="w-full text-body flex items-center">
+            {{ product.product_class.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Categoría</span>
+        <div class="w-full text-body flex items-center">
+            {{ product.product_class.product_category.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Unidad de medida</span>
+        <div class="w-full text-body flex items-center font-mono uppercase">
+            {{ product.unit_of_measure|default:"PZA" }}
+        </div>
+
+        <span class="text-title">Precio de venta</span>
+        <div class="w-full text-body flex items-center font-mono">
+            ${{ product.price|default:0|floatformat:2|intcomma }}
+        </div>
+
+        {% if can_view_cost %}
+            <span class="text-title">Costo unitario</span>
+            <div class="w-full text-body flex items-center font-mono text-amber-500">
+                ${{ product.cost|default:0|floatformat:4|intcomma }}
+            </div>
+        {% endif %}
+
+        <span class="text-title">Estatus en catálogo</span>
+        <div class="w-full text-body flex items-center">
+            {% if product.is_active %}
+                <span class="text-emerald-500 font-medium">Activo</span>
+            {% else %}
+                <span class="text-red-500 font-medium">Inactivo</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border">Propiedades del producto</p>
+
+    <div class="bg-container p-2 rounded border border-border">
+        {% if product.property_values.all %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {% for pv in product.property_values.all %}
+                    <div class="flex flex-col bg-page p-2 rounded border border-border">
+                        <span class="text-xs text-secondary">{{ pv.property.name|title }}</span>
+                        <span class="text-sm font-medium text-body">{{ pv.value }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-4 text-secondary italic text-sm">
+                No hay propiedades adicionales asignadas a este producto.
+            </div>
+        {% endif %}
+    </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border">Existencias por CEDIS y Lote</p>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[60vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Centro de distribución
+                    </th>
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Tipo de centro
+                    </th>
+                    <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Lote
+                    </th>
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Caducidad
+                    </th>
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Existencia física
+                    </th>
+                    <th class="w-[140px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Actualizado
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stock in product.stocks.all %}
+                    <tr>
+                        <td class="p-2 truncate text-left text-xs">
+                            <a href="{% url 'sales:warehouse_detail_view' stock.warehouse.id %}" class="underline hover:text-hover transition-colors font-medium">
+                                {{ stock.warehouse.id|upper }} - {{ stock.warehouse.name|title }}
+                            </a>
+                        </td>
+                        <td class="p-2 truncate text-center text-xs">
+                            {{ stock.warehouse.get_warehouse_type_display|title }}
+                        </td>
+                        <td class="p-2 truncate text-center font-mono text-xs">
+                            {{ stock.lot_number|default:'-' }}
+                        </td>
+                        <td class="p-2 truncate text-center text-xs">
+                            {% if stock.expiration_date %}
+                                <span class="font-mono">{{ stock.expiration_date|date:'d M Y' }}</span>
+                            {% else %}
+                                <span class="text-secondary italic">Sin fecha</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-2 truncate text-right font-mono text-xs font-medium">
+                            {{ stock.quantity|default:0|floatformat:2|intcomma }}
+                        </td>
+                        <td class="p-2 truncate text-center font-mono text-[11px] text-secondary">
+                            {{ stock.updated_at|date:'d M Y H:i' }}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="100%" class="py-12 text-center text-secondary italic text-sm">
+                            No hay registros de inventario o existencias para este producto.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% load humanize %}
+
+<div class="flex flex-col w-full gap-4" id="product-list-content">
+    <p class="text-title pb-1 border-b border-border">
+        Resumen
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Productos registrados
+            </span><br>
+            <span class="text-xl text-title">
+                {{ kpis.products_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Activos en catálogo
+            </span><br>
+            <span class="text-xl text-emerald-500">
+                {{ kpis.active_products_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Clases de productos
+            </span><br>
+            <span class="text-xl text-blue-500">
+                {{ kpis.classes_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Categorías registradas
+            </span><br>
+            <span class="text-xl text-violet-500">
+                {{ kpis.categories_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Existencia total en red
+            </span><br>
+            <span class="text-xl text-teal-500">
+                {{ kpis.total_stock|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Precio promedio
+            </span><br>
+            <span class="text-xl text-amber-500">
+                ${{ kpis.avg_price|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
+    </div>
+
+    <p class="text-title pb-1 border-b border-border">
+        Listado
+    </p>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        ID
+                    </th>
+
+                    <th class="w-[260px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Producto
+                    </th>
+
+                    <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Código de barras
+                    </th>
+
+                    <th class="w-[140px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Clase de producto
+                    </th>
+
+                    <th class="w-[140px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Categoría
+                    </th>
+
+                    <th class="w-[80px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        U.M.
+                    </th>
+
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Precio
+                    </th>
+
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Existencia total
+                    </th>
+
+                    <th class="w-[90px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Estatus
+                    </th>
+                </tr>
+            </thead>
+
+            <tbody id="product-report-container">
+                {% include "products/partials/product_list_rows.html" %}
+            </tbody>
+        </table>
+    </div>
+</div>
