@@ -396,9 +396,11 @@ class CustomersService(UsersService):
 
         if 'customer_type_id' in df.columns:
             ct_type = ContentType.objects.get_for_model(self.customer_type_model)
+            c_ctype = ContentType.objects.get_for_model(self.customer_model)
             type_references = Reference.objects.filter(
-                content_type=ct_type,
-                context__icontains='valor',
+                Q(content_type=ct_type, context__icontains='valor') |
+                Q(content_type=c_ctype, context__icontains='tipo') |
+                Q(content_type=c_ctype, context__icontains='type')
             )
             type_map = {}
             for ref in type_references:

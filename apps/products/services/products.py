@@ -270,6 +270,160 @@ class ProductsService(UsersService):
         except IntegrityError as e:
             raise ServiceError(f"No se puede eliminar el producto porque tiene registros relacionados: {str(e)}")
 
+    def _clean_products(self, file_obj) -> tuple[bool, str | object]:
+        try:
+            import pandas as pd
+        except ImportError:
+            return False, "La librería 'pandas' no está instalada en el entorno."
+
+        from apps.core.services.uploads import BaseETLHelper
+        from django.contrib.contenttypes.models import ContentType
+        from apps.core.models import Reference
+        import datetime
+
+        is_valid, df_or_err = BaseETLHelper.read_file_to_dataframe(file_obj)
+        if not is_valid:
+            return False, df_or_err
+
+        df = df_or_err
+        df = BaseETLHelper.apply_reference_column_mappings(
+            df,
+            self.product_model,
+            submodule_name='importacion',
+            context='columna'
+        )
+        df = BaseETLHelper.resolve_foreign_key_columns(df, self.product_model)
+
+        if 'id' not in df.columns:
+            return False, f"El archivo debe contener una columna identificadora mapeada a 'id'. Columnas encontradas: {', '.join(df.columns)}"
+
+        valid_types = set(self.product_class_model.objects.values_list('id', flat=True))
+        default_type = 'otr' if 'otr' in valid_types else (next(iter(valid_types)) if valid_types else 'otr')
+
+        if 'product_class_id' in df.columns:
+            pc_ctype = ContentType.objects.get_for_model(self.product_class_model)
+            p_ctype = ContentType.objects.get_for_model(self.product_model)
+            type_references = Reference.objects.filter(
+                Q(content_type=pc_ctype, context__icontains='valor') |
+                Q(content_type=p_ctype, context__icontains='clase') |
+                Q(content_type=p_ctype, context__icontains='product_class')
+            )
+            type_map = {}
+            for ref in type_references:
+                k = str(ref.key).strip().lower()
+                v = str(ref.value).strip() if getattr(ref, 'value', '') else str(getattr(ref, 'reference', '')).strip()
+                if k and v:
+                    type_map[k] = v
+            
+            raw_series = df['product_class_id'].astype(str).str.strip().str.lower()
+            if type_map:
+                mapped_series = raw_series.map(type_map).fillna(raw_series)
+            else:
+                mapped_series = raw_series
+
+            df['product_class_id'] = mapped_series.apply(
+                lambda x: x if x in valid_types else default_type
+            )
+        else:
+            df['product_class_id'] = default_type
+
+        df['id'] = df['id'].astype(str).str.strip()
+        df.drop_duplicates(subset=['id'], keep='last', inplace=True)
+
+        for col in df.columns:
+            if col not in ['cost', 'price', 'product_class_id', 'id']:
+                df[col] = df[col].astype(str).str.strip()
+                df[col] = df[col].replace({'nan': None, '': None, 'None': None})
+
+        num_cols = ['cost', 'price']
+        for c in num_cols:
+            if c in df.columns:
+                df[c] = pd.to_numeric(
+                    df[c].astype(str).str.replace(r'[$, ]', '', regex=True),
+                    errors='coerce'
+                ).fillna(0.0)
+
+        df = df.where(pd.notnull(df), None)
+
+        return True, df
+
+    def bulk_create_products(self, file_obj) -> object:
+        from apps.core.services.uploads import ImportResult, PermissionsError
+        from django.db import transaction
+
+        if not self.has_full_access:
+            raise PermissionsError('No tienes permisos suficientes para realizar cargas masivas de productos.')
+
+        is_valid, df_or_err = self._clean_products(file_obj)
+        if not is_valid:
+            return ImportResult(success=False, message=df_or_err)
+
+        df = df_or_err
+
+        created_count = 0
+        updated_count = 0
+        total_processed = 0
+
+        model_fields = [f.name for f in self.product_model._meta.get_fields() if not f.is_relation]
+        model_fields.extend([f.attname for f in self.product_model._meta.get_fields() if f.is_relation and hasattr(f, 'attname')])
+        
+        valid_columns = [col for col in df.columns if col in model_fields]
+
+        ids_in_df = df['id'].dropna().astype(str).tolist()
+        existing_products = self.product_model.objects.in_bulk(ids_in_df)
+
+        products_to_create = []
+        products_to_update = []
+
+        for _, row in df.iterrows():
+            cid = str(row.get('id')).strip()
+            if not cid or cid in ('None', 'nan', 'null', ''):
+                continue
+
+            data = {}
+            for col in valid_columns:
+                val = row[col]
+                if val is not None and str(val).lower() != 'nan':
+                    data[col] = val
+            data['id'] = cid
+
+            total_processed += 1
+
+            if cid in existing_products:
+                product = existing_products[cid]
+                for key, value in data.items():
+                    setattr(product, key, value)
+                products_to_update.append(product)
+                updated_count += 1
+            else:
+                product = self.product_model(**data)
+                products_to_create.append(product)
+                created_count += 1
+
+        try:
+            with transaction.atomic():
+                if products_to_create:
+                    self.product_model.objects.bulk_create(products_to_create, batch_size=500)
+                
+                if products_to_update:
+                    update_fields = [col for col in valid_columns if col != 'id']
+                    if update_fields:
+                        self.product_model.objects.bulk_update(products_to_update, update_fields, batch_size=500)
+            
+            return ImportResult(
+                success=True,
+                message=f"Importación exitosa. Se crearon {created_count} productos y se actualizaron {updated_count}.",
+                total_processed=total_processed,
+                created_count=created_count,
+                updated_count=updated_count
+            )
+        except Exception as e:
+            return ImportResult(
+                success=False,
+                message=f"Error durante la inserción/actualización masiva: {str(e)}",
+                total_processed=total_processed,
+                errors=[str(e)]
+            )
 
 @dataclass
 class ProductsStats:
