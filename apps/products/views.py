@@ -11,6 +11,11 @@ from .services import (
     ServiceError,
 )
 from .filters import ProductFilter
+from .forms import (
+    ProductForm,
+    ProductPropertyValueFormSet,
+    StockFormSet,
+)
 
 
 @login_required
@@ -85,9 +90,129 @@ def product_detail_view(request, pk: str):
 
 @login_required
 def product_create_view(request):
-    pass
+    template = 'products/product_form.html'
+    service = ProductsService(user=request.user)
+
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para registrar productos.')
+        return redirect('products:product_list_view')
+
+    if request.method == 'POST':
+        form = ProductForm(request.POST)
+        properties_formset = ProductPropertyValueFormSet(request.POST, prefix='properties')
+        stocks_formset = StockFormSet(request.POST, prefix='stocks')
+
+        if form.is_valid() and properties_formset.is_valid() and stocks_formset.is_valid():
+            try:
+                properties_data = [f.cleaned_data for f in properties_formset if f.cleaned_data]
+                stocks_data = [f.cleaned_data for f in stocks_formset if f.cleaned_data]
+
+                new_product = service.create_product(
+                    product_data=form.cleaned_data,
+                    properties_data=properties_data,
+                    stocks_data=stocks_data,
+                )
+                messages.success(request, f'Producto {new_product.id} registrado correctamente.')
+                next_url = request.GET.get('next') or request.POST.get('next')
+                if next_url:
+                    return redirect(next_url)
+                return redirect('products:product_detail_view', new_product.pk)
+
+            except PermissionsError as e:
+                messages.error(request, str(e))
+                return redirect('products:product_list_view')
+
+            except ServiceError as e:
+                messages.error(request, str(e))
+
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al registrar: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = ProductForm()
+        properties_formset = ProductPropertyValueFormSet(prefix='properties')
+        stocks_formset = StockFormSet(prefix='stocks')
+
+    context = {
+        'form': form,
+        'properties_formset': properties_formset,
+        'stocks_formset': stocks_formset,
+        'can_update_access': service.has_full_access,
+        'updating': None,
+    }
+    return render(request, template, context)
 
 
 @login_required
 def product_update_view(request, pk: str):
-    pass
+    template = 'products/product_form.html'
+    service = ProductsService(user=request.user)
+
+    if not service.has_full_access:
+        messages.error(request, 'No tienes permisos para actualizar productos.')
+        return redirect('products:product_detail_view', pk=pk)
+
+    try:
+        product_instance = service.read_product(pk=pk)
+    except ProductNotFound:
+        messages.error(request, "El producto solicitado no existe.")
+        return redirect('products:product_list_view')
+    except PermissionsError:
+        messages.error(request, "No tienes permisos para acceder a este producto.")
+        return redirect('products:product_list_view')
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect('products:product_list_view')
+
+    if request.method == 'POST':
+        form = ProductForm(request.POST, instance=product_instance)
+        properties_formset = ProductPropertyValueFormSet(
+            request.POST, instance=product_instance, prefix='properties'
+        )
+        stocks_formset = StockFormSet(
+            request.POST, instance=product_instance, prefix='stocks'
+        )
+
+        if form.is_valid() and properties_formset.is_valid() and stocks_formset.is_valid():
+            try:
+                properties_data = [f.cleaned_data for f in properties_formset if f.cleaned_data]
+                stocks_data = [f.cleaned_data for f in stocks_formset if f.cleaned_data]
+
+                updated_product = service.update_product(
+                    pk=pk,
+                    product_data=form.cleaned_data,
+                    properties_data=properties_data,
+                    stocks_data=stocks_data,
+                )
+                messages.success(request, f"Producto {updated_product.id} actualizado correctamente.")
+                return redirect('products:product_detail_view', updated_product.pk)
+
+            except PermissionsError as e:
+                messages.error(request, str(e))
+                return redirect('products:product_list_view')
+
+            except ServiceError as e:
+                messages.error(request, str(e))
+
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error inesperado al actualizar: {str(e)}")
+        else:
+            messages.error(request, 'Por favor revisa los errores en el formulario.')
+    else:
+        form = ProductForm(instance=product_instance)
+        properties_formset = ProductPropertyValueFormSet(
+            instance=product_instance, prefix='properties'
+        )
+        stocks_formset = StockFormSet(
+            instance=product_instance, prefix='stocks'
+        )
+
+    context = {
+        'form': form,
+        'properties_formset': properties_formset,
+        'stocks_formset': stocks_formset,
+        'updating': product_instance,
+        'can_update_access': service.has_full_access,
+    }
+    return render(request, template, context)

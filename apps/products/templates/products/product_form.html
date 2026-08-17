@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load widget_tweaks %}
+
+{% block title %}
+{% if updating %}
+Editar producto {{ updating.id|upper }}
+{% else %}
+Nuevo producto
+{% endif %}
+{% endblock %}
+
+{% block module_name %}
+{% if updating %}
+Editar producto {{ updating.id|upper }}
+{% else %}
+Nuevo producto
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="flex flex-col gap-4">
+    {% csrf_token %}
+
+    <p class="text-title text-sm">Información general</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title flex items-center gap-1">Identificador
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% if updating %}
+                {% render_field form.id class='w-full bg-page border border-border rounded p-1 text-secondary cursor-not-allowed font-mono' readonly='readonly' %}
+            {% else %}
+                {% render_field form.id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='Ej: 214767, PRD-001' required='required' %}
+            {% endif %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.id.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Nombre / Descripción
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Nombre comercial o descripción del producto' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.name.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Código de barras</span>
+        <div>
+            {% render_field form.barcode class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='Ej: 7501234567890' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.barcode.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Clase de producto</span>
+        <div>
+            {% render_field form.product_class class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.product_class.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Unidad de medida</span>
+        <div>
+            {% render_field form.unit_of_measure class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='Ej: PZA, CAJA, FRASCO' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.unit_of_measure.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Precio de venta ($)</span>
+        <div>
+            {% render_field form.price class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0.00' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.price.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Costo unitario ($)</span>
+        <div>
+            {% render_field form.cost class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0.0000' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.cost.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Activo en catálogo</span>
+        <div class="flex items-center gap-2">
+            <label class="flex items-center gap-2 cursor-pointer">
+                {% render_field form.is_active class="rounded border-border focus:outline-none bg-page" %}
+                <span class="text-sm text-body">Habilitado para operaciones y venta</span>
+            </label>
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between mt-2">
+        <p class="text-title text-sm">Propiedades del producto</p>
+        <button type="button" onclick="addForm('properties')" class="text-xs bg-page hover:bg-hover text-strong border border-border px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-icon lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            <span>Añadir propiedad</span>
+        </button>
+    </div>
+    <hr class="border-border border">
+
+    {{ properties_formset.management_form }}
+
+    <div id="properties-forms" class="flex flex-col gap-2">
+        {% for prop_form in properties_formset %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-start bg-container p-2 rounded border border-border">
+                {{ prop_form.id }}
+                <div class="flex flex-col gap-1">
+                    <span class="text-title text-xs">Propiedad</span>
+                    {% render_field prop_form.property class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title' %}
+                    <p class="text-red-500 text-xs mt-1">{% for error in prop_form.property.errors %}{{ error }}{% endfor %}</p>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <span class="text-title text-xs">Valor</span>
+                    {% render_field prop_form.value class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ej: Paracetamol 500mg, Pfizer, etc.' %}
+                    <p class="text-red-500 text-xs mt-1">{% for error in prop_form.value.errors %}{{ error }}{% endfor %}</p>
+                </div>
+
+                {% if prop_form.instance.pk %}
+                    <div class="flex items-center gap-2 md:col-span-2 pt-1 border-t border-border">
+                        <label class="flex items-center gap-1 text-red-500 text-xs cursor-pointer">
+                            {% render_field prop_form.DELETE class="rounded border-border bg-page" %}
+                            <span>Eliminar esta propiedad</span>
+                        </label>
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="flex items-center justify-between mt-2">
+        <p class="text-title text-sm">Existencias por CEDIS y Lote</p>
+        <button type="button" onclick="addForm('stocks')" class="text-xs bg-page hover:bg-hover text-strong border border-border px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-icon lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            <span>Añadir existencia</span>
+        </button>
+    </div>
+    <hr class="border-border border">
+
+    {{ stocks_formset.management_form }}
+
+    <div id="stocks-forms" class="flex flex-col gap-2">
+        {% for stock_form in stocks_formset %}
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-2 items-start bg-container p-2 rounded border border-border">
+                {{ stock_form.id }}
+                <div class="flex flex-col gap-1">
+                    <span class="text-title text-xs">Centro de distribución</span>
+                    {% render_field stock_form.warehouse class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title' %}
+                    <p class="text-red-500 text-xs mt-1">{% for error in stock_form.warehouse.errors %}{{ error }}{% endfor %}</p>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <span class="text-title text-xs">Lote</span>
+                    {% render_field stock_form.lot_number class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='Ej: 443C412' %}
+                    <p class="text-red-500 text-xs mt-1">{% for error in stock_form.lot_number.errors %}{{ error }}{% endfor %}</p>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <span class="text-title text-xs">Fecha de caducidad</span>
+                    {% render_field stock_form.expiration_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' %}
+                    <p class="text-red-500 text-xs mt-1">{% for error in stock_form.expiration_date.errors %}{{ error }}{% endfor %}</p>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <span class="text-title text-xs">Cantidad física</span>
+                    {% render_field stock_form.quantity class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0.00' %}
+                    <p class="text-red-500 text-xs mt-1">{% for error in stock_form.quantity.errors %}{{ error }}{% endfor %}</p>
+                </div>
+
+                {% if stock_form.instance.pk %}
+                    <div class="flex items-center gap-2 md:col-span-4 pt-1 border-t border-border">
+                        <label class="flex items-center gap-1 text-red-500 text-xs cursor-pointer">
+                            {% render_field stock_form.DELETE class="rounded border-border bg-page" %}
+                            <span>Eliminar este registro de stock</span>
+                        </label>
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="flex flex-col gap-2 mt-4">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            Confirmar
+        </button>
+        <a href="{% if updating %}{% url 'products:product_detail_view' updating.pk %}{% else %}{% url 'products:product_list_view' %}{% endif %}"
+            class="border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            Cancelar
+        </a>
+    </div>
+</form>
+
+<template id="properties-empty-form">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-start bg-container p-2 rounded border border-border mt-2">
+        {{ properties_formset.empty_form.id }}
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-xs">Propiedad</span>
+            {% render_field properties_formset.empty_form.property class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title' %}
+        </div>
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-xs">Valor</span>
+            {% render_field properties_formset.empty_form.value class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Valor o especificación...' %}
+        </div>
+    </div>
+</template>
+
+<template id="stocks-empty-form">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-2 items-start bg-container p-2 rounded border border-border mt-2">
+        {{ stocks_formset.empty_form.id }}
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-xs">Centro de distribución</span>
+            {% render_field stocks_formset.empty_form.warehouse class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title' %}
+        </div>
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-xs">Lote</span>
+            {% render_field stocks_formset.empty_form.lot_number class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='Ej: 443C412' %}
+        </div>
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-xs">Fecha de caducidad</span>
+            {% render_field stocks_formset.empty_form.expiration_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' %}
+        </div>
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-xs">Cantidad física</span>
+            {% render_field stocks_formset.empty_form.quantity class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0.00' %}
+        </div>
+    </div>
+</template>
+
+<script>
+function addForm(prefix) {
+    const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+    if (!totalFormsInput) return;
+    const currentCount = parseInt(totalFormsInput.value);
+
+    const templateHtml = document.getElementById(`${prefix}-empty-form`).innerHTML;
+    const compiledHtml = templateHtml.replace(/__prefix__/g, currentCount);
+
+    const formsContainer = document.getElementById(`${prefix}-forms`);
+    formsContainer.insertAdjacentHTML('beforeend', compiledHtml);
+
+    totalFormsInput.value = currentCount + 1;
+}
+</script>
+
+{% endblock %}

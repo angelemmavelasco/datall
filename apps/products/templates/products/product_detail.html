@@ -84,7 +84,7 @@ Producto: {{ product.id|upper }} - {{ product.name|title }}
                 {% for pv in product.property_values.all %}
                     <div class="flex flex-col bg-page p-2 rounded border border-border">
                         <span class="text-xs text-secondary">{{ pv.property.name|title }}</span>
-                        <span class="text-sm font-medium text-body">{{ pv.value }}</span>
+                        <span class="text-sm font-medium text-body">{{ pv.value|title }}</span>
                     </div>
                 {% endfor %}
             </div>
@@ -126,7 +126,7 @@ Producto: {{ product.id|upper }} - {{ product.name|title }}
                     <tr>
                         <td class="p-2 truncate text-left text-xs">
                             <a href="{% url 'sales:warehouse_detail_view' stock.warehouse.id %}" class="underline hover:text-hover transition-colors font-medium">
-                                {{ stock.warehouse.id|upper }} - {{ stock.warehouse.name|title }}
+                                {{ stock.warehouse.id|upper }} {{ stock.warehouse.name|title }}
                             </a>
                         </td>
                         <td class="p-2 truncate text-center text-xs">

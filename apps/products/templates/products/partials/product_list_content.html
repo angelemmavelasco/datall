@@ -59,6 +59,15 @@
                 ${{ kpis.avg_price|default:0|floatformat:2|intcomma }}
             </span>
         </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Próx. a caducar (&lt;30d)
+            </span><br>
+            <span class="text-xl text-rose-500">
+                {{ kpis.next_to_expire|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
     </div>
 
     <p class="text-title pb-1 border-b border-border">
