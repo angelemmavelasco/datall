@@ -32,23 +32,6 @@
 
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
             <span class="text-sm text-title">
-                Clientes con saldo
-            </span><br>
-            <span class="text-xl text-violet-500">
-                {{ kpis.unique_customers_count|default:0|floatformat:0|intcomma }}
-            </span>
-        </a>
-
-        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-            <span class="text-sm text-title">
-                Rutas con saldo
-            </span><br>
-            <span class="text-xl text-indigo-500">
-                {{ kpis.unique_routes_count|default:0|floatformat:0|intcomma }}
-            </span>
-        </a>
-        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-            <span class="text-sm text-title">
                 Vencido 1 a 15 días
             </span><br>
             <span class="text-xl font-mono text-amber-500">
@@ -83,6 +66,23 @@
             </span>
         </a>
 
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Clientes con saldo
+            </span><br>
+            <span class="text-xl text-violet-500">
+                {{ kpis.unique_customers_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Rutas con saldo
+            </span><br>
+            <span class="text-xl text-indigo-500">
+                {{ kpis.unique_routes_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
     </div>
 
     <p class="text-title pb-1 border-b border-border">
