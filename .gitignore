@@ -12,3 +12,4 @@ venv/
 .env
 users/
 seed_*.py
+legacy_code

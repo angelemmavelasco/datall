@@ -271,13 +271,10 @@ def ar_list_view(request):
 
     selected_customer_ids = request.GET.getlist('customer')
     customers_service = CustomersService(user=request.user)
-    customers_base = customers_service.read_customers()
-    if selected_customer_ids:
-        sel_qs = customers_base.filter(pk__in=selected_customer_ids)
-        rem_qs = customers_base.exclude(pk__in=selected_customer_ids)[:30]
-        initial_customers = list(sel_qs) + list(rem_qs)
-    else:
-        initial_customers = list(customers_base[:30])
+    cust_base = customers_service.read_customers()
+    cust_selected = cust_base.filter(pk__in=selected_customer_ids) if selected_customer_ids else cust_base.none()
+    cust_remaining = cust_base.exclude(pk__in=selected_customer_ids).order_by('name', 'id')[:20]
+    initial_customers = list(cust_selected) + list(cust_remaining)
 
     context = {
         'accounts_receivable': accounts_receivable,

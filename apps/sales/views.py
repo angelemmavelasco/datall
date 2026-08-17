@@ -380,7 +380,6 @@ def sale_transaction_list_view(request):
 
     return render(request, template, context)
 
-
 @login_required
 def sale_transaction_detail_view(request, pk: str):
     template = 'sales/sale_transactions/sale_transaction_detail.html'

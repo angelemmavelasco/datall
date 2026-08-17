@@ -12,3 +12,4 @@ media
 staticfiles
 users
 seed_*.py
+legacy_code

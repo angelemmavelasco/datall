@@ -8,7 +8,7 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
             <span class="text-sm text-title">
-                Saldo total en cartera
+                Saldo total cartera
             </span><br>
             <span class="text-xl font-mono text-title">
                 ${{ kpis.total_balance|default:0|floatformat:2|intcomma }}
@@ -32,27 +32,57 @@
 
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
             <span class="text-sm text-title">
-                Vencido (1 a 30 días)
+                Clientes con saldo
             </span><br>
-            <span class="text-xl font-mono text-amber-500">
-                ${{ kpis.balance_15|add:kpis.balance_30|default:0|floatformat:2|intcomma }}
+            <span class="text-xl text-violet-500">
+                {{ kpis.unique_customers_count|default:0|floatformat:0|intcomma }}
             </span>
-            <p class="text-[11px] text-secondary mt-1">
-                1-15d: ${{ kpis.balance_15|default:0|floatformat:0|intcomma }} | 16-30d: ${{ kpis.balance_30|default:0|floatformat:0|intcomma }}
-            </p>
         </a>
 
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
             <span class="text-sm text-title">
-                Vencido (+30 días)
+                Rutas con saldo
+            </span><br>
+            <span class="text-xl text-indigo-500">
+                {{ kpis.unique_routes_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Vencido 1 a 15 días
+            </span><br>
+            <span class="text-xl font-mono text-amber-500">
+                ${{ kpis.balance_15|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Vencido 16 a 30 días
+            </span><br>
+            <span class="text-xl font-mono text-orange-500">
+                ${{ kpis.balance_30|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Vencido 31 a 60 días
             </span><br>
             <span class="text-xl font-mono text-red-500">
-                ${{ kpis.balance_60|add:kpis.past_due|default:0|floatformat:2|intcomma }}
+                ${{ kpis.balance_60|default:0|floatformat:2|intcomma }}
             </span>
-            <p class="text-[11px] text-secondary mt-1">
-                +60d: ${{ kpis.past_due|default:0|floatformat:0|intcomma }}
-            </p>
         </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Vencido mayor a 60 días
+            </span><br>
+            <span class="text-xl font-mono text-rose-600">
+                ${{ kpis.past_due|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
+
     </div>
 
     <p class="text-title pb-1 border-b border-border">
