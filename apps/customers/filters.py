@@ -95,6 +95,15 @@ class AccountsReceivableFilter(django_filters.FilterSet):
         ('emitting_routes', 'Ruta emisora'),
     )
 
+    AGING_CHOICES = (
+        ('current', 'Al corriente'),
+        ('overdue', 'Con saldo vencido'),
+        ('1_15', 'De 1 a 15 días'),
+        ('16_30', 'De 16 a 30 días'),
+        ('31_60', 'De 31 a 60 días'),
+        ('past_due', 'Mayor a 60 días'),
+    )
+
     search = django_filters.CharFilter(
         method='filter_search',
         label='Búsqueda general'
@@ -104,6 +113,12 @@ class AccountsReceivableFilter(django_filters.FilterSet):
         label='Forma de visualización',
         method='filter_perspective',
         empty_label=None
+    )
+    aging_status = django_filters.MultipleChoiceFilter(
+        choices=AGING_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        label='Estatus de saldo',
+        method='filter_aging_status'
     )
     issue_date_from = django_filters.DateFilter(
         field_name='issue_date',
@@ -163,6 +178,32 @@ class AccountsReceivableFilter(django_filters.FilterSet):
 
     def filter_perspective(self, queryset, name, value):
         return queryset
+
+    def filter_aging_status(self, queryset, name, value):
+        if not value:
+            return queryset
+
+        q_filter = Q()
+        for choice in value:
+            if choice == 'current':
+                q_filter |= Q(current_balance__gt=0)
+            elif choice == 'overdue':
+                q_filter |= (
+                    Q(balance_15__gt=0) |
+                    Q(balance_30__gt=0) |
+                    Q(balance_60__gt=0) |
+                    Q(past_due__gt=0)
+                )
+            elif choice == '1_15':
+                q_filter |= Q(balance_15__gt=0)
+            elif choice == '16_30':
+                q_filter |= Q(balance_30__gt=0)
+            elif choice == '31_60':
+                q_filter |= Q(balance_60__gt=0)
+            elif choice == 'past_due':
+                q_filter |= Q(past_due__gt=0)
+
+        return queryset.filter(q_filter).distinct()
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(
