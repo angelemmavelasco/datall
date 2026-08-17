@@ -169,7 +169,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Authentication URLs
 LOGIN_URL = '/'
-LOGIN_REDIRECT_URL = '/hello-world/'
+LOGIN_REDIRECT_URL = '/analytics/sales-dashboard/'
 LOGOUT_REDIRECT_URL = '/'
 
 # errors handler templates
