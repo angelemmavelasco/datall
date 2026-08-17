@@ -186,22 +186,22 @@ class AccountsReceivableFilter(django_filters.FilterSet):
         q_filter = Q()
         for choice in value:
             if choice == 'current':
-                q_filter |= Q(current_balance__gt=0)
+                q_filter |= ~Q(current_balance=0)
             elif choice == 'overdue':
                 q_filter |= (
-                    Q(balance_15__gt=0) |
-                    Q(balance_30__gt=0) |
-                    Q(balance_60__gt=0) |
-                    Q(past_due__gt=0)
+                    ~Q(balance_15=0) |
+                    ~Q(balance_30=0) |
+                    ~Q(balance_60=0) |
+                    ~Q(past_due=0)
                 )
             elif choice == '1_15':
-                q_filter |= Q(balance_15__gt=0)
+                q_filter |= ~Q(balance_15=0)
             elif choice == '16_30':
-                q_filter |= Q(balance_30__gt=0)
+                q_filter |= ~Q(balance_30=0)
             elif choice == '31_60':
-                q_filter |= Q(balance_60__gt=0)
+                q_filter |= ~Q(balance_60=0)
             elif choice == 'past_due':
-                q_filter |= Q(past_due__gt=0)
+                q_filter |= ~Q(past_due=0)
 
         return queryset.filter(q_filter).distinct()
 
