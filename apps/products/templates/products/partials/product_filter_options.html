@@ -1,0 +1,8 @@
+{% for product in products %}
+    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+        <input type="checkbox" name="product" value="{{ product.id }}" {% if product.id in selected_ids %}checked{% endif %} class="rounded border-border bg-page">
+        <span class="option-label truncate" title="{{ product.id }} - {{ product.name }}">{{ product.id|upper }} - {{ product.name|title }}</span>
+    </label>
+{% empty %}
+    <div class="text-center py-3 text-secondary italic text-xs">No se encontraron productos</div>
+{% endfor %}

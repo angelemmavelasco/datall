@@ -216,3 +216,35 @@ def product_update_view(request, pk: str):
         'can_update_access': service.has_full_access,
     }
     return render(request, template, context)
+
+@login_required
+def product_filter_options_view(request):
+    q = request.GET.get('q_product', '').strip()
+    selected_ids = request.GET.getlist('product')
+
+    service = ProductsService(user=request.user)
+    base_qs = service.read_products()
+
+    selected_qs = base_qs.filter(pk__in=selected_ids) if selected_ids else base_qs.none()
+
+    search_qs = base_qs
+    if q:
+        from django.db.models import Q
+        search_qs = search_qs.filter(
+            Q(id__icontains=q) |
+            Q(name__icontains=q) |
+            Q(barcode__icontains=q)
+        )
+    if selected_ids:
+        search_qs = search_qs.exclude(pk__in=selected_ids)
+
+    products = list(selected_qs) + list(search_qs.order_by('name', 'id')[:30])
+
+    return render(
+        request,
+        'products/partials/product_filter_options.html',
+        {
+            'products': products,
+            'selected_ids': selected_ids,
+        }
+    )

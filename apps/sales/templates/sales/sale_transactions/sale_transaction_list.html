@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}
+Transacciones de Venta
+{% endblock %}
+
+{% block module_name %}
+Transacciones de Venta
+{% endblock %}
+
+{% block module_actions %}
+<button onclick="toggleFilters()"
+    class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+        <path d="M10 5H3" />
+        <path d="M12 19H3" />
+        <path d="M14 3v4" />
+        <path d="M16 17v4" />
+        <path d="M21 12h-9" />
+        <path d="M21 19h-5" />
+        <path d="M21 5h-7" />
+        <path d="M8 10v4" />
+        <path d="M8 12H3" />
+    </svg>
+    <span>
+        Filtrar
+    </span>
+</button>
+{% endblock %}
+
+{% block content %}
+{% include "sales/sale_transactions/partials/sale_transaction_list_content.html" %}
+{% endblock %}
+
+{% block filters %}
+<form hx-get="{% url 'sales:sale_transaction_list_view' %}" hx-target="#sale-transaction-list-content"
+    hx-swap="outerHTML" hx-push-url="true" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.search.id_for_label }}" class="text-title">{{ filter.form.search.label }}</label>
+        {% render_field filter.form.search class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Doc, Cliente o Producto" %}
+    </div>
+
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">Cliente</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                   name="q_customer"
+                   hx-get="{% url 'customers:customer_filter_options_view' %}"
+                   hx-trigger="input delay:300ms"
+                   hx-target="#customer-filter-options"
+                   hx-swap="innerHTML"
+                   hx-include="[name='customer']"
+                   hx-push-url="false"
+                   autocomplete="off"
+                   class="border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                   placeholder="Buscar cliente por ID o nombre...">
+            <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div id="customer-filter-options" class="h-32 overflow-y-auto flex flex-col gap-1">
+                {% include "customers/partials/customer_filter_options.html" with customers=initial_customers selected_ids=selected_customer_ids %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">Producto</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                   name="q_product"
+                   hx-get="{% url 'products:product_filter_options_view' %}"
+                   hx-trigger="input delay:300ms"
+                   hx-target="#product-filter-options"
+                   hx-swap="innerHTML"
+                   hx-include="[name='product']"
+                   hx-push-url="false"
+                   autocomplete="off"
+                   class="border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                   placeholder="Buscar producto por ID o nombre...">
+            <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div id="product-filter-options" class="h-32 overflow-y-auto flex flex-col gap-1">
+                {% include "products/partials/product_filter_options.html" with products=initial_products selected_ids=selected_product_ids %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.route.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar ruta">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.route %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.warehouse.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar centro">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.warehouse %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.product_class.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar clase">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.product_class %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.date_from.id_for_label }}" class="text-title">{{ filter.form.date_from.label }}</label>
+        {% render_field filter.form.date_from class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.date_to.id_for_label }}" class="text-title">{{ filter.form.date_to.label }}</label>
+        {% render_field filter.form.date_to class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-title" %}
+    </div>
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const normalizeString = (str) => {
+                return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            };
+
+            const debounce = (fn, delay = 120) => {
+                let timeout;
+                return (...args) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => fn(...args), delay);
+                };
+            };
+
+            const initFilters = () => {
+                const filterGroups = document.querySelectorAll('.filter-group');
+
+                filterGroups.forEach(group => {
+                    if (group.dataset.filtersInit === 'true') return;
+                    group.dataset.filtersInit = 'true';
+
+                    const searchInput = group.querySelector('.filter-search');
+                    const selectAllCheckbox = group.querySelector('.filter-select-all');
+
+                    const getItems = () => {
+                        return Array.from(group.querySelectorAll('.filter-option')).map(option => {
+                            const label = option.querySelector('.option-label');
+                            const checkbox = option.querySelector('input[type="checkbox"]');
+                            return {
+                                el: option,
+                                checkbox: checkbox,
+                                text: normalizeString(label ? label.textContent : '')
+                            };
+                        });
+                    };
+
+                    const updateSelectAllState = () => {
+                        if (!selectAllCheckbox) return;
+                        let visibleCount = 0;
+                        let checkedCount = 0;
+                        const items = getItems();
+
+                        for (let i = 0; i < items.length; i++) {
+                            if (items[i].el.style.display !== 'none') {
+                                visibleCount++;
+                                if (items[i].checkbox && items[i].checkbox.checked) {
+                                    checkedCount++;
+                                }
+                            }
+                        }
+                        selectAllCheckbox.checked = visibleCount > 0 && visibleCount === checkedCount;
+                    };
+
+                    if (searchInput) {
+                        const performSearch = (term) => {
+                            const items = getItems();
+                            for (let i = 0; i < items.length; i++) {
+                                const item = items[i];
+                                const matches = !term || item.text.includes(term);
+                                item.el.style.display = matches ? '' : 'none';
+                            }
+                            updateSelectAllState();
+                        };
+
+                        searchInput.addEventListener('input', debounce(function (e) {
+                            const term = normalizeString(e.target.value.trim());
+                            performSearch(term);
+                        }, 120));
+                    }
+
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.addEventListener('change', function (e) {
+                            const isChecked = e.target.checked;
+                            const items = getItems();
+                            for (let i = 0; i < items.length; i++) {
+                                if (items[i].el.style.display !== 'none' && items[i].checkbox && !items[i].checkbox.disabled) {
+                                    items[i].checkbox.checked = isChecked;
+                                }
+                            }
+                        });
+                    }
+
+                    group.addEventListener('change', function(e) {
+                        if (e.target.matches('.filter-option input[type="checkbox"]')) {
+                            updateSelectAllState();
+                        }
+                    });
+
+                    group.addEventListener('htmx:afterSwap', function() {
+                        updateSelectAllState();
+                    });
+
+                    updateSelectAllState();
+                });
+            };
+
+            initFilters();
+            document.body.addEventListener('htmx:afterSwap', initFilters);
+        });
+    </script>
+</form>
+{% endblock %}

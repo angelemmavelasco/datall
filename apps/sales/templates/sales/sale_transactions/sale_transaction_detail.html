@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block module_name %}
+Transacción: {{ transaction.doc_id|upper }} ({{ transaction.sale_date|date:'d M Y' }})
+{% endblock %}
+
+{% block title %}
+Transacción: {{ transaction.doc_id|upper }}
+{% endblock %}
+
+{% block module_actions %}
+    <a href="{% url 'sales:sale_transaction_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    <p class="text-title text-sm pb-2 border-b border-border">Información de la transacción</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title">Folio / Documento</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ transaction.doc_id|default:"-"|upper }}
+        </div>
+
+        <span class="text-title">Fecha de venta</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ transaction.sale_date|default:"-"|date:'d M Y' }}
+        </div>
+
+        <span class="text-title">Cliente</span>
+        <div class="w-full text-body flex items-center">
+            <a href="{% url 'customers:customer_detail_view' transaction.customer.id %}" class="underline hover:text-hover transition-colors font-medium">
+                {{ transaction.customer.id|upper }} - {{ transaction.customer.name|title }}
+            </a>
+        </div>
+
+        <span class="text-title">Tipo de cliente</span>
+        <div class="w-full text-body flex items-center">
+            {{ transaction.customer.customer_type.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Ruta emisora</span>
+        <div class="w-full text-body flex items-center">
+            {% if transaction.route %}
+                <a href="{% url 'sales:route_detail_view' transaction.route.id %}" class="underline hover:text-hover transition-colors">
+                    {{ transaction.route.id|upper }} {{ transaction.route.name|title }}
+                </a>
+            {% else %}
+                <span class="text-secondary italic">Sin ruta</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Gerencia / Canal</span>
+        <div class="w-full text-body flex items-center">
+            {% if transaction.route %}
+                {{ transaction.route.business_unit.name|title }} ({{ transaction.route.sale_channel.name|title }})
+            {% else %}
+                <span class="text-secondary italic">-</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Centro de distribución</span>
+        <div class="w-full text-body flex items-center">
+            {% if transaction.warehouse %}
+                <a href="{% url 'sales:warehouse_detail_view' transaction.warehouse.id %}" class="underline hover:text-hover transition-colors">
+                    {{ transaction.warehouse.id|upper }} {{ transaction.warehouse.name|title }}
+                </a>
+            {% else %}
+                <span class="text-secondary italic">-</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Producto</span>
+        <div class="w-full text-body flex items-center">
+            {% if transaction.product %}
+                <a href="{% url 'products:product_detail_view' transaction.product.id %}" class="underline hover:text-hover transition-colors font-medium">
+                    {{ transaction.product.id|upper }} - {{ transaction.product.name|title }}
+                </a>
+            {% else %}
+                <span class="text-secondary italic">-</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Clase de producto</span>
+        <div class="w-full text-body flex items-center">
+            {{ transaction.product_class.name|default:"-"|title }}
+        </div>
+
+        <span class="text-title">Categoría</span>
+        <div class="w-full text-body flex items-center">
+            {{ transaction.product_class.product_category.name|default:"-"|title }}
+        </div>
+    </div>
+
+    <p class="text-title text-sm pb-2 border-b border-border">Desglose financiero</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title">Cantidad vendida</span>
+        <div class="w-full text-body flex items-center font-mono font-medium">
+            {{ transaction.quantity|default:0|floatformat:2|intcomma }}
+        </div>
+
+        <span class="text-title">Importe bruto</span>
+        <div class="w-full text-body flex items-center font-mono">
+            ${{ transaction.gross_amount|default:0|floatformat:2|intcomma }}
+        </div>
+
+        <span class="text-title">Importe neto</span>
+        <div class="w-full text-body flex items-center font-mono font-medium text-emerald-500">
+            ${{ transaction.net_amount|default:0|floatformat:2|intcomma }}
+        </div>
+
+        {% if can_view_cost %}
+            <span class="text-title">Costo total</span>
+            <div class="w-full text-body flex items-center font-mono text-amber-500">
+                ${{ transaction.cost|default:0|floatformat:4|intcomma }}
+            </div>
+
+            <span class="text-title">Utilidad generada</span>
+            <div class="w-full text-body flex items-center font-mono font-medium text-teal-500">
+                ${{ transaction.profit|default:0|floatformat:2|intcomma }}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

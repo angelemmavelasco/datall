@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.paginator import Paginator
 from .services.warehouses import (
     WarehousesService,
     WarehouseNotFound,
@@ -13,7 +14,16 @@ from .services.routes import (
     PermissionsError as RoutePermissionsError,
     ServiceError as RouteServiceError,
 )
-from .filters import WarehouseFilter, RouteFilter
+from .services.sale_transactions import (
+    SaleTransactionsService,
+    SaleTransactionsStats,
+    SaleTransactionNotFound,
+    ServiceError as SaleTransactionServiceError,
+    PermissionsError as SaleTransactionPermissionsError,
+)
+from apps.customers.services.customers import CustomersService
+from apps.products.services.products import ProductsService
+from .filters import WarehouseFilter, RouteFilter, SaleTransactionFilter
 from .forms import (
     WarehouseForm,
     RouteForm,
@@ -310,5 +320,83 @@ def route_update_view(request, pk: str):
         'accesses_formset': accesses_formset,
         'updating': route_instance,
         'can_update_access': service.has_full_access,
+    }
+    return render(request, template, context)
+
+@login_required
+def sale_transaction_list_view(request):
+    template = 'sales/sale_transactions/sale_transaction_list.html'
+    service = SaleTransactionsService(user=request.user)
+    stats_service = SaleTransactionsStats(sale_transactions_service=service)
+
+    transactions_qs = service.read_transactions()
+    transaction_filter = SaleTransactionFilter(request.GET, queryset=transactions_qs, request=request)
+    transactions_qs = transaction_filter.qs
+
+    paginator = Paginator(transactions_qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    query_dict = request.GET.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
+
+    transactions = page_obj.object_list
+    kpis = stats_service.stats(qs=transactions_qs)
+
+    selected_customer_ids = request.GET.getlist('customer')
+    selected_product_ids = request.GET.getlist('product')
+
+    customers_service = CustomersService(user=request.user)
+    cust_base = customers_service.read_customers()
+    cust_selected = cust_base.filter(pk__in=selected_customer_ids) if selected_customer_ids else cust_base.none()
+    cust_remaining = cust_base.exclude(pk__in=selected_customer_ids).order_by('name', 'id')[:20]
+    initial_customers = list(cust_selected) + list(cust_remaining)
+
+    products_service = ProductsService(user=request.user)
+    prd_base = products_service.read_products()
+    prd_selected = prd_base.filter(pk__in=selected_product_ids) if selected_product_ids else prd_base.none()
+    prd_remaining = prd_base.exclude(pk__in=selected_product_ids).order_by('name', 'id')[:20]
+    initial_products = list(prd_selected) + list(prd_remaining)
+
+    context = {
+        'transactions': transactions,
+        'kpis': kpis,
+        'query_string': query_dict.urlencode(),
+        'page_obj': page_obj,
+        'filter': transaction_filter,
+        'initial_customers': initial_customers,
+        'selected_customer_ids': selected_customer_ids,
+        'initial_products': initial_products,
+        'selected_product_ids': selected_product_ids,
+        'can_view_cost': service.has_full_access,
+    }
+
+    if request.htmx:
+        target = request.headers.get('HX-Target')
+        if target == 'sale-transaction-list-content':
+            return render(request, 'sales/sale_transactions/partials/sale_transaction_list_content.html', context)
+        return render(request, 'sales/sale_transactions/partials/sale_transaction_list_rows.html', context)
+
+    return render(request, template, context)
+
+
+@login_required
+def sale_transaction_detail_view(request, pk: str):
+    template = 'sales/sale_transactions/sale_transaction_detail.html'
+    service = SaleTransactionsService(user=request.user)
+
+    try:
+        transaction_obj = service.read_transaction(pk=pk)
+    except (SaleTransactionNotFound, PermissionsError) as e:
+        messages.error(request, str(e))
+        return redirect('sales:sale_transaction_list_view')
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al cargar la transacción: {str(e)}")
+        return redirect('sales:sale_transaction_list_view')
+
+    context = {
+        'transaction': transaction_obj,
+        'can_view_cost': service.has_full_access,
     }
     return render(request, template, context)

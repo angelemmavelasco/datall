@@ -1,0 +1,8 @@
+{% for customer in customers %}
+    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+        <input type="checkbox" name="customer" value="{{ customer.id }}" {% if customer.id in selected_ids %}checked{% endif %} class="rounded border-border bg-page">
+        <span class="option-label truncate" title="{{ customer.id }} - {{ customer.name }}">{{ customer.id|upper }} - {{ customer.name|title }}</span>
+    </label>
+{% empty %}
+    <div class="text-center py-3 text-secondary italic text-xs">No se encontraron clientes</div>
+{% endfor %}
