@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load widget_tweaks %}
+
+{% block title %}
+{% if updating %}
+Editar cliente {{ updating.id|upper }}
+{% else %}
+Nuevo cliente
+{% endif %}
+{% endblock %}
+
+{% block module_name %}
+{% if updating %}
+Editar cliente {{ updating.id|upper }}
+{% else %}
+Nuevo cliente
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="flex flex-col gap-4">
+    {% csrf_token %}
+
+    <p class="text-title text-sm">Información general</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <span class="text-title flex items-center gap-1">Identificador
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% if updating %}
+                {% render_field form.id class='w-full bg-page border border-border rounded p-1 text-secondary cursor-not-allowed font-mono' readonly='readonly' %}
+            {% else %}
+                {% render_field form.id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='Ej: 12021, C-001' required='required' %}
+            {% endif %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.id.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Nombre / Razón Social
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Nombre del cliente o encargado' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.name.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Tipo de cliente
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.customer_type class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.customer_type.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Fecha de registro
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.registration_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.registration_date.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Línea de crédito ($)</span>
+        <div>
+            {% render_field form.credit_limit class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0.00' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.credit_limit.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Días de crédito</span>
+        <div>
+            {% render_field form.credit_days class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.credit_days.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Líder de opinión</span>
+        <div class="flex items-center gap-2">
+            {% render_field form.opinion_leader class='rounded border-border focus:ring-strong' %}
+            <span class="text-xs text-secondary">Cliente destacado o influyente en el sector</span>
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.opinion_leader.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Customer Route Assignments Formset -->
+    <div class="flex justify-between items-center mt-4">
+        <p class="text-title text-sm">Asignaciones de ruta</p>
+        <button type="button" onclick="addForm('assignments')" class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-circle"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            Añadir asignación
+        </button>
+    </div>
+    <hr class="border-border border">
+
+    {{ assignments_formset.management_form }}
+
+    <div id="assignments-forms" class="flex flex-col gap-4">
+        {% for assignment_form in assignments_formset %}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-start bg-container p-2 rounded border border-border">
+                {{ assignment_form.id }}
+
+                <div class="flex flex-col gap-1">
+                    <span class="text-title text-xs flex items-center gap-1">Ruta
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
+                    </span>
+                    {% render_field assignment_form.route class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+                    <p class="text-red-500 text-xs mt-0.5">
+                        {% for error in assignment_form.route.errors %}
+                        <span class="block">• {{ error }}</span>
+                        {% endfor %}
+                    </p>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <span class="text-title text-xs flex items-center gap-1">Fecha inicio
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
+                    </span>
+                    {% render_field assignment_form.start_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+                    <p class="text-red-500 text-xs mt-0.5">
+                        {% for error in assignment_form.start_date.errors %}
+                        <span class="block">• {{ error }}</span>
+                        {% endfor %}
+                    </p>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <span class="text-title text-xs">Fecha fin (opcional)</span>
+                    {% render_field assignment_form.end_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+                    <p class="text-red-500 text-xs mt-0.5">
+                        {% for error in assignment_form.end_date.errors %}
+                        <span class="block">• {{ error }}</span>
+                        {% endfor %}
+                    </p>
+                </div>
+
+                <div class="flex flex-col gap-1 md:col-span-2">
+                    <span class="text-title text-xs">Notas sobre la asignación</span>
+                    {% render_field assignment_form.notes rows="1" class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Opcional: Detalles de la asignación...' %}
+                    <p class="text-red-500 text-xs mt-0.5">
+                        {% for error in assignment_form.notes.errors %}
+                        <span class="block">• {{ error }}</span>
+                        {% endfor %}
+                    </p>
+                </div>
+
+                {% if assignment_form.instance.pk %}
+                    <div class="flex flex-col gap-1 justify-center items-start md:items-end">
+                        <span class="text-title text-xs">Acción</span>
+                        <label class="flex items-center gap-1 text-red-500 cursor-pointer text-xs h-8">
+                            {% render_field assignment_form.DELETE class='rounded border-border text-red-500 focus:ring-red-500' %}
+                            <span>Eliminar asignación</span>
+                        </label>
+                    </div>
+                {% endif %}
+
+                {% if assignment_form.non_field_errors %}
+                    <div class="md:col-span-3 text-red-500 text-xs mt-1">
+                        {% for error in assignment_form.non_field_errors %}
+                            <span class="block">• {{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="flex flex-col gap-2 mt-4">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            Confirmar
+        </button>
+        <a href="{% if updating %}{% url 'customers:customer_detail_view' updating.pk %}{% else %}{% url 'customers:customer_list_view' %}{% endif %}"
+            class="border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            Cancelar
+        </a>
+    </div>
+</form>
+
+
+<template id="assignments-empty-form">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-start bg-container p-2 rounded border border-border mt-4">
+        {{ assignments_formset.empty_form.id }}
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-xs flex items-center gap-1">Ruta
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
+            </span>
+            {% render_field assignments_formset.empty_form.route class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+        </div>
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-xs flex items-center gap-1">Fecha inicio
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
+            </span>
+            {% render_field assignments_formset.empty_form.start_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+        </div>
+        <div class="flex flex-col gap-1">
+            <span class="text-title text-xs">Fecha fin (opcional)</span>
+            {% render_field assignments_formset.empty_form.end_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+        </div>
+        <div class="flex flex-col gap-1 md:col-span-3">
+            <span class="text-title text-xs">Notas sobre la asignación</span>
+            {% render_field assignments_formset.empty_form.notes rows="1" class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Opcional: Detalles de la asignación...' %}
+        </div>
+    </div>
+</template>
+
+<script>
+function addForm(prefix) {
+    const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
+    if (!totalFormsInput) return;
+    const currentCount = parseInt(totalFormsInput.value);
+
+    const templateHtml = document.getElementById(`${prefix}-empty-form`).innerHTML;
+    const compiledHtml = templateHtml.replace(/__prefix__/g, currentCount);
+
+    const formsContainer = document.getElementById(`${prefix}-forms`);
+    formsContainer.insertAdjacentHTML('beforeend', compiledHtml);
+
+    totalFormsInput.value = currentCount + 1;
+}
+</script>
+
+{% endblock %}

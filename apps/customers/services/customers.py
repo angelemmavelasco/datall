@@ -177,6 +177,140 @@ class CustomersService(UsersService):
 
         raise CustomerNotFound(f'No se encontró ningún cliente con el ID "{pk}".')
 
+    def create_customer(
+        self,
+        customer_data: dict = None,
+        assignments_data: list = None,
+        **kwargs
+    ) -> Customer:
+        """
+        creates a new customer along with optional route assignments
+        """
+        if not self.has_full_access:
+            raise PermissionsError('No tienes permisos suficientes para registrar clientes.')
+
+        data = dict(customer_data or {})
+        data.update(kwargs)
+
+        try:
+            with transaction.atomic():
+                new_customer = self.customer_model(**data)
+                new_customer.full_clean()
+                new_customer.save()
+
+                if assignments_data:
+                    for assignment_data in assignments_data:
+                        if assignment_data and not assignment_data.get('DELETE', False):
+                            assign_copy = dict(assignment_data)
+                            assign_copy.pop('DELETE', None)
+                            assign_copy.pop('id', None)
+                            assign_copy.pop('customer', None)
+
+                            assignment = self.customer_assignment_model(customer=new_customer, **assign_copy)
+                            assignment.full_clean()
+                            assignment.save()
+
+            return new_customer
+
+        except ValidationError as e:
+            if hasattr(e, 'message_dict'):
+                messages = [f"{k}: {', '.join(v)}" for k, v in e.message_dict.items()]
+                raise ServiceError(f"Datos inválidos: {'; '.join(messages)}")
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except IntegrityError as e:
+            raise ServiceError(f"Error de integridad en base de datos (clave duplicada o restricción violada): {str(e)}")
+        except Exception as e:
+            raise ServiceError(f"Error al registrar el cliente: {str(e)}")
+
+    def update_customer(
+        self,
+        *,
+        pk: str,
+        customer_data: dict = None,
+        assignments_data: list = None,
+        **kwargs
+    ) -> Customer:
+        """
+        updates an existing customer along with route assignments
+        """
+        customer_to_update = self.read_customer(pk=pk)
+
+        if not self.has_full_access:
+            raise PermissionsError('No tienes permisos suficientes para actualizar clientes.')
+
+        data = dict(customer_data or {})
+        data.update(kwargs)
+
+        disallowed = {'id', 'pk'}
+        for key in disallowed:
+            data.pop(key, None)
+
+        try:
+            with transaction.atomic():
+                for attr, value in data.items():
+                    setattr(customer_to_update, attr, value)
+
+                customer_to_update.full_clean()
+                customer_to_update.save()
+
+                if assignments_data is not None:
+                    for assignment_data in assignments_data:
+                        if not assignment_data:
+                            continue
+
+                        assignment_instance = assignment_data.get('id')
+                        should_delete = assignment_data.get('DELETE', False)
+
+                        if should_delete:
+                            if assignment_instance and assignment_instance.pk:
+                                assignment_instance.delete()
+                            continue
+
+                        assign_copy = dict(assignment_data)
+                        assign_copy.pop('DELETE', None)
+                        assign_copy.pop('id', None)
+                        assign_copy.pop('customer', None)
+
+                        if assignment_instance and assignment_instance.pk:
+                            for k, v in assign_copy.items():
+                                setattr(assignment_instance, k, v)
+                            assignment_instance.full_clean()
+                            assignment_instance.save()
+                        else:
+                            new_assignment = self.customer_assignment_model(customer=customer_to_update, **assign_copy)
+                            new_assignment.full_clean()
+                            new_assignment.save()
+
+            return customer_to_update
+
+        except ValidationError as e:
+            if hasattr(e, 'message_dict'):
+                messages = [f"{k}: {', '.join(v)}" for k, v in e.message_dict.items()]
+                raise ServiceError(f"Datos inválidos: {'; '.join(messages)}")
+            raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
+        except IntegrityError as e:
+            raise ServiceError(f"Error de integridad en base de datos: {str(e)}")
+        except Exception as e:
+            raise ServiceError(f"Error al actualizar el cliente: {str(e)}")
+
+    def delete_customer(self, *, pk: str) -> None:
+        """
+        deletes a customer by id
+        """
+        customer_to_delete = self.read_customer(pk=pk)
+
+        if not self.has_full_access:
+            raise PermissionsError('No tienes permisos suficientes para eliminar clientes.')
+
+        try:
+            with transaction.atomic():
+                customer_to_delete.delete()
+        except IntegrityError:
+            raise ServiceError("No se puede eliminar el cliente porque tiene asignaciones u otros registros vinculados.")
+        except Exception as e:
+            raise ServiceError(f"Error al eliminar el cliente: {str(e)}")
+
+
 @dataclass
 class CustomersStats:
     '''dedicated only to give general stats about customers'''

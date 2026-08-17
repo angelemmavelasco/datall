@@ -1,0 +1,97 @@
+{% load humanize %}
+
+<div class="flex flex-col w-full gap-4" id="customer-list-content">
+    <p class="text-title pb-1 border-b border-border">
+        Resumen
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Clientes registrados
+            </span><br>
+            <span class="text-xl text-title">
+                {{ kpis.customers_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Con ruta asignada
+            </span><br>
+            <span class="text-xl text-emerald-500">
+                {{ kpis.assigned_customers_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Sin ruta asignada
+            </span><br>
+            <span class="text-xl text-red-500">
+                {{ kpis.unassigned_customers_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Líderes de opinión
+            </span><br>
+            <span class="text-xl text-violet-500">
+                {{ kpis.opinion_leaders_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+    </div>
+
+    <p class="text-title pb-1 border-b border-border">
+        Listado
+    </p>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-[90px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        ID
+                    </th>
+
+                    <th class="w-[220px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Cliente
+                    </th>
+
+                    <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Ruta
+                    </th>
+
+                    <th class="w-[140px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Tipo de cliente
+                    </th>
+
+                    <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Gerencia
+                    </th>
+
+                    <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Línea de crédito
+                    </th>
+
+                    <th class="w-[90px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Días crédito
+                    </th>
+
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Líder opinión
+                    </th>
+
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Registro
+                    </th>
+                </tr>
+            </thead>
+
+            <tbody id="customer-report-container">
+                {% include "customers/partials/customer_list_rows.html" %}
+            </tbody>
+        </table>
+    </div>
+</div>

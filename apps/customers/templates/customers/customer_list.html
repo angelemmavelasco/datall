@@ -22,8 +22,12 @@
     </button>
 {% endblock %}
 
+{% block content %}
+    {% include "customers/partials/customer_list_content.html" %}
+{% endblock %}
+
 {% block filters %}
-<form method="GET" class="flex flex-col gap-4">
+<form hx-get="{% url 'customers:customer_list_view' %}" hx-target="#customer-list-content" hx-swap="outerHTML" hx-push-url="true" class="flex flex-col gap-4">
     <div class="flex flex-col gap-1">
         <label for="{{ filter.form.name.id_for_label }}" class="text-title">{{ filter.form.name.label }}</label>
         {% render_field filter.form.name class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre o ID del cliente" %}
@@ -127,226 +131,70 @@
                 return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
             };
 
-            const filterGroups = document.querySelectorAll('.filter-group');
+            const initFilters = () => {
+                const filterGroups = document.querySelectorAll('.filter-group');
 
-            filterGroups.forEach(group => {
-                const searchInput = group.querySelector('.filter-search');
-                const selectAllCheckbox = group.querySelector('.filter-select-all');
-                const optionsList = group.querySelectorAll('.filter-option');
-                
-                const updateSelectAllState = () => {
-                    if (!selectAllCheckbox) return;
-                    const visibleOptions = Array.from(optionsList).filter(opt => opt.style.display !== 'none');
-                    const allVisibleChecked = visibleOptions.length > 0 && visibleOptions.every(opt => {
-                        const cb = opt.querySelector('input[type="checkbox"]');
-                        return cb && cb.checked;
-                    });
-                    selectAllCheckbox.checked = allVisibleChecked;
-                };
-
-                if (searchInput) {
-                    searchInput.addEventListener('input', function(e) {
-                        const term = normalizeString(e.target.value);
-                        optionsList.forEach(option => {
-                            const labelSpan = option.querySelector('.option-label');
-                            if (labelSpan) {
-                                const labelText = normalizeString(labelSpan.textContent);
-                                if (labelText.includes(term)) {
-                                    option.style.display = '';
-                                } else {
-                                    option.style.display = 'none';
-                                }
-                            }
-                        });
-                        updateSelectAllState();
-                    });
-                }
-
-                if (selectAllCheckbox) {
-                    selectAllCheckbox.addEventListener('change', function(e) {
-                        const isChecked = e.target.checked;
-                        optionsList.forEach(option => {
-                            if (option.style.display !== 'none') {
-                                const checkbox = option.querySelector('input[type="checkbox"]');
-                                if (checkbox && !checkbox.disabled) {
-                                    checkbox.checked = isChecked;
-                                }
-                            }
-                        });
-                    });
+                filterGroups.forEach(group => {
+                    const searchInput = group.querySelector('.filter-search');
+                    const selectAllCheckbox = group.querySelector('.filter-select-all');
+                    const optionsList = group.querySelectorAll('.filter-option');
                     
-                    optionsList.forEach(option => {
-                        const checkbox = option.querySelector('input[type="checkbox"]');
-                        if (checkbox) {
-                            checkbox.addEventListener('change', updateSelectAllState);
-                        }
-                    });
+                    const updateSelectAllState = () => {
+                        if (!selectAllCheckbox) return;
+                        const visibleOptions = Array.from(optionsList).filter(opt => opt.style.display !== 'none');
+                        const allVisibleChecked = visibleOptions.length > 0 && visibleOptions.every(opt => {
+                            const cb = opt.querySelector('input[type="checkbox"]');
+                            return cb && cb.checked;
+                        });
+                        selectAllCheckbox.checked = allVisibleChecked;
+                    };
 
-                    // Estado inicial
-                    updateSelectAllState();
-                }
-            });
+                    if (searchInput) {
+                        searchInput.addEventListener('input', function(e) {
+                            const term = normalizeString(e.target.value);
+                            optionsList.forEach(option => {
+                                const labelSpan = option.querySelector('.option-label');
+                                if (labelSpan) {
+                                    const labelText = normalizeString(labelSpan.textContent);
+                                    if (labelText.includes(term)) {
+                                        option.style.display = '';
+                                    } else {
+                                        option.style.display = 'none';
+                                    }
+                                }
+                            });
+                            updateSelectAllState();
+                        });
+                    }
+
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.addEventListener('change', function(e) {
+                            const isChecked = e.target.checked;
+                            optionsList.forEach(option => {
+                                if (option.style.display !== 'none') {
+                                    const checkbox = option.querySelector('input[type="checkbox"]');
+                                    if (checkbox && !checkbox.disabled) {
+                                        checkbox.checked = isChecked;
+                                    }
+                                }
+                            });
+                        });
+                        
+                        optionsList.forEach(option => {
+                            const checkbox = option.querySelector('input[type="checkbox"]');
+                            if (checkbox) {
+                                checkbox.addEventListener('change', updateSelectAllState);
+                            }
+                        });
+
+                        updateSelectAllState();
+                    }
+                });
+            };
+
+            initFilters();
+            document.body.addEventListener('htmx:afterSwap', initFilters);
         });
     </script>
 </form>
-{% endblock %}
-
-{% block content %}
-
-    <div class="flex flex-col w-full gap-4">
-        <p class="text-title pb-1 border-b border-border">
-            Resumen
-        </p>
-
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Clientes registrados
-                </span><br>
-                <span class="text-xl text-title">
-                    {{ kpis.customers_count|default:0|floatformat:0|intcomma }}
-                </span>
-            </a>
-
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Con ruta asignada
-                </span><br>
-                <span class="text-xl text-emerald-500">
-                    {{ kpis.assigned_customers_count|default:0|floatformat:0|intcomma }}
-                </span>
-            </a>
-
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Sin ruta asignada
-                </span><br>
-                <span class="text-xl text-red-500">
-                    {{ kpis.unassigned_customers_count|default:0|floatformat:0|intcomma }}
-                </span>
-            </a>
-
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Líderes de opinión
-                </span><br>
-                <span class="text-xl text-violet-500">
-                    {{ kpis.opinion_leaders_count|default:0|floatformat:0|intcomma }}
-                </span>
-            </a>
-        </div>
-
-        <p class="text-title pb-1 border-b border-border">
-            Listado
-        </p>
-
-        <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
-            <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
-                <thead>
-                    <tr class="border-b border-border text-xs">
-                        <th class="w-[90px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            ID
-                        </th>
-
-                        <th class="w-[220px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Cliente
-                        </th>
-
-                        <th class="w-[140px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Tipo de cliente
-                        </th>
-
-                        <th class="w-[140px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Ruta asignada
-                        </th>
-
-                        <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Gerencia
-                        </th>
-
-                        <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Línea de crédito
-                        </th>
-
-                        <th class="w-[90px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Días crédito
-                        </th>
-
-                        <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Líder opinión
-                        </th>
-
-                        <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Registro
-                        </th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for customer in customers %}
-                        <tr>
-                            <td class="p-2 truncate text-center font-mono text-xs">
-                                <a href="{% url 'customers:customer_detail_view' customer.id %}" class="underline hover:text-hover transition-colors">
-                                    {{ customer.id|default:'-'|upper }}
-                                </a>
-                            </td>
-
-                            <td class="p-2 truncate text-left">
-                                <p class="font-medium text-body truncate">
-                                    {{ customer.name|default:'-'|title }}
-                                </p>
-                            </td>
-
-                            <td class="p-2 truncate text-left text-xs">
-                                {{ customer.customer_type.name|default:'-'|title }}
-                            </td>
-
-                            <td class="p-2 truncate text-left text-xs">
-                                {% if customer.current_route_id %}
-                                    <a href="{% url 'sales:route_detail_view' customer.current_route_id %}" class="underline hover:text-hover transition-colors">
-                                        {{ customer.current_route_id|upper }} - {{ customer.current_route_name|title }}
-                                    </a>
-                                {% else %}
-                                    <span class="text-secondary italic">Sin asignar</span>
-                                {% endif %}
-                            </td>
-
-                            <td class="p-2 truncate text-left text-xs">
-                                {{ customer.current_route_business_unit|default:'-'|title }}
-                            </td>
-
-                            <td class="p-2 truncate text-right font-mono text-xs">
-                                ${{ customer.credit_limit|default:0|floatformat:2|intcomma }}
-                            </td>
-
-                            <td class="p-2 truncate text-center font-mono text-xs">
-                                {{ customer.credit_days|default:0 }} días
-                            </td>
-
-                            <td class="p-2 truncate text-center text-xs">
-                                {% if customer.opinion_leader %}
-                                    <span class="text-violet-500 font-medium">Sí</span>
-                                {% else %}
-                                    <span class="text-secondary">No</span>
-                                {% endif %}
-                            </td>
-
-                            <td class="p-2 truncate text-center text-xs">
-                                {{ customer.registration_date|default:'-'|date:'d M Y' }}
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="100%" class="py-50">
-                                <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
-                                    {% include 'layouts/data_not_found.html' %}
-                                </div>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
 {% endblock %}

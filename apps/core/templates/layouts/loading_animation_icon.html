@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-dynamic-loader">
+    <style>
+        .dot-caterpillar {
+            transform-box: fill-box;
+            transform-origin: center;
+        }
+
+        .cp-1 {
+            animation: moveDot1 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        .cp-2 {
+            animation: moveDot2 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        .cp-3 {
+            animation: moveDot3 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        @keyframes moveDot1 {
+            0%, 5%   { transform: translate(0, 0); }
+            12%      { transform: translate(0, -4px); }
+            20%, 30% { transform: translate(0, 0); }
+            42%      { transform: translate(1px, -6px); }
+            70%      { transform: translate(13px, 0px) rotate(360deg); }
+            85%, 100%{ transform: translate(0, 0); }
+        }
+
+        @keyframes moveDot2 {
+            0%, 8%   { transform: translate(0, 0); }
+            16%      { transform: translate(0, -4px); }
+            24%, 30% { transform: translate(0, 0); }
+            42%      { transform: translate(0, 7px); }
+            70%      { transform: translate(-6px, -7px) rotate(360deg); }
+            85%, 100%{ transform: translate(0, 0); }
+        }
+
+        @keyframes moveDot3 {
+            0%, 12%  { transform: translate(0, 0); }
+            20%      { transform: translate(0, -4px); }
+            28%, 30% { transform: translate(0, 0); }
+            42%      { transform: translate(-1px, -6px); }
+            70%      { transform: translate(-13px, 0px) rotate(360deg); }
+            85%, 100%{ transform: translate(0, 0); }
+        }
+
+        .ring-segments {
+            transform-origin: 12px 12px;
+            animation: ringCycle 4s ease-in-out infinite;
+        }
+
+        @keyframes ringCycle {
+            0%, 30%  { opacity: 0; transform: rotate(0deg) scale(0.7); }
+            45%      { opacity: 1; transform: rotate(180deg) scale(1); }
+            75%      { opacity: 1; transform: rotate(480deg) scale(1); }
+            88%, 100%{ opacity: 0; transform: rotate(540deg) scale(0.7); }
+        }
+
+        .inner-core {
+            transform-origin: 12px 12px;
+            animation: coreCycle 4s ease-in-out infinite;
+        }
+
+        @keyframes coreCycle {
+            0%, 45%  { opacity: 0; transform: scale(0.3); }
+            55%      { opacity: 1; transform: scale(1.1); }
+            65%      { opacity: 0.4; transform: scale(0.9) rotate(60deg); }
+            75%      { opacity: 1; transform: scale(1) rotate(120deg); }
+            85%, 100%{ opacity: 0; transform: scale(0.3); }
+        }
+    </style>
+
+    <g class="ring-segments">
+        <path d="M10.1 2.18a9.93 9.93 0 0 1 3.8 0"/>
+        <path d="M17.6 3.71a9.95 9.95 0 0 1 2.69 2.7"/>
+        <path d="M21.82 10.1a9.93 9.93 0 0 1 0 3.8"/>
+        <path d="M20.29 17.6a9.95 9.95 0 0 1-2.7 2.69"/>
+        <path d="M13.9 21.82a9.94 9.94 0 0 1-3.8 0"/>
+        <path d="M6.4 20.29a9.95 9.95 0 0 1-2.69-2.7"/>
+        <path d="M2.18 13.9a9.93 9.93 0 0 1 0-3.8"/>
+        <path d="M3.71 6.4a9.95 9.95 0 0 1 2.7-2.69"/>
+    </g>
+
+    <circle class="dot-caterpillar cp-1" cx="5" cy="12" r="1.4" fill="currentColor"/>
+    <circle class="dot-caterpillar cp-2" cx="12" cy="12" r="1.4" fill="currentColor"/>
+    <circle class="dot-caterpillar cp-3" cx="19" cy="12" r="1.4" fill="currentColor"/>
+
+    <g class="inner-core">
+        <circle cx="10" cy="11" r="0.9" fill="currentColor"/>
+        <circle cx="14" cy="11" r="0.9" fill="currentColor"/>
+        <circle cx="12" cy="14" r="0.9" fill="currentColor"/>
+    </g>
+</svg>
