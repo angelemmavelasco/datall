@@ -19,3 +19,5 @@ urllib3==2.7.0
 gunicorn
 uvicorn
 whitenoise[brotli]
+pandas
+openpyxl
