@@ -1,4 +1,5 @@
 {% load humanize %}
+{% load has_group %}
 {% for customer in customers %}
 <tr class="hover:bg-hover/30 transition-colors duration-300">
 
@@ -104,14 +105,16 @@
                 $ {{ customer.performance_net_amount|default:0|floatformat:2|intcomma }}
             </span>
         </div>
-        <div class="flex items-center justify-between gap-2">
+        <!-- <div class="flex items-center justify-between gap-2">
+            {% if not request.user|has_group:'vendedor' %}
             <span class="text-green-600">
                 Utilidad
             </span>
             <span>
                 $ {{ customer.performance_profit|default:0|floatformat:2|intcomma }}
             </span>
-        </div>
+            {% endif %}
+        </div> -->
     </td>
     <td class="p-2 text-title border-r border-border">
         <div class="flex items-center justify-between gap-2">
