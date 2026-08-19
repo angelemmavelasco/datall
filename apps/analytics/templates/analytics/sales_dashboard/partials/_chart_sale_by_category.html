@@ -1,0 +1,90 @@
+<div id="productCategoryChart" class="w-full h-[380px] min-h-full border border-border rounded bg-container"></div>
+
+<script>
+    (function() {
+        function initCategoryChart() {
+            const chartDom = document.getElementById('productCategoryChart');
+            if (!chartDom) return;
+
+            if (echarts.getInstanceByDom(chartDom)) {
+                echarts.dispose(chartDom);
+            }
+
+            const rawData = {{ chart_data.product_category_chart_data|safe|default:'[]' }};
+            const productCategoryData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+
+            const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim() || '#9ca3af';
+
+            const productCategoryChart = echarts.init(chartDom);
+
+            const productCategoryOption = {
+                color: ['#43B54B', '#435AB5', '#8b5cf6', '#f59e0b', '#06b6d4', '#ec4899', '#14b8a6', '#f97316'],
+                title: {
+                    text: 'Venta neta por categoría de producto',
+                    textStyle: {
+                        fontWeight: 'normal',
+                        fontSize: 14,
+                        color: titleColor
+                    },
+                    top: 8,
+                },
+                toolbox: {
+                    feature: {
+                        saveAsImage: {}
+                    }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        if (!params) return '';
+                        const val = '$ ' + Number(params.value || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        return `<span style="font-weight:600;">${params.name}</span><br/>${params.marker} Venta: <b>${val}</b> (${params.percent}%)`;
+                    }
+                },
+                legend: {
+                    bottom: 0,
+                    left: 'center',
+                    textStyle: {
+                        color: titleColor
+                    }
+                },
+                series: [
+                    {
+                        name: 'Categoría',
+                        type: 'pie',
+                        radius: ['40%', '65%'],
+                        center: ['50%', '48%'],
+                        avoidLabelOverlap: false,
+                        padAngle: 4,
+                        itemStyle: {
+                            borderRadius: 6
+                        },
+                        label: {
+                            show: false,
+                            position: 'center'
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: 14,
+                                fontWeight: 'bold',
+                                color: titleColor,
+                                formatter: '{b}\n{d}%'
+                            }
+                        },
+                        data: productCategoryData || []
+                    }
+                ]
+            };
+
+            productCategoryChart.setOption(productCategoryOption);
+            window.addEventListener('resize', () => productCategoryChart.resize());
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initCategoryChart);
+        } else {
+            initCategoryChart();
+        }
+    })();
+</script>

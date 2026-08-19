@@ -1,0 +1,68 @@
+{% load humanize widget_tweaks has_group %}
+<div class="border border-border rounded p-2 bg-container">
+    <p class="text-title text-sm text-center mt-2 mb-2">Top 50 productos</p>
+
+    <div class="overflow-auto rounded overflow-y-auto h-80">
+        <table class="table-fixed w-full rounded max-h-80 border-separate border-spacing-0">
+            <thead>
+                <tr class="">
+                    <th
+                        class="w-40 truncate p-2 text-center z-20 sticky left-0 bg-container top-0 border-r border-border border-b">
+                        Producto</th>
+                    <th class="w-20 p-2 text-center sticky top-0  border-b border-border z-10 bg-container">
+                        Unidades</th>
+                    <th class="w-30 p-2 text-center sticky top-0  border-b border-border z-10 bg-container">
+                        Venta neta</th>
+                    <th class="w-30 p-2 text-center sticky top-0  border-b border-border z-10 bg-container">
+                        Venta total</th>
+                    <th class="w-20 p-2 text-center sticky top-0  border-b border-border z-10 bg-container">
+                        Margen</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            <tbody>
+                {% for product in product_table %}
+                <tr>
+                    <td class="p-2 text-left truncate border-r border-border sticky left-0 z-10 bg-container">{{ product.id|upper }} {{ product.name|title }}</td>
+                    <td class="p-2 text-right">{{ product.total_units|floatformat:0|intcomma }}</td>
+                    <td class="p-2 text-right">$ {{ product.total_net_sale|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right">$ {{ product.total_gross_sale|floatformat:2|intcomma }}</td>
+                    <td class="p-2 flex justify-center items-center font-medium
+                        {% if product.total_margin >= 43 %}
+                        text-emerald-600
+                        {% elif product.total_margin >= 40 %}
+                        text-emerald-400
+                        {% elif product.total_margin >= 37 %}
+                        text-yellow-500
+                        {% elif product.total_margin >= 35 %}
+                        text-orange-500
+                        {% else %}
+                        text-red-500
+                        {% endif %}
+                        ">
+                        {% if request.user|has_group:"vendedor" %}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
+                            <circle cx="12" cy="12" r="10" />
+                        </svg>
+                        {% else %}
+                        {{ product.total_margin|floatformat:2|intcomma }}%
+                        {% endif %}
+                    </td>
+
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-gray-500">No hay datos para mostrar</td>
+                </tr>
+                {% endfor %}
+
+
+            </tbody>
+        </table>
+    </div>
+
+
+</div>

@@ -1,0 +1,66 @@
+{% load humanize widget_tweaks has_group %}
+<div class="border border-border rounded p-2 bg-container  min-h-98">
+    <p class="text-title text-sm text-center mt-2 mb-2">Venta neta por ruta</p>
+
+    <div class="overflow-auto rounded overflow-y-auto h-80" style="max-height: 320px; overflow-y: auto; display: block;">
+        <table class="table-fixed w-full rounded max-h-80 border-separate border-spacing-0">
+            <thead>
+                <tr class="">
+                    <th class="w-30 p-1 text-center border-b border-r border-border sticky top-0 z-20 left-0 bg-container" style="z-index: 30;">Ruta</th>
+                    <th class="w-30 p-1 text-center border-b border-border sticky top-0 z-10 bg-container">Venta neta</th>
+                    <th class="w-30 p-1 text-center border-b border-border sticky top-0 z-10 bg-container">Objetivo</th>
+                    <th class="w-30 p-1 text-center border-b border-border sticky top-0 z-10 bg-container">Diferencia</th>
+                    <th class="w-20 p-1 text-center border-b border-border sticky top-0 z-10 bg-container">Alcance</th>
+                    <th class="w-20 p-1 text-center border-b border-border sticky top-0 z-10 bg-container">Margen</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for route in route_table %}
+                <tr>
+
+                    <td class="w-30 min-w-30 max-w-30 p-2 border-r border-border sticky left-0 z-10 bg-container">
+                        <a href="{% url 'analytics:route_kpis_view' route.id %}?date_start={{ selected_date_start|default:'' }}&date_end={{ selected_date_end|default:'' }}" class="hover:text-hover transition-colors cursor-pointer truncate flex items-center gap-1 underline text-title">
+                            {{ route.id|upper }} {{ route.name|title }}
+                        </a>
+                    </td>
+                    <td class="p-2 text-right whitespace-nowrap">$ {{ route.total_net_sale|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right whitespace-nowrap">$ {{ route.total_target|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right whitespace-nowrap">$ {{ route.total_difference|floatformat:2|intcomma }}</td>
+                    <td class="p-2 text-right whitespace-nowrap">{{ route.total_scope|floatformat:2|intcomma }} %</td>
+                    <td class="p-2 flex justify-center items-center font-medium
+                        {% if route.total_margin >= 43 %}
+                        text-emerald-600
+                        {% elif route.total_margin >= 40 %}
+                        text-emerald-400
+                        {% elif route.total_margin >= 37 %}
+                        text-yellow-500
+                        {% elif route.total_margin >= 35 %}
+                        text-orange-500
+                        {% else %}
+                        text-red-500
+                        {% endif %}
+                        ">
+                        {% if request.user|has_group:"vendedor" %}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="lucide lucide-circle-icon lucide-circle">
+                            <circle cx="12" cy="12" r="10" />
+                        </svg>
+                        {% else %}
+                        {{ route.total_margin|floatformat:2|intcomma }}%
+                        {% endif %}
+                    </td>
+
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-gray-500">No hay datos para mostrar</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+
+</div>

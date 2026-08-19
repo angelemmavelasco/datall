@@ -20,6 +20,16 @@
 
     <link rel="stylesheet" href="{% static 'css/output.css' %}">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts-stat/dist/ecStat.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        if (window.echarts && window.ecStat && ecStat.transform) {
+            echarts.registerTransform(ecStat.transform.clustering);
+        }
+    </script>
 </head>
 
 <body class="min-h-dvh bg-page text-body font-sans text-xs flex flex-col transition-colors overflow-x-hidden">

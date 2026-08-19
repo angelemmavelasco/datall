@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize widget_tweaks %}
+{% load humanize widget_tweaks has_group %}
 
 {% block title %}
     Dashboard de Ventas
@@ -14,7 +14,7 @@
         {% include available_actions %}
     {% endif %}
 
-    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+    <button onclick="toggleFilters()" class="hover:text-hover transition-colors cursor-pointer shrink-0 flex items-center gap-1">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
         <span>
             Filtrar
@@ -29,11 +29,160 @@
 {% endblock %}
 
 {% block content %}
-<div class="flex flex-col w-full gap-4" id="sale-target-list-content">
+<div class="flex flex-col w-full gap-4">
     <p class="text-title pb-1 border-b border-border">
         Resumen
     </p>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Venta neta
+                </span><br>
+                <span class="text-xl text-emerald-500">
+                    $ {{ kpis.net_amount|default:0|floatformat:2|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Objetivo de venta
+                </span><br>
+                <span class="text-xl text-blue-500">
+                    $ {{ kpis.sale_target|default:0|floatformat:2|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Alcance
+                </span><br>
+                <span class="text-xl text-violet-500">
+                    {{ kpis.target_achivement|default:0|floatformat:2|intcomma }} %
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Diferencia
+                </span><br>
+                <span class="text-xl {% if kpis.diff_amount < 0 %} text-red-500 {% else %} text-emerald-500 {% endif %}">
+                    $ {{ kpis.diff_amount|default:0|floatformat:2|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Venta total
+                </span><br>
+                <span class="text-xl text-emerald-500">
+                    $ {{ kpis.gross_amount|default:0|floatformat:2|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Unidades
+                </span><br>
+                <span class="text-xl text-title">
+                    {{ kpis.quantity|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Clientes con compra
+                </span><br>
+                <span class="text-xl text-cyan-500">
+                    {{ kpis.occupied_positions_count|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Margen
+                </span><br>
+                {% if request.user|has_group:"vendedor" %}
+                    {% if kpis.margin >= 43 %}
+                        <p class="text-xl text-emerald-600">Excelente</p>
+                    {% elif kpis.margin >= 40 %}
+                        <p class="text-xl text-emerald-500">Óptimo</p>
+                    {% elif kpis.margin >= 37 %}
+                        <p class="text-xl text-yellow-500">Regular</p>
+                    {% elif kpis.margin >= 35 %}
+                        <p class="text-xl text-red-500">Malo</p>
+                    {% else %}
+                        <p class="text-xl text-red-500">Muy malo</p>
+                    {% endif %}
+                {% else %}
+                    <p class="text-xl text-strong">
+                        {{ kpis.margin|floatformat:2|intcomma }}%
+                        <span class="text-[12px]">
+                            {% if kpis.margin >= 43 %}
+                                <span class="text-green-600">Excelente</span>
+                            {% elif kpis.margin >= 40 %}
+                                <span class="text-green-500">Óptimo</span>
+                            {% elif kpis.margin >= 37 %}
+                                <span class="text-yellow-500">Regular</span>
+                            {% elif kpis.margin >= 35 %}
+                                <span class="text-red-500">Malo</span>
+                        {% else %}
+                            <span class="text-red-500">Muy malo</span>
+                        {% endif %}
+                    </span>
+                </p>
+                {% endif %}
+            </a>
+        </div>
+
+    <p class="text-title pb-1 border-b border-border">
+        Evolución de venta neta, unidades y alcance de objetivos
+    </p>
+    <div class="min-h-[400px] border border-border rounded bg-container p-2">
+        {% include 'analytics/sales_dashboard/partials/_chart_timeline_by_sale_qty.html' %}
+    </div>
+
+    <p class="text-title pb-1 border-b border-border">
+        Centros de distribución y rutas
+    </p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-200 md:h-100 ">
+        {% include 'analytics/sales_dashboard/partials/_chart_sale_by_warehouse.html' %}
+        {% include 'analytics/sales_dashboard/partials/_chart_sale_by_route.html' %}
+    </div>
+
+    <p class="text-title pb-1 border-b border-border">
+        Categorías y clases de producto
+    </p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[400px]">
+        {% include 'analytics/sales_dashboard/partials/_chart_sale_by_product_class.html' %}
+        {% include 'analytics/sales_dashboard/partials/_chart_sale_by_category.html' %}
+    </div>
+
+    <p class="text-title pb-1 border-b border-border">
+        Productos y clientes
+    </p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[400px]">
+        {% include 'analytics/sales_dashboard/partials/_chart_sale_by_product.html' %}
+        {% include 'analytics/sales_dashboard/partials/_chart_sale_by_customer.html' %}
+    </div>
+
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM loaded');
+        const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim();
+        console.log('title color', titleColor)
+        const isMobile = window.innerWidth < 768
+        console.log('isMobile', isMobile)
+        const greenColor = '#43B54B'
+        const redColor = '#B54343'
+        const blueColor = '#435AB5'
+        const yellowColor = '#B5B543'
+        const orangeColor = '#B56743'
+        const purpleColor = '#A843B'
+    });
+</script>
 
 {% endblock %}
 
