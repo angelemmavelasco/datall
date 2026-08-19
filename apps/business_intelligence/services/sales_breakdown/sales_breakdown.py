@@ -64,7 +64,7 @@ class SalesBreakdownService:
         elif self.dimension == 'product_customer':
             return self._get_product_customer(page_number)
         else:
-            return {}, self.sorted_years, None
+            return {}, self.sorted_years, None, ''
 
     def _get_customer_productclass_product(self, page_number):
         qs_with_year = self.queryset.annotate(year=ExtractYear('sale_date'))
@@ -76,7 +76,7 @@ class SalesBreakdownService:
         paginator = Paginator(l1_totals, 50)
         page_obj = paginator.get_page(page_number)
         if not page_obj.object_list: 
-            return {}, self.sorted_years, page_obj
+            return {}, self.sorted_years, page_obj, 'cliente -> clase de producto -> producto'
             
         top_c_ids = [c['customer_id'] for c in page_obj.object_list if c['customer_id']]
         qs_page = qs_with_year.filter(customer_id__in=top_c_ids)
@@ -152,7 +152,7 @@ class SalesBreakdownService:
         l1_totals = qs_with_year.values('product_class_id').annotate(total_overall=Sum('net_amount')).order_by('-total_overall')
         paginator = Paginator(l1_totals, 50)
         page_obj = paginator.get_page(page_number)
-        if not page_obj.object_list: return {}, self.sorted_years, page_obj
+        if not page_obj.object_list: return {}, self.sorted_years, page_obj, 'clase de producto -> cliente -> producto'
             
         top_l1_ids = [c['product_class_id'] for c in page_obj.object_list if c['product_class_id']]
         data_list = list(qs_with_year.filter(product_class_id__in=top_l1_ids).values(
@@ -216,7 +216,7 @@ class SalesBreakdownService:
         l1_totals = qs_with_year.values('product_class_id').annotate(total_overall=Sum('net_amount')).order_by('-total_overall')
         paginator = Paginator(l1_totals, 50)
         page_obj = paginator.get_page(page_number)
-        if not page_obj.object_list: return {}, self.sorted_years, page_obj
+        if not page_obj.object_list: return {}, self.sorted_years, page_obj, 'clase de producto -> producto'
             
         top_l1_ids = [c['product_class_id'] for c in page_obj.object_list if c['product_class_id']]
         data_list = list(qs_with_year.filter(product_class_id__in=top_l1_ids).values(
@@ -262,7 +262,7 @@ class SalesBreakdownService:
         l1_totals = qs_with_year.values('route__warehouse_id').annotate(total_overall=Sum('net_amount')).order_by('-total_overall')
         paginator = Paginator(l1_totals, 50)
         page_obj = paginator.get_page(page_number)
-        if not page_obj.object_list: return {}, self.sorted_years, page_obj
+        if not page_obj.object_list: return {}, self.sorted_years, page_obj, 'gerencia -> clase de producto -> producto'
             
         top_l1_ids = [c['route__warehouse_id'] for c in page_obj.object_list if c['route__warehouse_id']]
         data_list = list(qs_with_year.filter(route__warehouse_id__in=top_l1_ids).values(
@@ -317,7 +317,7 @@ class SalesBreakdownService:
         l1_totals = qs_with_year.values('product_id').annotate(total_overall=Sum('net_amount')).order_by('-total_overall')
         paginator = Paginator(l1_totals, 50)
         page_obj = paginator.get_page(page_number)
-        if not page_obj.object_list: return {}, self.sorted_years, page_obj
+        if not page_obj.object_list: return {}, self.sorted_years, page_obj, 'producto -> cliente'
             
         top_p_ids = [c['product_id'] for c in page_obj.object_list if c['product_id']]
         data_list = list(qs_with_year.filter(product_id__in=top_p_ids).values(
@@ -355,6 +355,7 @@ class SalesBreakdownService:
                 for _, oc_data in otros_c: self._add_annual_totals(o_t_c, oc_data['totals'])
                 final_pivot[p]['customers']['OTROS CLIENTES'] = self._flatten_annual_totals(o_t_c)
         return final_pivot, self.sorted_years, page_obj, 'producto -> cliente'
+    
 
     
     def get_report_data(self):

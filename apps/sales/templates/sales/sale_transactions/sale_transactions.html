@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize %}
+{% load humanize has_group %}
 
 {% block title %}Transacciones{% endblock %}
 
@@ -249,7 +249,36 @@ function toggleAllCheckboxes(masterCheckbox, listId) {
                 </span>
 
             </p>
-            <p class="text-xl text-title">{{ kpis.margin|default:0.00|floatformat:2|intcomma }} %</p>
+            {% if request.user|has_group:"vendedor" %}
+            {% if kpis.margin >= 43 %}
+            <p class="text-xl text-green-600 font-semibold">Excelente</p>
+            {% elif kpis.margin >= 40 %}
+            <p class="text-xl text-green-500 font-semibold">Óptimo</p>
+            {% elif kpis.margin >= 37 %}
+            <p class="text-xl text-yellow-500 font-semibold">Regular</p>
+            {% elif kpis.margin >= 35 %}
+            <p class="text-xl text-red-500 font-semibold">Malo</p>
+            {% else %}
+            <p class="text-xl text-red-500 font-semibold">Muy malo</p>
+            {% endif %}
+            {% else %}
+            <p class="text-xl text-strong">
+                {{ kpis.margin|floatformat:2|intcomma }}%
+                <span class="text-[12px]">
+                    {% if kpis.margin >= 43 %}
+                    <span class="text-green-600">Excelente</span>
+                    {% elif kpis.margin >= 40 %}
+                    <span class="text-green-500">Óptimo</span>
+                    {% elif kpis.margin >= 37 %}
+                    <span class="text-yellow-500">Regular</span>
+                    {% elif kpis.margin >= 35 %}
+                    <span class="text-red-500">Malo</span>
+                    {% else %}
+                    <span class="text-red-500">Muy malo</span>
+                    {% endif %}
+                </span>
+            </p>
+            {% endif %}
         </div>
     </div>
 

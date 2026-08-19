@@ -135,6 +135,8 @@ Perfil de usuario
         </div>
     </div>
 
+    {% if request.user.is_superuser %}
+
     <p class="text-title text-sm">Puestos asignados</p>
     <hr class="border-border border">
 
@@ -253,6 +255,8 @@ Perfil de usuario
             No hay puestos asignados
         </div>
     {% endfor %}
+
+    {% endif %}
 
 
 

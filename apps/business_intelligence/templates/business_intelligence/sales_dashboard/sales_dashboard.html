@@ -400,6 +400,7 @@
                 <span>
                     Margen
                 </span>
+                {% if not request.user|has_group:"vendedor" %}
                 <span class="custom-tooltip flex items-center" data-title="Resulta de la proporción de la utilidad bruta generada respecto a la venta neta.
                 Ejemplo: Una utilidad bruta de $200 sobre una venta neta de $500 da como resultado un margen del 40%.
                 Los umbrales de margen para rutas regulares (no distribuidores, no cuentas clave, etc.) son:
@@ -417,6 +418,7 @@
                         <path d="M12 17h.01" />
                     </svg>
                 </span>
+                {% endif %}
             </p>
 
             {% if request.user|has_group:"vendedor" %}

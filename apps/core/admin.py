@@ -1,10 +1,12 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from apps.core.models import (
-    User, MenuSection, SystemModule, Department, TaxSystem,
+    User, MenuSection, SystemModule, DataHistory, Department, TaxSystem,
     PayrollType, Periodicity, Position, Region, Warehouse, Employee,
     ProductCategory, ProductClass, Product, Stock, Reference,
     RouteType, SaleChannel, Route, RouteAssignment,
+    CustomerType, Customer, AccountsReceivable,
+    SaleTransaction, SaleTarget,
     CommissionProfile, CommissionTier, RouteCommissionSetup,
     RouteCommissionException, CommissionSettlement, Novelty,
     CustomerClassMargin, CommercialBenefit, CustomerAgreement, 
@@ -272,3 +274,70 @@ class AgreementPeriodClassResultAdmin(admin.ModelAdmin):
     list_display = ('evaluation_period', 'product_class', 'expected_class_target', 'achieved_class_sales')
     search_fields = ('evaluation_period__agreement__agreement_name', 'product_class__name')
     list_filter = ('product_class',)
+
+
+@admin.register(DataHistory)
+class DataHistoryAdmin(admin.ModelAdmin):
+    list_display = ('id', 'created_by', 'action', 'result', 'module', 'content_type', 'created_at')
+    search_fields = ('created_by__username', 'description', 'module__name')
+    list_filter = ('action', 'result', 'module', 'created_at')
+    readonly_fields = ('created_at',)
+
+
+@admin.register(CustomerType)
+class CustomerTypeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'description')
+    search_fields = ('id', 'name')
+
+
+@admin.register(Customer)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'name', 'customer_type', 'route', 'registration_date',
+        'credit_limit', 'credit_days', 'opinion_leader'
+    )
+    search_fields = ('id', 'name', 'route__name', 'route__id')
+    list_filter = ('customer_type', 'route', 'opinion_leader', 'registration_date')
+    raw_id_fields = ('route', 'customer_type')
+
+
+@admin.register(AccountsReceivable)
+class AccountsReceivableAdmin(admin.ModelAdmin):
+    list_display = ('id', 'doc_id', 'customer', 'route', 'issue_date', 'due_date', 'total_balance')
+    search_fields = ('doc_id', 'customer__name', 'customer__id', 'route__name')
+    list_filter = ('issue_date', 'due_date', 'route')
+    raw_id_fields = ('customer', 'route')
+
+
+@admin.register(SaleTransaction)
+class SaleTransactionAdmin(admin.ModelAdmin):
+    list_display = (
+        'doc_id', 'sale_date', 'customer', 'product', 'product_class',
+        'route', 'warehouse', 'quantity', 'cost', 'net_amount', 'profit'
+    )
+    search_fields = (
+        'doc_id', 'customer__name', 'customer__id',
+        'product__name', 'product__id', 'route__name', 'route__id'
+    )
+    list_filter = (
+        'sale_date', 'warehouse', 'route', 'product_class'
+    )
+    date_hierarchy = 'sale_date'
+    raw_id_fields = ('customer', 'product', 'product_class', 'route', 'warehouse')
+
+
+@admin.register(SaleTarget)
+class SaleTargetAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'period', 'route', 'warehouse', 'product_class',
+        'target_amount', 'is_valid_for_comission'
+    )
+    search_fields = (
+        'route__name', 'route__id', 'warehouse__name', 'product_class__name'
+    )
+    list_filter = (
+        'period', 'warehouse', 'route', 'product_class', 'is_valid_for_comission'
+    )
+    date_hierarchy = 'period'
+    raw_id_fields = ('route', 'warehouse', 'product_class')
+

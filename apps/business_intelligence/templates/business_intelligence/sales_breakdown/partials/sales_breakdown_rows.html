@@ -1,4 +1,4 @@
-{% load humanize %}
+{% load humanize has_group %}
 
 <div class="overflow-x-auto">
     <table class="w-full text-left border-collapse">
@@ -41,7 +41,9 @@
                                     <p class="text-right">
                                         ${{ total.net|default:0.00|floatformat:2|intcomma }} <br>
                                         <span class="text-primary italic text-[10px]">
-                                            Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                            {% if not request.user|has_group:'vendedor' %}
+                                                Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                            {% endif %}
                                         </span>
                                     </p>
                                 </div>
@@ -106,7 +108,9 @@
                                     <p class="text-right">
                                         ${{ total.net|default:0.00|floatformat:2|intcomma }} <br>
                                         <span class="text-primary italic text-[10px]">
-                                            Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                            {% if not request.user|has_group:'vendedor' %}
+                                                Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                            {% endif %}
                                         </span>
                                     </p>
                                 </div>
@@ -167,7 +171,9 @@
                                     <p class="text-right">
                                         ${{ total.net|default:0.00|floatformat:2|intcomma }} <br>
                                         <span class="text-primary italic text-[10px]">
-                                            Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                            {% if not request.user|has_group:'vendedor' %}
+                                                Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                            {% endif %}
                                         </span>
                                     </p>
                                 </div>
@@ -213,7 +219,9 @@
                                     <p class="text-right">
                                         ${{ total.net|default:0.00|floatformat:2|intcomma }} <br>
                                         <span class="text-primary italic text-[10px]">
-                                            Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                            {% if not request.user|has_group:'vendedor' %}
+                                                Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                            {% endif %}
                                         </span>
                                     </p>
                                 </div>
@@ -274,7 +282,9 @@
                                     <p class="text-right">
                                         ${{ total.net|default:0.00|floatformat:2|intcomma }} <br>
                                         <span class="text-primary italic text-[10px]">
-                                            Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                            {% if not request.user|has_group:'vendedor' %}
+                                                Mrg: {{ total.margin|default:0.00|floatformat:2|intcomma }} %
+                                            {% endif %}
                                         </span>
                                     </p>
                                 </div>
