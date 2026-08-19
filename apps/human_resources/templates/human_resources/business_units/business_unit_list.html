@@ -28,7 +28,12 @@ Unidades de Negocio
 <form method="GET" class="flex flex-col gap-4">
     <div class="flex flex-col gap-1">
         <label for="{{ filter.form.business_unit.id_for_label }}" class="text-title">{{ filter.form.business_unit.label }}</label>
-        {% render_field filter.form.business_unit class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre o Id de la gerencia" %}
+        {% render_field filter.form.business_unit class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Nombre o Id de la unidad" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.business_unit_type.id_for_label }}" class="text-title">{{ filter.form.business_unit_type.label }}</label>
+        {% render_field filter.form.business_unit_type class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" %}
     </div>
 
     <div class="flex flex-col gap-1">
@@ -59,14 +64,32 @@ Unidades de Negocio
             Resumen
         </p>
 
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 
             <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
                 <span class="text-sm text-title">
-                    Gerencias registradas
+                    Total registradas
                 </span><br>
                 <span class="text-xl text-title">
                     {{ kpis.business_units_count|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Regiones
+                </span><br>
+                <span class="text-xl text-title">
+                    {{ kpis.regions_count|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Unidades
+                </span><br>
+                <span class="text-xl text-title">
+                    {{ kpis.units_count|default:0|floatformat:0|intcomma }}
                 </span>
             </a>
 
@@ -93,17 +116,20 @@ Unidades de Negocio
             Listado
         </p>
 
-
         <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
             <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
                 <thead>
                     <tr class="border-b border-border text-xs">
-                        <th class=" w-[50px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page ">
+                        <th class="w-[50px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
                             ID
                         </th>
 
-                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
-                            Gerencia
+                        <th class="w-[250px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Nombre
+                        </th>
+
+                        <th class="w-[90px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Tipo
                         </th>
 
                         <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
@@ -114,29 +140,31 @@ Unidades de Negocio
                             Unidades hijas
                         </th>
 
-                        <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
                             Colaboradores activos
                         </th>
 
-                        <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
                             Colaboradores inactivos
                         </th>
-
                     </tr>
                 </thead>
 
                 <tbody>
                     {% for bu in business_units %}
                         <tr>
-
-                            <td class="p-2 truncate text-center">
-                                <a href="{% url 'human_resources:business_unit_detail_view' bu.id  %}" class="underline hover:text-hover transition-colors">
+                            <td class="p-2 truncate text-left">
+                                <a href="{% url 'human_resources:business_unit_detail_view' bu.id %}" class="underline hover:text-hover transition-colors">
                                     {{ bu.id|default:'-'|upper }}
                                 </a>
                             </td>
 
                             <td class="p-2 truncate text-left">
                                 {{ bu.name|default:'-'|title }}
+                            </td>
+
+                            <td class="p-2 truncate text-center text-xs">
+                                {{ bu.get_business_unit_type_display|title }}
                             </td>
 
                             <td class="p-2 truncate text-left">
@@ -160,7 +188,6 @@ Unidades de Negocio
                             </td>
                         </tr>
 
-
                     {% empty %}
 
                         <tr class="">
@@ -177,5 +204,5 @@ Unidades de Negocio
         </div>
 
     </div>
-    
+
 {% endblock %}

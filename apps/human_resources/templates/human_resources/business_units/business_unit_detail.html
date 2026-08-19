@@ -2,11 +2,11 @@
 {% load humanize %}
 
 {% block title %}
-	Detalle de gerencia
+	Detalle de unidad de negocio
 {% endblock %}
 
 {% block module_name %}
-    Gerencia {{ business_unit.name|title }}
+    {{ business_unit.name|title }} ({{ business_unit.get_business_unit_type_display|title }})
 {% endblock %}
 
 {% block module_actions %}
@@ -35,11 +35,16 @@
                 {{ business_unit.name|default:"-"|title }}
             </div>
 
-            <span class="text-title">Gerencia padre</span>
+            <span class="text-title">Tipo</span>
+            <div class="w-full text-body flex items-center">
+                {{ business_unit.get_business_unit_type_display|title }}
+            </div>
+
+            <span class="text-title">Unidad / Región padre</span>
             <div class="w-full text-body flex items-center">
                 {% if business_unit.parent %}
                     <a href="{% url 'human_resources:business_unit_detail_view' business_unit.parent.pk %}" class="hover:text-hover transition-colors">
-                        {{ business_unit.parent.id|upper }} - {{ business_unit.parent.name|title }}
+                        {{ business_unit.parent.id|upper }} - {{ business_unit.parent.name|title }} ({{ business_unit.parent.get_business_unit_type_display|title }})
                     </a>
                 {% else %}
                     -
@@ -67,6 +72,7 @@
                         <a href="{% url 'human_resources:business_unit_detail_view' u.pk %}" class="font-medium text-body hover:text-hover transition-colors">
                             {{ u.id|default:'-'|upper }} - {{ u.name|default:'-'|title }}
                         </a>
+                        <span class="ml-2 text-xs text-secondary">({{ u.get_business_unit_type_display|title }})</span>
                         <p class="italic text-xs text-secondary">Responsable: {{ u.manager.user.first_name|default:'Sin asignar'|title }} {{ u.manager.user.last_name|default:''|title }}</p>
                     </li>
                 {% empty %}

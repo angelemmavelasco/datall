@@ -4,17 +4,17 @@
 
 {% block title %}
 {% if updating %}
-Editar gerencia
+Editar unidad de negocio
 {% else %}
-Nueva gerencia
+Nueva unidad de negocio
 {% endif %}
 {% endblock %}
 
 {% block module_name %}
 {% if updating %}
-Editar gerencia: {{ updating.name|title }}
+Editar unidad de negocio: {{ updating.name|title }}
 {% else %}
-Nueva gerencia
+Nueva unidad de negocio
 {% endif %}
 {% endblock %}
 
@@ -59,20 +59,38 @@ Nueva gerencia
             </svg>
         </span>
         <div>
-            {% render_field form.name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ingresa el nombre de la gerencia' required='required' %}
+            {% render_field form.name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ingresa el nombre de la unidad de negocio' required='required' %}
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.name.errors %}
                 <span class="block">• {{ error }}</span>
                 {% endfor %}
             </p>
         </div>
+
+        <span class="text-title flex items-center gap-1">Tipo de unidad
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.business_unit_type class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.business_unit_type.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
         
-        <span class="text-title flex items-center gap-1">Gerencia padre</span>
+        <span class="text-title flex items-center gap-1">Unidad / Región padre</span>
         <div>
             {% render_field form.parent class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
             <a href="{% url 'human_resources:business_unit_create_view' %}?next={{ request.path }}" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px]">
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
-                Nueva gerencia
+                Nueva unidad
             </a>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.parent.errors %}
