@@ -23,7 +23,7 @@ class EmployeeForm(forms.ModelForm):
 class BusinessUnitForm(forms.ModelForm):
     class Meta:
         model = BusinessUnit
-        fields = ['id', 'name', 'parent', 'manager']
+        fields = ['id', 'name', 'business_unit_type', 'parent', 'manager']
 
 class DepartmentForm(forms.ModelForm):
     class Meta:

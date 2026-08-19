@@ -87,6 +87,11 @@ class BusinessUnitFilter(django_filters.FilterSet):
         method='filter_business_unit',
         label='Gerencia'
     )
+    business_unit_type = django_filters.ChoiceFilter(
+        field_name='business_unit_type',
+        choices=BusinessUnit.BusinessUnitTypeChoices.choices,
+        label='Tipo'
+    )
     manager = django_filters.CharFilter(
         method='filter_manager',
         label='Responsable'
