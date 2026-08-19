@@ -1,0 +1,448 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}
+KPIs por Clientes
+{% endblock %}
+
+{% block module_name %}
+KPIs por Clientes
+{% endblock %}
+
+{% block module_actions %}
+<button onclick="toggleFilters()"
+    class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+        <path d="M10 5H3" />
+        <path d="M12 19H3" />
+        <path d="M14 3v4" />
+        <path d="M16 17v4" />
+        <path d="M21 12h-9" />
+        <path d="M21 19h-5" />
+        <path d="M21 5h-7" />
+        <path d="M8 10v4" />
+        <path d="M8 12H3" />
+    </svg>
+    <span>
+        Filtrar
+    </span>
+</button>
+{% endblock %}
+
+{% block content %}
+    <div class="flex flex-col w-full gap-4">
+        <p class="text-title pb-1 border-b border-border">
+            Resumen de contribución {{ selected_start_contrib }} - {{ selected_end_contrib }}
+        </p>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Clientes registrados
+                </span><br>
+                <span class="text-xl text-title">
+                    {{ kpis.registered_customers|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Clientes con consumo
+                </span><br>
+                <span class="text-xl text-emerald-500">
+                    {{ kpis.customers_with_consumption|default:0|floatformat:0|intcomma }}
+                </span>
+                <span class="text-sm text-title">
+                    {{ kpis.customers_with_consumption_pct|default:0|floatformat:2|intcomma }}%
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Clientes sin consumo
+                </span><br>
+                <span class="text-xl text-red-500">
+                    {{ kpis.customers_without_consumption|default:0|floatformat:0|intcomma }}
+                </span>
+                <span class="text-sm text-title">
+                    {{ kpis.customers_without_consumption_pct|default:0|floatformat:2|intcomma }}%
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Venta neta
+                </span><br>
+                <span class="text-xl text-blue-500">
+                    $ {{ kpis.net_amount|default:0|floatformat:2|intcomma }}
+                </span>
+            </a>
+
+        </div>
+
+        <p class="text-title pb-1 border-b border-border">
+            Listado
+        </p>
+        
+        <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+            <table class="w-max min-w-full border-separate border-spacing-0">
+                <thead class="sticky top-0 z-30 bg-page">
+                    <tr class="border-b border-border">
+                        <th colspan="1" class="p-1 text-center border-r border-border sticky top-0 md:left-0 z-35 bg-page h-8 whitespace-nowrap">Identificación</th>
+                        <th colspan="4" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Segmentación</th>
+                        <th colspan="3" class="seccion-cobranza p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Cobranza</th>
+                        <th colspan="4" class="seccion-metricas p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Métricas de consumo</th>
+
+
+                        <!-- metricas de conusmo y filtro -->
+                        <th colspan="3" class="p-1 border-r border-border sticky top-0 z-30 bg-page h-8 relative whitespace-nowrap">
+                            Métricas de contribución del {{ selected_start_contrib }} al {{ selected_end_contrib }}
+                        </th>
+
+                        <th colspan="12"
+                            class="seccion-mensual min-w-[500px] p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">
+                            Desglose de consumos mensuales año
+                            actual</th>
+                    </tr>
+
+                    <tr class="border-b border-border text-xs">
+                        <!-- identificacion -->
+
+                        <th class="min-w-[240px] max-w-[240px] w-[240px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-0 z-35 bg-page">
+                            Cliente
+                        </th>
+
+                        <!-- <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-[240px] z-35 bg-page">
+                            Ruta
+                        </th> -->
+                        <!-- segmentacion -->
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Tipo de cliente
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Categoría
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Frecuencia de compra
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Líder de opinión
+                        </th>
+
+                        <!-- cobranza -->
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Crédito y uso
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Saldo al corriente
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Saldo vencido
+                        </th>
+
+                        <!-- métricas de consumo y promedios -->
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Convenios activos
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Clases con consumo
+                        </th>
+
+                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Promedio anual
+                        </th>
+
+                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Promedio último trimestre
+                        </th>
+
+                        <!-- metricas de contribución -->
+                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Contribución mnonetaria
+                        </th>
+
+                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Contribución porcentual
+                        </th>
+
+                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            Contribución acumulada
+                        </th>
+
+                        {% for month in months_headers %}
+                            <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                                {{ month|date:"F"|title }}
+                            </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% include "analytics/customer_kpis/partials/_customer_kpis_rows.html" %}
+                </tbody>
+            </table>
+        </div>
+        
+
+    </div>
+
+{% endblock %}
+
+{% block filters %}
+<form id="customer-kpis-filter-form"
+      hx-get="{% url 'analytics:customer_kpis_view' %}"
+      hx-target="#customer-kpis-content"
+      hx-swap="outerHTML"
+      hx-push-url="true"
+      class="flex flex-col gap-4">
+
+    <!-- Mantener parámetros de contribución activos -->
+    <input type="hidden" name="order_contrib" value="{{ order_contrib|default:'net_amount' }}">
+    <input type="hidden" name="start_contrib" value="{{ selected_start_contrib|date:'Y-m-d' }}">
+    <input type="hidden" name="end_contrib" value="{{ selected_end_contrib|date:'Y-m-d' }}">
+
+    <!-- Búsqueda por cliente -->
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.name.id_for_label }}" class="text-title">{{ filter.form.name.label }}</label>
+        {% render_field filter.form.name class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="ID o Nombre de cliente" %}
+    </div>
+
+    <!-- Ruta -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.route.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar ruta">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.route %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Gerencia -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.business_unit.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar gerencia">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.business_unit %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Región -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.region.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar región">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.region %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tipo de cliente -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.customer_type.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar tipo de cliente">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.customer_type %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Líder de opinión -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.opinion_leader.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-1">
+            {% for choice in filter.form.opinion_leader %}
+            <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                {{ choice.tag }}
+                <span class="option-label truncate">{{ choice.choice_label }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Rango de fecha de registro -->
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.registration_date_start.id_for_label }}" class="text-title">{{ filter.form.registration_date_start.label }}</label>
+        {% render_field filter.form.registration_date_start class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.registration_date_end.id_for_label }}" class="text-title">{{ filter.form.registration_date_end.label }}</label>
+        {% render_field filter.form.registration_date_end class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-title" %}
+    </div>
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const normalizeString = (str) => {
+                return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            };
+
+            const debounce = (fn, delay = 120) => {
+                let timeout;
+                return (...args) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => fn(...args), delay);
+                };
+            };
+
+            const initFilters = () => {
+                const filterGroups = document.querySelectorAll('.filter-group');
+
+                filterGroups.forEach(group => {
+                    if (group.dataset.filtersInit === 'true') return;
+                    group.dataset.filtersInit = 'true';
+
+                    const searchInput = group.querySelector('.filter-search');
+                    const selectAllCheckbox = group.querySelector('.filter-select-all');
+
+                    const getItems = () => {
+                        return Array.from(group.querySelectorAll('.filter-option')).map(option => {
+                            const label = option.querySelector('.option-label');
+                            const checkbox = option.querySelector('input[type="checkbox"]');
+                            return {
+                                el: option,
+                                checkbox: checkbox,
+                                text: normalizeString(label ? label.textContent : '')
+                            };
+                        });
+                    };
+
+                    const updateSelectAllState = () => {
+                        if (!selectAllCheckbox) return;
+                        let visibleCount = 0;
+                        let checkedCount = 0;
+                        const items = getItems();
+
+                        for (let i = 0; i < items.length; i++) {
+                            if (items[i].el.style.display !== 'none') {
+                                visibleCount++;
+                                if (items[i].checkbox && items[i].checkbox.checked) {
+                                    checkedCount++;
+                                }
+                            }
+                        }
+                        selectAllCheckbox.checked = visibleCount > 0 && visibleCount === checkedCount;
+                    };
+
+                    if (searchInput) {
+                        const performSearch = (term) => {
+                            const items = getItems();
+                            for (let i = 0; i < items.length; i++) {
+                                const item = items[i];
+                                const matches = !term || item.text.includes(term);
+                                item.el.style.display = matches ? '' : 'none';
+                            }
+                            updateSelectAllState();
+                        };
+
+                        searchInput.addEventListener('input', debounce(function (e) {
+                            const term = normalizeString(e.target.value.trim());
+                            performSearch(term);
+                        }, 120));
+                    }
+
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.addEventListener('change', function (e) {
+                            const isChecked = e.target.checked;
+                            const items = getItems();
+                            for (let i = 0; i < items.length; i++) {
+                                if (items[i].el.style.display !== 'none' && items[i].checkbox && !items[i].checkbox.disabled) {
+                                    items[i].checkbox.checked = isChecked;
+                                }
+                            }
+                        });
+                    }
+
+                    group.addEventListener('change', function(e) {
+                        if (e.target.matches('.filter-option input[type="checkbox"]')) {
+                            updateSelectAllState();
+                        }
+                    });
+
+                    group.addEventListener('htmx:afterSwap', function() {
+                        updateSelectAllState();
+                    });
+
+                    updateSelectAllState();
+                });
+            };
+
+            initFilters();
+            document.body.addEventListener('htmx:afterSwap', initFilters);
+        });
+    </script>
+</form>
+{% endblock %}
