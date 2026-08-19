@@ -52,7 +52,7 @@ class CustomerAssignment(models.Model):
                 name="unique_active_assignment_per_customer"
             ),
             models.CheckConstraint(
-                check=Q(end_date__isnull=True) | Q(end_date__gte=F('start_date')),
+                condition=Q(end_date__isnull=True) | Q(end_date__gte=F('start_date')),
                 name="customer_assignment_end_date_gte_start_date"
             ),
         ]

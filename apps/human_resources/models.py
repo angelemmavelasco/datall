@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 from apps.core.models import TaxRegimeChoices, PaymentFormChoices, PeriodicityChoices
 from collections import defaultdict
@@ -255,10 +256,15 @@ class MonitoringFormAnswer(models.Model):
 
 
 class BusinessUnit(models.Model):
+    class BusinessUnitTypeChoices(models.TextChoices):
+        UNIT = 'unit', 'Unidad'
+        REGION = 'region', 'Región'
+
     id = models.CharField(primary_key=True, max_length=50, help_text='Identificador único (ej. cdmx1, gdl, foráneos)')
     name = models.CharField(max_length=255, help_text='Nombre de la gerencia o unidad de negocio')
-    parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='sub_units', help_text='Gerencia padre (ej. Foráneos es padre de Culiacán, Colima, etc.)')
-    manager = models.ForeignKey('Employee', on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_business_units', help_text='Gerente de la unidad de negocio')
+    business_unit_type = models.CharField(max_length=20, choices=BusinessUnitTypeChoices.choices, default=BusinessUnitTypeChoices.UNIT, db_index=True, help_text='Tipo de unidad de negocio')
+    parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='sub_units', help_text='Gerencia o región padre (ej. Foráneos es padre de Culiacán, Colima, etc.)')
+    manager = models.ForeignKey('Employee', on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_business_units', help_text='Gerente o responsable de la unidad de negocio / región')
 
     class Meta:
         verbose_name = 'Unidad de Negocio / Gerencia'
@@ -266,6 +272,30 @@ class BusinessUnit(models.Model):
 
     def __str__(self):
         return f'{self.id.upper()} {self.name.title()}'
+
+    @property
+    def is_region(self) -> bool:
+        return self.business_unit_type == self.BusinessUnitTypeChoices.REGION
+
+    @property
+    def is_unit(self) -> bool:
+        return self.business_unit_type == self.BusinessUnitTypeChoices.UNIT
+
+    def clean(self):
+        super().clean()
+
+        if self.parent_id:
+            if self.pk and self.parent_id == self.pk:
+                raise ValidationError({'parent': 'Una unidad de negocio no puede ser su propio padre.'})
+
+            if self.pk:
+                curr = self.parent
+                visited = {self.pk}
+                while curr:
+                    if curr.pk in visited:
+                        raise ValidationError({'parent': 'Se detectó una referencia circular en la jerarquía de unidades de negocio.'})
+                    visited.add(curr.pk)
+                    curr = curr.parent
 
 
 class Employee(models.Model):
