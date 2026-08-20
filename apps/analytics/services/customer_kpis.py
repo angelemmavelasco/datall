@@ -158,7 +158,7 @@ class CustomerKpisService:
     def _get_curr_year_sales(self) -> dict[Any, Decimal]:
         sales = (
             self.transactions_qs
-            .filter(sale_date__year=self.current_year)
+            .filter(sale_date__gte=date(self.current_year, 1, 1), sale_date__lte=self.today)
             .order_by()
             .values('customer_id')
             .annotate(total=Sum('net_amount'))
@@ -291,7 +291,7 @@ class CustomerKpisService:
         start_prev_y = date(self.previous_year, 1, 1)
         end_prev_y = date(self.previous_year, 12, 31)
         start_curr_y = date(self.current_year, 1, 1)
-        end_curr_y = date(self.current_year, 12, 31)
+        end_curr_y = self.today
 
         customers = list(self.customers_qs)
 
