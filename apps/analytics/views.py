@@ -111,8 +111,20 @@ def customer_kpis_view(request):
     ar_service = AccountsReceivablesService(user=request.user)
     ar_allowed_ctm = ar_service.read_ars_by_allowed_customers()
 
+    #default contrib period
+    today = timezone.localdate()
+    first_day_curr_month = today.replace(day=1)
+    last_day_q = first_day_curr_month - relativedelta(days=1)
+    first_day_q = last_day_q.replace(day=1) - relativedelta(months=2)
+
+    req_data = request.GET.copy()
+    if not req_data.get('start_contrib'):
+        req_data['start_contrib'] = first_day_q.strftime('%Y-%m-%d')
+    if not req_data.get('end_contrib'):
+        req_data['end_contrib'] = last_day_q.strftime('%Y-%m-%d')
+
     #set filters
-    filter_set = CustomerKpisFilter(request.GET, queryset=customer_qs, request=request)
+    filter_set = CustomerKpisFilter(req_data, queryset=customer_qs, request=request)
     filtered_customers_qs = filter_set.qs
     cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
 
@@ -139,8 +151,9 @@ def customer_kpis_view(request):
     context = {
         'filter': filter_set,
         'order_contrib': cleaned_data.get('order_contrib') or 'net_amount',
-        'selected_start_contrib': cleaned_data.get('start_contrib'),
-        'selected_end_contrib': cleaned_data.get('end_contrib'),
+        'selected_start_contrib': customer_kpis_service.date_start,
+        'selected_end_contrib': customer_kpis_service.date_end,
+        'kpis': customer_kpis_service.get_stats(),
         'customers': page_obj.object_list,
         'page_obj': page_obj,
         'query_string': query_dict.urlencode(),

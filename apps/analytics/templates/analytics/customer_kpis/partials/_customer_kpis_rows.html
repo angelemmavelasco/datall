@@ -134,7 +134,7 @@
                 Venta neta
             </span>
             <span>
-                {{ customer.contrib_net_amount|default:0|floatformat:2|intcomma }} %
+                {{ customer.net_amount|default:0|floatformat:2|intcomma }} %
             </span>
         </div>
         <div class="flex items-center justify-between gap-2">
@@ -142,7 +142,7 @@
                 Utilidad
             </span>
             <span>
-                {{ customer.contrib_profit|default:0|floatformat:2|intcomma }} %
+                {{ customer.profit|default:0|floatformat:2|intcomma }} %
             </span>
         </div>
     </td>
@@ -150,13 +150,13 @@
     <td class="p-2 text-title border-r border-border">
         <div class="flex items-center justify-between gap-2">
             <span class="
-            {% if customer.selected_contrib_by == 'Utilidad' %}
+            {% if customer.selected_contrib_by == 'profit' %}
                 text-green-600
             {% else %}
                 text-blue-600
             {% endif %}
             ">
-                {{ customer.selected_contrib_by|default:'Venta neta'|title }}
+                {{ customer.selected_contrib_by|default:'net_amount'|title }}
             </span>
             <span class="
             {% if customer.cumuled_contrib >= 80 %}

@@ -277,6 +277,59 @@ class CustomerKpisService:
             }
         return collections_map
 
+    def _get_contrib_metrics(self) -> dict[Any, dict[str, Decimal]]:
+        '''
+        returns a dict with the necesary information to know contrib metrics about a customer.
+        {customer_id: {'net_amount': Decimal, 'profit': Decimal}}
+        '''
+        sales = (
+            self.transactions_qs
+            .filter(sale_date__gte=self.date_start, sale_date__lte=self.date_end)
+            .order_by()
+            .values('customer_id')
+            .annotate(
+                net_amount=Sum('net_amount'),
+                profit=Sum('profit')
+            )
+        )
+        return {
+            row['customer_id']: {
+                'net_amount': row['net_amount'] or Decimal('0.00'),
+                'profit': row['profit'] or Decimal('0.00'),
+            }
+            for row in sales
+        }
+
+    def get_stats(self) -> dict[str, Any]:
+        """
+        Returns high-level summary KPIs for the header cards in the template.
+        Only considers customers registered on or before date_end and with net consumption > 0.
+        """
+        valid_customers = [c for c in self.customers_qs if not c.registration_date or c.registration_date <= self.date_end]
+        registered_customers = len(valid_customers)
+
+        contrib_map = self._get_contrib_metrics()
+        customers_with_consumption = sum(
+            1 for c in valid_customers
+            if contrib_map.get(c.id, {}).get('net_amount', Decimal('0.00')) > Decimal('0.00')
+        )
+        customers_without_consumption = max(registered_customers - customers_with_consumption, 0)
+        
+        net_sales = sum(
+            (contrib_map.get(c.id, {}).get('net_amount', Decimal('0.00')) for c in valid_customers
+             if contrib_map.get(c.id, {}).get('net_amount', Decimal('0.00')) > Decimal('0.00')),
+            Decimal('0.00')
+        )
+
+        return {
+            'registered_customers': registered_customers,
+            'customers_with_consumption': customers_with_consumption,
+            'customers_with_consumption_pct': (Decimal(customers_with_consumption) / Decimal(registered_customers) * Decimal('100.00')) if registered_customers > 0 else Decimal('0.00'),
+            'customers_without_consumption': customers_without_consumption,
+            'customers_without_consumption_pct': (Decimal(customers_without_consumption) / Decimal(registered_customers) * Decimal('100.00')) if registered_customers > 0 else Decimal('0.00'),
+            'net_sales': net_sales,
+        }
+
     def get_table_records(self) -> list:
         #consumption amounts and metrics
         prev_year_sales_map = self._get_prev_year_sales()
@@ -286,6 +339,7 @@ class CustomerKpisService:
         freq_sales_map = self._calculate_sale_frequency()
         classes_consumption_map = self._calculate_product_classes_consumption()
         collections_map = self._get_collections_info()
+        contrib_metrics_map = self._get_contrib_metrics()
 
         #accesible range date
         start_prev_y = date(self.previous_year, 1, 1)
@@ -294,6 +348,8 @@ class CustomerKpisService:
         end_curr_y = self.today
 
         customers = list(self.customers_qs)
+        global_net = Decimal('0.00')
+        global_profit = Decimal('0.00')
 
         for customer in customers:
             c_id = customer.id
@@ -337,10 +393,60 @@ class CustomerKpisService:
                 customer.credit_usage = Decimal('0.00')
 
             #agreements
+            customer.active_agreements = 0
 
             #classes consumption
             customer.product_classes_consumed = classes_consumption_map.get(c_id, {})
             customer.product_classes_with_consumption = len(customer.product_classes_consumed)
-            
-        customers.sort(key=lambda x: x.previous_quarter_avg, reverse=True)
-        return customers
+
+            #contrib metrics
+            c_contrib = contrib_metrics_map.get(c_id, {'net_amount': Decimal('0.00'), 'profit': Decimal('0.00')})
+            customer.performance_net_amount = c_contrib['net_amount']
+            customer.performance_profit = c_contrib['profit']
+            customer.selected_contrib_by = 'profit' if self.order_by == 'profit' else 'net_amount'
+
+            global_net += customer.performance_net_amount
+            global_profit += customer.performance_profit
+
+        #pareto sorting & accumulation based on selected criterion
+        if self.order_by == 'profit':
+            active_customers = [c for c in customers if c.performance_profit > Decimal('0.00')]
+            active_customers.sort(key=lambda x: x.performance_profit, reverse=True)
+        else:
+            active_customers = [c for c in customers if c.performance_net_amount > Decimal('0.00')]
+            active_customers.sort(key=lambda x: x.performance_net_amount, reverse=True)
+
+        total_active_customers = len(active_customers)
+        cumuled_val = Decimal('0.00')
+
+        for index, customer in enumerate(active_customers, start=1):
+            if global_net > Decimal('0.00'):
+                customer.contrib_net_amount = (customer.performance_net_amount / global_net) * Decimal('100.00')
+            else:
+                customer.contrib_net_amount = Decimal('0.00')
+            customer.net_amount = customer.contrib_net_amount
+
+            if global_profit > Decimal('0.00'):
+                customer.contrib_profit = (customer.performance_profit / global_profit) * Decimal('100.00')
+            else:
+                customer.contrib_profit = Decimal('0.00')
+            customer.profit = customer.contrib_profit
+
+            primary_contrib = customer.contrib_profit if self.order_by == 'profit' else customer.contrib_net_amount
+            cumuled_val += primary_contrib
+            customer.cumuled_contrib = cumuled_val
+            customer.cumuled_portafolio_count = index
+            customer.cumuled_portafolio_pct = (Decimal(index) / Decimal(total_active_customers)) * Decimal('100.00') if total_active_customers > 0 else Decimal('0.00')
+
+        active_ids = set(c.id for c in active_customers)
+        inactive_customers = [c for c in customers if c.id not in active_ids]
+        for customer in inactive_customers:
+            customer.contrib_net_amount = Decimal('0.00')
+            customer.net_amount = Decimal('0.00')
+            customer.contrib_profit = Decimal('0.00')
+            customer.profit = Decimal('0.00')
+            customer.cumuled_contrib = Decimal('0.00')
+            customer.cumuled_portafolio_count = 0
+            customer.cumuled_portafolio_pct = Decimal('0.00')
+
+        return active_customers + inactive_customers
