@@ -14,35 +14,36 @@
         {{ customer.customer_type.name|default:'-'|title }}
     </td>
     <td class="p-2 truncate text-left">
-        {% if customer.category_last_moving_q.name == 'DIAMANTE' %}
-        <div class="flex items-center gap-1 text-cyan-600">
+        {% if customer.category_prev_quarter.name == 'diamante' %}
+        <div class="flex items-center gap-1 text-cyan-500">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gem-icon lucide-gem"><path d="M10.5 3 8 9l4 13 4-13-2.5-6"/><path d="M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z"/><path d="M2 9h20"/></svg>
-            <span class="text-body">{{ customer.category_last_moving_q.name|title }}</span>
+            <span class="text-body">{{ customer.category_prev_quarter.name|title }}</span>
         </div>
-        {% elif customer.category_last_moving_q.name == 'ORO' %}
-        <div class="flex items-center gap-1 text-yellow-600">
+        {% elif customer.category_prev_quarter.name == 'oro' %}
+        <div class="flex items-center gap-1 text-yellow-500">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-star-icon lucide-circle-star"><circle cx="12" cy="12" r="10"/><path d="M11.051 7.616a1 1 0 0 1 1.909.024l.737 1.452a1 1 0 0 0 .737.535l1.634.256a1 1 0 0 1 .588 1.806l-1.172 1.168a1 1 0 0 0-.282.866l.259 1.613a1 1 0 0 1-1.541 1.134l-1.465-.75a1 1 0 0 0-.912 0l-1.465.75a1 1 0 0 1-1.539-1.133l.258-1.613a1 1 0 0 0-.282-.867l-1.156-1.152a1 1 0 0 1 .572-1.822l1.633-.256a1 1 0 0 0 .737-.535z"/></svg>
-            <span class="text-body">{{ customer.category_last_moving_q.name|title }}</span>
+            <span class="text-body">{{ customer.category_prev_quarter.name|title }}</span>
         </div>
-        {% elif customer.category_last_moving_q.name == 'AA' %}
-        <div class="flex items-center gap-1 text-blue-600">
+        {% elif customer.category_prev_quarter.name == 'aa' %}
+        <div class="flex items-center gap-1 text-blue-500">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-aarrow-up-icon lucide-a-arrow-up"><path d="m14 11 4-4 4 4"/><path d="M18 16V7"/><path d="m2 16 4.039-9.69a.5.5 0 0 1 .923 0L11 16"/><path d="M3.304 13h6.392"/></svg>
-            <span class="text-body">{{ customer.category_last_moving_q.name|upper }}</span>
+            <span class="text-body">{{ customer.category_prev_quarter.name|upper }}</span>
         </div>
-        {% elif customer.category_last_moving_q.name == 'A' %}
+        {% elif customer.category_prev_quarter.name == 'a' %}
             <div class="flex items-center gap-1 text-sky-900">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-aarrow-down-icon lucide-a-arrow-down"><path d="m14 12 4 4 4-4"/><path d="M18 16V7"/><path d="m2 16 4.039-9.69a.5.5 0 0 1 .923 0L11 16"/><path d="M3.304 13h6.392"/></svg>
-                <span class="text-body">{{ customer.category_last_moving_q.name|upper }}</span>
+                <span class="text-body">{{ customer.category_prev_quarter.name|upper }}</span>
             </div>
-        {% elif customer.category_last_moving_q.name == 'C' %}
+        {% elif customer.category_prev_quarter.name == 'c' %}
             <div class="flex items-center gap-1 text-body">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copyright-icon lucide-copyright"><circle cx="12" cy="12" r="10"/><path d="M14.83 14.83a4 4 0 1 1 0-5.66"/></svg>
-                <span class="text-body">{{ customer.category_last_moving_q.name|upper }}</span>
+                <span class="text-body">{{ customer.category_prev_quarter.name|upper }}</span>
             </div>
         {% endif %}
     </td>
     <td class="p-2 truncate text-left">
-        {{ customer.frequency|title }}
+        {{ customer.frequency|title }} <br>
+        Cada: {{ customer.frequency_days|default:0|floatformat:0|intcomma }} días
     </td>
     <td class="p-2 truncate text-center border-r border-border">
         {% if customer.opinion_leader %}
@@ -73,15 +74,39 @@
     <td class="p-2 text-right text-title ">
         {{ customer.active_agreements|default:0|floatformat:0|intcomma }}
     </td>
-    <td class="p-2 text-right text-title ">
-        {{ customer.product_classes_with_consumption|default:0|floatformat:0|intcomma }}
+    <td class="p-2 text-right text-title">
+        {% if customer.product_classes_with_consumption > 0 %}
+        <details class="group relative inline-block cursor-pointer">
+            <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-end gap-1 hover:text-primary transition-colors select-none">
+                <span>{{ customer.product_classes_with_consumption|default:0|floatformat:0|intcomma }}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down-icon lucide-circle-chevron-down text-muted transition-transform group-open:rotate-180"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg>
+            </summary>
+
+            <div class="absolute right-0 top-full mt-1 w-64 p-1 bg-page border border-border rounded text-left text-xs z-50">
+                <div class="text-title border-b border-border pb-1 mb-1 flex justify-between items-center">
+                    <span>Clases con consumo</span>
+                    <span class="text-muted text-[10px] font-normal">({{ customer.product_classes_with_consumption }})</span>
+                </div>
+                <ul class="space-y-1 max-h-48 overflow-y-auto">
+                    {% for class_id, info in customer.product_classes_consumed.items %}
+                    <li class="flex items-center justify-between gap-2 border-b border-border/40 pb-1 last:border-0 last:pb-0">
+                        <span class="text-title truncate" title="{{ info.name }}">{{ info.name|title }}</span>
+                        <span class="text-muted text-[10px] font-mono shrink-0">$ {{ info.total|floatformat:2|intcomma }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </details>
+        {% else %}
+        <span class="text-muted">0</span>
+        {% endif %}
     </td>
-    <td class="p-2 text-right text-title ">
-        Previo: $ {{ customer.previous_year_average|default:0|floatformat:2|intcomma }} <br>
-        Actual: $ {{ customer.current_year_average|default:0|floatformat:2|intcomma }}
+    <td class="p-2 text-left text-title ">
+        <span class="font-bold">Previo:</span> $ {{ customer.previous_year_avg|default:0|floatformat:2|intcomma }} <br>
+        <span class="font-bold">Actual:</span> $ {{ customer.current_year_avg|default:0|floatformat:2|intcomma }}
     </td>
     <td class="p-2 text-right text-title border-r border-border">
-        $ {{ customer.previous_moving_quarter_average|default:0|floatformat:2|intcomma }}
+        $ {{ customer.previous_quarter_avg|default:0|floatformat:2|intcomma }}
     </td>
 
     <!-- analisis de contribucion -->

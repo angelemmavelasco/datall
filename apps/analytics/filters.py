@@ -156,17 +156,24 @@ class CustomerKpisFilter(django_filters.FilterSet):
     order_contrib = django_filters.ChoiceFilter(
         choices=[('net_amount', 'Venta neta'), ('profit', 'Utilidad')],
         label='Ordenar contribución por',
+        method='filter_noop',
         empty_label=None,
         null_label=None,
     )
     start_contrib = django_filters.DateFilter(
         label='Contribución desde',
+        method='filter_noop',
         widget=forms.DateInput(attrs={'type': 'date'})
     )
     end_contrib = django_filters.DateFilter(
         label='Contribución hasta',
+        method='filter_noop',
         widget=forms.DateInput(attrs={'type': 'date'})
     )
+
+    def filter_noop(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        """Filtro no-op para parámetros de configuración que no filtran directamente a Customer."""
+        return queryset
 
     class Meta:
         model = Customer

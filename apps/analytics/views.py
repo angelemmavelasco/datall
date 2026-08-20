@@ -1,4 +1,6 @@
+from apps.customers.services.accounts_receivables import AccountsReceivablesService
 import json
+from datetime import date
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib import messages
@@ -8,6 +10,8 @@ from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from django.core.paginator import Paginator
 from django.utils import timezone
+
+from decimal import Decimal
 
 from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.customers.services.customers import CustomersService
@@ -19,10 +23,21 @@ from apps.analytics.services.customer_kpis import CustomerKpisService
 def sales_dashboard_view(request):
     template = 'analytics/sales_dashboard/sales_dashboard.html'
 
+    # Default date range: current month
+    today = timezone.localdate()
+    first_day_curr_month = today.replace(day=1)
+    last_day_curr_month = (first_day_curr_month + relativedelta(months=1)) - timedelta(days=1)
+
+    req_data = request.GET.copy()
+    if 'date_start' not in req_data:
+        req_data['date_start'] = first_day_curr_month.strftime('%Y-%m-%d')
+    if 'date_end' not in req_data:
+        req_data['date_end'] = last_day_curr_month.strftime('%Y-%m-%d')
+
     #base service
     tx_service = SaleTransactionsService(user=request.user)
     base_tx_qs = tx_service.read_transactions_by_allowed_routes()
-    filter_set = SalesDashboardFilter(request.GET, queryset=base_tx_qs, request=request)
+    filter_set = SalesDashboardFilter(req_data, queryset=base_tx_qs, request=request)
     filtered_tx_qs = filter_set.qs
 
     cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
@@ -86,63 +101,54 @@ def sales_dashboard_view(request):
 def customer_kpis_view(request):
     template = 'analytics/customer_kpis/customer_kpis.html'
 
-    customers_service = CustomersService(user=request.user)
-    base_customers_qs = customers_service.read_customers()
+    # base services
+    customer_service = CustomersService(user=request.user)
+    customer_qs = customer_service.read_customers()
 
-    filter_set = CustomerKpisFilter(request.GET, queryset=base_customers_qs, request=request)
+    sale_transaction_service = SaleTransactionsService(user=request.user)
+    tx_by_allowed_ctm = sale_transaction_service.read_transactions_by_allowed_customers()
+
+    ar_service = AccountsReceivablesService(user=request.user)
+    ar_allowed_ctm = ar_service.read_ars_by_allowed_customers()
+
+    #set filters
+    filter_set = CustomerKpisFilter(request.GET, queryset=customer_qs, request=request)
     filtered_customers_qs = filter_set.qs
-
     cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
-    start_contrib = cleaned_data.get('start_contrib')
-    end_contrib = cleaned_data.get('end_contrib')
 
-    kpis_service = CustomerKpisService(
-        user=request.user,
+    #set main service
+    customer_kpis_service = CustomerKpisService(user=request.user, 
         customers_qs=filtered_customers_qs,
+        transactions_qs=tx_by_allowed_ctm,
+        ars_qs=ar_allowed_ctm,
+        date_start=cleaned_data.get('start_contrib'),
+        date_end=cleaned_data.get('end_contrib'),
         cleaned_data=cleaned_data,
-        date_start=start_contrib,
-        date_end=end_contrib,
     )
 
-    try:
-        customers_data = kpis_service.get_table_records()
-        global_kpis = kpis_service.get_stats()
-        months_headers = kpis_service.get_months_headers()
-    except Exception as e:
-        messages.error(request, f'Error al obtener los KPIs de clientes: {e}')
-        return redirect(reverse('analytics:customer_kpis_view'))
+    customers_data = customer_kpis_service.get_table_records()
 
     paginator = Paginator(customers_data, 100)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
-    paginated_customers = page_obj.object_list
 
     query_dict = request.GET.copy()
     if 'page' in query_dict:
         del query_dict['page']
-    query_string = query_dict.urlencode()
-
-    today = timezone.now().date()
 
     context = {
         'filter': filter_set,
-        'customers': paginated_customers,
+        'order_contrib': cleaned_data.get('order_contrib') or 'net_amount',
+        'selected_start_contrib': cleaned_data.get('start_contrib'),
+        'selected_end_contrib': cleaned_data.get('end_contrib'),
+        'customers': page_obj.object_list,
         'page_obj': page_obj,
-        'query_string': query_string,
-        'global_kpis': global_kpis,
-        'months_headers': months_headers,
-        'order_contrib': cleaned_data.get('order_contrib', 'net_amount'),
-        'selected_start_contrib': kpis_service.date_start,
-        'selected_end_contrib': kpis_service.date_end,
-        'today': today,
-        'end_last_q': today.replace(day=1) - timedelta(days=1),
-        'start_last_q': today.replace(day=1) - relativedelta(months=3),
+        'query_string': query_dict.urlencode(),
+        'month_headers': [date(timezone.now().year, m, 1) for m in range(1, 13)],
     }
 
     if request.htmx:
         hx_target = request.headers.get('HX-Target')
-        if hx_target == 'customer-kpis-content':
-            return render(request, 'analytics/customer_kpis/partials/_customer_kpis_content.html', context)
         return render(request, 'analytics/customer_kpis/partials/_customer_kpis_rows.html', context)
 
     return render(request, template, context)

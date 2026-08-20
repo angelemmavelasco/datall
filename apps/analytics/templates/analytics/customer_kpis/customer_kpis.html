@@ -178,14 +178,14 @@ KPIs por Clientes
                             Contribución acumulada
                         </th>
 
-                        {% for month in months_headers %}
+                        {% for month in month_headers %}
                             <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
                                 {{ month|date:"F"|title }}
                             </th>
                         {% endfor %}
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="customer-kpis-rows">
                     {% include "analytics/customer_kpis/partials/_customer_kpis_rows.html" %}
                 </tbody>
             </table>
@@ -198,11 +198,10 @@ KPIs por Clientes
 
 {% block filters %}
 <form id="customer-kpis-filter-form"
-      hx-get="{% url 'analytics:customer_kpis_view' %}"
-      hx-target="#customer-kpis-content"
-      hx-swap="outerHTML"
-      hx-push-url="true"
+      method="get"
+      action="{% url 'analytics:customer_kpis_view' %}"
       class="flex flex-col gap-4">
+
 
     <!-- Mantener parámetros de contribución activos -->
     <input type="hidden" name="order_contrib" value="{{ order_contrib|default:'net_amount' }}">
