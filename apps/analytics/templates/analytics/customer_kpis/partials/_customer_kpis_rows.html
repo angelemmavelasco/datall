@@ -6,7 +6,7 @@
         <a href="" target="_blank" class="block truncate w-[220px] max-w-[220px] underline text-title" title="{{ customer.id|upper }} {{ customer.name|title }}">
             {{ customer.id|upper }} {{ customer.name|title }}
         </a>
-        <p class="font-medium">Ruta {{ customer.current_route_id|default:'-'|upper }} {{ customer.current_route_business_unit|default:'-'|title }}</p>
+        <p class="font-medium text-hover">Ruta {{ customer.current_route_id|default:'-'|upper }} {{ customer.current_route_business_unit|default:'-'|title }}</p>
     </th>
 
 
@@ -156,7 +156,7 @@
                 text-blue-600
             {% endif %}
             ">
-                {{ customer.selected_contrib_by|default:'net_amount'|title }}
+                {% if customer.selected_contrib_by == 'profit' %}Utilidad{% else %}Venta neta{% endif %}
             </span>
             <span class="
             {% if customer.cumuled_contrib >= 80 %}
@@ -180,7 +180,7 @@
         </div>
     </td>
 
-    {% for month in customer.monthly_consumption_qs %}
+    {% for month in customer.monthly_consumption %}
         <td class="p-2 text-right text-title border-r border-border">
             <span class="font-medium">
                 $ {{ month.sale|default:0|floatformat:2|intcomma }}
@@ -196,7 +196,7 @@
 {% empty %}
 {% if not page_obj.has_previous %}
 <tr>
-    <td colspan="31"  class="p-2 text-muted text-center border-border">
+    <td colspan="27" class="p-2 text-muted text-center border-border">
         <div class="sticky left-1/2 -translate-x-1/2 w-max">
             {% include 'layouts/data_not_found.html' %}
         </div>
@@ -207,7 +207,7 @@
 
 {% if page_obj.has_next %}
 <tr id="load-more-row-{{ page_obj.number }}">
-    <td colspan="31" class="p-4 border-t border-border">
+    <td colspan="27" class="p-4 border-t border-border">
         <div class="sticky left-1/2 -translate-x-1/2 w-max">
             <button hx-get="{{ request.path }}?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}"
                     hx-target="#load-more-row-{{ page_obj.number }}"

@@ -73,10 +73,10 @@ KPIs por Clientes
 
             <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
                 <span class="text-sm text-title">
-                    Venta neta
+                    {% if order_contrib == 'profit' %}Utilidad{% else %}Venta neta{% endif %}
                 </span><br>
-                <span class="text-xl text-blue-500">
-                    $ {{ kpis.net_amount|default:0|floatformat:2|intcomma }}
+                <span class="text-xl {% if order_contrib == 'profit' %}text-emerald-500{% else %}text-blue-500{% endif %}">
+                    $ {% if order_contrib == 'profit' %}{{ kpis.profit|default:0|floatformat:2|intcomma }}{% else %}{{ kpis.net_amount|default:0|floatformat:2|intcomma }}{% endif %}
                 </span>
             </a>
 
@@ -122,9 +122,11 @@ KPIs por Clientes
                                 
                                 <div class="absolute left-1/2 -translate-x-1/2 top-full mt-8 w-80 p-2 bg-page border border-border rounded text-left font-normal z-50 normal-case">
                                     <form method="get" action="{% url 'analytics:customer_kpis_view' %}" class="flex flex-col gap-3">
-                                        {% for key, value in request.GET.items %}
+                                        {% for key, values in request.GET.lists %}
                                             {% if key != 'order_contrib' and key != 'start_contrib' and key != 'end_contrib' and key != 'page' %}
-                                                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                                                {% for val in values %}
+                                                    <input type="hidden" name="{{ key }}" value="{{ val }}">
+                                                {% endfor %}
                                             {% endif %}
                                         {% endfor %}
 
@@ -233,7 +235,7 @@ KPIs por Clientes
 
                         <!-- metricas de contribución -->
                         <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Contribución mnonetaria
+                            Contribución monetaria
                         </th>
 
                         <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
@@ -245,7 +247,7 @@ KPIs por Clientes
                         </th>
 
                         {% for month in month_headers %}
-                            <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
+                            <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
                                 {{ month|date:"F"|title }}
                             </th>
                         {% endfor %}

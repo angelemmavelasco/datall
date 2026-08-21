@@ -367,17 +367,57 @@ class CustomerKpisService:
             }
         return route_map
 
-    def _get_empty_monthly_consumption(self) -> list[dict[str, Any]]:
-        """Initializes 12 monthly slots with zero values for the current year"""
-        return [
-            {
-                'month_number': m,
-                'date': date(self.current_year, m, 1),
-                'sale': Decimal('0.00'),
-                'growth_vs_previous_month': Decimal('0.00'),
-            }
-            for m in range(1, 13)
-        ]
+    def _get_monthly_consumption(self, customer_ids: list[Any]) -> dict[Any, list[dict[str, Any]]]:
+        """
+        calculates 12 monthly consumption slots for the current year,
+        including month sales and growth vs the previous month.
+        returns {customer_id: [{month_number, date, sale, growth_vs_previous_month}, ...]}
+        """
+        if not customer_ids:
+            return {}
+
+        monthly_sales = (
+            self.transactions_qs
+            .filter(
+                customer_id__in=customer_ids,
+                sale_date__year=self.current_year,
+            )
+            .order_by()
+            .values('customer_id', 'sale_date__month')
+            .annotate(total=Sum('net_amount'))
+        )
+
+        sales_by_customer_month = defaultdict(dict)
+        for row in monthly_sales:
+            cid = row['customer_id']
+            month = row['sale_date__month']
+            sales_by_customer_month[cid][month] = row['total'] or Decimal('0.00')
+
+        result = {}
+        for cid in customer_ids:
+            monthly_list = []
+            prev_sale = Decimal('0.00')
+            c_sales = sales_by_customer_month.get(cid, {})
+
+            for m in range(1, 13):
+                current_sale = c_sales.get(m, Decimal('0.00'))
+
+                if prev_sale > Decimal('0.00'):
+                    growth = ((current_sale - prev_sale) / prev_sale) * Decimal('100.00')
+                else:
+                    growth = Decimal('100.00') if current_sale > Decimal('0.00') else Decimal('0.00')
+
+                monthly_list.append({
+                    'month_number': m,
+                    'date': date(self.current_year, m, 1),
+                    'sale': current_sale,
+                    'growth_vs_previous_month': growth,
+                })
+                prev_sale = current_sale
+
+            result[cid] = monthly_list
+
+        return result
 
     def get_stats(self) -> dict[str, Any]:
         """
@@ -389,15 +429,28 @@ class CustomerKpisService:
         customer_ids = [c.id for c in valid_customers]
 
         contrib_map = self._get_contrib_metrics(customer_ids)
-        customers_with_consumption = sum(
-            1 for c in valid_customers
-            if contrib_map.get(c.id, {}).get('net_amount', Decimal('0.00')) > Decimal('0.00')
-        )
+
+        #only takes customers with profit and net_amount > 0
+        if self.order_by == 'profit':
+            customers_with_consumption = sum(
+                1 for c in valid_customers
+                if contrib_map.get(c.id, {}).get('profit', Decimal('0.00')) > Decimal('0.00')
+            )
+        else:
+            customers_with_consumption = sum(
+                1 for c in valid_customers
+                if contrib_map.get(c.id, {}).get('net_amount', Decimal('0.00')) > Decimal('0.00')
+            )
         customers_without_consumption = max(registered_customers - customers_with_consumption, 0)
 
         net_sales = sum(
             (contrib_map.get(c.id, {}).get('net_amount', Decimal('0.00')) for c in valid_customers
              if contrib_map.get(c.id, {}).get('net_amount', Decimal('0.00')) > Decimal('0.00')),
+            Decimal('0.00')
+        )
+        total_profit = sum(
+            (contrib_map.get(c.id, {}).get('profit', Decimal('0.00')) for c in valid_customers
+             if contrib_map.get(c.id, {}).get('profit', Decimal('0.00')) > Decimal('0.00')),
             Decimal('0.00')
         )
 
@@ -407,7 +460,10 @@ class CustomerKpisService:
             'customers_with_consumption_pct': (Decimal(customers_with_consumption) / Decimal(registered_customers) * Decimal('100.00')) if registered_customers > 0 else Decimal('0.00'),
             'customers_without_consumption': customers_without_consumption,
             'customers_without_consumption_pct': (Decimal(customers_without_consumption) / Decimal(registered_customers) * Decimal('100.00')) if registered_customers > 0 else Decimal('0.00'),
+            'net_amount': net_sales,
             'net_sales': net_sales,
+            'profit': total_profit,
+            'margin': (total_profit / net_sales * Decimal('100.00')) if net_sales > Decimal('0.00') else Decimal('0.00')
         }
 
     def get_table_records(self) -> list:
@@ -425,6 +481,7 @@ class CustomerKpisService:
         collections_map = self._get_collections_info(customer_ids)
         contrib_metrics_map = self._get_contrib_metrics(customer_ids)
         routes_map = self._get_customer_assignments_map(customer_ids)
+        monthly_consumption_map = self._get_monthly_consumption(customer_ids)
 
         # Period ranges
         start_prev_y = date(self.previous_year, 1, 1)
@@ -488,8 +545,8 @@ class CustomerKpisService:
             customer.product_classes_consumed = classes_consumption_map.get(c_id, {})
             customer.product_classes_with_consumption = len(customer.product_classes_consumed)
 
-            #monthly consumption breakdown, init in zeros
-            customer.monthly_consumption_qs = self._get_empty_monthly_consumption()
+            #monthly consumption breakdown
+            customer.monthly_consumption = monthly_consumption_map.get(c_id, [])
 
             #contrib metrics
             c_contrib = contrib_metrics_map.get(c_id, {'net_amount': Decimal('0.00'), 'profit': Decimal('0.00')})
