@@ -139,6 +139,7 @@ def customer_kpis_view(request):
     )
 
     customers_data = customer_kpis_service.get_table_records()
+    global_kpis = customer_kpis_service.get_stats()
 
     paginator = Paginator(customers_data, 100)
     page_number = request.GET.get('page', 1)
@@ -153,15 +154,14 @@ def customer_kpis_view(request):
         'order_contrib': cleaned_data.get('order_contrib') or 'net_amount',
         'selected_start_contrib': customer_kpis_service.date_start,
         'selected_end_contrib': customer_kpis_service.date_end,
-        'kpis': customer_kpis_service.get_stats(),
+        'kpis': global_kpis,
         'customers': page_obj.object_list,
         'page_obj': page_obj,
         'query_string': query_dict.urlencode(),
-        'month_headers': [date(timezone.now().year, m, 1) for m in range(1, 13)],
+        'month_headers': [date(today.year, m, 1) for m in range(1, 13)],
     }
 
     if request.htmx:
-        hx_target = request.headers.get('HX-Target')
         return render(request, 'analytics/customer_kpis/partials/_customer_kpis_rows.html', context)
 
     return render(request, template, context)
