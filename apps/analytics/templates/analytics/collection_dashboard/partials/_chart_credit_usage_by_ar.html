@@ -1,0 +1,137 @@
+<div id="creditUsageByARGaugeChart" class="w-full h-[380px] min-h-full border border-border rounded bg-container"></div>
+
+<script>
+    (function() {
+        function initCreditUsageByARChart() {
+            const chartDom = document.getElementById('creditUsageByARGaugeChart');
+            if (!chartDom) return;
+
+            if (echarts.getInstanceByDom(chartDom)) {
+                echarts.dispose(chartDom);
+            }
+
+            const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim() || '#9ca3af';
+            const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--color-border').trim() || '#374151';
+            const totalBalance = {{ kpis.total_balance|default:0|floatformat:"2u" }};
+            const totalCredit = {{ kpis.credit_ar|default:0|floatformat:"2u" }};
+            const usageVal = {{ kpis.credit_usage_by_ar|default:0|floatformat:"2u" }};
+
+            const chart = echarts.init(chartDom);
+
+            const option = {
+                title: {
+                    text: 'Uso de crédito de cuentas por cobrar',
+                    textStyle: {
+                        fontWeight: 'normal',
+                        fontSize: 14,
+                        color: titleColor
+                    },
+                    top: 8,
+                },
+                toolbox: {
+                    feature: {
+                        saveAsImage: {}
+                    }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        const formattedDebt = '$ ' + Number(totalBalance || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const formattedCredit = '$ ' + Number(totalCredit || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const pct = Number(usageVal || 0).toFixed(2);
+                        return `<span style="font-weight:600;">Cuentas por cobrar</span><br/>` +
+                               `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:#435AB5;"></span> Crédito utilizado: <b>${formattedDebt}</b> (${pct}%)<br/>` +
+                               `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:#43B54B;"></span> Límite de deudores: <b>${formattedCredit}</b>`;
+                    }
+                },
+                series: [
+                    {
+                        name: 'Uso de crédito',
+                        type: 'gauge',
+                        radius: '75%',
+                        center: ['50%', '55%'],
+                        startAngle: 210,
+                        endAngle: -30,
+                        min: 0,
+                        max: 100,
+                        progress: {
+                            show: true,
+                            roundCap: true,
+                            width: 14,
+                            itemStyle: {
+                                color: usageVal > 90 ? '#ef4444' : (usageVal > 70 ? '#f59e0b' : '#43B54B')
+                            }
+                        },
+                        axisLine: {
+                            roundCap: true,
+                            lineStyle: {
+                                width: 14,
+                                color: [[1, borderColor]]
+                            }
+                        },
+                        axisTick: {
+                            show: false
+                        },
+                        splitLine: {
+                            length: 6,
+                            lineStyle: {
+                                width: 2,
+                                color: '#9ca3af'
+                            }
+                        },
+                        axisLabel: {
+                            distance: 18,
+                            color: titleColor,
+                            fontSize: 11,
+                            formatter: function(value) {
+                                if (value === 0 || value === 50 || value === 100) {
+                                    return value + '%';
+                                }
+                                return '';
+                            }
+                        },
+                        pointer: {
+                            itemStyle: {
+                                color: 'auto'
+                            }
+                        },
+                        anchor: {
+                            show: true,
+                            showAbove: true,
+                            size: 14,
+                            itemStyle: {
+                                borderWidth: 3,
+                                borderColor: 'auto'
+                            }
+                        },
+                        title: {
+                            show: false
+                        },
+                        detail: {
+                            valueAnimation: true,
+                            fontSize: 32,
+                            offsetCenter: [0, '70%'],
+                            fontWeight: 'bold',
+                            formatter: '{value}%',
+                            color: titleColor
+                        },
+                        data: [
+                            {
+                                value: Number(usageVal).toFixed(2)
+                            }
+                        ]
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initCreditUsageByARChart);
+        } else {
+            initCreditUsageByARChart();
+        }
+    })();
+</script>

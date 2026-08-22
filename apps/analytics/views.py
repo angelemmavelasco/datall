@@ -261,29 +261,24 @@ def collections_dashboard_view(request):
     service = AccountsReceivablesService(user=request.user)
     stats_service = AccountsReceivablesStats(accounts_receivables_service=service)
 
-    today = timezone.localdate()
-    req_data = request.GET.copy()
-    if not request.GET:
-        req_data['issue_date_end'] = today.strftime('%Y-%m-%d')
-
-    perspective = req_data.get('perspective', 'current_customers')
+    perspective = request.GET.get('perspective', 'current_customers')
     if perspective == 'emitting_routes':
         ars_qs = service.read_ars_by_allowed_routes()
     else:
         ars_qs = service.read_ars_by_allowed_customers()
 
-    filter_set = CollectionsDashboardFilter(req_data if req_data else None, queryset=ars_qs, request=request)
+    filter_set = CollectionsDashboardFilter(request.GET or None, queryset=ars_qs, request=request)
     filtered_ars_qs = filter_set.qs
 
     # for htmx lookup in customer filter
-    selected_customer_ids = req_data.getlist('customer')
+    selected_customer_ids = request.GET.getlist('customer')
     customers_service = CustomersService(user=request.user)
     cust_base = customers_service.read_customers()
     cust_selected = cust_base.filter(pk__in=selected_customer_ids) if selected_customer_ids else cust_base.none()
     cust_remaining = cust_base.exclude(pk__in=selected_customer_ids).order_by('name', 'id')[:20]
     initial_customers = list(cust_selected) + list(cust_remaining)
 
-    # General KPIs from AccountsReceivablesStats
+    #general kpis from AccountsReceivablesStats
     kpis = stats_service.stats(qs=filtered_ars_qs)
 
     context = {
@@ -291,7 +286,8 @@ def collections_dashboard_view(request):
         'initial_customers': initial_customers,
         'selected_customer_ids': selected_customer_ids,
         'current_perspective': perspective,
-        'selected_issue_date_end': req_data.get('issue_date_end', today.strftime('%Y-%m-%d')),
+        'selected_issue_date_start': request.GET.get('issue_date_start', ''),
+        'selected_issue_date_end': request.GET.get('issue_date_end', ''),
         'kpis': kpis,
     }
 

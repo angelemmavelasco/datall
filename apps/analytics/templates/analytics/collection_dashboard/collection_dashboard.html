@@ -30,7 +30,81 @@
 
 {% block content %}
 
+<div class="flex flex-col w-full gap-4">
+    <p class="text-title pb-1 border-b border-border">
+        {% if selected_issue_date_start and selected_issue_date_end %}
+            Resumen del {{ selected_issue_date_start }} al {{ selected_issue_date_end }}
+        {% elif selected_issue_date_start %}
+            Resumen a partir del {{ selected_issue_date_start }}
+        {% elif selected_issue_date_end %}
+            Resumen al {{ selected_issue_date_end }}
+        {% else %}
+            Resumen general
+        {% endif %}
+    </p>
 
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Saldo total
+            </span><br>
+            <span class="text-xl text-blue-500 font-mono font-medium">
+                $ {{ kpis.total_balance|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Saldo al corriente
+            </span><br>
+            <span class="text-xl text-emerald-500 font-mono font-medium">
+                $ {{ kpis.current_balance|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Saldo vencido
+            </span><br>
+            <span class="text-xl text-red-500 font-mono font-medium">
+                $ {{ kpis.overdue_balance|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Cuentas por cobrar
+            </span><br>
+            <span class="text-xl text-violet-500 font-mono font-medium">
+                {{ kpis.unique_customers_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+    </div>
+
+    <p class="text-title pb-1 border-b border-border">
+        Antigüedad de saldos vencidos
+    </p>
+
+    {% include 'analytics/collection_dashboard/partials/_aging_balances.html' %}
+
+    <p class="text-title pb-1 border-b border-border flex items-center gap-1">
+        <span>Uso de créditos</span>
+        <span class="flex items-center" title="Muestra el nivel de utilización de las líneas de crédito asignadas:&#10;&#10;• Uso por Cuentas por Cobrar: Considera únicamente a los clientes con saldo deudor activo frente a su límite de crédito concedido (suele ser más alto al excluir clientes sin deuda).&#10;&#10;• Uso por Toda la Cartera: Considera la totalidad de clientes asignados y sus líneas de crédito autorizadas (incluyendo los que están en $0 de saldo).&#10;&#10;Motivo / Interpretación: Lo ideal es que ambos porcentajes guarden cercanía. Una brecha muy amplia indica líneas de crédito ociosas o desaprovechadas en clientes inactivos, o bien una concentración de riesgo crediticio donde pocos clientes están sobreutilizando y saturando su límite.">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cursor-pointer lucide lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </span>
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[400px]">
+        {% include 'analytics/collection_dashboard/partials/_chart_credit_usage_by_ar.html' %}
+        {% include 'analytics/collection_dashboard/partials/_chart_credit_usage_by_all.html' %}
+    </div>
+
+
+
+
+
+</div>
 
 
 {% endblock %}

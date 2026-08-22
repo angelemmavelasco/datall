@@ -297,11 +297,37 @@ class AccountsReceivablesStats:
             unique_routes_count=Count('route', distinct=True),
         )
 
-        agg['total_balance'] = agg['total_balance'] or Decimal('0.0000')
-        agg['current_balance'] = agg['current_balance'] or Decimal('0.0000')
-        agg['balance_15'] = agg['balance_15'] or Decimal('0.0000')
-        agg['balance_30'] = agg['balance_30'] or Decimal('0.0000')
-        agg['balance_60'] = agg['balance_60'] or Decimal('0.0000')
-        agg['past_due'] = agg['past_due'] or Decimal('0.0000')
+        total_balance = agg['total_balance'] or Decimal('0.0000')
+        current_balance = agg['current_balance'] or Decimal('0.0000')
+        balance_15 = agg['balance_15'] or Decimal('0.0000')
+        balance_30 = agg['balance_30'] or Decimal('0.0000')
+        balance_60 = agg['balance_60'] or Decimal('0.0000')
+        past_due = agg['past_due'] or Decimal('0.0000')
+
+        agg['total_balance'] = total_balance
+        agg['current_balance'] = current_balance
+        agg['overdue_balance'] = balance_15 + balance_30 + balance_60 + past_due
+        agg['balance_15'] = balance_15
+        agg['balance_30'] = balance_30
+        agg['balance_60'] = balance_60
+        agg['past_due'] = past_due
+        agg['accs_receivable_count'] = agg['unique_customers_count']
+
+        #credit limit of customers with accounts receivable in current queryset
+        ar_customer_ids = base_qs.values_list('customer_id', flat=True).distinct()
+        credit_ar = Customer.objects.filter(id__in=ar_customer_ids).aggregate(total=Sum('credit_limit'))['total'] or Decimal('0.0000')
+
+        #credit limit of entire allowed customer portfolio
+        from apps.customers.services.customers import CustomersService
+        customers_service = CustomersService(user=self.accounts_receivables_service.user)
+        credit_ptf = customers_service.read_customers().aggregate(total=Sum('credit_limit'))['total'] or Decimal('0.0000')
+
+        usage_ar = (total_balance / credit_ar * 100) if credit_ar > 0 else Decimal('0.00')
+        usage_ptf = (total_balance / credit_ptf * 100) if credit_ptf > 0 else Decimal('0.00')
+
+        agg['credit_ar'] = credit_ar
+        agg['credit_ptf'] = credit_ptf
+        agg['credit_usage_by_ar'] = usage_ar
+        agg['credit_usage_by_ptf'] = usage_ptf
 
         return agg

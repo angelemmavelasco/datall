@@ -1,0 +1,44 @@
+{% load humanize %}
+
+<div class="w-full overflow-x-auto border border-border rounded bg-container hidden md:block">
+    <table class="w-full table-fixed text-left border-collapse">
+        <thead>
+            <tr class="border-b border-border">
+                <th class="min-w-40 p-1 text-center border-r border-border text-title text-xs font-semibold">1-15 días</th>
+                <th class="min-w-40 p-1 text-center border-r border-border text-title text-xs font-semibold">16-30 días</th>
+                <th class="min-w-40 p-1 text-center border-r border-border text-title text-xs font-semibold">31-60 días</th>
+                <th class="min-w-40 p-1 text-center text-title text-xs font-semibold">+60 días</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="p-1 text-center font-mono font-medium text-amber-500 border-r border-border text-sm">
+                    $ {{ kpis.balance_15|default:0|floatformat:2|intcomma }}
+                </td>
+                <td class="p-1 text-center font-mono font-medium text-orange-500 border-r border-border text-sm">
+                    $ {{ kpis.balance_30|default:0|floatformat:2|intcomma }}
+                </td>
+                <td class="p-1 text-center font-mono font-medium text-red-500 border-r border-border text-sm">
+                    $ {{ kpis.balance_60|default:0|floatformat:2|intcomma }}
+                </td>
+                <td class="p-1 text-center font-mono font-medium text-rose-600 text-sm">
+                    $ {{ kpis.past_due|default:0|floatformat:2|intcomma }}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="w-full grid grid-cols-2 border border-border rounded bg-container md:hidden text-xs">
+    <span class="border-b border-r border-border text-title p-2">1 a 15 días</span>
+    <span class="border-b border-border text-amber-500 font-mono font-medium p-2 text-right">$ {{ kpis.balance_15|default:0|floatformat:2|intcomma }}</span>
+
+    <span class="border-b border-r border-border text-title p-2">16 a 30 días</span>
+    <span class="border-b border-border text-orange-500 font-mono font-medium p-2 text-right">$ {{ kpis.balance_30|default:0|floatformat:2|intcomma }}</span>
+
+    <span class="border-b border-r border-border text-title p-2">31 a 60 días</span>
+    <span class="border-b border-border text-red-500 font-mono font-medium p-2 text-right">$ {{ kpis.balance_60|default:0|floatformat:2|intcomma }}</span>
+
+    <span class="border-r border-border text-title p-2">+60 días</span>
+    <span class="text-rose-600 font-mono font-medium p-2 text-right">$ {{ kpis.past_due|default:0|floatformat:2|intcomma }}</span>
+</div>
