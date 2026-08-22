@@ -186,7 +186,7 @@
     <div class="flex flex-col gap-6 pb-20">
         <nav class="flex flex-col gap-5" aria-label="Navegacion principal">
 
-            <div class="w-full max-w-50 mx-auto sm:max-w-none sm:w-full sm:mx-0">
+            <div class="w-36 mx-auto flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 500" class="w-full h-auto">
                     <style>
                         @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&amp;display=swap');
@@ -309,7 +309,7 @@
                     <ul class="ml-3 flex flex-col gap-1.5 border-l border-border pl-4 text-body">
                         {% for submodule in module.submodules.all %}
                         <li class="sidebar-submodule-item">
-                            <a href="{% url submodule.url_name %}" class="sidebar-submodule-link flex items-center gap-1 hover:text-hover transition-colors text-sm py-2 border-b border-border md:border-none">
+                            <a href="{% url submodule.url_name %}" class="sidebar-submodule-link flex items-center gap-1 hover:text-hover transition-colors text-sm md:text-xs py-2 border-b border-border md:border-none">
                                 {% if submodule.icon %}
                                     {{ submodule.icon|safe }}
                                 {% endif %}
@@ -320,6 +320,18 @@
                     </ul>
                 </section>
                 {% endfor %}
+
+                {% if request.user.is_authenticated %}
+                <div class="sidebar-module-section pt-3">
+                    <form method="POST" action="{% url 'core:logout' %}" class="w-full">
+                        {% csrf_token %}
+                        <button type="submit" class="sidebar-submodule-item sidebar-submodule-link flex items-center gap-1.5 hover:text-red-500 text-body transition-colors text-sm md:text-xs py-1.5 w-full text-left cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out-icon lucide-log-out shrink-0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                            <span class="sidebar-submodule-name">Cerrar sesión</span>
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
             </div>
         </nav>
     </div>

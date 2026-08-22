@@ -609,6 +609,9 @@
   .w-32 {
     width: calc(var(--spacing) * 32);
   }
+  .w-36 {
+    width: calc(var(--spacing) * 36);
+  }
   .w-40 {
     width: calc(var(--spacing) * 40);
   }
@@ -1799,6 +1802,9 @@
     }
     .hover\:text-red-400:hover {
       color: var(--color-red-400);
+    }
+    .hover\:text-red-500:hover {
+      color: var(--color-red-500);
     }
     .hover\:text-title:hover {
       color: var(--theme-title);
