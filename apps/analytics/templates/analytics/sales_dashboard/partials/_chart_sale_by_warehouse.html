@@ -1,29 +1,29 @@
-<div id="warehouseBarChart" class="w-full h-[380px] min-h-full border border-border rounded bg-container"></div>
+<div id="businessUnitBarChart" class="w-full h-[380px] min-h-full border border-border rounded bg-container"></div>
 
 <script>
     (function() {
-        function initWarehouseChart() {
-            const chartDom = document.getElementById('warehouseBarChart');
+        function initBusinessUnitChart() {
+            const chartDom = document.getElementById('businessUnitBarChart');
             if (!chartDom) return;
 
             if (echarts.getInstanceByDom(chartDom)) {
                 echarts.dispose(chartDom);
             }
 
-            const rawData = {{ chart_data.warehouse_chart_data|safe|default:'{}' }};
-            const warehouseData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+            const rawData = {{ chart_data.business_unit_chart_data|safe|default:'{}' }};
+            const businessUnitData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
 
             const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim() || '#9ca3af';
             const isMobile = window.innerWidth < 768;
             const greenColor = '#43B54B';
             const blueColor = '#435AB5';
 
-            const warehouseBarChart = echarts.init(chartDom);
+            const businessUnitBarChart = echarts.init(chartDom);
 
-            const warehouseBarOption = {
+            const businessUnitBarOption = {
                 color: [greenColor, blueColor],
                 title: {
-                    text: 'Venta neta por centro de distribución',
+                    text: 'Venta neta por gerencia',
                     textStyle: {
                         fontWeight: 'normal',
                         fontSize: 14,
@@ -44,17 +44,17 @@
                     formatter: function(params) {
                         if (!params || params.length === 0) return '';
                         const dataIndex = params[0].dataIndex;
-                        const whName = params[0].axisValue || '';
+                        const buName = params[0].axisValue || '';
 
-                        let res = `<span style="font-weight:600;">${whName}</span><br/>`;
+                        let res = `<span style="font-weight:600;">${buName}</span><br/>`;
                         params.forEach(p => {
                             const val = '$ ' + Number(p.value || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                             res += `${p.marker} ${p.seriesName}: <b>${val}</b><br/>`;
                         });
 
-                        if (warehouseData.target_achievement && warehouseData.target_achievement[dataIndex] !== undefined) {
-                            const ach = warehouseData.target_achievement[dataIndex];
-                            const target = (warehouseData.targets && warehouseData.targets[dataIndex]) || 0;
+                        if (businessUnitData.target_achievement && businessUnitData.target_achievement[dataIndex] !== undefined) {
+                            const ach = businessUnitData.target_achievement[dataIndex];
+                            const target = (businessUnitData.targets && businessUnitData.targets[dataIndex]) || 0;
                             if (target > 0) {
                                 res += `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:#8b5cf6;"></span> Alcance: <b>${ach}%</b>`;
                             }
@@ -98,12 +98,12 @@
                 },
                 yAxis: {
                     type: 'category',
-                    data: warehouseData.categories || [],
+                    data: businessUnitData.categories || [],
                     axisLabel: {
                         color: titleColor,
                         formatter: function(val, index) {
-                            const sale = (warehouseData.sales && warehouseData.sales[index] !== undefined)
-                                ? '$ ' + Number(warehouseData.sales[index]).toLocaleString('es-MX', { maximumFractionDigits: 0 })
+                            const sale = (businessUnitData.sales && businessUnitData.sales[index] !== undefined)
+                                ? '$ ' + Number(businessUnitData.sales[index]).toLocaleString('es-MX', { maximumFractionDigits: 0 })
                                 : '';
                             return `${val}\n{sale|${sale}}`;
                         },
@@ -121,26 +121,26 @@
                     {
                         name: 'Venta',
                         type: 'bar',
-                        data: warehouseData.sales || [],
+                        data: businessUnitData.sales || [],
                         barMaxWidth: 20,
                     },
                     {
                         name: 'Objetivo',
                         type: 'bar',
-                        data: warehouseData.targets || [],
+                        data: businessUnitData.targets || [],
                         barMaxWidth: 20,
                     }
                 ]
             };
 
-            warehouseBarChart.setOption(warehouseBarOption);
-            window.addEventListener('resize', () => warehouseBarChart.resize());
+            businessUnitBarChart.setOption(businessUnitBarOption);
+            window.addEventListener('resize', () => businessUnitBarChart.resize());
         }
 
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initWarehouseChart);
+            document.addEventListener('DOMContentLoaded', initBusinessUnitChart);
         } else {
-            initWarehouseChart();
+            initBusinessUnitChart();
         }
     })();
 </script>

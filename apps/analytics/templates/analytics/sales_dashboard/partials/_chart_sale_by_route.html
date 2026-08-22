@@ -20,7 +20,7 @@
                 <tr>
 
                     <td class="w-30 min-w-30 max-w-30 p-2 border-r border-border sticky left-0 z-10 bg-container">
-                        <a href="{% url 'analytics:route_kpis_view' route.id %}?date_start={{ selected_date_start|default:'' }}&date_end={{ selected_date_end|default:'' }}" class="hover:text-hover transition-colors cursor-pointer truncate flex items-center gap-1 underline text-title">
+                        <a href="{% url 'analytics:route_kpis_view' %}?route={{ route.id|default:'' }}&date_start={{ selected_date_start|date:'Y-m-d'|default:selected_date_start }}&date_end={{ selected_date_end|date:'Y-m-d'|default:selected_date_end }}" class="hover:text-hover transition-colors cursor-pointer truncate flex items-center gap-1 underline text-title">
                             {{ route.id|upper }} {{ route.name|title }}
                         </a>
                     </td>

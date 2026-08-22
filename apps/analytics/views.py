@@ -69,7 +69,7 @@ def sales_dashboard_view(request):
     try:
         kpis = dashboard_service.get_stats()
         timeline_data = dashboard_service.get_timeline()
-        warehouse_chart_data = dashboard_service.get_warehouse_chart()
+        business_unit_chart_data = dashboard_service.get_business_unit_chart()
         product_class_chart_data = dashboard_service.get_product_class_chart()
         product_category_chart_data = dashboard_service.get_product_category_chart()
 
@@ -79,7 +79,7 @@ def sales_dashboard_view(request):
 
         chart_data = {
             'timeline_data': json.dumps(timeline_data),
-            'warehouse_chart_data': json.dumps(warehouse_chart_data),
+            'business_unit_chart_data': json.dumps(business_unit_chart_data),
             'product_class_chart_data': json.dumps(product_class_chart_data),
             'product_category_chart_data': json.dumps(product_category_chart_data),
         }
@@ -257,7 +257,11 @@ def route_kpis_view(request):
 
 @login_required
 def collections_dashboard_view(request):
-    pass
+    template = 'analytics/collection_dashboard/collection_dashboard.html'
+    context = {
+        
+    }
+    return render(request, template, context)
 
 @login_required
 def commercial_risk_view(request):

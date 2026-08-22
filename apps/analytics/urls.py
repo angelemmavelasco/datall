@@ -10,8 +10,9 @@ urlpatterns = [
     
     path('route-kpis/', route_kpis_view, name='route_kpis_view'),
 
-    path('product-kpis/', product_kpis_view, name='product_kpis_view'),
     path('collections-dashboard/', collections_dashboard_view, name='collections_dashboard_view'),
+    
+    path('product-kpis/', product_kpis_view, name='product_kpis_view'),
     path('commercial-risk/', commercial_risk_view, name='commercial_risk_view'),
     path('target-achievement/', target_achievement_view, name='target_achievement_view'),
     path('annual-sale-breakdown/', annual_sale_breakdown_view, name='annual_sale_breakdown_view'),

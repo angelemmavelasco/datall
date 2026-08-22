@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks has_group %}
+
+{% block title %}
+    Dashboard de cobranza
+{% endblock %}
+
+{% block module_name %}
+    Dashboard de cobranza
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+
+    <button onclick="toggleFilters()" class="hover:text-hover transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+{% endblock %}
+
+{% block filters %}
+
+    {% include 'analytics/sales_dashboard/partials/sales_dashboard__filters.html' %}
+
+{% endblock %}

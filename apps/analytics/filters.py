@@ -7,9 +7,36 @@ from django.utils import timezone
 from apps.sales.models import SaleTransaction, Route, Warehouse
 from apps.human_resources.models import BusinessUnit
 from apps.customers.models import Customer, CustomerType
-from apps.products.models import ProductClass
+from apps.products.models import ProductClass, ProductCategory
 from apps.sales.services.routes import RoutesService
 from apps.human_resources.services.business_units import BusinessUnitsService
+
+
+class BusinessUnitMultipleChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj: BusinessUnit) -> str:
+        return obj.name.title()
+
+
+class BusinessUnitMultipleChoiceFilter(django_filters.ModelMultipleChoiceFilter):
+    field_class = BusinessUnitMultipleChoiceField
+
+
+class ProductClassMultipleChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj: ProductClass) -> str:
+        return (obj.name or obj.id).title()
+
+
+class ProductClassMultipleChoiceFilter(django_filters.ModelMultipleChoiceFilter):
+    field_class = ProductClassMultipleChoiceField
+
+
+class ProductCategoryMultipleChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj: ProductCategory) -> str:
+        return (obj.name or obj.id).title()
+
+
+class ProductCategoryMultipleChoiceFilter(django_filters.ModelMultipleChoiceFilter):
+    field_class = ProductCategoryMultipleChoiceField
 
 
 class SalesDashboardFilter(django_filters.FilterSet):
@@ -25,13 +52,13 @@ class SalesDashboardFilter(django_filters.FilterSet):
         label='Fecha fin',
         widget=forms.DateInput(attrs={'type': 'date'})
     )
-    region = django_filters.ModelMultipleChoiceFilter(
+    region = BusinessUnitMultipleChoiceFilter(
         method='filter_region',
         queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION),
         widget=forms.CheckboxSelectMultiple,
         label='Región'
     )
-    business_unit = django_filters.ModelMultipleChoiceFilter(
+    business_unit = BusinessUnitMultipleChoiceFilter(
         method='filter_business_unit',
         queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT),
         widget=forms.CheckboxSelectMultiple,
@@ -43,13 +70,13 @@ class SalesDashboardFilter(django_filters.FilterSet):
         widget=forms.CheckboxSelectMultiple,
         label='Ruta'
     )
-    warehouse = django_filters.ModelMultipleChoiceFilter(
-        field_name='warehouse',
-        queryset=Warehouse.objects.all(),
+    product_category = ProductCategoryMultipleChoiceFilter(
+        field_name='product_class__product_category',
+        queryset=ProductCategory.objects.all(),
         widget=forms.CheckboxSelectMultiple,
-        label='Centro de distribución (Lugar de venta)'
+        label='Categoría de producto'
     )
-    product_class = django_filters.ModelMultipleChoiceFilter(
+    product_class = ProductClassMultipleChoiceFilter(
         field_name='product_class',
         queryset=ProductClass.objects.all(),
         widget=forms.CheckboxSelectMultiple,
@@ -74,8 +101,8 @@ class SalesDashboardFilter(django_filters.FilterSet):
             self.filters['region'].queryset = bu_service.read_regions()
             self.filters['business_unit'].queryset = bu_service.read_units()
             self.filters['route'].queryset = RoutesService(user=request.user).read_routes()
-            self.filters['warehouse'].queryset = Warehouse.objects.all()
             self.filters['customer'].queryset = Customer.objects.all().order_by('name', 'id')
+            self.filters['product_category'].queryset = ProductCategory.objects.all()
             self.filters['product_class'].queryset = ProductClass.objects.all()
 
     def filter_region(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
@@ -115,13 +142,13 @@ class CustomerKpisFilter(django_filters.FilterSet):
         method='filter_name',
         label='Cliente'
     )
-    region = django_filters.ModelMultipleChoiceFilter(
+    region = BusinessUnitMultipleChoiceFilter(
         method='filter_region',
         queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION),
         widget=forms.CheckboxSelectMultiple,
         label='Región'
     )
-    business_unit = django_filters.ModelMultipleChoiceFilter(
+    business_unit = BusinessUnitMultipleChoiceFilter(
         method='filter_business_unit',
         queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT),
         widget=forms.CheckboxSelectMultiple,

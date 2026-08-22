@@ -294,20 +294,20 @@ class SalesDashboardService:
             'total_target': round(total_target, 2),
         }
 
-    def get_warehouse_chart(self) -> dict[str, list]:
+    def get_business_unit_chart(self) -> dict[str, list]:
         """
-        calculates net sales and targets by warehouse/distribution center.
+        calculates net sales and targets grouped by the route's business unit (gerencia).
         """
         tx_qs, target_qs = self._base_qs()
 
-        #agg sales by warehouse
-        wh_aggs = (
-            tx_qs.order_by('warehouse__name')
-            .values('warehouse_id', 'warehouse__name')
+        #agg sales by route's business unit
+        bu_aggs = (
+            tx_qs.order_by('route__business_unit__name')
+            .values('route__business_unit_id', 'route__business_unit__name')
             .annotate(total_sales=Sum('net_amount'))
         )
 
-        #agg targets by business unit matching warehouse IDs
+        #agg targets by business unit
         target_map: dict[str, float] = defaultdict(float)
         target_bu_aggs = (
             target_qs.order_by('business_unit_id')
@@ -319,21 +319,35 @@ class SalesDashboardService:
             if bu_id:
                 target_map[bu_id] += float(row['total_target'] or 0.0)
 
-        data_rows = []
-        for row in wh_aggs:
-            wh_id = row.get('warehouse_id') or 'N/A'
-            wh_name = row.get('warehouse__name') or (wh_id.upper() if wh_id != 'N/A' else 'Sin CEDIS')
-            sales = float(row['total_sales'] or 0.0)
-            
-            #map target matching warehouse id (direct or prefix)
-            target = target_map.get(wh_id, 0.0)
-            if target == 0.0 and wh_id == 'cdmx':
-                target = target_map.get('cdmx1', 0.0) + target_map.get('cdmx2', 0.0)
+        bu_data = defaultdict(lambda: {'name': '', 'sales': 0.0, 'targets': 0.0})
 
+        for row in bu_aggs:
+            b_id = str(row.get('route__business_unit_id') or 'sin_gerencia')
+            b_name = (row.get('route__business_unit__name') or (b_id.upper() if b_id != 'sin_gerencia' else 'Sin Gerencia')).strip().title()
+            bu_data[b_id]['name'] = b_name
+            bu_data[b_id]['sales'] += float(row['total_sales'] or 0.0)
+
+        for b_id, target_amt in target_map.items():
+            if target_amt > 0 and b_id not in bu_data:
+                bu_obj = BusinessUnit.objects.filter(id=b_id).first()
+                b_name = bu_obj.name.strip().title() if bu_obj else b_id.upper()
+                bu_data[b_id]['name'] = b_name
+
+        for b_id, data in bu_data.items():
+            target_amt = target_map.get(b_id, 0.0)
+            if target_amt == 0.0 and b_id == 'cdmx':
+                target_amt = target_map.get('cdmx1', 0.0) + target_map.get('cdmx2', 0.0)
+            data['targets'] = target_amt
+
+        data_rows = []
+        for b_id, data in bu_data.items():
+            if data['sales'] == 0 and data['targets'] == 0:
+                continue
             data_rows.append({
-                'name': wh_name.title(),
-                'sales': round(sales, 2),
-                'targets': round(target, 2),
+                'id': b_id,
+                'name': data['name'],
+                'sales': round(data['sales'], 2),
+                'targets': round(data['targets'], 2),
             })
 
         data_rows.sort(key=lambda x: x['sales'])
@@ -456,7 +470,7 @@ class SalesDashboardService:
                 'contribution': contribution,
             })
 
-        rows.sort(key=lambda x: x['sales'], reverse=True)
+        rows.sort(key=lambda x: x['sales'])
         return {
             'categories': [r['id'] for r in rows],
             'names': [r['name'] for r in rows],
