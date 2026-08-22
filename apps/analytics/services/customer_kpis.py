@@ -1,3 +1,4 @@
+import io
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -6,6 +7,10 @@ from dateutil.relativedelta import relativedelta
 from django.db.models import QuerySet, Sum, Q
 from django.utils import timezone
 from collections import defaultdict
+
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 from apps.core.models import Reference
 from apps.customers.models import CustomerAssignment
@@ -599,3 +604,299 @@ class CustomerKpisService:
             customer.cumuled_portafolio_pct = Decimal('0.00')
 
         return active_customers + inactive_customers
+
+@dataclass
+class CustomerKpisExports:
+    '''dedicated to receive all exports request for customer kpis objects and filters'''
+    customer_kpis_service: CustomerKpisService
+
+    def export_customer_kpis_report(self) -> io.BytesIO:
+        customers_data = self.customer_kpis_service.read_customer_kpis()
+        kpis = self.customer_kpis_service.get_stats()
+
+        wb = openpyxl.Workbook()
+
+        #styles
+        header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
+        header_font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+        section_font = Font(name="Calibri", size=12, bold=True, color="0F172A")
+        title_font = Font(name="Calibri", size=14, bold=True, color="0F172A")
+        subtitle_font = Font(name="Calibri", size=9, italic=True, color="64748B")
+        data_font = Font(name="Calibri", size=10)
+        bold_data_font = Font(name="Calibri", size=10, bold=True)
+
+        thin_border_side = Side(style='thin', color='CBD5E1')
+        cell_border = Border(left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side)
+
+        currency_format = '"$"#,##0.00'
+        pct_format = '0.00%'
+        int_format = '#,##0'
+
+        # gens
+        ws_summary = wb.active
+        ws_summary.title = "Resumen General"
+        ws_summary.views.sheetView[0].showGridLines = True
+
+        #title
+        ws_summary.cell(row=1, column=1, value="REPORTE DE KPIS DE CLIENTES - RESUMEN GENERAL").font = title_font
+        now_str = timezone.localtime().strftime('%Y-%m-%d %H:%M')
+        d_start_str = self.customer_kpis_service.date_start.strftime('%Y-%m-%d') if self.customer_kpis_service.date_start else ''
+        d_end_str = self.customer_kpis_service.date_end.strftime('%Y-%m-%d') if self.customer_kpis_service.date_end else ''
+        criterio_str = "Utilidad" if self.customer_kpis_service.order_by == 'profit' else "Venta Neta"
+        ws_summary.cell(row=2, column=1, value=f"Generado el: {now_str} | Periodo de análisis: {d_start_str} al {d_end_str} | Criterio de evaluación: {criterio_str}").font = subtitle_font
+
+        #sect 1, gen indicators
+        ws_summary.cell(row=4, column=1, value="1. Indicadores Generales de Cartera").font = section_font
+        general_headers = ["Indicador", "Clientes", "% de Cartera"]
+        for col_num, h_text in enumerate(general_headers, 1):
+            cell = ws_summary.cell(row=5, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center" if col_num > 1 else "left")
+            cell.border = cell_border
+
+        reg_c = int(kpis.get('registered_customers') or 0)
+        with_c = int(kpis.get('customers_with_consumption') or 0)
+        with_pct = float(kpis.get('customers_with_consumption_pct') or 0) / 100.0
+        without_c = int(kpis.get('customers_without_consumption') or 0)
+        without_pct = float(kpis.get('customers_without_consumption_pct') or 0) / 100.0
+
+        general_rows = [
+            ("Clientes registrados", reg_c, 1.0),
+            ("Clientes con consumo", with_c, with_pct),
+            ("Clientes sin consumo", without_c, without_pct),
+        ]
+
+        for row_idx, (label, val, pct) in enumerate(general_rows, 6):
+            c_lbl = ws_summary.cell(row=row_idx, column=1, value=label)
+            c_lbl.font = data_font
+            c_lbl.border = cell_border
+
+            c_val = ws_summary.cell(row=row_idx, column=2, value=val)
+            c_val.font = bold_data_font
+            c_val.number_format = int_format
+            c_val.alignment = Alignment(horizontal="right")
+            c_val.border = cell_border
+
+            c_pct = ws_summary.cell(row=row_idx, column=3, value=pct)
+            c_pct.font = bold_data_font
+            c_pct.number_format = pct_format
+            c_pct.alignment = Alignment(horizontal="right")
+            c_pct.border = cell_border
+
+        #gen 2, performance, net and profit 
+        start_row_perf = 11
+        ws_summary.cell(row=start_row_perf, column=1, value=f"2. Rendimiento del Periodo ({d_start_str} al {d_end_str})").font = section_font
+        perf_headers = ["Concepto", "Monto Total", "% Margen"]
+        for col_num, h_text in enumerate(perf_headers, 1):
+            cell = ws_summary.cell(row=start_row_perf + 1, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center" if col_num > 1 else "left")
+            cell.border = cell_border
+
+        net_s = float(kpis.get('net_amount') or kpis.get('net_sales') or 0)
+        prof_s = float(kpis.get('profit') or 0)
+        marg_s = float(kpis.get('margin') or 0) / 100.0
+
+        perf_rows = [
+            ("Venta Neta", net_s, None),
+            ("Utilidad Bruta", prof_s, marg_s),
+        ]
+
+        for idx, (lbl, amt, marg) in enumerate(perf_rows, start_row_perf + 2):
+            c_l = ws_summary.cell(row=idx, column=1, value=lbl)
+            c_l.font = data_font
+            c_l.border = cell_border
+
+            c_a = ws_summary.cell(row=idx, column=2, value=amt)
+            c_a.font = bold_data_font
+            c_a.number_format = currency_format
+            c_a.alignment = Alignment(horizontal="right")
+            c_a.border = cell_border
+
+            c_m = ws_summary.cell(row=idx, column=3, value=marg if marg is not None else "-")
+            c_m.font = bold_data_font
+            if marg is not None:
+                c_m.number_format = pct_format
+            c_m.alignment = Alignment(horizontal="right" if marg is not None else "center")
+            c_m.border = cell_border
+
+        # sheet 2, complete table
+        ws_customers = wb.create_sheet(title="Listado de Clientes")
+        ws_customers.views.sheetView[0].showGridLines = True
+
+        #superheaders
+        superheaders = [
+            ("Identificación", 1, 4),# Cols 1-4 (A-D)
+            ("Segmentación", 5, 9), # Cols 5-9 (E-I)
+            ("Cobranza", 10, 14),   # Cols 10-14 (J-N)
+            ("Métricas de Consumo", 15, 19), # Cols 15-19 (O-S)
+            (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 20, 26),  # Cols 20-26 (T-Z)
+            (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 27, 38), # Cols 27-38 (AA-AL)
+        ]
+
+        for title, start_col, end_col in superheaders:
+            if start_col == end_col:
+                cell = ws_customers.cell(row=1, column=start_col, value=title)
+            else:
+                ws_customers.merge_cells(start_row=1, start_column=start_col, end_row=1, end_column=end_col)
+                cell = ws_customers.cell(row=1, column=start_col, value=title)
+            
+            for c_idx in range(start_col, end_col + 1):
+                c_head = ws_customers.cell(row=1, column=c_idx)
+                c_head.fill = header_fill
+                c_head.font = header_font
+                c_head.border = cell_border
+                c_head.alignment = Alignment(horizontal="center", vertical="center")
+
+        ws_customers.row_dimensions[1].height = 24
+
+        #column headers row 2
+        month_names = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        
+        column_headers = [
+            # ids (1-4)
+            "ID Cliente",
+            "Nombre Cliente",
+            "Ruta",
+            "Gerencia",
+            # segment (5-9)
+            "Tipo de Cliente",
+            "Categoría",
+            "Frecuencia de Compra",
+            "Frecuencia (Días)",
+            "Líder de Opinión",
+            # collections (10-14)
+            "Límite de Crédito",
+            "% Uso de Crédito",
+            "Saldo al Corriente",
+            "Saldo Vencido",
+            "Saldo Total",
+            # consumption metrics (15-19)
+            "Convenios Activos",
+            "Clases con Consumo",
+            "Promedio Mensual Año Previo",
+            "Promedio Mensual Año Actual",
+            "Promedio Último Trimestre",
+            # contrib (20-26)
+            "Venta Neta Periodo",
+            "Utilidad Periodo",
+            "% Contribución Venta Neta",
+            "% Contribución Utilidad",
+            "% Contribución Acumulada",
+            "Clientes Acumulados",
+            "% Cartera Acumulada",
+            # monthly (27-38)
+            *[f"Venta {m}" for m in month_names]
+        ]
+
+        for col_num, h_text in enumerate(column_headers, 1):
+            cell = ws_customers.cell(row=2, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = cell_border
+
+        ws_customers.row_dimensions[2].height = 26
+
+        # Populate rows
+        for row_idx, c in enumerate(customers_data, 3):
+            cid = c.id or ''
+            cname = (c.name or '').title()
+            r_id = getattr(c, 'current_route_id', '-')
+            r_bu = (getattr(c, 'current_route_business_unit', '-') or '').title()
+            
+            c_type = (c.customer_type.name or '').title() if hasattr(c, 'customer_type') and c.customer_type else ''
+            cat_obj = getattr(c, 'category_prev_quarter', None)
+            cat_name = (getattr(cat_obj, 'name', '') or '').upper()
+            freq_name = (getattr(c, 'frequency', '') or '').title()
+            freq_days = int(getattr(c, 'frequency_days', 0) or 0)
+            op_leader = "Sí" if getattr(c, 'opinion_leader', False) else "No"
+
+            credit_limit = float(getattr(c, 'credit_limit', 0) or 0)
+            credit_usage = float(getattr(c, 'credit_usage', 0) or 0) / 100.0
+            curr_bal = float(getattr(c, 'current_balance', 0) or 0)
+            overdue_bal = float(getattr(c, 'overdue_balance', 0) or 0)
+            tot_bal = float(getattr(c, 'total_balance', 0) or 0)
+
+            active_agreements = int(getattr(c, 'active_agreements', 0) or 0)
+            prod_classes = int(getattr(c, 'product_classes_with_consumption', 0) or 0)
+            prev_y_avg = float(getattr(c, 'previous_year_avg', 0) or 0)
+            curr_y_avg = float(getattr(c, 'current_year_avg', 0) or 0)
+            prev_q_avg = float(getattr(c, 'previous_quarter_avg', 0) or 0)
+
+            perf_net = float(getattr(c, 'performance_net_amount', 0) or 0)
+            perf_profit = float(getattr(c, 'performance_profit', 0) or 0)
+            contrib_net_pct = float(getattr(c, 'contrib_net_amount', getattr(c, 'net_amount', 0)) or 0) / 100.0
+            contrib_profit_pct = float(getattr(c, 'contrib_profit', getattr(c, 'profit', 0)) or 0) / 100.0
+            cumuled_contrib = float(getattr(c, 'cumuled_contrib', 0) or 0) / 100.0
+            cumuled_count = int(getattr(c, 'cumuled_portafolio_count', 0) or 0)
+            cumuled_pct = float(getattr(c, 'cumuled_portafolio_pct', 0) or 0) / 100.0
+
+            monthly_sales = []
+            m_list = getattr(c, 'monthly_consumption', [])
+            m_dict = {item['month_number']: float(item.get('sale') or 0) for item in m_list if isinstance(item, dict)}
+            for m_num in range(1, 13):
+                monthly_sales.append(m_dict.get(m_num, 0.0))
+
+            row_values = [
+                # ids
+                (cid, '@', "center"),
+                (cname, None, "left"),
+                (r_id, '@', "center"),
+                (r_bu, None, "left"),
+                # segs
+                (c_type, None, "left"),
+                (cat_name, '@', "center"),
+                (freq_name, None, "left"),
+                (freq_days, int_format, "right"),
+                (op_leader, '@', "center"),
+                # collections
+                (credit_limit, currency_format, "right"),
+                (credit_usage, pct_format, "right"),
+                (curr_bal, currency_format, "right"),
+                (overdue_bal, currency_format, "right"),
+                (tot_bal, currency_format, "right"),
+                # consumption metrics
+                (active_agreements, int_format, "right"),
+                (prod_classes, int_format, "right"),
+                (prev_y_avg, currency_format, "right"),
+                (curr_y_avg, currency_format, "right"),
+                (prev_q_avg, currency_format, "right"),
+                # contrib
+                (perf_net, currency_format, "right"),
+                (perf_profit, currency_format, "right"),
+                (contrib_net_pct, pct_format, "right"),
+                (contrib_profit_pct, pct_format, "right"),
+                (cumuled_contrib, pct_format, "right"),
+                (cumuled_count, int_format, "right"),
+                (cumuled_pct, pct_format, "right"),
+                # monthly
+                *[(m_sale, currency_format, "right") for m_sale in monthly_sales]
+            ]
+
+            for col_idx, (val, num_fmt, align_h) in enumerate(row_values, 1):
+                cell = ws_customers.cell(row=row_idx, column=col_idx, value=val)
+                cell.font = data_font
+                cell.border = cell_border
+                cell.alignment = Alignment(horizontal=align_h)
+                if num_fmt:
+                    cell.number_format = num_fmt
+
+        # autosize columns
+        for sheet in [ws_summary, ws_customers]:
+            for col in sheet.columns:
+                max_len = 0
+                col_letter = get_column_letter(col[0].column)
+                for cell in col:
+                    val_str = str(cell.value or '')
+                    if cell.number_format == currency_format:
+                        val_str = f"${val_str}"
+                    max_len = max(max_len, len(val_str))
+                sheet.column_dimensions[col_letter].width = max(max_len + 3, 11)
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        return output

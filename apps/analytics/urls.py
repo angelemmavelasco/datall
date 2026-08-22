@@ -7,6 +7,7 @@ urlpatterns = [
     path('sales-dashboard/', sales_dashboard_view, name='sales_dashboard_view'),
 
     path('customer-kpis/', customer_kpis_view, name='customer_kpis_view'),
+    path('customer-kpis/export/', customer_kpis_export_view, name='customer_kpis_export_view'),
     
     path('route-kpis/', route_kpis_view, name='route_kpis_view'),
 
