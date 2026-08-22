@@ -278,8 +278,18 @@ def collections_dashboard_view(request):
     cust_remaining = cust_base.exclude(pk__in=selected_customer_ids).order_by('name', 'id')[:20]
     initial_customers = list(cust_selected) + list(cust_remaining)
 
-    #general kpis from AccountsReceivablesStats
+    #general KPIs
     kpis = stats_service.stats(qs=filtered_ars_qs)
+
+    #customer breakdown pagination
+    customer_breakdown_qs = stats_service.customer_breakdown(qs=filtered_ars_qs)
+    paginator = Paginator(customer_breakdown_qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    query_dict = request.GET.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
 
     context = {
         'filter': filter_set,
@@ -289,7 +299,13 @@ def collections_dashboard_view(request):
         'selected_issue_date_start': request.GET.get('issue_date_start', ''),
         'selected_issue_date_end': request.GET.get('issue_date_end', ''),
         'kpis': kpis,
+        'collections_by_customer': page_obj.object_list,
+        'page_obj': page_obj,
+        'query_string': query_dict.urlencode(),
     }
+
+    if request.htmx:
+        return render(request, 'analytics/collection_dashboard/partials/_collections_customer_rows.html', context)
 
     return render(request, template, context)
 

@@ -1,0 +1,106 @@
+{% load humanize %}
+
+{% for item in collections_by_customer %}
+<tr class="border-b border-border hover:bg-hover/50 transition-colors">
+    <!-- Cliente (Sticky con Ruta y Gerencia) -->
+    <th class="min-w-[240px] max-w-[240px] w-[240px] p-2 sticky md:left-0 z-20 bg-container text-left border-r border-border font-normal">
+        <a href="{% url 'customers:customer_detail_view' item.customer__id %}" target="_blank" class="block truncate w-[220px] max-w-[220px] underline text-title font-medium hover:text-hover" title="{{ item.customer__id|upper }} - {{ item.customer__name|title }}">
+            {{ item.customer__id|upper }} - {{ item.customer__name|title }}
+        </a>
+        <p class="font-medium text-hover text-xs truncate w-[220px] max-w-[220px]">
+            {% if item.route__id %}
+                Ruta {{ item.route__id|upper }} {{ item.route__business_unit__name|default:'-'|title }}
+            {% else %}
+                <span class="text-secondary italic">Sin ruta</span>
+            {% endif %}
+        </p>
+    </th>
+
+    <!-- Límite y uso -->
+    <td class="p-2 text-right border-r border-border text-xs font-mono">
+        <span class="text-title font-medium">
+            $ {{ item.customer__credit_limit|default:0|floatformat:2|intcomma }}
+        </span><br>
+        <span class="text-[11px] font-semibold
+            {% if item.credit_usage > 90 %}
+                text-red-500
+            {% elif item.credit_usage > 70 %}
+                text-orange-500
+            {% else %}
+                text-emerald-500
+            {% endif %}">
+            Uso: {{ item.credit_usage|default:0|floatformat:2|intcomma }}%
+        </span>
+    </td>
+
+    <!-- Saldo Total -->
+    <td class="p-2 text-right font-mono text-xs font-medium text-blue-500 border-r border-border">
+        $ {{ item.total_balance|default:0|floatformat:2|intcomma }}
+    </td>
+
+    <!-- Al corriente -->
+    <td class="p-2 text-right font-mono text-xs font-medium text-emerald-500 border-r border-border">
+        $ {{ item.current_balance|default:0|floatformat:2|intcomma }}
+    </td>
+
+    <!-- Vencido -->
+    <td class="p-2 text-right font-mono text-xs font-medium text-red-500 border-r border-border">
+        $ {{ item.overdue_balance|default:0|floatformat:2|intcomma }}
+    </td>
+
+    <!-- 1-15 días -->
+    <td class="p-2 text-right font-mono text-xs text-amber-500 border-r border-border">
+        $ {{ item.balance_15|default:0|floatformat:2|intcomma }}
+    </td>
+
+    <!-- 16-30 días -->
+    <td class="p-2 text-right font-mono text-xs text-orange-500 border-r border-border">
+        $ {{ item.balance_30|default:0|floatformat:2|intcomma }}
+    </td>
+
+    <!-- 31-60 días -->
+    <td class="p-2 text-right font-mono text-xs text-red-500 border-r border-border">
+        $ {{ item.balance_60|default:0|floatformat:2|intcomma }}
+    </td>
+
+    <!-- +60 días -->
+    <td class="p-2 text-right font-mono text-xs text-rose-600 font-medium">
+        $ {{ item.past_due|default:0|floatformat:2|intcomma }}
+    </td>
+</tr>
+{% empty %}
+{% if not page_obj.has_previous %}
+<tr>
+    <td colspan="9" class="p-4 text-muted text-center border-border">
+        <div class="sticky left-1/2 -translate-x-1/2 w-max">
+            {% include 'layouts/data_not_found.html' %}
+        </div>
+    </td>
+</tr>
+{% endif %}
+{% endfor %}
+
+{% if page_obj.has_next %}
+<tr id="load-more-row-{{ page_obj.number }}">
+    <td colspan="9" class="p-4 border-t border-border">
+        <div class="sticky left-1/2 -translate-x-1/2 w-max">
+            <button hx-get="{{ request.path }}?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}"
+                    hx-target="#load-more-row-{{ page_obj.number }}"
+                    hx-swap="outerHTML"
+                    class="group hover:text-hover text-strong transition-colors cursor-pointer border border-border rounded p-1.5 bg-page">
+                
+                <div class="flex items-center gap-2 group-[.htmx-request]:hidden text-xs">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down-icon lucide-circle-chevron-down"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg>
+                    <span>Mostrar más</span>
+                </div>
+
+                <div class="hidden items-center gap-2 group-[.htmx-request]:flex text-xs">
+                    {% include 'layouts/loading_animation_icon.html' %}
+                    <span class="text-strong">Cargando...</span>
+                </div>
+
+            </button>
+        </div>
+    </td>
+</tr>
+{% endif %}

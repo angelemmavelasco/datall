@@ -1,0 +1,50 @@
+{% load humanize %}
+
+<div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+    <table class="w-max min-w-full border-separate border-spacing-0 whitespace-nowrap">
+        <thead class="sticky top-0 z-30 bg-page">
+            <tr class="border-b border-border">
+                <th colspan="1" class="p-1 text-center border-r border-border sticky top-0 md:left-0 z-35 bg-page h-8 text-xs font-semibold">Identificación</th>
+                <th colspan="4" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 text-xs font-semibold">Crédito y cobranza</th>
+                <th colspan="4" class="p-1 text-center border-border sticky top-0 z-30 bg-page h-8 text-xs font-semibold">Antigüedad de saldos vencidos</th>
+            </tr>
+            <tr class="border-b border-border text-xs">
+                <!-- Identificación -->
+                <th class="min-w-[240px] max-w-[240px] w-[240px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-0 z-35 bg-page font-medium">
+                    Cliente
+                </th>
+
+                <!-- Cobranza y crédito -->
+                <th class="w-[160px] min-w-[160px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page font-medium">
+                    Límite y uso
+                </th>
+                <th class="w-[150px] min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page font-medium">
+                    Saldo total
+                </th>
+                <th class="w-[150px] min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page font-medium">
+                    Al corriente
+                </th>
+                <th class="w-[150px] min-w-[150px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page font-medium">
+                    Saldo vencido
+                </th>
+
+                <!-- Antigüedad -->
+                <th class="w-[140px] min-w-[140px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page font-medium">
+                    1-15 días
+                </th>
+                <th class="w-[140px] min-w-[140px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page font-medium">
+                    16-30 días
+                </th>
+                <th class="w-[140px] min-w-[140px] p-2 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page font-medium">
+                    31-60 días
+                </th>
+                <th class="w-[140px] min-w-[140px] p-2 text-center text-title border-t border-b border-border sticky top-8 z-30 bg-page font-medium">
+                    +60 días
+                </th>
+            </tr>
+        </thead>
+        <tbody id="collections-customer-rows">
+            {% include "analytics/collection_dashboard/partials/_collections_customer_rows.html" %}
+        </tbody>
+    </table>
+</div>

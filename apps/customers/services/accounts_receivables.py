@@ -7,6 +7,11 @@ from django.db.models import (
     QuerySet,
     Count,
     Sum,
+    F,
+    Case,
+    When,
+    Value,
+    DecimalField,
 )
 from django.utils import timezone
 
@@ -331,3 +336,29 @@ class AccountsReceivablesStats:
         agg['credit_usage_by_ptf'] = usage_ptf
 
         return agg
+
+    def customer_breakdown(self, *, qs: QuerySet = None) -> QuerySet:
+        base_qs = qs if qs is not None else self._base_qs
+
+        return base_qs.values(
+            'customer__id',
+            'customer__name',
+            'customer__credit_limit',
+            'route__id',
+            'route__name',
+            'route__business_unit__id',
+            'route__business_unit__name',
+        ).annotate(
+            total_balance=Sum('total_balance'),
+            current_balance=Sum('current_balance'),
+            balance_15=Sum('balance_15'),
+            balance_30=Sum('balance_30'),
+            balance_60=Sum('balance_60'),
+            past_due=Sum('past_due'),
+            overdue_balance=F('total_balance') - F('current_balance'),
+            credit_usage=Case(
+                When(customer__credit_limit__gt=0, then=(F('total_balance') * 100.0) / F('customer__credit_limit')),
+                default=Value(0.0),
+                output_field=DecimalField()
+            )
+        ).order_by('-total_balance')
