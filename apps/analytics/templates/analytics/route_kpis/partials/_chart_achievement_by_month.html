@@ -1,0 +1,134 @@
+<div class="border border-border rounded flex flex-col bg-container p-2 h-full min-h-[380px]">
+    <div id="targetBarChart" style="width: 100%; height: 360px; min-height: 360px;"></div>
+</div>
+
+<script>
+    (function() {
+        function initTargetBarChart() {
+            const chartDom = document.getElementById("targetBarChart");
+            if (!chartDom) return;
+
+            if (echarts.getInstanceByDom(chartDom)) {
+                echarts.dispose(chartDom);
+            }
+
+            const rawData = {{ chart_data.achievement_by_month|safe|default:'{}' }};
+            const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+
+            if (!data || !data.months || data.months.length === 0) {
+                return;
+            }
+
+            const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim() || '#9ca3af';
+            const isMobile = window.innerWidth < 768;
+
+            const targetBarChart = echarts.init(chartDom);
+            const targetBarChartOption = {
+                title: {
+                    text: 'Alcance de objetivos mensual',
+                    textStyle: {
+                        fontWeight: 'normal',
+                        fontSize: 14,
+                        color: titleColor
+                    },
+                    top: 8,
+                },
+                textStyle: {
+                    fontWeight: 'normal',
+                    fontSize: 12,
+                    color: titleColor
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross',
+                        crossStyle: { color: '#999' }
+                    },
+                    formatter: function(params) {
+                        if (!params || params.length === 0) return '';
+                        const month = params[0].axisValue || '';
+                        let res = `<span style="font-weight:600;">${month}</span><br/>`;
+                        params.forEach(p => {
+                            if (p.seriesName === 'Alcance') {
+                                res += `${p.marker} ${p.seriesName}: <b>${Number(p.value || 0).toFixed(2)} %</b><br/>`;
+                            } else {
+                                res += `${p.marker} ${p.seriesName}: <b>$ ${Number(p.value || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b><br/>`;
+                            }
+                        });
+                        return res;
+                    }
+                },
+                legend: {
+                    data: ['Objetivo', 'Venta neta', 'Alcance'],
+                    bottom: 0,
+                    left: 'center',
+                    textStyle: { color: titleColor }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '12%',
+                    containLabel: true
+                },
+                xAxis: [
+                    {
+                        type: 'category',
+                        data: data.months || [],
+                        axisPointer: { type: 'shadow' },
+                        axisLabel: { color: titleColor }
+                    }
+                ],
+                yAxis: [
+                    {
+                        type: 'value',
+                        axisLabel: {
+                            formatter: function(value) {
+                                if (value >= 1000000) return '$ ' + (value / 1000000).toFixed(1) + 'M';
+                                if (value >= 1000) return '$ ' + (value / 1000).toFixed(0) + 'k';
+                                return '$ ' + value;
+                            },
+                            color: titleColor
+                        },
+                        nameTextStyle: { color: titleColor },
+                        splitLine: { lineStyle: { opacity: 0.1 } }
+                    },
+                    {
+                        type: 'value',
+                        axisLabel: { formatter: '{value} %', color: titleColor },
+                        nameTextStyle: { color: titleColor },
+                        splitLine: { show: false }
+                    }
+                ],
+                series: [
+                    {
+                        name: 'Objetivo',
+                        type: 'bar',
+                        data: data.targets || [],
+                        itemStyle: { color: '#60a5fa', borderRadius: [4, 4, 0, 0] }
+                    },
+                    {
+                        name: 'Venta neta',
+                        type: 'bar',
+                        data: data.sales || [],
+                        itemStyle: { color: '#34d399', borderRadius: [4, 4, 0, 0] }
+                    },
+                    {
+                        name: 'Alcance',
+                        type: 'line',
+                        yAxisIndex: 1,
+                        data: data.scopes || [],
+                        itemStyle: { color: '#f59e0b' },
+                        lineStyle: { width: 3 }
+                    }
+                ]
+            };
+
+            targetBarChart.setOption(targetBarChartOption);
+            window.addEventListener('resize', function () { targetBarChart.resize(); });
+        }
+
+        document.addEventListener('DOMContentLoaded', initTargetBarChart);
+        document.addEventListener('htmx:afterSwap', initTargetBarChart);
+        initTargetBarChart();
+    })();
+</script>

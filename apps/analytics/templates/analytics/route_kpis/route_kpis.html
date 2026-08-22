@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks has_group %}
+
+{% block title %}
+    Kpis por ruta
+{% endblock %}
+
+{% block module_name %}
+    Kpis por ruta
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+
+    <button onclick="toggleFilters()" class="hover:text-hover transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+{% endblock %}
+
+{% block filters %}
+
+    {% include 'analytics/route_kpis/partials/route_kpis__filters.html' %}
+
+{% endblock %}
+
+{% block content %}
+
+    <div class="flex flex-col w-full gap-4">
+        <p class="text-title pb-1 border-b border-border">
+            Resumen de la ruta {{ selected_route|default:'-'|title }}
+        </p>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+            <div class="col-span-2 md:col-span-4">
+                {% if route.photo_url %}
+                <img src="{{ route.photo_url }}" alt="Foto del colaborador"
+                    style="width: 100px; height: 100px; min-width: 100px; min-height: 100px; object-fit: cover; object-position: top; padding: 4px;"
+                    class="rounded-full bg-white">
+                {% else %}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-circle-user-icon lucide-circle-user mx-auto">
+                        <circle cx="12" cy="12" r="10" />
+                        <circle cx="12" cy="10" r="3" />
+                        <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
+                    </svg>
+                {% endif %}
+            </div>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Venta neta
+                </span><br>
+                <span class="text-xl text-emerald-500">
+                    $ {{ kpis.net_amount|default:0|floatformat:2|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Objetivo de venta
+                </span><br>
+                <span class="text-xl text-blue-500">
+                    $ {{ kpis.sale_target|default:0|floatformat:2|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Alcance
+                </span><br>
+                <span class="text-xl text-violet-500">
+                    {{ kpis.target_achivement|default:0|floatformat:2|intcomma }} %
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Diferencia
+                </span><br>
+                <span class="text-xl {% if kpis.diff_amount < 0 %} text-red-500 {% else %} text-emerald-500 {% endif %}">
+                    $ {{ kpis.diff_amount|default:0|floatformat:2|intcomma }}
+                </span>
+            </a>
+        </div>
+
+        <p class="text-title pb-1 border-b border-border">
+            Evolución de alcance de objetivos
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[400px]">
+            {% include 'analytics/route_kpis/partials/_chart_achievement_by_month.html' %}
+            {% include 'analytics/route_kpis/partials/_chart_sale_by_product_class.html' %}
+        </div>
+
+        <p class="text-title pb-1 border-b border-border">
+            Cobranza
+        </p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Saldo total
+                </span><br>
+                <span class="text-xl text-blue-500">
+                    $ {{ kpis.total_balance|default:0|floatformat:2|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Saldo al corriente
+                </span><br>
+                <span class="text-xl text-emerald-500">
+                    $ {{ kpis.current_balance|default:0|floatformat:2|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Saldo vencido
+                </span><br>
+                <span class="text-xl text-red-500">
+                    $ {{ kpis.overdue_balance|default:0|floatformat:2|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Cuentas por cobrar
+                </span><br>
+                <span class="text-xl text-violet-500">
+                    {{ kpis.accounts_receivable|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+        </div>
+
+        <div class="border border-border rounded p-2 bg-container">
+            <p class="text-title text-sm text-center mb-2">Desglose de cobranza</p>
+
+            <div class="hidden md:block overflow-x-auto rounded overflow-y-auto">
+                <table class="table-fixed w-full rounded">
+                    <thead>
+                        <tr class="border-b border-border">
+                            <th class="p-2 text-center text-sm">Crédito</th>
+                            <th class="p-2 text-center text-sm">Uso</th>
+                            <th class="p-2 text-center text-sm">Saldo al corriente</th>
+                            <th class="p-2 text-center text-sm">1 a 15 días</th>
+                            <th class="p-2 text-center text-sm">16 a 30 días</th>
+                            <th class="p-2 text-center text-sm">31 a 60 días</th>
+                            <th class="p-2 text-center text-sm">+60 días</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr>
+                            <td class="p-2 text-center text-sm">$ {{ route.total_credit|default:0|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-center text-sm">{{ route.credit_usage|default:0|floatformat:2|intcomma }} %</td>
+                            <td class="p-2 text-center text-sm">$ {{ route.current_balance|default:0|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-center text-sm">$ {{ route.days_1_15|default:0|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-center text-sm">$ {{ route.days_16_30|default:0|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-center text-sm">$ {{ route.days_31_60|default:0|floatformat:2|intcomma }}</td>
+                            <td class="p-2 text-center text-sm">$ {{ route.days_60_over|default:0|floatformat:2|intcomma }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="md:hidden overflow-x-auto rounded overflow-y-auto">
+                <table class="table-fixed w-full rounded text-sm">
+                    <thead>
+                        <tr class="border-b border-border">
+                            <th class="p-2 text-center">Concepto</th>
+                            <th class="p-2 text-center">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="p-2 text-center">Crédito</td>
+                            <td class="p-2 text-center">$ {{ route.total_credit|default:0|floatformat:2|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="p-2 text-center">Uso</td>
+                            <td class="p-2 text-center">{{ route.credit_usage|default:0|floatformat:2|intcomma }} %</td>
+                        </tr>
+                        <tr>
+                            <td class="p-2 text-center">Saldo al corriente</td>
+                            <td class="p-2 text-center">$ {{ route.current_balance|default:0|floatformat:2|intcomma }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="p-2 text-center">1 a 15 días</td>
+                            <td class="p-2 text-center">$ {{ route.days_1_15|default:0|floatformat:2|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="p-2 text-center">16 a 30 días</td>
+                            <td class="p-2 text-center">$ {{ route.days_16_30|default:0|floatformat:2|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="p-2 text-center">31 a 60 días</td>
+                            <td class="p-2 text-center">$ {{ route.days_31_60|default:0|floatformat:2|intcomma }}</td>
+                        </tr>
+                        <tr>
+                            <td class="p-2 text-center">+60 días</td>
+                            <td class="p-2 text-center">$ {{ route.days_60_over|default:0|floatformat:2|intcomma }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <p class="text-title pb-1 border-b border-border">
+            Clientes
+        </p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Clientes registrados
+                </span><br>
+                <span class="text-xl text-blue-500">
+                    {{ kpis.registered_customers|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Clientes nuevos
+                </span><br>
+                <span class="text-xl text-emerald-500">
+                    {{ kpis.new_customers|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Clientes con compras
+                </span><br>
+                <span class="text-xl text-red-500">
+                    {{ kpis.customers_with_purchases|default:0|floatformat:0|intcomma }}
+                </span>
+            </a>
+
+            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+                <span class="text-sm text-title">
+                    Alcance de cartera
+                </span><br>
+                <span class="text-xl text-violet-500">
+                    {{ kpis.portfolio_coverage|default:0|floatformat:2|intcomma }} %
+                </span>
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[400px]">
+            {% include 'analytics/route_kpis/partials/_chart_customer_churn.html' %}
+            {% include 'analytics/route_kpis/partials/_chart_sale_by_customer_category.html' %}
+        </div>
+    </div>
+
+{% endblock %}

@@ -1,4 +1,3 @@
-from apps.customers.services.accounts_receivables import AccountsReceivablesService
 import json
 from datetime import date
 from django.shortcuts import render, redirect
@@ -13,11 +12,18 @@ from django.utils import timezone
 
 from decimal import Decimal
 
+#base services qs
+from apps.customers.services.accounts_receivables import AccountsReceivablesService
 from apps.sales.services.sale_transactions import SaleTransactionsService
+from apps.sales.services.sale_targets import SaleTargetsService
 from apps.customers.services.customers import CustomersService
+from apps.sales.services.routes import RoutesService
+
+#base services analytics
 from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter
 from apps.analytics.services.sales_dashboard import SalesDashboardService
 from apps.analytics.services.customer_kpis import CustomerKpisService
+from apps.analytics.services.route_kpis import RouteKpisService
 
 @login_required
 def sales_dashboard_view(request):
@@ -138,7 +144,7 @@ def customer_kpis_view(request):
         cleaned_data=cleaned_data,
     )
 
-    customers_data = customer_kpis_service.get_table_records()
+    customers_data = customer_kpis_service.read_customer_kpis()
     global_kpis = customer_kpis_service.get_stats()
 
     paginator = Paginator(customers_data, 100)
@@ -171,8 +177,56 @@ def product_kpis_view(request):
     pass
 
 @login_required
-def route_kpis_view(request, pk: str = None):
-    pass
+def route_kpis_view(request):
+    template = 'analytics/route_kpis/route_kpis.html'
+
+    # base services
+    customer_service = CustomersService(user=request.user)
+    customer_qs = customer_service.read_customers()
+
+    sale_transaction_service = SaleTransactionsService(user=request.user)
+    tx_by_allowed_ctm = sale_transaction_service.read_transactions_by_allowed_customers()
+
+    ar_service = AccountsReceivablesService(user=request.user)
+    ar_allowed_ctm = ar_service.read_ars_by_allowed_customers()
+
+    targets_service = SaleTargetsService(user=request.user)
+    targets_qs = targets_service.read_sale_targets()
+
+    routes_service = RoutesService(user=request.user)
+    allowed_routes = routes_service.read_routes().order_by('id')
+
+    #selected route from query params or default to first
+    selected_route_id = request.GET.get('route')
+    selected_route = allowed_routes.filter(id=selected_route_id).first() if selected_route_id else allowed_routes.first()
+
+    # route service
+    route_service = RouteKpisService(
+        user=request.user,
+        route=selected_route,
+        customers_qs=customer_qs,
+        transactions_qs=tx_by_allowed_ctm,
+        ars_qs=ar_allowed_ctm,
+        targets_qs=targets_qs
+    )
+    route_data = route_service.read_route_kpis()
+    kpis = route_service.stats()
+
+    chart_data = {
+        'achievement_by_month': json.dumps(route_data.get('achievement_by_month', {})) if route_data else '{}',
+        'customer_churn': json.dumps(route_data.get('customer_churn', {})) if route_data else '{}',
+        'sale_by_customer_category': json.dumps(route_data.get('sale_by_customer_category', [])) if route_data else '[]',
+    }
+
+    context = {
+        'selected_route': selected_route,
+        'allowed_routes': allowed_routes,
+        'route': route_data,
+        'kpis': kpis,
+        'chart_data': chart_data,
+    }
+    return render(request, template, context)
+
 
 @login_required
 def collections_dashboard_view(request):

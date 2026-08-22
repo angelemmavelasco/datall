@@ -466,7 +466,7 @@ class CustomerKpisService:
             'margin': (total_profit / net_sales * Decimal('100.00')) if net_sales > Decimal('0.00') else Decimal('0.00')
         }
 
-    def get_table_records(self) -> list:
+    def read_customer_kpis(self) -> list:
         """Builds and returns fully enriched customer records sorted by Pareto criterion"""
         customers = self._get_target_customers()
         customer_ids = [c.id for c in customers]

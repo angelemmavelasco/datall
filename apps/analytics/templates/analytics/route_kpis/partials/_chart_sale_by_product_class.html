@@ -1,0 +1,86 @@
+{% load humanize %}
+<div class="border border-border rounded p-2 bg-container flex flex-col h-full min-h-[380px]">
+    <div class="overflow-x-auto rounded overflow-y-auto max-h-[380px]">
+        <table class="table-fixed w-full rounded border-separate border-spacing-0">
+            <thead>
+                <tr class="text-xs">
+                    <th class="w-32 p-1 text-center border-b border-r border-border sticky bg-container left-0 top-0 z-20 text-title">
+                        Clase
+                    </th>
+                    <th class="w-28 p-1 text-center border-b border-border text-title sticky top-0 z-10 bg-container">Venta neta</th>
+                    <th class="w-28 p-1 text-center border-b border-border text-title sticky top-0 z-10 bg-container">Objetivo</th>
+                    <th class="w-28 p-1 text-center border-b border-border text-title sticky top-0 z-10 bg-container">Diferencia</th>
+                    <th class="w-24 p-1 text-center border-b border-border text-title sticky top-0 z-10 bg-container">Alcance</th>
+                </tr>
+            </thead>
+
+            <tbody class="text-xs">
+                {% for item in route.sale_by_product_class.classes %}
+                <tr class="">
+                    <td class="p-2 sticky bg-container left-0 z-10 border-r border-border truncate text-title font-medium">
+                        {{ item.name }}
+                    </td>
+                    <td class="p-2 text-right text-title">
+                        $ {{ item.net_sales|default:0|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-2 text-right text-title">
+                        $ {{ item.target|default:0|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-2 text-right font-medium {% if item.difference < 0 %}text-red-500{% else %}text-emerald-500{% endif %}">
+                        $ {{ item.difference|default:0|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-2 text-right font-medium
+                    {% if item.scope >= 100 %}
+                        text-emerald-500
+                    {% elif item.scope >= 90 %}
+                        text-yellow-500
+                    {% elif item.scope >= 80 %}
+                        text-orange-500
+                    {% else %}
+                        text-red-500
+                    {% endif %}
+                    ">
+                        {{ item.scope|default:0|floatformat:2|intcomma }} %
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="p-4 text-center text-muted">
+                        No hay registros de clases para esta ruta
+                    </td>
+                </tr>
+                {% endfor %}
+
+                {% if route.sale_by_product_class.total %}
+                <tr class="border-t-2 border-border font-semibold bg-container">
+                    <td class="p-2 sticky bg-container left-0 z-10 border-r border-border text-title">
+                        Total
+                    </td>
+                    <td class="p-2 text-right text-title">
+                        $ {{ route.sale_by_product_class.total.net_sales|default:0|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-2 text-right text-title">
+                        $ {{ route.sale_by_product_class.total.target|default:0|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-2 text-right font-medium {% if route.sale_by_product_class.total.difference < 0 %}text-red-500{% else %}text-emerald-500{% endif %}">
+                        $ {{ route.sale_by_product_class.total.difference|default:0|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-2 text-right font-medium
+                    {% if route.sale_by_product_class.total.scope >= 100 %}
+                        text-emerald-500
+                    {% elif route.sale_by_product_class.total.scope >= 90 %}
+                        text-yellow-500
+                    {% elif route.sale_by_product_class.total.scope >= 80 %}
+                        text-orange-500
+                    {% else %}
+                        text-red-500
+                    {% endif %}
+                    ">
+                        {{ route.sale_by_product_class.total.scope|default:0|floatformat:2|intcomma }} %
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>

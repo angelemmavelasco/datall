@@ -107,6 +107,10 @@ class SalesDashboardFilter(django_filters.FilterSet):
 
 
 class CustomerKpisFilter(django_filters.FilterSet):
+    customer = django_filters.CharFilter(
+        method='filter_customer',
+        label='Cliente'
+    )
     name = django_filters.CharFilter(
         method='filter_name',
         label='Cliente'
@@ -188,6 +192,18 @@ class CustomerKpisFilter(django_filters.FilterSet):
             self.filters['business_unit'].queryset = bu_service.read_units()
             self.filters['route'].queryset = RoutesService(user=request.user).read_routes()
             self.filters['customer_type'].queryset = CustomerType.objects.all()
+
+    def filter_customer(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        if self.request:
+            raw_list = self.request.GET.getlist('customer')
+            if len(raw_list) > 1:
+                return queryset.filter(id__in=raw_list)
+        if isinstance(value, str):
+            ids = [v.strip() for v in value.split(',') if v.strip()]
+            return queryset.filter(id__in=ids)
+        return queryset.filter(id__in=value if isinstance(value, (list, tuple)) else [value])
 
     def filter_name(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
         if not value:
