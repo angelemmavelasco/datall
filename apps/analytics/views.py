@@ -13,14 +13,14 @@ from django.utils import timezone
 from decimal import Decimal
 
 #base services qs
-from apps.customers.services.accounts_receivables import AccountsReceivablesService
+from apps.customers.services.accounts_receivables import AccountsReceivablesService, AccountsReceivablesStats
 from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.sales.services.sale_targets import SaleTargetsService
 from apps.customers.services.customers import CustomersService
 from apps.sales.services.routes import RoutesService
 
 #base services analytics
-from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter
+from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter, CollectionsDashboardFilter
 from apps.analytics.services.sales_dashboard import SalesDashboardService
 from apps.analytics.services.customer_kpis import CustomerKpisService
 from apps.analytics.services.route_kpis import RouteKpisService
@@ -258,9 +258,43 @@ def route_kpis_view(request):
 @login_required
 def collections_dashboard_view(request):
     template = 'analytics/collection_dashboard/collection_dashboard.html'
+    service = AccountsReceivablesService(user=request.user)
+    stats_service = AccountsReceivablesStats(accounts_receivables_service=service)
+
+    today = timezone.localdate()
+    req_data = request.GET.copy()
+    if not request.GET:
+        req_data['issue_date_end'] = today.strftime('%Y-%m-%d')
+
+    perspective = req_data.get('perspective', 'current_customers')
+    if perspective == 'emitting_routes':
+        ars_qs = service.read_ars_by_allowed_routes()
+    else:
+        ars_qs = service.read_ars_by_allowed_customers()
+
+    filter_set = CollectionsDashboardFilter(req_data if req_data else None, queryset=ars_qs, request=request)
+    filtered_ars_qs = filter_set.qs
+
+    # for htmx lookup in customer filter
+    selected_customer_ids = req_data.getlist('customer')
+    customers_service = CustomersService(user=request.user)
+    cust_base = customers_service.read_customers()
+    cust_selected = cust_base.filter(pk__in=selected_customer_ids) if selected_customer_ids else cust_base.none()
+    cust_remaining = cust_base.exclude(pk__in=selected_customer_ids).order_by('name', 'id')[:20]
+    initial_customers = list(cust_selected) + list(cust_remaining)
+
+    # General KPIs from AccountsReceivablesStats
+    kpis = stats_service.stats(qs=filtered_ars_qs)
+
     context = {
-        
+        'filter': filter_set,
+        'initial_customers': initial_customers,
+        'selected_customer_ids': selected_customer_ids,
+        'current_perspective': perspective,
+        'selected_issue_date_end': req_data.get('issue_date_end', today.strftime('%Y-%m-%d')),
+        'kpis': kpis,
     }
+
     return render(request, template, context)
 
 @login_required

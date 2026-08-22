@@ -7,7 +7,16 @@ from apps.human_resources.models import BusinessUnit
 from apps.human_resources.services.business_units import BusinessUnitsService
 from apps.sales.models import Route
 from apps.sales.services.routes import RoutesService
-from .models import Customer, CustomerType
+from .models import Customer, CustomerType, CustomerAssignment
+
+
+class BusinessUnitMultipleChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj: BusinessUnit) -> str:
+        return obj.name.title()
+
+
+class BusinessUnitMultipleChoiceFilter(django_filters.ModelMultipleChoiceFilter):
+    field_class = BusinessUnitMultipleChoiceField
 
 
 class CustomerFilter(django_filters.FilterSet):
@@ -27,9 +36,9 @@ class CustomerFilter(django_filters.FilterSet):
         widget=forms.CheckboxSelectMultiple,
         label='Ruta asignada'
     )
-    business_unit = django_filters.ModelMultipleChoiceFilter(
+    business_unit = BusinessUnitMultipleChoiceFilter(
         method='filter_business_unit',
-        queryset=BusinessUnit.objects.all(),
+        queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT),
         widget=forms.CheckboxSelectMultiple,
         label='Gerencia'
     )
@@ -62,7 +71,7 @@ class CustomerFilter(django_filters.FilterSet):
         if request:
             self.filters['customer_type'].queryset = CustomerType.objects.all()
             self.filters['route'].queryset = RoutesService(user=request.user).read_routes()
-            self.filters['business_unit'].queryset = BusinessUnitsService(user=request.user).read_business_units()
+            self.filters['business_unit'].queryset = BusinessUnitsService(user=request.user).read_units()
 
     def filter_name(self, queryset, name, value):
         return queryset.filter(
@@ -144,17 +153,23 @@ class AccountsReceivableFilter(django_filters.FilterSet):
         label='Fecha de pago (Hasta)',
         widget=forms.DateInput(attrs={'type': 'date'})
     )
+    region = BusinessUnitMultipleChoiceFilter(
+        method='filter_region',
+        queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION),
+        widget=forms.CheckboxSelectMultiple,
+        label='Región'
+    )
+    business_unit = BusinessUnitMultipleChoiceFilter(
+        method='filter_business_unit',
+        queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT),
+        widget=forms.CheckboxSelectMultiple,
+        label='Gerencia'
+    )
     route = django_filters.ModelMultipleChoiceFilter(
-        field_name='route',
+        method='filter_route',
         queryset=Route.objects.all(),
         widget=forms.CheckboxSelectMultiple,
         label='Ruta'
-    )
-    business_unit = django_filters.ModelMultipleChoiceFilter(
-        field_name='route__business_unit',
-        queryset=BusinessUnit.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
-        label='Gerencia'
     )
     customer = django_filters.ModelMultipleChoiceFilter(
         field_name='customer',
@@ -172,12 +187,80 @@ class AccountsReceivableFilter(django_filters.FilterSet):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         if request:
+            bu_service = BusinessUnitsService(user=request.user)
+            self.filters['region'].queryset = bu_service.read_regions()
+            self.filters['business_unit'].queryset = bu_service.read_units()
             self.filters['route'].queryset = RoutesService(user=request.user).read_routes()
-            self.filters['business_unit'].queryset = BusinessUnitsService(user=request.user).read_business_units()
             self.filters['customer'].queryset = Customer.objects.all().order_by('name', 'id')
+
+    def _is_emitting_mode(self) -> bool:
+        if self.data:
+            return self.data.get('perspective') == 'emitting_routes'
+        return False
 
     def filter_perspective(self, queryset, name, value):
         return queryset
+
+    def filter_region(self, queryset, name, value):
+        if not value:
+            return queryset
+
+        selected_region_ids = set(r.pk if hasattr(r, 'pk') else r for r in value)
+        all_bu_ids = set(selected_region_ids)
+
+        current_parents = set(selected_region_ids)
+        while current_parents:
+            child_ids = set(
+                BusinessUnit.objects.filter(parent_id__in=current_parents)
+                .values_list('id', flat=True)
+            )
+            new_ids = child_ids - all_bu_ids
+            if not new_ids:
+                break
+            all_bu_ids.update(new_ids)
+            current_parents = new_ids
+
+        if self._is_emitting_mode():
+            return queryset.filter(route__business_unit_id__in=all_bu_ids)
+        else:
+            today = timezone.localdate()
+            customer_ids = CustomerAssignment.objects.filter(
+                route__business_unit_id__in=all_bu_ids
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=today)
+            ).values('customer_id')
+            return queryset.filter(customer_id__in=customer_ids)
+
+    def filter_business_unit(self, queryset, name, value):
+        if not value:
+            return queryset
+
+        bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in value]
+        if self._is_emitting_mode():
+            return queryset.filter(route__business_unit_id__in=bu_ids)
+        else:
+            today = timezone.localdate()
+            customer_ids = CustomerAssignment.objects.filter(
+                route__business_unit_id__in=bu_ids
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=today)
+            ).values('customer_id')
+            return queryset.filter(customer_id__in=customer_ids)
+
+    def filter_route(self, queryset, name, value):
+        if not value:
+            return queryset
+
+        if self._is_emitting_mode():
+            return queryset.filter(route__in=value)
+        else:
+            today = timezone.localdate()
+            customer_ids = CustomerAssignment.objects.filter(
+                route__in=value
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=today)
+            ).values('customer_id')
+            return queryset.filter(customer_id__in=customer_ids)
 
     def filter_aging_status(self, queryset, name, value):
         if not value:

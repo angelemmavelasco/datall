@@ -1,45 +1,38 @@
-{% extends 'base.html' %}
-{% load humanize widget_tweaks %}
+{% load widget_tweaks %}
 
-{% block title %}
-    Cuentas por Cobrar
-{% endblock %}
-
-{% block module_name %}
-    Cuentas por Cobrar
-{% endblock %}
-
-{% block module_actions %}
-    {% if available_actions %}
-        {% include available_actions %}
-    {% endif %}
-
-    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
-        <span>
-            Filtrar
-        </span>
-    </button>
-{% endblock %}
-
-{% block content %}
-    {% include "customers/accounts_receivable/partials/ar_list_content.html" %}
-{% endblock %}
-
-{% block filters %}
-<form hx-get="{% url 'customers:ar_list_view' %}" hx-target="#ar-list-content" hx-swap="outerHTML" hx-push-url="true" class="flex flex-col gap-4">
+<form method="GET" class="flex flex-col gap-4">
     <!-- Búsqueda general -->
     <div class="flex flex-col gap-1">
-        <label for="{{ filter.form.search.id_for_label }}" class="text-title flex items-center justify-between w-full gap-2">
+        <label class="text-title flex items-center justify-between w-full gap-2">
             <span>{{ filter.form.search.label }}</span>
             <span class="flex items-center" title="Búsqueda por número de documento/factura, concepto, o ID/nombre del cliente.">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
             </span>
         </label>
-        {% render_field filter.form.search class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs" placeholder="Documento, cliente o concepto..." %}
+        {% render_field filter.form.search class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title" placeholder="Documento, concepto, cliente..." %}
     </div>
 
-    <!-- Fecha de emisión -->
+    <!-- Forma de visualización -->
+    <div class="flex flex-col gap-1">
+        <label class="text-title flex items-center justify-between w-full gap-2">
+            <span>Forma de visualización</span>
+            <span class="flex items-center" title="Indica cómo se atribuye la cobranza.&#10;&#10;Por asignación: muestra las cuentas de acuerdo a la ruta/gerencia que actualmente atiende al cliente.&#10;&#10;Por emisión: muestra las cuentas de acuerdo a la ruta/gerencia que originalmente emitió la factura.">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            </span>
+        </label>
+        <div class="border border-border rounded bg-page flex flex-col p-1 gap-1">
+            <label class="flex items-center gap-2 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                <input type="radio" name="perspective" value="current_customers" {% if current_perspective != 'emitting_routes' %}checked{% endif %}>
+                <span class="text-title">Por asignación de clientes</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
+                <input type="radio" name="perspective" value="emitting_routes" {% if current_perspective == 'emitting_routes' %}checked{% endif %}>
+                <span class="text-title">Por emisión de facturas</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Rango de fecha de emisión -->
     <div class="flex flex-col gap-1">
         <label class="text-title flex items-center justify-between w-full gap-2">
             <span>Fecha de emisión</span>
@@ -50,16 +43,16 @@
         <div class="grid grid-cols-2 gap-1">
             <div class="flex flex-col gap-0.5">
                 <span class="text-[10px] text-secondary">Desde</span>
-                {% render_field filter.form.issue_date_from class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title font-mono" %}
+                {% render_field filter.form.issue_date_start class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title" %}
             </div>
             <div class="flex flex-col gap-0.5">
                 <span class="text-[10px] text-secondary">Hasta</span>
-                {% render_field filter.form.issue_date_to class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title font-mono" %}
+                {% render_field filter.form.issue_date_end class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title" %}
             </div>
         </div>
     </div>
 
-    <!-- Fecha de pago -->
+    <!-- Rango de fecha de pago -->
     <div class="flex flex-col gap-1">
         <label class="text-title flex items-center justify-between w-full gap-2">
             <span>Fecha de pago</span>
@@ -70,24 +63,13 @@
         <div class="grid grid-cols-2 gap-1">
             <div class="flex flex-col gap-0.5">
                 <span class="text-[10px] text-secondary">Desde</span>
-                {% render_field filter.form.due_date_from class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title font-mono" %}
+                {% render_field filter.form.due_date_start class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title" %}
             </div>
             <div class="flex flex-col gap-0.5">
                 <span class="text-[10px] text-secondary">Hasta</span>
-                {% render_field filter.form.due_date_to class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title font-mono" %}
+                {% render_field filter.form.due_date_end class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title" %}
             </div>
         </div>
-    </div>
-
-    <!-- Forma de visualización -->
-    <div class="flex flex-col gap-1">
-        <label for="{{ filter.form.perspective.id_for_label }}" class="text-title flex items-center justify-between w-full gap-2">
-            <span>{{ filter.form.perspective.label }}</span>
-            <span class="flex items-center" title="Indica cómo se atribuye la cobranza.&#10;&#10;Por asignación: muestra las cuentas de acuerdo a la ruta/gerencia que actualmente atiende al cliente.&#10;&#10;Por emisión: muestra las cuentas de acuerdo a la ruta/gerencia que originalmente emitió la factura.">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cursor-pointer lucide-circle-question-mark-icon lucide-circle-question-mark"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            </span>
-        </label>
-        {% render_field filter.form.perspective class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs" %}
     </div>
 
     <!-- Estatus de saldo -->
@@ -99,14 +81,14 @@
             </span>
         </label>
         <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
-            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs" placeholder="Buscar">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong" placeholder="Buscar">
             <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
                 <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
                 <span>Seleccionar todo</span>
             </label>
             <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
                 {% for choice in filter.form.aging_status %}
-                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                         {{ choice.tag }}
                         <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label }}</span>
                     </label>
@@ -115,36 +97,38 @@
         </div>
     </div>
 
+    <!-- Ruta -->
     <div class="flex flex-col gap-1 filter-group">
         <label class="text-title">{{ filter.form.route.label }}</label>
         <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
-            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs" placeholder="Buscar ruta">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong" placeholder="Buscar">
             <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
                 <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
                 <span>Seleccionar todo</span>
             </label>
             <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
                 {% for choice in filter.form.route %}
-                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                         {{ choice.tag }}
-                        <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                        <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label }}</span>
                     </label>
                 {% endfor %}
             </div>
         </div>
     </div>
 
+    <!-- Gerencia -->
     <div class="flex flex-col gap-1 filter-group">
         <label class="text-title">{{ filter.form.business_unit.label }}</label>
         <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
-            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs" placeholder="Buscar gerencia">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong" placeholder="Buscar">
             <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
                 <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
                 <span>Seleccionar todo</span>
             </label>
             <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
                 {% for choice in filter.form.business_unit %}
-                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                         {{ choice.tag }}
                         <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label }}</span>
                     </label>
@@ -153,17 +137,18 @@
         </div>
     </div>
 
+    <!-- Región -->
     <div class="flex flex-col gap-1 filter-group">
         <label class="text-title">{{ filter.form.region.label }}</label>
         <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
-            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs" placeholder="Buscar región">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong" placeholder="Buscar">
             <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
                 <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
                 <span>Seleccionar todo</span>
             </label>
             <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
                 {% for choice in filter.form.region %}
-                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors">
                         {{ choice.tag }}
                         <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label }}</span>
                     </label>
@@ -172,6 +157,7 @@
         </div>
     </div>
 
+    <!-- Cliente -->
     <div class="flex flex-col gap-1 filter-group">
         <label class="text-title">Cliente</label>
         <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
@@ -196,7 +182,6 @@
         </div>
     </div>
 
-
     <div class="flex gap-2 flex-col mt-2">
         <button type="submit"
             class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
@@ -212,99 +197,65 @@
                 return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
             };
 
-            const debounce = (fn, delay = 120) => {
-                let timeout;
-                return (...args) => {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(() => fn(...args), delay);
-                };
-            };
+            const filterGroups = document.querySelectorAll('.filter-group');
 
-            const initFilters = () => {
-                const filterGroups = document.querySelectorAll('.filter-group');
-
-                filterGroups.forEach(group => {
-                    if (group.dataset.filtersInit === 'true') return;
-                    group.dataset.filtersInit = 'true';
-
-                    const searchInput = group.querySelector('.filter-search');
-                    const selectAllCheckbox = group.querySelector('.filter-select-all');
-
-                    const getItems = () => {
-                        return Array.from(group.querySelectorAll('.filter-option')).map(option => {
-                            const label = option.querySelector('.option-label');
-                            const checkbox = option.querySelector('input[type="checkbox"]');
-                            return {
-                                el: option,
-                                checkbox: checkbox,
-                                text: normalizeString(label ? label.textContent : '')
-                            };
-                        });
-                    };
-
-                    const updateSelectAllState = () => {
-                        if (!selectAllCheckbox) return;
-                        let visibleCount = 0;
-                        let checkedCount = 0;
-                        const items = getItems();
-
-                        for (let i = 0; i < items.length; i++) {
-                            if (items[i].el.style.display !== 'none') {
-                                visibleCount++;
-                                if (items[i].checkbox && items[i].checkbox.checked) {
-                                    checkedCount++;
-                                }
-                            }
-                        }
-                        selectAllCheckbox.checked = visibleCount > 0 && visibleCount === checkedCount;
-                    };
-
-                    if (searchInput) {
-                        const performSearch = (term) => {
-                            const items = getItems();
-                            for (let i = 0; i < items.length; i++) {
-                                const item = items[i];
-                                const matches = !term || item.text.includes(term);
-                                item.el.style.display = matches ? '' : 'none';
-                            }
-                            updateSelectAllState();
-                        };
-
-                        searchInput.addEventListener('input', debounce(function (e) {
-                            const term = normalizeString(e.target.value.trim());
-                            performSearch(term);
-                        }, 120));
-                    }
-
-                    if (selectAllCheckbox) {
-                        selectAllCheckbox.addEventListener('change', function (e) {
-                            const isChecked = e.target.checked;
-                            const items = getItems();
-                            for (let i = 0; i < items.length; i++) {
-                                if (items[i].el.style.display !== 'none' && items[i].checkbox && !items[i].checkbox.disabled) {
-                                    items[i].checkbox.checked = isChecked;
-                                }
-                            }
-                        });
-                    }
-
-                    group.addEventListener('change', function(e) {
-                        if (e.target.matches('.filter-option input[type="checkbox"]')) {
-                            updateSelectAllState();
-                        }
+            filterGroups.forEach(group => {
+                const searchInput = group.querySelector('.filter-search');
+                const selectAllCheckbox = group.querySelector('.filter-select-all');
+                const optionsList = group.querySelectorAll('.filter-option');
+                
+                const updateSelectAllState = () => {
+                    if (!selectAllCheckbox) return;
+                    const visibleOptions = Array.from(optionsList).filter(opt => opt.style.display !== 'none');
+                    const allVisibleChecked = visibleOptions.length > 0 && visibleOptions.every(opt => {
+                        const cb = opt.querySelector('input[type="checkbox"]');
+                        return cb && cb.checked;
                     });
+                    selectAllCheckbox.checked = allVisibleChecked;
+                };
 
-                    group.addEventListener('htmx:afterSwap', function() {
+                if (searchInput) {
+                    searchInput.addEventListener('input', function(e) {
+                        const term = normalizeString(e.target.value);
+                        optionsList.forEach(option => {
+                            const labelSpan = option.querySelector('.option-label');
+                            if (labelSpan) {
+                                const labelText = normalizeString(labelSpan.textContent);
+                                if (labelText.includes(term)) {
+                                    option.style.display = '';
+                                } else {
+                                    option.style.display = 'none';
+                                }
+                            }
+                        });
                         updateSelectAllState();
                     });
+                }
 
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.addEventListener('change', function(e) {
+                        const isChecked = e.target.checked;
+                        optionsList.forEach(option => {
+                            if (option.style.display !== 'none') {
+                                const checkbox = option.querySelector('input[type="checkbox"]');
+                                if (checkbox && !checkbox.disabled) {
+                                    checkbox.checked = isChecked;
+                                }
+                            }
+                        });
+                    });
+                    
+                    optionsList.forEach(option => {
+                        const checkbox = option.querySelector('input[type="checkbox"]');
+                        if (checkbox) {
+                            checkbox.addEventListener('change', updateSelectAllState);
+                        }
+                    });
+
+                    // Estado inicial
                     updateSelectAllState();
-                });
-            };
-
-            initFilters();
-            document.body.addEventListener('htmx:afterSwap', initFilters);
+                }
+            });
         });
     </script>
 </form>
-{% endblock %}
