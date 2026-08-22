@@ -9,6 +9,7 @@ from .customers import (
 from .accounts_receivables import (
     AccountsReceivablesService,
     AccountsReceivablesStats,
+    AccountsReceivablesExports,
     AccountsReceivableNotFound,
 )
 
@@ -21,5 +22,6 @@ __all__ = [
     'CustomerTypeNotFound',
     'AccountsReceivablesService',
     'AccountsReceivablesStats',
+    'AccountsReceivablesExports',
     'AccountsReceivableNotFound',
 ]

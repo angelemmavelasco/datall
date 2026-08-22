@@ -1,3 +1,4 @@
+import io
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import ClassVar
@@ -14,6 +15,10 @@ from django.db.models import (
     DecimalField,
 )
 from django.utils import timezone
+
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 from apps.core.services.users import UsersService
 from apps.customers.models import Customer, CustomerAssignment, AccountsReceivable
@@ -362,3 +367,324 @@ class AccountsReceivablesStats:
                 output_field=DecimalField()
             )
         ).order_by('-total_balance')
+
+@dataclass
+class AccountsReceivablesExports:
+    '''dedicated to receive all exports request for accounts receivable objects and filters'''
+    accounts_receivables_service: AccountsReceivablesService
+
+    @property
+    def _base_qs(self) -> QuerySet:
+        return self.accounts_receivables_service.read_ars()
+
+    def export_collections_report(self, *, qs: QuerySet = None, perspective: str = 'current_customers') -> io.BytesIO:
+        stats_service = AccountsReceivablesStats(accounts_receivables_service=self.accounts_receivables_service)
+        base_qs = qs if qs is not None else self._base_qs
+
+        kpis = stats_service.stats(qs=base_qs)
+        customer_breakdown = stats_service.customer_breakdown(qs=base_qs)
+
+        wb = openpyxl.Workbook()
+
+        #styles
+        header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
+        header_font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+        section_font = Font(name="Calibri", size=12, bold=True, color="0F172A")
+        title_font = Font(name="Calibri", size=14, bold=True, color="0F172A")
+        subtitle_font = Font(name="Calibri", size=9, italic=True, color="64748B")
+        data_font = Font(name="Calibri", size=10)
+        bold_data_font = Font(name="Calibri", size=10, bold=True)
+
+        thin_border_side = Side(style='thin', color='CBD5E1')
+        cell_border = Border(left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side)
+
+        currency_format = '"$"#,##0.00'
+        pct_format = '0.00%'
+        int_format = '#,##0'
+
+        #sheet 1 generals
+        ws_summary = wb.active
+        ws_summary.title = "Resumen General"
+        ws_summary.views.sheetView[0].showGridLines = True
+
+        #title
+        ws_summary.cell(row=1, column=1, value="REPORTE EJECUTIVO DE COBRANZA").font = title_font
+        now_str = timezone.localtime().strftime('%Y-%m-%d %H:%M')
+        persp_str = "Clientes asignados" if perspective != 'emitting_routes' else "Ruta emisora"
+        ws_summary.cell(row=2, column=1, value=f"Generado el: {now_str} | Modo: {persp_str}").font = subtitle_font
+
+        #sect 1, gnrl metrics
+        ws_summary.cell(row=4, column=1, value="1. Indicadores Generales").font = section_font
+        general_headers = ["Indicador", "Monto / Cantidad"]
+        for col_num, h_text in enumerate(general_headers, 1):
+            cell = ws_summary.cell(row=5, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center" if col_num > 1 else "left")
+            cell.border = cell_border
+
+        general_rows = [
+            ("Saldo total", float(kpis.get('total_balance') or 0), currency_format),
+            ("Saldo al corriente", float(kpis.get('current_balance') or 0), currency_format),
+            ("Saldo vencido", float(kpis.get('overdue_balance') or 0), currency_format),
+            ("Clientes con saldo (cuentas por cobrar)", int(kpis.get('unique_customers_count') or 0), int_format),
+            ("Total de facturas / documentos", int(kpis.get('ars_count') or 0), int_format),
+        ]
+
+        for row_idx, (label, val, num_fmt) in enumerate(general_rows, 6):
+            c_lbl = ws_summary.cell(row=row_idx, column=1, value=label)
+            c_lbl.font = data_font
+            c_lbl.border = cell_border
+
+            c_val = ws_summary.cell(row=row_idx, column=2, value=val)
+            c_val.font = bold_data_font
+            c_val.number_format = num_fmt
+            c_val.alignment = Alignment(horizontal="right")
+            c_val.border = cell_border
+
+        #sect 2, aging buckets
+        start_row_aging = 13
+        ws_summary.cell(row=start_row_aging, column=1, value="2. Antigüedad de Saldos Vencidos").font = section_font
+        aging_headers = ["Tramo de Vencimiento", "Monto", "% del Saldo Vencido"]
+        for col_num, h_text in enumerate(aging_headers, 1):
+            cell = ws_summary.cell(row=start_row_aging + 1, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center" if col_num > 1 else "left")
+            cell.border = cell_border
+
+        overdue_tot = float(kpis.get('overdue_balance') or 0)
+        aging_rows = [
+            ("1 a 15 días", float(kpis.get('balance_15') or 0)),
+            ("16 a 30 días", float(kpis.get('balance_30') or 0)),
+            ("31 a 60 días", float(kpis.get('balance_60') or 0)),
+            ("Mayor a 60 días (+60)", float(kpis.get('past_due') or 0)),
+        ]
+
+        for idx, (lbl, amt) in enumerate(aging_rows, start_row_aging + 2):
+            c_l = ws_summary.cell(row=idx, column=1, value=lbl)
+            c_l.font = data_font
+            c_l.border = cell_border
+
+            c_a = ws_summary.cell(row=idx, column=2, value=amt)
+            c_a.font = data_font
+            c_a.number_format = currency_format
+            c_a.alignment = Alignment(horizontal="right")
+            c_a.border = cell_border
+
+            pct_val = (amt / overdue_tot) if overdue_tot > 0 else 0.0
+            c_p = ws_summary.cell(row=idx, column=3, value=pct_val)
+            c_p.font = bold_data_font
+            c_p.number_format = pct_format
+            c_p.alignment = Alignment(horizontal="right")
+            c_p.border = cell_border
+
+        #sect 3, credit usage
+        start_row_credit = 20
+        ws_summary.cell(row=start_row_credit, column=1, value="3. Utilización de Líneas de Crédito").font = section_font
+        credit_headers = ["Segmento", "Saldo Deudor Utilizado", "Límite de Crédito Autorizado", "% Utilización"]
+        for col_num, h_text in enumerate(credit_headers, 1):
+            cell = ws_summary.cell(row=start_row_credit + 1, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center" if col_num > 1 else "left")
+            cell.border = cell_border
+
+        tot_bal = float(kpis.get('total_balance') or 0)
+        credit_ar_val = float(kpis.get('credit_ar') or 0)
+        usage_ar_val = float(kpis.get('credit_usage_by_ar') or 0) / 100.0
+
+        credit_ptf_val = float(kpis.get('credit_ptf') or 0)
+        usage_ptf_val = float(kpis.get('credit_usage_by_ptf') or 0) / 100.0
+
+        credit_rows = [
+            ("Cuentas por Cobrar (Clientes con Saldo Activo)", tot_bal, credit_ar_val, usage_ar_val),
+            ("Toda la Cartera (Total Clientes Asignados)", tot_bal, credit_ptf_val, usage_ptf_val),
+        ]
+
+        for idx, (seg, debt, cred, usg) in enumerate(credit_rows, start_row_credit + 2):
+            c_s = ws_summary.cell(row=idx, column=1, value=seg)
+            c_s.font = data_font
+            c_s.border = cell_border
+
+            c_d = ws_summary.cell(row=idx, column=2, value=debt)
+            c_d.font = data_font
+            c_d.number_format = currency_format
+            c_d.alignment = Alignment(horizontal="right")
+            c_d.border = cell_border
+
+            c_c = ws_summary.cell(row=idx, column=3, value=cred)
+            c_c.font = data_font
+            c_c.number_format = currency_format
+            c_c.alignment = Alignment(horizontal="right")
+            c_c.border = cell_border
+
+            c_u = ws_summary.cell(row=idx, column=4, value=usg)
+            c_u.font = bold_data_font
+            c_u.number_format = pct_format
+            c_u.alignment = Alignment(horizontal="right")
+            c_u.border = cell_border
+
+        #sheet 2 breakdown customers
+        ws_customers = wb.create_sheet(title="Desglose por Cliente")
+        ws_customers.views.sheetView[0].showGridLines = True
+
+        cust_headers = [
+            "ID Cliente",
+            "Nombre Cliente",
+            "ID Ruta",
+            "Nombre Ruta",
+            "Gerencia / Unidad",
+            "Límite de Crédito",
+            "% Uso de Crédito",
+            "Saldo Total",
+            "Al Corriente",
+            "Saldo Vencido",
+            "1 a 15 Días",
+            "16 a 30 Días",
+            "31 a 60 Días",
+            "+60 Días",
+        ]
+
+        for col_num, h_text in enumerate(cust_headers, 1):
+            cell = ws_customers.cell(row=1, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = cell_border
+
+        ws_customers.row_dimensions[1].height = 24
+
+        for row_idx, item in enumerate(customer_breakdown, 2):
+            cid = item.get('customer__id') or ''
+            cname = (item.get('customer__name') or '').title()
+            rid = item.get('route__id') or ''
+            rname = (item.get('route__name') or '').title()
+            bu_name = (item.get('route__business_unit__name') or '').title()
+            c_limit = float(item.get('customer__credit_limit') or 0)
+            c_usage = float(item.get('credit_usage') or 0) / 100.0
+            tot = float(item.get('total_balance') or 0)
+            curr = float(item.get('current_balance') or 0)
+            ovd = float(item.get('overdue_balance') or 0)
+            b15 = float(item.get('balance_15') or 0)
+            b30 = float(item.get('balance_30') or 0)
+            b60 = float(item.get('balance_60') or 0)
+            past = float(item.get('past_due') or 0)
+
+            values = [
+                (cid, '@', "center"),
+                (cname, None, "left"),
+                (rid, '@', "center"),
+                (rname, None, "left"),
+                (bu_name, None, "left"),
+                (c_limit, currency_format, "right"),
+                (c_usage, pct_format, "right"),
+                (tot, currency_format, "right"),
+                (curr, currency_format, "right"),
+                (ovd, currency_format, "right"),
+                (b15, currency_format, "right"),
+                (b30, currency_format, "right"),
+                (b60, currency_format, "right"),
+                (past, currency_format, "right"),
+            ]
+
+            for col_idx, (val, num_fmt, align_h) in enumerate(values, 1):
+                c = ws_customers.cell(row=row_idx, column=col_idx, value=val)
+                c.font = data_font
+                c.border = cell_border
+                c.alignment = Alignment(horizontal=align_h)
+                if num_fmt:
+                    c.number_format = num_fmt
+
+        #sheet 3 base qs detail
+        ws_detail = wb.create_sheet(title="Detalle Facturas y Doctos")
+        ws_detail.views.sheetView[0].showGridLines = True
+
+        detail_headers = [
+            "Folio / Documento",
+            "Concepto",
+            "ID Cliente",
+            "Nombre Cliente",
+            "ID Ruta",
+            "Nombre Ruta",
+            "Gerencia",
+            "Fecha de Emisión",
+            "Fecha de Vencimiento",
+            "Saldo Total",
+            "Al Corriente",
+            "1 a 15 Días",
+            "16 a 30 Días",
+            "31 a 60 Días",
+            "+60 Días",
+        ]
+
+        for col_num, h_text in enumerate(detail_headers, 1):
+            cell = ws_detail.cell(row=1, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = cell_border
+
+        ws_detail.row_dimensions[1].height = 24
+
+        detail_qs = base_qs.select_related('customer', 'route', 'route__business_unit').order_by('customer_id', '-issue_date', 'doc_id')
+
+        for row_idx, ar in enumerate(detail_qs, 2):
+            doc = ar.doc_id or str(ar.id)
+            desc = (ar.description or '').title()
+            cid = ar.customer_id or ''
+            cname = (ar.customer.name or '').title() if ar.customer else ''
+            rid = ar.route_id or ''
+            rname = (ar.route.name or '').title() if ar.route else ''
+            bu_name = (ar.route.business_unit.name or '').title() if ar.route and ar.route.business_unit else ''
+            f_emision = ar.issue_date.strftime('%Y-%m-%d') if ar.issue_date else ''
+            f_venc = ar.due_date.strftime('%Y-%m-%d') if ar.due_date else ''
+            tot = float(ar.total_balance or 0)
+            curr = float(ar.current_balance or 0)
+            b15 = float(ar.balance_15 or 0)
+            b30 = float(ar.balance_30 or 0)
+            b60 = float(ar.balance_60 or 0)
+            past = float(ar.past_due or 0)
+
+            values = [
+                (doc, '@', "center"),
+                (desc, None, "left"),
+                (cid, '@', "center"),
+                (cname, None, "left"),
+                (rid, '@', "center"),
+                (rname, None, "left"),
+                (bu_name, None, "left"),
+                (f_emision, 'yyyy-mm-dd', "center"),
+                (f_venc, 'yyyy-mm-dd', "center"),
+                (tot, currency_format, "right"),
+                (curr, currency_format, "right"),
+                (b15, currency_format, "right"),
+                (b30, currency_format, "right"),
+                (b60, currency_format, "right"),
+                (past, currency_format, "right"),
+            ]
+
+            for col_idx, (val, num_fmt, align_h) in enumerate(values, 1):
+                c = ws_detail.cell(row=row_idx, column=col_idx, value=val)
+                c.font = data_font
+                c.border = cell_border
+                c.alignment = Alignment(horizontal=align_h)
+                if num_fmt:
+                    c.number_format = num_fmt
+
+        #auto fix width columns
+        for sheet in [ws_summary, ws_customers, ws_detail]:
+            for col in sheet.columns:
+                max_len = 0
+                col_letter = get_column_letter(col[0].column)
+                for cell in col:
+                    val_str = str(cell.value or '')
+                    if cell.number_format == currency_format:
+                        val_str = f"${val_str}"
+                    max_len = max(max_len, len(val_str))
+                sheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        return output
