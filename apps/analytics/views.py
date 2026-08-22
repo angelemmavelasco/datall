@@ -20,7 +20,7 @@ from apps.customers.services.customers import CustomersService
 from apps.sales.services.routes import RoutesService
 
 #base services analytics
-from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter
+from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter
 from apps.analytics.services.sales_dashboard import SalesDashboardService
 from apps.analytics.services.customer_kpis import CustomerKpisService
 from apps.analytics.services.route_kpis import RouteKpisService
@@ -195,10 +195,28 @@ def route_kpis_view(request):
 
     routes_service = RoutesService(user=request.user)
     allowed_routes = routes_service.read_routes().order_by('id')
+    first_route = allowed_routes.first()
 
-    #selected route from query params or default to first
-    selected_route_id = request.GET.get('route')
-    selected_route = allowed_routes.filter(id=selected_route_id).first() if selected_route_id else allowed_routes.first()
+    # default date range current month
+    today = timezone.localdate()
+    first_day_curr_month = today.replace(day=1)
+    last_day_curr_month = (first_day_curr_month + relativedelta(months=1)) - timedelta(days=1)
+
+    req_data = request.GET.copy()
+    if not req_data.get('route') and first_route:
+        req_data['route'] = str(first_route.id)
+    if not req_data.get('date_start'):
+        req_data['date_start'] = first_day_curr_month.strftime('%Y-%m-%d')
+    if not req_data.get('date_end'):
+        req_data['date_end'] = last_day_curr_month.strftime('%Y-%m-%d')
+
+    # set filters
+    filter_set = RouteKpisFilter(req_data, queryset=allowed_routes, request=request)
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+
+    selected_route = cleaned_data.get('route') or allowed_routes.filter(id=req_data.get('route')).first() or first_route
+    date_start = cleaned_data.get('date_start') or req_data.get('date_start')
+    date_end = cleaned_data.get('date_end') or req_data.get('date_end')
 
     # route service
     route_service = RouteKpisService(
@@ -207,7 +225,10 @@ def route_kpis_view(request):
         customers_qs=customer_qs,
         transactions_qs=tx_by_allowed_ctm,
         ars_qs=ar_allowed_ctm,
-        targets_qs=targets_qs
+        targets_qs=targets_qs,
+        date_start=date_start,
+        date_end=date_end,
+        cleaned_data=cleaned_data,
     )
     route_data = route_service.read_route_kpis()
     kpis = route_service.stats()
@@ -218,12 +239,18 @@ def route_kpis_view(request):
         'sale_by_customer_category': json.dumps(route_data.get('sale_by_customer_category', [])) if route_data else '[]',
     }
 
+    query_dict = request.GET.copy()
+
     context = {
+        'filter': filter_set,
         'selected_route': selected_route,
         'allowed_routes': allowed_routes,
+        'selected_date_start': route_service.date_start,
+        'selected_date_end': route_service.date_end,
         'route': route_data,
         'kpis': kpis,
         'chart_data': chart_data,
+        'query_string': query_dict.urlencode(),
     }
     return render(request, template, context)
 

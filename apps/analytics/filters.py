@@ -257,3 +257,35 @@ class CustomerKpisFilter(django_filters.FilterSet):
             Q(assignments__route__in=value) &
             (Q(assignments__end_date__isnull=True) | Q(assignments__end_date__gte=today))
         ).distinct()
+
+
+class RouteKpisFilter(django_filters.FilterSet):
+    route = django_filters.ModelChoiceFilter(
+        queryset=Route.objects.all(),
+        widget=forms.RadioSelect,
+        label='Ruta',
+        empty_label=None,
+    )
+    date_start = django_filters.DateFilter(
+        label='Fecha inicio',
+        method='filter_noop',
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    date_end = django_filters.DateFilter(
+        label='Fecha fin',
+        method='filter_noop',
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+
+    def filter_noop(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        return queryset
+
+    class Meta:
+        model = Route
+        fields = []
+
+    def __init__(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+        if request:
+            self.filters['route'].queryset = RoutesService(user=request.user).read_routes().order_by('id')
