@@ -84,7 +84,15 @@
             <tbody>
                 {% for r in gerencia_data.routes_data %}
                     <tr class="hover:bg-hover transition-colors">
-                        <td class="p-1 text-left text-strong font-medium border border-border bg-container sticky left-0 z-20 truncate max-w-[200px] min-w-[200px] w-[200px]">{{ r.route_id }} {{ r.route_name|title }}</td>
+                        <td class="p-1 text-left text-title font-medium border border-border bg-container sticky left-0 z-20 truncate max-w-[200px] min-w-[200px] w-[200px]">
+                            <a href="{% url 'analytics:route_kpis_view' %}?route={{ r.route_id }}&date_start={{ selected_date_start|default:'' }}&date_end={{ selected_date_end|default:'' }}" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            title="Ver KPIs y detalle de la ruta {{ r.route_id }} {{ r.route_name|title }}"
+                            class="text-strong hover:text-hover underline">
+                                {{ r.route_id }} {{ r.route_name|title }}
+                            </a>
+                        </td>
                         
                         <td class="p-1 text-center text-strong border border-border">
                             {% if r.registered_customers > 0 %}
