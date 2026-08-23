@@ -179,7 +179,7 @@ class TargetAchievementService:
         for rid, cdict in route_customers_dict.items():
             reg = cdict['registered']
             act = cdict['active']
-            cdict['portfolio_scope'] = round((act / reg * 100.0), 1) if reg > 0 else 0.0
+            cdict['portfolio_scope'] = round((act / reg * 100.0), 2) if reg > 0 else 0.00
 
         return route_customers_dict
 
@@ -441,7 +441,7 @@ class TargetAchievementService:
         for buid, bu_sum in bu_summaries.items():
             reg = bu_sum['registered_customers']
             act = bu_sum['active_customers']
-            bu_sum['portfolio_scope'] = round((act / reg * 100.0), 1) if reg > 0 else 0.0
+            bu_sum['portfolio_scope'] = round((act / reg * 100.0), 2) if reg > 0 else 0.00
 
             bu_comp_fams = 0
             bu_classes_breakdown = []

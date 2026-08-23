@@ -43,11 +43,11 @@
                     <th colspan="4" class="p-1 text-center text-title border border-border bg-container font-medium">Cartera de clientes</th>
                     <th colspan="6" class="p-1 text-center text-title border border-border bg-container font-medium">Avance</th>
                     <th colspan="2" class="p-1 text-center text-title border border-border bg-page font-medium">Ranking</th>
-                    <th colspan="10" class="p-1 text-center text-title bg-container font-medium">Desglose por clase de producto</th>
+                    <th colspan="{{ gerencia_data.display_classes|length|default:10 }}" class="p-1 text-center text-title border border-border bg-container font-medium">Desglose por clase de producto</th>
                 </tr>
 
                 <tr class="border-b border-border">
-                    <th class="min-w-[200px] p-1 text-center text-title border border-border bg-page sticky left-0 z-20 font-medium">Ruta</th>
+                    <th class="w-[200px] max-w-[200px] p-1 text-center text-title border border-border bg-page sticky left-0 z-20 font-medium">Ruta</th>
 
                     <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
                         title="Total de clientes dados de alta hasta el fin del periodo con asignación activa a la ruta.">Registrados</th>
@@ -75,23 +75,16 @@
                     <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
                         title="Posición de la ruta dentro de su gerencia por porcentaje de avance/alcance.">Ranking <br> Avance</th>
 
-                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Diamond</th>
-                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Diamond naturals</th>
-                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Care</th>
-                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Taste of the wild</th>
-                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">MSD</th>
-                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Vetoquinol</th>
-                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Zoetis</th>
-                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Country value</th>
-                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Nutriforce</th>
-                    <th class="min-w-[80px] p-1 text-center text-title bg-page font-medium">Otros</th>
+                    {% for cname in gerencia_data.display_classes %}
+                        <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">{{ cname|title }}</th>
+                    {% endfor %}
                 </tr>
             </thead>
 
             <tbody>
                 {% for r in gerencia_data.routes_data %}
                     <tr class="hover:bg-hover transition-colors">
-                        <td class="p-1 text-left text-strong font-medium border border-border bg-container sticky left-0 z-20">{{ r.route_id }} {{ r.route_name|title }}</td>
+                        <td class="p-1 text-left text-strong font-medium border border-border bg-container sticky left-0 z-20 truncate max-w-[200px] min-w-[200px] w-[200px]">{{ r.route_id }} {{ r.route_name|title }}</td>
                         
                         <td class="p-1 text-center text-strong border border-border">
                             {% if r.registered_customers > 0 %}
@@ -115,7 +108,7 @@
                                 {{ r.active_customers|intcomma }}
                             {% endif %}
                         </td>
-                        <td class="p-1 text-center text-strong border border-border">{{ r.portfolio_scope|floatformat:1 }}%</td>
+                        <td class="p-1 text-center text-strong border border-border">{{ r.portfolio_scope|floatformat:2 }}%</td>
                         <td class="p-1 text-center text-strong border border-border">
                             {% if r.new_customers > 0 %}
                                 <a href="{% url 'analytics:customer_kpis_view' %}?route={{ r.route_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}&registration_date_start={{ selected_date_start|default:'' }}&registration_date_end={{ selected_date_end|default:'' }}" 
@@ -156,7 +149,7 @@
                         <td class="p-1 text-center text-strong border border-border">{{ r.rank_scope }}</td>
                         
                         {% for c in r.route_product_classes_breakdown %}
-                            <td class="p-1 text-center border border-border {% if forloop.last %}border-0{% endif %}
+                            <td class="p-1 text-center border border-border
                                 {% if c.scope >= 100 %}text-green-600
                                 {% elif c.scope >= 90 %}text-yellow-500
                                 {% elif c.scope >= 80 %}text-amber-600
@@ -208,7 +201,7 @@
                             {{ gerencia_data.total_business_unit_data.active_customers|intcomma }}
                         {% endif %}
                     </td>
-                    <td class="p-1 text-center text-title border border-border">{{ gerencia_data.total_business_unit_data.portfolio_scope|floatformat:1 }}%</td>
+                    <td class="p-1 text-center text-title border border-border">{{ gerencia_data.total_business_unit_data.portfolio_scope|floatformat:2 }}%</td>
                     <td class="p-1 text-center text-strong border border-border">
                         {% if gerencia_data.total_business_unit_data.new_customers > 0 %}
                             <a href="{% url 'analytics:customer_kpis_view' %}?business_unit={{ gerencia_data.total_business_unit_data.business_unit_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}&registration_date_start={{ selected_date_start|default:'' }}&registration_date_end={{ selected_date_end|default:'' }}" 
@@ -238,7 +231,7 @@
                     <td class="p-1 text-center text-title border-t border-border"></td>
                     
                     {% for c in gerencia_data.total_business_unit_data.business_unit_product_classes_breakdown %}
-                        <td class="p-1 text-center text-title border border-border {% if forloop.last %}border-0{% endif %}">
+                        <td class="p-1 text-center text-title border border-border">
                             <span class="underline cursor-pointer"
                                 title="Total {{ c.product_class_name|title }} ({{ gerencia_data.total_business_unit_data.business_unit_name|title }})&#10;&#10;• Objetivo: ${{ c.target|floatformat:2|intcomma }}&#10;• Venta neta: ${{ c.net_amount|floatformat:2|intcomma }}&#10;• Diferencia: ${{ c.difference|floatformat:2|intcomma }}&#10;• Alcance: {{ c.scope|floatformat:2 }}%&#10;• Proyección: {{ c.scope_forecast|floatformat:2|intcomma }}%">
                                 {{ c.scope|floatformat:2 }}%
