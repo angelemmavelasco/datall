@@ -165,3 +165,30 @@ class Reference(models.Model):
     class Meta:
         verbose_name = 'Referencia'
         verbose_name_plural = 'Referencias'
+
+
+class GeneratedReport(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'En proceso'
+        COMPLETED = 'completed', 'Completado'
+        FAILED = 'failed', 'Error'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='generated_reports')
+    title = models.CharField(max_length=255, help_text="Título descriptivo del reporte")
+    module_name = models.CharField(max_length=100, default='analytics', help_text="Módulo de origen")
+    file = models.FileField(upload_to='reports/%Y/%m/', null=True, blank=True)
+    file_size = models.BigIntegerField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    error_message = models.TextField(blank=True, default='')
+    filters = models.JSONField(default=dict, blank=True)
+    is_seen = models.BooleanField(default=False, help_text="Indica si el usuario ya vio el reporte completado")
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.title} - {self.user.username} ({self.get_status_display()})"
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Reporte Generado'
+        verbose_name_plural = 'Reportes Generados'

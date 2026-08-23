@@ -44,6 +44,10 @@ urlpatterns = [
     # Uploads
     path('uploads/', upload_options_list_view, name='upload_options_list_view'),
 
+    # Reports
+    path('reports/partial/', user_reports_partial_view, name='user_reports_partial_view'),
+    path('reports/indicator/', reports_indicator_view, name='reports_indicator_view'),
+
     # Error preview routes
     path('403/', error_403_view, name='error_403'),
     path('404/', error_404_view, name='error_404'),

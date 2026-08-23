@@ -27,9 +27,27 @@ services:
       - .env
     ports:
       - "8090:8000"
+    volumes:
+      - datall_bi_media_data:/app/media
     depends_on:
       db:
         condition: service_healthy
 
+  qcluster:
+    build: .
+    container_name: datall_bi_qcluster
+    restart: always
+    env_file:
+      - .env
+    command: python manage.py qcluster
+    volumes:
+      - datall_bi_media_data:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      web:
+        condition: service_started
+
 volumes:
   datall_bi_postgres_data:
+  datall_bi_media_data:

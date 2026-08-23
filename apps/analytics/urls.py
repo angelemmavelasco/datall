@@ -13,8 +13,10 @@ urlpatterns = [
 
     path('collections-dashboard/', collections_dashboard_view, name='collections_dashboard_view'),
     
-    path('product-kpis/', product_kpis_view, name='product_kpis_view'),
     path('commercial-risk/', commercial_risk_view, name='commercial_risk_view'),
+    path('commercial-risk/export/', commercial_risk_export_view, name='commercial_risk_export_view'),
+    
+    path('product-kpis/', product_kpis_view, name='product_kpis_view'),
     path('target-achievement/', target_achievement_view, name='target_achievement_view'),
     path('annual-sale-breakdown/', annual_sale_breakdown_view, name='annual_sale_breakdown_view'),
     path('monthly-sale-breakdown/', monthly_sale_breakdown_view, name='monthly_sale_breakdown_view'),

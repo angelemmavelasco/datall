@@ -1,26 +1,26 @@
+from datetime import date
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.contrib import messages
+from django_q.tasks import async_task
 
+from apps.core.models import GeneratedReport
 from apps.customers.services.customers import CustomersService
-from apps.sales.services.sale_transactions import SaleTransactionsService
-from apps.customers.services.accounts_receivables import AccountsReceivablesService
-from apps.analytics.filters import CustomerKpisFilter
-from apps.analytics.services.customer_kpis import CustomerKpisService, CustomerKpisExports
+from apps.sales.services.routes import RoutesService
+from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter
 
+from time import perf_counter
 
 @login_required
 def customer_kpis_export_view(request):
+    start = perf_counter()
     # base services
     customer_service = CustomersService(user=request.user)
     customer_qs = customer_service.read_customers()
-
-    sale_transaction_service = SaleTransactionsService(user=request.user)
-    tx_by_allowed_ctm = sale_transaction_service.read_transactions_by_allowed_customers()
-
-    ar_service = AccountsReceivablesService(user=request.user)
-    ar_allowed_ctm = ar_service.read_ars_by_allowed_customers()
 
     # default contrib period
     today = timezone.localdate()
@@ -36,27 +36,114 @@ def customer_kpis_export_view(request):
 
     # set filters
     filter_set = CustomerKpisFilter(req_data, queryset=customer_qs, request=request)
-    filtered_customers_qs = filter_set.qs
     cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
 
-    # main service
-    customer_kpis_service = CustomerKpisService(
-        user=request.user, 
-        customers_qs=filtered_customers_qs,
-        transactions_qs=tx_by_allowed_ctm,
-        ars_qs=ar_allowed_ctm,
-        date_start=cleaned_data.get('start_contrib'),
-        date_end=cleaned_data.get('end_contrib'),
-        cleaned_data=cleaned_data,
+    # serializable cleaned_data dict
+    serializable_cleaned_data = {}
+    for k, v in cleaned_data.items():
+        if isinstance(v, (date, timezone.datetime)):
+            serializable_cleaned_data[k] = v.strftime('%Y-%m-%d')
+        elif hasattr(v, 'id'):
+            serializable_cleaned_data[k] = v.id
+        elif isinstance(v, (str, int, float, bool, list, dict)) or v is None:
+            serializable_cleaned_data[k] = v
+        else:
+            serializable_cleaned_data[k] = str(v)
+
+    # create database record for user downloads
+    report = GeneratedReport.objects.create(
+        user=request.user,
+        title="Reporte de KPIs de Clientes",
+        module_name="customer_kpis",
+        status=GeneratedReport.Status.PENDING,
+        filters=serializable_cleaned_data,
     )
 
-    exports_service = CustomerKpisExports(customer_kpis_service=customer_kpis_service)
-    excel_file = exports_service.export_customer_kpis_report()
-
-    filename = f"reporte_kpis_clientes_{timezone.localdate().strftime('%Y%m%d')}.xlsx"
-    response = HttpResponse(
-        excel_file.getvalue(),
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    # dispatch async task to Django Q worker
+    async_task(
+        'apps.analytics.tasks.generate_customer_kpis_report_task',
+        request.user.id,
+        request.GET.urlencode(),
+        serializable_cleaned_data,
+        report.id,
     )
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
-    return response
+
+    messages.info(request, "Tu reporte de KPIs de clientes se está generando en segundo plano. Aparecerá en tus archivos cuando esté listo. Puedes seguir navegando por la web sin problemas.")
+    
+    query_str = request.GET.urlencode()
+    redirect_url = reverse('analytics:customer_kpis_view')
+    if query_str:
+        redirect_url += f"?{query_str}"
+
+    end = perf_counter()
+    print(f"Customer KPIs export took {end - start} seconds")
+
+    return redirect(redirect_url)
+
+
+@login_required
+def commercial_risk_export_view(request):
+    routes_service = RoutesService(user=request.user)
+    allowed_routes = routes_service.read_routes().order_by('id')
+    first_route = allowed_routes.first()
+
+    # default date range from Jan 1 of previous year to last closed month
+    today = timezone.localdate()
+    end_q_date = today.replace(day=1) - relativedelta(days=1)
+    default_start_date = date(today.year - 1, 1, 1)
+
+    req_data = request.GET.copy()
+    if not req_data.get('route') and first_route:
+        req_data['route'] = str(first_route.id)
+    if not req_data.get('date_start'):
+        req_data['date_start'] = default_start_date.strftime('%Y-%m-%d')
+    if not req_data.get('date_end'):
+        req_data['date_end'] = end_q_date.strftime('%Y-%m-%d')
+
+    # set filters
+    filter_set = CommercialRiskFilter(req_data, queryset=allowed_routes, request=request)
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+
+    selected_route = cleaned_data.get('route') or allowed_routes.filter(id=req_data.get('route')).first() or first_route
+
+    serializable_cleaned_data = {}
+    for k, v in cleaned_data.items():
+        if isinstance(v, (date, timezone.datetime)):
+            serializable_cleaned_data[k] = v.strftime('%Y-%m-%d')
+        elif hasattr(v, 'id'):
+            serializable_cleaned_data[k] = v.id
+        elif isinstance(v, (str, int, float, bool, list, dict)) or v is None:
+            serializable_cleaned_data[k] = v
+        else:
+            serializable_cleaned_data[k] = str(v)
+
+    route_name = f"Ruta {selected_route.id}" if selected_route else "General"
+    if selected_route and hasattr(selected_route, 'name') and selected_route.name:
+        route_name += f" - {selected_route.name.title()}"
+
+    # create database record for user downloads
+    report = GeneratedReport.objects.create(
+        user=request.user,
+        title=f"Reporte de Riesgo Comercial - {route_name}",
+        module_name="commercial_risk",
+        status=GeneratedReport.Status.PENDING,
+        filters=serializable_cleaned_data,
+    )
+
+    # dispatch async task to Django Q worker
+    async_task(
+        'apps.analytics.tasks.generate_commercial_risk_report_task',
+        request.user.id,
+        request.GET.urlencode(),
+        serializable_cleaned_data,
+        report.id,
+    )
+
+    messages.info(request, "Tu reporte de riesgo comercial se está generando en segundo plano. Aparecerá en tus archivos cuando esté listo. Puedes seguir navegando por la web sin problemas.")
+
+    query_str = request.GET.urlencode()
+    redirect_url = reverse('analytics:commercial_risk_view')
+    if query_str:
+        redirect_url += f"?{query_str}"
+
+    return redirect(redirect_url)

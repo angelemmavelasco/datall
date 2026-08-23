@@ -11,3 +11,16 @@ services:
       - /app/node_modules
     ports:
       - "8090:8000"
+
+  qcluster:
+    build: .
+    container_name: datall_bi_qcluster
+    restart: always
+    env_file:
+      - .env
+    command: python manage.py qcluster
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - web

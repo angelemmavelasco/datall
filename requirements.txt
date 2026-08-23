@@ -21,3 +21,4 @@ uvicorn
 whitenoise[brotli]
 pandas
 openpyxl
+django-q2==1.11.0

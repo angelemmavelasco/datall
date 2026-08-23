@@ -1,5 +1,5 @@
 from django.db.models import Q, Prefetch
-from .models import Module, Submodule
+from .models import Module, Submodule, GeneratedReport
 
 
 def navigation_modules(request):
@@ -34,5 +34,32 @@ def navigation_modules(request):
     ).order_by('order').distinct()
 
     return {
-        'modules': modules
+        'modules': modules,
+    }
+
+
+def user_reports_indicators(request):
+    """
+    Context processor que retorna el estado de los reportes generados
+    en segundo plano para el usuario actual (pendientes / sin ver).
+    """
+    if not hasattr(request, 'user') or not request.user.is_authenticated:
+        return {'has_pending_reports': False, 'has_unseen_reports': False}
+
+    user = request.user
+
+    has_pending_reports = GeneratedReport.objects.filter(
+        user=user,
+        status=GeneratedReport.Status.PENDING
+    ).exists()
+
+    has_unseen_reports = GeneratedReport.objects.filter(
+        user=user,
+        status__in=[GeneratedReport.Status.COMPLETED, GeneratedReport.Status.FAILED],
+        is_seen=False
+    ).exists()
+
+    return {
+        'has_pending_reports': has_pending_reports,
+        'has_unseen_reports': has_unseen_reports,
     }

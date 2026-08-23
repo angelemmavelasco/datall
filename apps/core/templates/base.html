@@ -39,6 +39,7 @@
 <div id="filter-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeFilters()"></div>
 <div id="notifications-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeNotifications()"></div>
 <div id="novelties-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeNovelties()"></div>
+<div id="reports-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeReports()"></div>
 
 
 <!-- filters -->
@@ -169,6 +170,30 @@
             </li>
             {% endfor %}
         </ul>
+    </div>
+</aside>
+ 
+<!-- reports -->
+<aside id="reports-sidebar"
+    class="fixed inset-y-0 right-0 z-50 flex w-80 translate-x-full flex-col overflow-y-auto border-l border-border bg-container p-4 transition-transform duration-300">
+    <div class="flex items-center justify-between border-b border-border pb-2 mb-4">
+        <h3 class="text-title tracking-wider flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-down-icon lucide-folder-down"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M12 10v6"/><path d="m15 13-3 3-3-3"/></svg>
+            Mis Archivos
+        </h3>
+        <button type="button" onclick="closeReports()" class="text-muted hover:text-hover cursor-pointer transition-colors"
+            title="Cerrar archivos">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="lucide lucide-circle-x-icon lucide-circle-x">
+                <circle cx="12" cy="12" r="10" />
+                <path d="m15 9-6 6" />
+                <path d="m9 9 6 6" />
+            </svg>
+        </button>
+    </div>
+    <div class="flex-1" id="reports-content">
+        {% include 'core/partials/_user_reports_list.html' %}
     </div>
 </aside>
 
@@ -370,6 +395,7 @@
                     </div>
                     <span class="text-[10px] md:text-xs">Novedades</span>
                 </li>
+                {% include 'core/partials/_reports_nav_indicator.html' %}
                 {% if request.user.is_authenticated %}
                     <li>
                         <a href="{% url 'core:user_detail_view' request.user.id %}" class="hover:text-hover cursor-pointer transition-colors flex flex-col md:flex-row items-center gap-1">
@@ -524,6 +550,25 @@
         const overlay = document.getElementById('novelties-overlay');
         if(sidebar) sidebar.classList.add('translate-x-full');
         if(overlay) overlay.classList.add('hidden');
+    }
+
+    function toggleReports() {
+        const sidebar = document.getElementById('reports-sidebar');
+        const overlay = document.getElementById('reports-overlay');
+        if(sidebar) sidebar.classList.toggle('translate-x-full');
+        if(overlay) overlay.classList.toggle('hidden');
+        if(sidebar && !sidebar.classList.contains('translate-x-full')) {
+            htmx.ajax('GET', "{% url 'core:user_reports_partial_view' %}", {target: '#reports-content', swap: 'innerHTML'});
+            htmx.ajax('GET', "{% url 'core:reports_indicator_view' %}", {target: '#reports-nav-item', swap: 'outerHTML'});
+        }
+    }
+
+    function closeReports() {
+        const sidebar = document.getElementById('reports-sidebar');
+        const overlay = document.getElementById('reports-overlay');
+        if(sidebar) sidebar.classList.add('translate-x-full');
+        if(overlay) overlay.classList.add('hidden');
+        htmx.ajax('GET', "{% url 'core:reports_indicator_view' %}", {target: '#reports-nav-item', swap: 'outerHTML'});
     }
 
     document.addEventListener('DOMContentLoaded', () => {

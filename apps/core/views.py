@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 
 from .filters import UserFilter
 from .forms import UserForm
-from .models import User
+from .models import User, GeneratedReport
 from .services.users import UsersService, UsersKPIsService, ServiceError, UserNotFoundError, UserPermissionError
 
 def error_400_view(request, exception=None):
@@ -322,4 +322,38 @@ def upload_options_list_view(request):
         'upload_options': upload_options,
     }
     return render(request, template, context)
+
+
+@login_required
+def user_reports_partial_view(request):
+    """Returns the list of generated reports for the current user and marks them as seen"""
+    reports = GeneratedReport.objects.filter(user=request.user).order_by('-created_at')[:20]
+    GeneratedReport.objects.filter(
+        user=request.user,
+        status__in=[GeneratedReport.Status.COMPLETED, GeneratedReport.Status.FAILED],
+        is_seen=False
+    ).update(is_seen=True)
+    return render(request, 'core/partials/_user_reports_list.html', {'user_reports': reports})
+
+
+@login_required
+def reports_indicator_view(request):
+    """Returns the nav indicator partial with smart polling status and animated alert icon"""
+    has_pending = GeneratedReport.objects.filter(
+        user=request.user,
+        status=GeneratedReport.Status.PENDING
+    ).exists()
+
+    has_unseen = GeneratedReport.objects.filter(
+        user=request.user,
+        status__in=[GeneratedReport.Status.COMPLETED, GeneratedReport.Status.FAILED],
+        is_seen=False
+    ).exists()
+
+    context = {
+        'has_pending_reports': has_pending,
+        'has_unseen_reports': has_unseen,
+    }
+    return render(request, 'core/partials/_reports_nav_indicator.html', context)
+
 

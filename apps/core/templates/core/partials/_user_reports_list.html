@@ -1,0 +1,60 @@
+{% load humanize %}
+<ul class="flex flex-col gap-3">
+    {% for rep in user_reports %}
+    <li class="border border-border p-3 rounded bg-page hover:border-strong transition-colors">
+        <div class="flex items-start justify-between gap-2 mb-1">
+            <div class="flex flex-col flex-1">
+                <span class="text-xs text-strong font-medium leading-tight">
+                    {{ rep.title|title }}
+                </span>
+                <span class="text-[10px] text-muted mt-0.5">
+                    {{ rep.created_at|date:"M d, Y H:i" }}
+                </span>
+            </div>
+            <div>
+                {% if rep.status == 'completed' %}
+                <span class="inline-flex items-center p-1 rounded text-[10px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                    Listo
+                </span>
+                {% elif rep.status == 'pending' %}
+                <span class="inline-flex items-center gap-1 p-1 rounded text-[10px]  bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                    {% include 'layouts/loading_animation_icon.html' %}
+                    En proceso
+                </span>
+                {% elif rep.status == 'failed' %}
+                <span class="inline-flex items-center p-1 rounded text-[10px]  bg-red-500/10 text-red-500 border border-red-500/20">
+                    Error
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between mt-2 pt-2 border-t border-border/50 text-xs">
+            {% if rep.status == 'completed' and rep.file %}
+                <span class="text-[10px] text-muted">
+                    {{ rep.file_size|default:0|filesizeformat }}
+                </span>
+                <a href="{{ rep.file.url }}" download class="inline-flex items-center gap-1  p-1 rounded text-xs text-emerald-500 hover:text-hover transition-colors cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download-icon lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                    <span>Descargar</span>
+                </a>
+            {% elif rep.status == 'pending' %}
+                <span class="text-[10px] text-muted italic">
+                    Generando archivo...
+                </span>
+            {% elif rep.status == 'failed' %}
+                <span class="text-[10px] text-red-400 truncate max-w-[200px]" title="{{ rep.error_message }}">
+                    {{ rep.error_message|default:'Fallo en exportación' }}
+                </span>
+            {% endif %}
+        </div>
+    </li>
+    {% empty %}
+    <li class="p-4 text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-open-icon lucide-folder-open mx-auto mb-2 text-muted/50"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></svg>
+        <span class="text-xs text-muted">
+            No tienes archivos o reportes generados aún.
+        </span>
+    </li>
+    {% endfor %}
+</ul>

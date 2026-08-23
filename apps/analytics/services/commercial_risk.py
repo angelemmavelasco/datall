@@ -1,6 +1,10 @@
 import calendar
+import io
 import math
 import statistics
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
@@ -541,6 +545,7 @@ class CommercialRiskService:
             result[cid] = {
                 'customer_id': cid,
                 'customer_name': info['name'],
+                'registration_date': reg_date,
                 'total_sales': total_sales,
                 'mean_sales': mean_sales,
                 'median_sales': median_sales,
@@ -550,6 +555,7 @@ class CommercialRiskService:
                 'bias': bias,
                 'valid_months': valid_months,
                 'sales_data': sales_data,
+                'sales_timeline': {m: float(monthly_sales[m].get(cid, 0.0)) for m in timeline_months},
                 'months_with_purchases': months_with_purchases,
                 'last_month_sale': last_month_sale,
                 'last_month_label': last_month_label,
@@ -583,9 +589,11 @@ class CommercialRiskService:
             result[cid] = {
                 'customer_id': cid,
                 'customer_name': vinfo['customer_name'],
+                'registration_date': vinfo.get('registration_date'),
                 'cv': cv,
                 'std_dev': std_dev,
                 'mean_sales': mean_sales,
+                'median_sales': vinfo.get('median_sales', 0.0),
                 'momentum': vinfo['momentum'],
                 'bias': vinfo['bias'],
                 'total_sales': vinfo['total_sales'],
@@ -594,6 +602,7 @@ class CommercialRiskService:
                 'last_month_label': vinfo['last_month_label'],
                 'recent_mean': vinfo['recent_mean'],
                 'recent_label': vinfo['recent_label'],
+                'sales_timeline': vinfo.get('sales_timeline', {}),
             }
 
         return result
@@ -1293,3 +1302,448 @@ class CommercialRiskStats:
 @dataclass
 class CommercialRiskExports:
     commercial_risk_service: CommercialRiskService
+
+    def export_commercial_risk_report(self) -> io.BytesIO:
+        service = self.commercial_risk_service
+        stats = service.stats()
+        cv_data = service._get_cv_by_customer()
+        vol_data = service._get_volatility_and_volume()
+        churn_data = service._get_customer_churn()
+        cat_comp_data = service._get_monthly_category_composition()
+        mon_contrib_data = service._get_monetary_contrib_by_category()
+
+        wb = openpyxl.Workbook()
+
+        #styles
+        header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
+        header_font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+        section_font = Font(name="Calibri", size=11, bold=True, color="0F172A")
+        title_font = Font(name="Calibri", size=14, bold=True, color="0F172A")
+        subtitle_font = Font(name="Calibri", size=9, italic=True, color="64748B")
+        data_font = Font(name="Calibri", size=10)
+        bold_data_font = Font(name="Calibri", size=10, bold=True)
+
+        thin_border_side = Side(style='thin', color='CBD5E1')
+        cell_border = Border(left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side)
+
+        currency_format = '"$"#,##0.00'
+        pct_format = '0.00%'
+        int_format = '#,##0'
+        dec_format = '0.0000'
+
+        #route and dates
+        route_str = f"Ruta {service.route_id}" if service.route_id else "General"
+        if hasattr(service.route, 'name') and service.route.name:
+            route_str += f" - {service.route.name.title()}"
+
+        d_start_str = service.date_start.strftime('%Y-%m-%d') if service.date_start else ''
+        d_end_str = service.date_end.strftime('%Y-%m-%d') if service.date_end else ''
+        start_q_str = service.start_q_date.strftime('%Y-%m-%d') if service.start_q_date else ''
+        end_q_str = service.end_q_date.strftime('%Y-%m-%d') if service.end_q_date else ''
+        now_str = timezone.localtime().strftime('%Y-%m-%d %H:%M')
+
+        # sheet 1 gen summary
+        ws_summary = wb.active
+        ws_summary.title = "Resumen General"
+        ws_summary.views.sheetView[0].showGridLines = True
+
+        ws_summary.cell(row=1, column=1, value="REPORTE DE RIESGO COMERCIAL - RESUMEN EJECUTIVO").font = title_font
+        ws_summary.cell(
+            row=2, column=1,
+            value=f"Ruta: {route_str} | Generado el: {now_str} | Periodo: {d_start_str} al {d_end_str} | Trimestre Cerrado Evaluado: {start_q_str} al {end_q_str}"
+        ).font = subtitle_font
+
+        #section 1 closed q
+        ws_summary.cell(row=4, column=1, value=f"1. Indicadores del Último Trimestre Cerrado ({start_q_str} al {end_q_str})").font = section_font
+        bans_headers = ["Indicador", "Valor", "Referencia / Base"]
+        for col_num, h_text in enumerate(bans_headers, 1):
+            cell = ws_summary.cell(row=5, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center" if col_num > 1 else "left")
+            cell.border = cell_border
+
+        bans_rows = [
+            ("Índice de Riesgo Comercial (IRC)", float(stats.get('commercial_risk_index') or 0) / 100.0, "50% Concentración Gini + 50% Inactividad"),
+            ("Índice de Concentración (Gini)", float(stats.get('gini_index') or 0) / 100.0, "Evaluado en clientes con compra"),
+            ("Alcance de Cartera (Cobertura)", float(stats.get('portfolio_coverage') or 0) / 100.0, f"{stats.get('customers_with_consumption', 0)} con consumo / {stats.get('registered_customers', 0)} registrados"),
+            ("Factor de Crecimiento (Momentum)", float(stats.get('sales_momentum') or 0) / 100.0, f"Prom. Trimestre: ${float(stats.get('quarter_avg') or 0):,.2f} vs Prom. Histórico: ${float(stats.get('history_avg') or 0):,.2f}"),
+        ]
+
+        for r_idx, (lbl, val, ref) in enumerate(bans_rows, 6):
+            c_l = ws_summary.cell(row=r_idx, column=1, value=lbl)
+            c_l.font = data_font
+            c_l.border = cell_border
+
+            c_v = ws_summary.cell(row=r_idx, column=2, value=val)
+            c_v.font = bold_data_font
+            c_v.number_format = pct_format
+            c_v.alignment = Alignment(horizontal="right")
+            c_v.border = cell_border
+
+            c_r = ws_summary.cell(row=r_idx, column=3, value=ref)
+            c_r.font = data_font
+            c_r.border = cell_border
+
+        #section 2 churn 
+        start_row_mov = 12
+        ws_summary.cell(row=start_row_mov, column=1, value=f"2. Movimiento de Cartera en el Periodo ({d_start_str} al {d_end_str})").font = section_font
+        mov_headers = ["Concepto", "Total Clientes", "Observación"]
+        for col_num, h_text in enumerate(mov_headers, 1):
+            cell = ws_summary.cell(row=start_row_mov + 1, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center" if col_num > 1 else "left")
+            cell.border = cell_border
+
+        mov_rows = [
+            ("Clientes Ganados / Reactivados", int(stats.get('won_customers') or 0), "Clientes que compraron tras haber estado inactivos"),
+            ("Clientes Perdidos / Inactivos", int(stats.get('lost_customers') or 0), "Clientes activos que dejaron de comprar"),
+            ("Clientes Nuevos Registrados", int(stats.get('new_customers') or 0), "Nuevas altas en la ruta durante el periodo"),
+            ("Tendencia de Cobertura (Momentum Cobertura)", float(stats.get('coverage_momentum') or 0) / 100.0, "Variación de alcance del último mes vs promedio"),
+        ]
+
+        for r_idx, (lbl, val, obs) in enumerate(mov_rows, start_row_mov + 2):
+            c_l = ws_summary.cell(row=r_idx, column=1, value=lbl)
+            c_l.font = data_font
+            c_l.border = cell_border
+
+            c_v = ws_summary.cell(row=r_idx, column=2, value=val)
+            c_v.font = bold_data_font
+            if isinstance(val, float):
+                c_v.number_format = pct_format
+            else:
+                c_v.number_format = int_format
+            c_v.alignment = Alignment(horizontal="right")
+            c_v.border = cell_border
+
+            c_o = ws_summary.cell(row=r_idx, column=3, value=obs)
+            c_o.font = data_font
+            c_o.border = cell_border
+
+        #section 3 volatility and volume
+        start_row_dist = 18
+        ws_summary.cell(row=start_row_dist, column=1, value="3. Distribución por Volatilidad y Volumen de Consumo").font = section_font
+        dist_headers = ["Cuadrante de Riesgo", "Total Clientes", "Estrategia Recomendada"]
+        for col_num, h_text in enumerate(dist_headers, 1):
+            cell = ws_summary.cell(row=start_row_dist + 1, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center" if col_num > 1 else "left")
+            cell.border = cell_border
+
+        dist_rows = [
+            ("Baja Volatilidad / Consumo Alto", int(stats.get('low_cv_high_vol') or 0), "Base de la ruta: Clientes estratégicos y conveniables"),
+            ("Baja Volatilidad / Consumo Bajo", int(stats.get('low_cv_low_vol') or 0), "Estables de bajo consumo: Acercamiento para incrementar ticket"),
+            ("Alta Volatilidad / Consumo Alto", int(stats.get('high_cv_high_vol') or 0), "Grandes erráticos: Estabilizar consumo y planificar pedidos"),
+            ("Alta Volatilidad / Consumo Bajo", int(stats.get('high_cv_low_vol') or 0), "Ruido comercial: Compras esporádicas y bajo valor"),
+        ]
+
+        for r_idx, (lbl, val, est) in enumerate(dist_rows, start_row_dist + 2):
+            c_l = ws_summary.cell(row=r_idx, column=1, value=lbl)
+            c_l.font = data_font
+            c_l.border = cell_border
+
+            c_v = ws_summary.cell(row=r_idx, column=2, value=val)
+            c_v.font = bold_data_font
+            c_v.number_format = int_format
+            c_v.alignment = Alignment(horizontal="right")
+            c_v.border = cell_border
+
+            c_e = ws_summary.cell(row=r_idx, column=3, value=est)
+            c_e.font = data_font
+            c_e.border = cell_border
+
+        #sheet 2 metrics by customer
+        ws_customers = wb.create_sheet("Métricas por Cliente")
+        ws_customers.views.sheetView[0].showGridLines = True
+
+        curr_t = service.date_start.replace(day=1)
+        end_t = service.date_end.replace(day=1)
+        timeline_months = []
+        while curr_t <= end_t:
+            timeline_months.append(curr_t.strftime('%Y-%m'))
+            curr_t += relativedelta(months=1)
+
+        month_headers = [f"Venta {m}" for m in timeline_months]
+        ctm_headers = [
+            "ID Cliente", "Cliente", "Fecha Registro",
+            "Cuadrante Volatilidad", "Cuadrante Sesgo / Crecimiento",
+            "Venta Promedio Mensual", "Mediana Mensual", "Venta Trimestre Reciente",
+            "Factor Crecimiento", "Crecimiento (%)", "Índice de Sesgo", "Volatilidad (CV)"
+        ] + month_headers
+
+        for col_num, h_text in enumerate(ctm_headers, 1):
+            cell = ws_customers.cell(row=1, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center" if col_num in (1, 3, 4, 5) else ("right" if col_num >= 6 else "left"))
+            cell.border = cell_border
+
+        vol_threshold = float(vol_data.get('thresholds', {}).get('volume', 0.0))
+        cv_threshold = float(vol_data.get('thresholds', {}).get('volatility', 0.0))
+
+        for r_idx, (cid, info) in enumerate(cv_data.items(), 2):
+            mean_s = float(info['mean_sales'])
+            median_s = float(info['median_sales'])
+            recent_m = float(info['recent_mean'])
+            mom = float(info['momentum'])
+            bias = float(info['bias'])
+            cv = float(info['cv'])
+            name = info['customer_name'].title()
+            reg_d = info['registration_date'].strftime('%Y-%m-%d') if info['registration_date'] else 'N/A'
+
+            #quadrant volatility
+            if mean_s >= vol_threshold and cv <= cv_threshold:
+                q_vol = "Baja Vol. / Alto Consumo"
+            elif mean_s < vol_threshold and cv <= cv_threshold:
+                q_vol = "Baja Vol. / Bajo Consumo"
+            elif mean_s >= vol_threshold and cv > cv_threshold:
+                q_vol = "Alta Vol. / Alto Consumo"
+            else:
+                q_vol = "Alta Vol. / Bajo Consumo"
+
+            # quadrant bias
+            if mom >= 1.0 and bias <= 0.0:
+                q_bias = "Estable y Creciendo"
+            elif mom >= 1.0 and bias > 0.0:
+                q_bias = "Errático Creciendo"
+            elif mom < 1.0 and bias <= 0.0:
+                q_bias = "Estable Decreciendo"
+            else:
+                q_bias = "Errático Decreciendo"
+
+            row_vals = [
+                cid, name, reg_d, q_vol, q_bias,
+                mean_s, median_s, recent_m, mom, (mom - 1.0), bias, cv
+            ]
+
+            sales_timeline = info.get('sales_timeline', {})
+            for m in timeline_months:
+                row_vals.append(float(sales_timeline.get(m, 0.0)))
+
+            for col_idx, val in enumerate(row_vals, 1):
+                c = ws_customers.cell(row=r_idx, column=col_idx, value=val)
+                c.font = data_font
+                c.border = cell_border
+
+                if col_idx in (1, 3, 4, 5):
+                    c.alignment = Alignment(horizontal="center")
+                elif col_idx in (6, 7, 8):
+                    c.number_format = currency_format
+                    c.alignment = Alignment(horizontal="right")
+                elif col_idx in (9, 11, 12):
+                    c.number_format = dec_format
+                    c.alignment = Alignment(horizontal="right")
+                elif col_idx == 10:
+                    c.number_format = pct_format
+                    c.alignment = Alignment(horizontal="right")
+                elif col_idx > 12:
+                    c.number_format = currency_format
+                    c.alignment = Alignment(horizontal="right")
+                else:
+                    c.alignment = Alignment(horizontal="left")
+
+        #sheet 3 won and lost customers
+        ws_churn = wb.create_sheet("Ganados y Perdidos")
+        ws_churn.views.sheetView[0].showGridLines = True
+
+        churn_headers = ["Periodo", "ID Cliente", "Cliente", "Movimiento", "Venta Mes Previo", "Venta Mes Actual"]
+        for col_num, h_text in enumerate(churn_headers, 1):
+            cell = ws_churn.cell(row=1, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center" if col_num in (1, 2, 4) else ("right" if col_num >= 5 else "left"))
+            cell.border = cell_border
+
+        churn_months = churn_data.get('months', [])
+        won_cids_by_m = churn_data.get('won_customer_ids', [])
+        lost_cids_by_m = churn_data.get('lost_customer_ids', [])
+
+        curr_churn_row = 2
+        for m_idx, m_label in enumerate(churn_months):
+            if m_idx == 0:
+                continue
+
+            m_curr = timeline_months[m_idx] if m_idx < len(timeline_months) else m_label
+            m_prev = timeline_months[m_idx - 1] if m_idx - 1 < len(timeline_months) else ''
+
+            won_list = won_cids_by_m[m_idx] if m_idx < len(won_cids_by_m) else []
+            for cid in won_list:
+                info = cv_data.get(cid, {})
+                cname = info.get('customer_name', f'Cliente #{cid}').title()
+                s_prev = float(info.get('sales_timeline', {}).get(m_prev, 0.0))
+                s_curr = float(info.get('sales_timeline', {}).get(m_curr, 0.0))
+
+                vals = [m_label, cid, cname, "Ganado / Reactivado", s_prev, s_curr]
+                for c_idx, v in enumerate(vals, 1):
+                    c = ws_churn.cell(row=curr_churn_row, column=c_idx, value=v)
+                    c.font = data_font
+                    c.border = cell_border
+                    if c_idx in (1, 2, 4):
+                        c.alignment = Alignment(horizontal="center")
+                    elif c_idx >= 5:
+                        c.number_format = currency_format
+                        c.alignment = Alignment(horizontal="right")
+                    else:
+                        c.alignment = Alignment(horizontal="left")
+                curr_churn_row += 1
+
+            lost_list = lost_cids_by_m[m_idx] if m_idx < len(lost_cids_by_m) else []
+            for cid in lost_list:
+                info = cv_data.get(cid, {})
+                cname = info.get('customer_name', f'Cliente #{cid}').title()
+                s_prev = float(info.get('sales_timeline', {}).get(m_prev, 0.0))
+                s_curr = float(info.get('sales_timeline', {}).get(m_curr, 0.0))
+
+                vals = [m_label, cid, cname, "Perdido / Inactivo", s_prev, s_curr]
+                for c_idx, v in enumerate(vals, 1):
+                    c = ws_churn.cell(row=curr_churn_row, column=c_idx, value=v)
+                    c.font = data_font
+                    c.border = cell_border
+                    if c_idx in (1, 2, 4):
+                        c.alignment = Alignment(horizontal="center")
+                    elif c_idx >= 5:
+                        c.number_format = currency_format
+                        c.alignment = Alignment(horizontal="right")
+                    else:
+                        c.alignment = Alignment(horizontal="left")
+                curr_churn_row += 1
+
+        #sheet 4 category downgrade
+        ws_downgrade = wb.create_sheet("Baja de Categoría")
+        ws_downgrade.views.sheetView[0].showGridLines = True
+
+        downgrade_headers = [
+            "Periodo", "ID Cliente", "Cliente", "Categoría Previa",
+            "Promedio Evaluado Previo", "Categoría Actual", "Promedio Evaluado Actual", "Diferencia"
+        ]
+        for col_num, h_text in enumerate(downgrade_headers, 1):
+            cell = ws_downgrade.cell(row=1, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center" if col_num in (1, 2, 4, 6) else ("right" if col_num in (5, 7, 8) else "left"))
+            cell.border = cell_border
+
+        cat_order_rank = {'diamante': 5, 'oro': 4, 'aa': 3, 'a': 2, 'c': 1}
+        cat_display_names = {'diamante': 'Diamante', 'oro': 'Oro', 'aa': 'AA', 'a': 'A', 'c': 'C'}
+
+        downgrade_row = 2
+        for m_idx, m_str in enumerate(timeline_months):
+            if m_idx == 0:
+                continue
+
+            prev_m_str = timeline_months[m_idx - 1]
+            target_curr = datetime.strptime(m_str, '%Y-%m').date()
+            target_prev = datetime.strptime(prev_m_str, '%Y-%m').date()
+
+            end_q_curr = target_curr.replace(day=1) - relativedelta(days=1)
+            eval_curr = [(end_q_curr.replace(day=1) - relativedelta(months=i)).strftime('%Y-%m') for i in (2, 1, 0)]
+
+            end_q_prev = target_prev.replace(day=1) - relativedelta(days=1)
+            eval_prev = [(end_q_prev.replace(day=1) - relativedelta(months=i)).strftime('%Y-%m') for i in (2, 1, 0)]
+
+            for cid, info in cv_data.items():
+                reg_d = info.get('registration_date')
+                if reg_d and reg_d > (target_curr.replace(day=1) + relativedelta(months=1) - relativedelta(days=1)):
+                    continue
+
+                reg_month = reg_d.strftime('%Y-%m') if reg_d else '1970-01'
+                sales_tl = info.get('sales_timeline', {})
+
+                active_prev = sum(1 for m in eval_prev if m >= reg_month)
+                avg_prev = (sum(float(sales_tl.get(m, 0.0)) for m in eval_prev) / active_prev) if active_prev > 0 else 0.0
+                cat_prev = service._calculate_category(avg_prev)
+
+                active_curr = sum(1 for m in eval_curr if m >= reg_month)
+                avg_curr = (sum(float(sales_tl.get(m, 0.0)) for m in eval_curr) / active_curr) if active_curr > 0 else 0.0
+                cat_curr = service._calculate_category(avg_curr)
+
+                if cat_order_rank.get(cat_curr, 1) < cat_order_rank.get(cat_prev, 1):
+                    cname = info.get('customer_name', f'Cliente #{cid}').title()
+                    diff = avg_curr - avg_prev
+                    vals = [
+                        m_str, cid, cname,
+                        cat_display_names.get(cat_prev, cat_prev.upper()), avg_prev,
+                        cat_display_names.get(cat_curr, cat_curr.upper()), avg_curr, diff
+                    ]
+                    for c_idx, v in enumerate(vals, 1):
+                        c = ws_downgrade.cell(row=downgrade_row, column=c_idx, value=v)
+                        c.font = data_font
+                        c.border = cell_border
+                        if c_idx in (1, 2, 4, 6):
+                            c.alignment = Alignment(horizontal="center")
+                        elif c_idx in (5, 7, 8):
+                            c.number_format = currency_format
+                            c.alignment = Alignment(horizontal="right")
+                        else:
+                            c.alignment = Alignment(horizontal="left")
+                    downgrade_row += 1
+
+        #sheet 5 category evolution
+        ws_categories = wb.create_sheet("Evolución de Categorías")
+        ws_categories.views.sheetView[0].showGridLines = True
+
+        cat_sheet_headers = [
+            "Periodo", "Categoría", "Clientes en Categoría",
+            "% Participación Cartera", "Venta Total Categoría", "% Contribución Monetaria"
+        ]
+        for col_num, h_text in enumerate(cat_sheet_headers, 1):
+            cell = ws_categories.cell(row=1, column=col_num, value=h_text)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center" if col_num in (1, 2) else "right")
+            cell.border = cell_border
+
+        categories_list = cat_comp_data.get('categories', ['diamante', 'oro', 'aa', 'a', 'c'])
+        cat_disp_list = cat_comp_data.get('category_display', ['Diamante', 'Oro', 'AA', 'A', 'C'])
+        timeline_m_labels = cat_comp_data.get('months_labels', [])
+        cat_counts = cat_comp_data.get('category_counts', {})
+        cat_pcts = cat_comp_data.get('category_pcts', {})
+        cat_amounts = mon_contrib_data.get('category_amounts', {})
+        cat_mon_pcts = mon_contrib_data.get('category_percentages', {})
+
+        cat_row_idx = 2
+        for m_idx, m_lbl in enumerate(timeline_m_labels):
+            for c_idx, cat_key in enumerate(categories_list):
+                c_disp = cat_disp_list[c_idx] if c_idx < len(cat_disp_list) else cat_key.upper()
+                c_cnt = cat_counts.get(cat_key, [])[m_idx] if m_idx < len(cat_counts.get(cat_key, [])) else 0
+                c_pct = (cat_pcts.get(cat_key, [])[m_idx] / 100.0) if m_idx < len(cat_pcts.get(cat_key, [])) else 0.0
+                c_amt = cat_amounts.get(cat_key, [])[m_idx] if m_idx < len(cat_amounts.get(cat_key, [])) else 0.0
+                c_mon_pct = (cat_mon_pcts.get(cat_key, [])[m_idx] / 100.0) if m_idx < len(cat_mon_pcts.get(cat_key, [])) else 0.0
+
+                vals = [m_lbl, c_disp, c_cnt, c_pct, c_amt, c_mon_pct]
+                for col_i, v in enumerate(vals, 1):
+                    c = ws_categories.cell(row=cat_row_idx, column=col_i, value=v)
+                    c.font = data_font
+                    c.border = cell_border
+                    if col_i in (1, 2):
+                        c.alignment = Alignment(horizontal="center")
+                    elif col_i == 3:
+                        c.number_format = int_format
+                        c.alignment = Alignment(horizontal="right")
+                    elif col_i in (4, 6):
+                        c.number_format = pct_format
+                        c.alignment = Alignment(horizontal="right")
+                    elif col_i == 5:
+                        c.number_format = currency_format
+                        c.alignment = Alignment(horizontal="right")
+                cat_row_idx += 1
+
+        # autofit columns
+        for ws in wb.worksheets:
+            for col in ws.columns:
+                max_len = 0
+                col_letter = get_column_letter(col[0].column)
+                for cell in col:
+                    val_str = str(cell.value or '')
+                    if '\n' in val_str:
+                        val_str = max(val_str.split('\n'), key=len)
+                    if len(val_str) > max_len:
+                        max_len = len(val_str)
+                ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        return buffer
