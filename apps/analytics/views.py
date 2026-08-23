@@ -21,11 +21,12 @@ from apps.customers.services.customers import CustomersService
 from apps.sales.services.routes import RoutesService
 
 #base services analytics
-from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter, CommercialRiskFilter, CollectionsDashboardFilter
+from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter, CommercialRiskFilter, CollectionsDashboardFilter, TargetAchievementFilter
 from apps.analytics.services.sales_dashboard import SalesDashboardService
 from apps.analytics.services.customer_kpis import CustomerKpisService
 from apps.analytics.services.route_kpis import RouteKpisService
 from apps.analytics.services.commercial_risk import CommercialRiskService
+from apps.analytics.services.target_achievement import TargetAchievementService
 
 @login_required
 def sales_dashboard_view(request):
@@ -402,7 +403,76 @@ def commercial_risk_view(request):
 
 @login_required
 def target_achievement_view(request):
-    pass
+    template = 'analytics/target_achievement/target_achievement.html'
+
+    #default current month
+    today = timezone.localdate()
+    first_day_curr_month = today.replace(day=1)
+    if today.month == 12:
+        last_day_curr_month = date(today.year, 12, 31)
+    else:
+        last_day_curr_month = date(today.year, today.month + 1, 1) - timedelta(days=1)
+
+    req_data = request.GET.copy()
+    if 'date_start' not in req_data:
+        req_data['date_start'] = first_day_curr_month.strftime('%Y-%m-%d')
+    if 'date_end' not in req_data:
+        req_data['date_end'] = last_day_curr_month.strftime('%Y-%m-%d')
+
+    #base services
+    targets_service = SaleTargetsService(user=request.user)
+    base_targets_qs = targets_service.read_sale_targets()
+
+    tx_service = SaleTransactionsService(user=request.user)
+    base_tx_qs = tx_service.read_transactions_by_allowed_routes()
+
+    customers_service = CustomersService(user=request.user)
+    base_customers_qs = customers_service.read_customers()
+
+    routes_service = RoutesService(user=request.user)
+    allowed_routes_qs = routes_service.get_allowed_routes(can_view=True, can_edit=False)
+
+    filter_set = TargetAchievementFilter(req_data, queryset=base_targets_qs, request=request)
+    filtered_targets_qs = filter_set.qs
+
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+    date_start = cleaned_data.get('date_start') or req_data.get('date_start')
+    date_end = cleaned_data.get('date_end') or req_data.get('date_end')
+
+    #apply filters
+    filtered_tx_qs = base_tx_qs
+    if cleaned_data.get('route'):
+        filtered_tx_qs = filtered_tx_qs.filter(route__in=cleaned_data['route'])
+    if cleaned_data.get('product_class'):
+        filtered_tx_qs = filtered_tx_qs.filter(product_class__in=cleaned_data['product_class'])
+    if cleaned_data.get('product_category'):
+        filtered_tx_qs = filtered_tx_qs.filter(product_class__product_category__in=cleaned_data['product_category'])
+    if cleaned_data.get('business_unit'):
+        filtered_tx_qs = filtered_tx_qs.filter(route__business_unit__in=cleaned_data['business_unit'])
+
+    achievement_service = TargetAchievementService(
+        user=request.user,
+        targets_qs=filtered_targets_qs,
+        transactions_qs=filtered_tx_qs,
+        customers_qs=base_customers_qs,
+        routes_qs=allowed_routes_qs,
+        date_start=date_start,
+        date_end=date_end,
+        cleaned_data=cleaned_data
+    )
+
+    data = achievement_service.get_target_achievement_data()
+
+    context = {
+        'filter': filter_set,
+        'data': data,
+        'selected_date_start': achievement_service.date_start_dt.strftime('%Y-%m-%d'),
+        'selected_date_end': achievement_service.date_end_dt.strftime('%Y-%m-%d'),
+        'total_b_days': achievement_service.total_b_days,
+        'elapsed_b_days': achievement_service.elapsed_b_days,
+        'query_string': req_data.urlencode(),
+    }
+    return render(request, template, context)
 
 @login_required
 def annual_sale_breakdown_view(request):

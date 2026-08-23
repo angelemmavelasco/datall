@@ -1,0 +1,348 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Alcance de objetivos{% endblock %}
+
+{% block module_name %}Alcance de objetivos{% endblock %}
+
+{% block module_actions %}
+    <button onclick="toggleFilters()" class="hover:text-hover transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+{% endblock %}
+
+{% block filters %}
+    {% include 'analytics/target_achievement/partials/target_achievement__filters.html' %}
+{% endblock %}
+
+{% block content %}
+
+<div class="flex flex-col w-full gap-4">
+
+    <div class="mb-2">
+        <div class="flex justify-between items-center">
+            <p class="text-title text-sm mb-2 font-medium">Detalle de alcance de objetivos</p>
+            <span class="cursor-pointer text-title hover:text-hover transition-colors"
+                title="Muestra el progreso y cumplimiento de objetivos de venta por ruta y por clase de producto.&#10;&#10;Cartera de clientes:&#10;• Registrados: clientes dados de alta hasta el fin del periodo seleccionado.&#10;• Con compras: clientes con al menos una compra en el periodo seleccionado.&#10;• Alcance: porcentaje de la cartera con compras.&#10;• Nuevos: clientes registrados dentro del periodo filtrado.&#10;&#10;Avance general:&#10;• Familias completadas: clases principales (Diamond, Care, etc.) que ya llegaron al 100% de su objetivo.&#10;• Objetivo: meta de venta asignada en el periodo.&#10;• Venta neta: venta real acumulada.&#10;• Diferencia: monto que falta para alcanzar el objetivo.&#10;• Alcance: porcentaje de la venta lograda vs objetivo.&#10;• Proyección: estimación matemática del alcance al cierre.&#10;• Ranking: lugar de la ruta en la gerencia por venta y por avance.&#10;&#10;Desglose por clase:&#10;El porcentaje de alcance por familia. Al pasar el cursor verás el detalle de objetivo, venta y diferencia de cada una.">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info text-strong cursor-pointer"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            </span>
+        </div>
+    </div>
+    
+    {% for gerencia_data in data %}
+    <div class="w-full overflow-x-auto border border-border rounded bg-container mb-8">
+        <table class="w-full table-auto text-left border-separate border-spacing-0">
+            <thead>
+                <tr class="border-b border-border">
+                    <th colspan="1" class="p-1 text-center bg-page border border-border text-title sticky left-0 z-20 font-semibold">
+                        {{ gerencia_data.total_business_unit_data.business_unit_name|title }}
+                    </th>
+                    <th colspan="4" class="p-1 text-center text-title border border-border bg-container font-medium">Cartera de clientes</th>
+                    <th colspan="6" class="p-1 text-center text-title border border-border bg-container font-medium">Avance</th>
+                    <th colspan="2" class="p-1 text-center text-title border border-border bg-page font-medium">Ranking</th>
+                    <th colspan="10" class="p-1 text-center text-title bg-container font-medium">Desglose por clase de producto</th>
+                </tr>
+
+                <tr class="border-b border-border">
+                    <th class="min-w-[200px] p-1 text-center text-title border border-border bg-page sticky left-0 z-20 font-medium">Ruta</th>
+
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Total de clientes dados de alta hasta el fin del periodo con asignación activa a la ruta.">Registrados</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Clientes con al menos una compra en el periodo filtrado.">Con compras</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Porcentaje de la cartera con compras (Con compras / Registrados).">Alcance</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Clientes registrados dentro del rango de fechas del periodo filtrado.">Nuevos</th>
+
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Número de familias principales (Diamond, Care, etc.) que alcanzaron o superaron el 100% de su objetivo.">Familias <br>completadas</th>
+                    <th class="min-w-[120px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Monto total del objetivo o cuota asignada en el periodo.">Objetivo</th>
+                    <th class="min-w-[120px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Venta neta acumulada en el periodo filtrado.">Venta neta</th>
+                    <th class="min-w-[120px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Diferencia monetaria pendiente para alcanzar el objetivo (Objetivo - Venta neta).">Diferencia</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Porcentaje de avance sobre el objetivo de venta (Venta neta / Objetivo).">Alcance</th>
+                    <th class="min-w-[100px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Estimación matemática del alcance al cierre según el ritmo de venta y días hábiles.">Proyección</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Posición de la ruta dentro de su gerencia por volumen de venta neta.">Ranking <br> Venta</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Posición de la ruta dentro de su gerencia por porcentaje de avance/alcance.">Ranking <br> Avance</th>
+
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Diamond</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Diamond naturals</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Care</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Taste of the wild</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">MSD</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Vetoquinol</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Zoetis</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Country value</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">Nutriforce</th>
+                    <th class="min-w-[80px] p-1 text-center text-title bg-page font-medium">Otros</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for r in gerencia_data.routes_data %}
+                    <tr class="hover:bg-hover transition-colors">
+                        <td class="p-1 text-left text-strong font-medium border border-border bg-container sticky left-0 z-20">{{ r.route_id }} {{ r.route_name|title }}</td>
+                        
+                        <td class="p-1 text-center text-strong border border-border">
+                            {% if r.registered_customers > 0 %}
+                                <a href="{% url 'analytics:customer_kpis_view' %}?route={{ r.route_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                title="Ver todos los {{ r.registered_customers }} clientes asignados a la ruta {{ r.route_id }}"
+                                class="text-strong hover:text-hover underline">{{ r.registered_customers|intcomma }}</a>
+                            {% else %}
+                                {{ r.registered_customers|intcomma }}
+                            {% endif %}
+                        </td>
+                        <td class="p-1 text-center text-strong border border-border">
+                            {% if r.active_customers > 0 %}
+                                <a href="{% url 'analytics:customer_kpis_view' %}?route={{ r.route_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}&has_purchases=True" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                title="Ver los {{ r.active_customers }} clientes con compras en el periodo para la ruta {{ r.route_id }}"
+                                class="text-strong hover:text-hover underline">{{ r.active_customers|intcomma }}</a>
+                            {% else %}
+                                {{ r.active_customers|intcomma }}
+                            {% endif %}
+                        </td>
+                        <td class="p-1 text-center text-strong border border-border">{{ r.portfolio_scope|floatformat:1 }}%</td>
+                        <td class="p-1 text-center text-strong border border-border">
+                            {% if r.new_customers > 0 %}
+                                <a href="{% url 'analytics:customer_kpis_view' %}?route={{ r.route_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}&registration_date_start={{ selected_date_start|default:'' }}&registration_date_end={{ selected_date_end|default:'' }}" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                title="Ver los {{ r.new_customers }} clientes nuevos registrados en el periodo para la ruta {{ r.route_id }}"
+                                class="text-strong hover:text-hover underline">{{ r.new_customers|intcomma }}</a>
+                            {% else %}
+                                {{ r.new_customers|intcomma }}
+                            {% endif %}
+                        </td>
+                        
+                        <td class="p-1 text-center text-strong border border-border">{{ r.completed_product_classes }}</td>
+                        <td class="p-1 text-right text-strong border border-border">$ {{ r.target|floatformat:2|intcomma }}</td>
+                        <td class="p-1 text-right text-strong border border-border">$ {{ r.net_amount|floatformat:2|intcomma }}</td>
+                        
+                        <td class="p-1 text-right border border-border {% if r.difference < 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                           $ {{ r.difference|floatformat:2|intcomma }}
+                        </td>
+                        
+                        <td class="p-1 text-center border border-border
+                        {% if r.scope >= 100 %}text-green-600
+                        {% elif r.scope >= 90 %}text-yellow-500
+                        {% elif r.scope >= 80 %}text-orange-600
+                        {% else %}text-red-600
+                        {% endif %}
+                        ">{{ r.scope|floatformat:2 }} %</td>
+
+                        <td class="p-1 text-right border border-border
+                        {% if r.scope_forecast >= 100 %}text-green-600
+                        {% elif r.scope_forecast >= 90 %}text-yellow-500
+                        {% elif r.scope_forecast >= 80 %}text-orange-600
+                        {% else %}text-red-600
+                        {% endif %}
+                        ">{{ r.scope_forecast|floatformat:2|intcomma }} %</td>
+
+                        <td class="p-1 text-center text-strong border border-border">{{ r.rank_sale }}</td>
+                        <td class="p-1 text-center text-strong border border-border">{{ r.rank_scope }}</td>
+                        
+                        {% for c in r.route_product_classes_breakdown %}
+                            <td class="p-1 text-center border border-border {% if forloop.last %}border-0{% endif %}
+                                {% if c.scope >= 100 %}text-green-600
+                                {% elif c.scope >= 90 %}text-yellow-500
+                                {% elif c.scope >= 80 %}text-amber-600
+                                {% else %}text-red-600
+                                {% endif %}
+                            ">
+                                <span class="underline cursor-pointer"
+                                    title="Familia: {{ c.product_class_name|title }}&#10;&#10;• Objetivo: ${{ c.target|floatformat:2|intcomma }}&#10;• Venta neta: ${{ c.net_amount|floatformat:2|intcomma }}&#10;• Diferencia: ${{ c.difference|floatformat:2|intcomma }}&#10;• Alcance: {{ c.scope|floatformat:2 }}%&#10;• Proyección: {{ c.scope_forecast|floatformat:2|intcomma }}%">
+                                    {{ c.scope|floatformat:2 }}%
+                                </span>
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="23" class="p-4 text-center text-strong border-border">No hay datos para mostrar</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            
+            {% if gerencia_data.routes_data %}
+            <tfoot>
+                <tr class="bg-page">
+                    <td class="p-2 text-left text-title border border-border sticky left-0 z-20 bg-page font-semibold">Total</td>
+                    
+                    <td class="p-2 text-center text-title border border-border">
+                        {% if gerencia_data.total_business_unit_data.registered_customers > 0 %}
+                            <a href="{% url 'analytics:customer_kpis_view' %}?business_unit={{ gerencia_data.total_business_unit_data.business_unit_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            title="Ver todos los {{ gerencia_data.total_business_unit_data.registered_customers }} clientes asignados a la gerencia {{ gerencia_data.total_business_unit_data.business_unit_name|title }}"
+                            class="text-title hover:text-hover underline"> 
+                            {{ gerencia_data.total_business_unit_data.registered_customers|intcomma }}
+                            </a>
+                        {% else %}
+                            {{ gerencia_data.total_business_unit_data.registered_customers|intcomma }}
+                        {% endif %}
+                    </td>
+                    <td class="p-1 text-center text-title border border-border">
+                        {% if gerencia_data.total_business_unit_data.active_customers > 0 %}
+                            <a href="{% url 'analytics:customer_kpis_view' %}?business_unit={{ gerencia_data.total_business_unit_data.business_unit_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}&has_purchases=True" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            title="Ver los {{ gerencia_data.total_business_unit_data.active_customers }} clientes con compras en la gerencia {{ gerencia_data.total_business_unit_data.business_unit_name|title }}"
+                            class="text-title hover:text-hover underline"> 
+                            {{ gerencia_data.total_business_unit_data.active_customers|intcomma }}
+                            </a>
+                        {% else %}
+                            {{ gerencia_data.total_business_unit_data.active_customers|intcomma }}
+                        {% endif %}
+                    </td>
+                    <td class="p-1 text-center text-title border border-border">{{ gerencia_data.total_business_unit_data.portfolio_scope|floatformat:1 }}%</td>
+                    <td class="p-1 text-center text-strong border border-border">
+                        {% if gerencia_data.total_business_unit_data.new_customers > 0 %}
+                            <a href="{% url 'analytics:customer_kpis_view' %}?business_unit={{ gerencia_data.total_business_unit_data.business_unit_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}&registration_date_start={{ selected_date_start|default:'' }}&registration_date_end={{ selected_date_end|default:'' }}" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            title="Ver los {{ gerencia_data.total_business_unit_data.new_customers }} clientes nuevos registrados en la gerencia {{ gerencia_data.total_business_unit_data.business_unit_name|title }}"
+                            class="text-strong hover:text-hover underline"> 
+                            {{ gerencia_data.total_business_unit_data.new_customers|intcomma }}
+                            </a>
+                        {% else %}
+                            {{ gerencia_data.total_business_unit_data.new_customers|intcomma }}
+                        {% endif %}
+                    </td>
+                                        
+                    <td class="p-1 text-center text-title border border-border">{{ gerencia_data.total_business_unit_data.completed_product_classes }}</td>
+                    <td class="p-1 text-right text-title border border-border">${{ gerencia_data.total_business_unit_data.target|floatformat:2|intcomma }}</td>
+                    <td class="p-1 text-right text-title border border-border">${{ gerencia_data.total_business_unit_data.net_amount|floatformat:2|intcomma }}</td>
+                    
+                    <td class="p-1 text-right border border-border {% if gerencia_data.total_business_unit_data.difference < 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                        {{ gerencia_data.total_business_unit_data.difference|floatformat:2|intcomma }}
+                    </td>
+                    
+                    <td class="p-1 text-center text-title border border-border">{{ gerencia_data.total_business_unit_data.scope|floatformat:2 }} %</td>
+                    <td class="p-1 text-right text-title border border-border">{{ gerencia_data.total_business_unit_data.scope_forecast|floatformat:2|intcomma }} %</td>
+                    
+                    <td class="p-1 text-center text-title border-t border-border"></td>
+                    <td class="p-1 text-center text-title border-t border-border"></td>
+                    
+                    {% for c in gerencia_data.total_business_unit_data.business_unit_product_classes_breakdown %}
+                        <td class="p-1 text-center text-title border border-border {% if forloop.last %}border-0{% endif %}">
+                            <span class="underline cursor-pointer"
+                                title="Total {{ c.product_class_name|title }} ({{ gerencia_data.total_business_unit_data.business_unit_name|title }})&#10;&#10;• Objetivo: ${{ c.target|floatformat:2|intcomma }}&#10;• Venta neta: ${{ c.net_amount|floatformat:2|intcomma }}&#10;• Diferencia: ${{ c.difference|floatformat:2|intcomma }}&#10;• Alcance: {{ c.scope|floatformat:2 }}%&#10;• Proyección: {{ c.scope_forecast|floatformat:2|intcomma }}%">
+                                {{ c.scope|floatformat:2 }}%
+                            </span>
+                        </td>
+                    {% endfor %}
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+    {% empty %}
+    <div class="p-4 text-center text-strong border border-border rounded bg-container">
+        Selecciona filtros y haz clic en Aplicar para ver los alcances de objetivos.
+    </div>
+    {% endfor %}
+</div>
+
+
+<div id="touch-tooltip-popover" class="fixed z-50 hidden transition-opacity duration-150 ease-out pointer-events-none opacity-0">
+    <div class="bg-container border border-border text-title text-xs p-1 rounded shadow-xl max-w-xs whitespace-pre-line backdrop-blur-md bg-opacity-95 font-sans leading-relaxed pointer-events-auto">
+        <div id="touch-tooltip-content"></div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const popover = document.getElementById('touch-tooltip-popover');
+        const content = document.getElementById('touch-tooltip-content');
+        let activeTarget = null;
+
+        const showPopover = (target, text) => {
+            if (!text || !text.trim()) return;
+            content.textContent = text.trim();
+            
+            popover.classList.remove('hidden');
+            
+            const rect = target.getBoundingClientRect();
+            const popRect = popover.getBoundingClientRect();
+            
+            let top = rect.bottom + 8;
+            let left = rect.left + (rect.width / 2) - (popRect.width / 2);
+            
+            const padding = 12;
+            if (left < padding) left = padding;
+            if (left + popRect.width > window.innerWidth - padding) {
+                left = window.innerWidth - popRect.width - padding;
+            }
+            
+            if (top + popRect.height > window.innerHeight - padding) {
+                top = rect.top - popRect.height - 8;
+            }
+            if (top < padding) top = padding;
+            
+            popover.style.top = `${top}px`;
+            popover.style.left = `${left}px`;
+            
+            requestAnimationFrame(() => {
+                popover.classList.remove('opacity-0');
+                popover.classList.add('opacity-100');
+            });
+            
+            activeTarget = target;
+        };
+
+        const hidePopover = () => {
+            if (!activeTarget) return;
+            popover.classList.remove('opacity-100');
+            popover.classList.add('opacity-0');
+            setTimeout(() => {
+                if (popover.classList.contains('opacity-0')) {
+                    popover.classList.add('hidden');
+                }
+            }, 150);
+            activeTarget = null;
+        };
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('a[href]')) {
+                hidePopover();
+                return;
+            }
+
+            const targetWithTitle = e.target.closest('[title]');
+            if (targetWithTitle) {
+                const titleText = targetWithTitle.getAttribute('title');
+                if (titleText && titleText.trim()) {
+                    if (activeTarget === targetWithTitle) {
+                        hidePopover();
+                    } else {
+                        showPopover(targetWithTitle, titleText);
+                    }
+                    return;
+                }
+            }
+            
+            hidePopover();
+        });
+
+        window.addEventListener('scroll', hidePopover, { passive: true });
+        document.querySelectorAll('.overflow-x-auto').forEach(el => {
+            el.addEventListener('scroll', hidePopover, { passive: true });
+        });
+    });
+</script>
+
+{% endblock %}
