@@ -21,10 +21,11 @@ from apps.customers.services.customers import CustomersService
 from apps.sales.services.routes import RoutesService
 
 #base services analytics
-from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter, CollectionsDashboardFilter
+from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter, CommercialRiskFilter, CollectionsDashboardFilter
 from apps.analytics.services.sales_dashboard import SalesDashboardService
 from apps.analytics.services.customer_kpis import CustomerKpisService
 from apps.analytics.services.route_kpis import RouteKpisService
+from apps.analytics.services.commercial_risk import CommercialRiskService
 
 @login_required
 def sales_dashboard_view(request):
@@ -255,7 +256,6 @@ def route_kpis_view(request):
     }
     return render(request, template, context)
 
-
 @login_required
 def collections_dashboard_view(request):
     template = 'analytics/collection_dashboard/collection_dashboard.html'
@@ -312,7 +312,85 @@ def collections_dashboard_view(request):
 
 @login_required
 def commercial_risk_view(request):
-    pass
+    template = 'analytics/commercial_risk/commercial_risk.html'
+
+    # base services
+    customer_service = CustomersService(user=request.user)
+    customer_qs = customer_service.read_customers()
+
+    sale_transaction_service = SaleTransactionsService(user=request.user)
+    tx_by_allowed_ctm = sale_transaction_service.read_transactions_by_allowed_customers()
+
+    routes_service = RoutesService(user=request.user)
+    allowed_routes = routes_service.read_routes().order_by('id')
+    first_route = allowed_routes.first()
+
+    # default date range from Jan 1 of previous year to last closed month
+    today = timezone.localdate()
+    end_q_date = today.replace(day=1) - relativedelta(days=1)
+    default_start_date = date(today.year - 1, 1, 1)
+
+    req_data = request.GET.copy()
+    if not req_data.get('route') and first_route:
+        req_data['route'] = str(first_route.id)
+    if not req_data.get('date_start'):
+        req_data['date_start'] = default_start_date.strftime('%Y-%m-%d')
+    if not req_data.get('date_end'):
+        req_data['date_end'] = end_q_date.strftime('%Y-%m-%d')
+
+    # set filters
+    filter_set = CommercialRiskFilter(req_data, queryset=allowed_routes, request=request)
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+
+    selected_route = cleaned_data.get('route') or allowed_routes.filter(id=req_data.get('route')).first() or first_route
+    date_start = cleaned_data.get('date_start') or req_data.get('date_start')
+    date_end = cleaned_data.get('date_end') or req_data.get('date_end')
+
+    # commercial risk service
+    risk_service = CommercialRiskService(
+        user=request.user,
+        route=selected_route,
+        customers_qs=customer_qs,
+        transactions_qs=tx_by_allowed_ctm,
+        date_start=date_start,
+        date_end=date_end,
+        cleaned_data=cleaned_data,
+    )
+    kpis = risk_service.stats()
+    timeline_chart = risk_service._get_timeline_chart()
+    churn_data = risk_service._get_customer_churn()
+    new_customers_data = risk_service._get_monthly_new_customers()
+    coverage_data = risk_service._get_monthly_portafolio_coverage()
+    volatility_data = risk_service._get_volatility_and_volume()
+
+    chart_data = {
+        'timeline_chart': json.dumps(timeline_chart),
+        'customer_churn': json.dumps(churn_data),
+        'new_and_active_customers': json.dumps({
+            'months': new_customers_data['months'],
+            'new_customers': new_customers_data['new_customers'],
+            'new_customer_ids': new_customers_data['new_customer_ids'],
+            'portfolio_coverage': coverage_data['portfolio_coverage'],
+            'active_customers': coverage_data['active_customers'],
+            'active_customer_ids': coverage_data['active_customer_ids'],
+            'total_portfolio': coverage_data['total_portfolio'],
+        }),
+        'volatility_and_volume': json.dumps(volatility_data),
+    }
+
+    query_dict = request.GET.copy()
+
+    context = {
+        'filter': filter_set,
+        'selected_route': selected_route,
+        'allowed_routes': allowed_routes,
+        'selected_date_start': risk_service.date_start,
+        'selected_date_end': risk_service.date_end,
+        'kpis': kpis,
+        'chart_data': chart_data,
+        'query_string': query_dict.urlencode(),
+    }
+    return render(request, template, context)
 
 @login_required
 def target_achievement_view(request):

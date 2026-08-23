@@ -1,0 +1,101 @@
+{% load widget_tweaks %}
+
+<form id="commercial-risk-filter-form"
+      method="get"
+      action="{% url 'analytics:commercial_risk_view' %}"
+      class="flex flex-col gap-4">
+
+    <!-- Ruta -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.route.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-64">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar ruta">
+            <div class="h-48 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.route %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Rango de fechas -->
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.date_start.id_for_label }}" class="text-title">{{ filter.form.date_start.label }}</label>
+        {% render_field filter.form.date_start class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.date_end.id_for_label }}" class="text-title">{{ filter.form.date_end.label }}</label>
+        {% render_field filter.form.date_end class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-title" %}
+    </div>
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const normalizeString = (str) => {
+                return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            };
+
+            const debounce = (fn, delay = 120) => {
+                let timeout;
+                return (...args) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => fn(...args), delay);
+                };
+            };
+
+            const initFilters = () => {
+                const filterGroups = document.querySelectorAll('.filter-group');
+
+                filterGroups.forEach(group => {
+                    if (group.dataset.filtersInit === 'true') return;
+                    group.dataset.filtersInit = 'true';
+
+                    const searchInput = group.querySelector('.filter-search');
+
+                    const getItems = () => {
+                        return Array.from(group.querySelectorAll('.filter-option')).map(option => {
+                            const label = option.querySelector('.option-label');
+                            return {
+                                el: option,
+                                text: normalizeString(label ? label.textContent : '')
+                            };
+                        });
+                    };
+
+                    if (searchInput) {
+                        const performSearch = (term) => {
+                            const items = getItems();
+                            for (let i = 0; i < items.length; i++) {
+                                const isVisible = term === '' || items[i].text.includes(term);
+                                items[i].el.style.display = isVisible ? 'flex' : 'none';
+                            }
+                        };
+
+                        searchInput.addEventListener('input', debounce((e) => {
+                            const term = normalizeString(e.target.value.trim());
+                            performSearch(term);
+                        }, 120));
+                    }
+                });
+            };
+
+            initFilters();
+            document.addEventListener('htmx:afterSwap', initFilters);
+        });
+    </script>
+</form>

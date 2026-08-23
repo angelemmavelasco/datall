@@ -34,106 +34,106 @@
         Resumen del {{ selected_date_start|default:selected_date_start }} al {{ selected_date_end|default:selected_date_end }}
     </p>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Venta neta
-                </span><br>
-                <span class="text-xl text-emerald-500">
-                    $ {{ kpis.net_amount|default:0|floatformat:2|intcomma }}
-                </span>
-            </a>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Venta neta
+            </span><br>
+            <span class="text-xl text-emerald-500">
+                $ {{ kpis.net_amount|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
 
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Objetivo de venta
-                </span><br>
-                <span class="text-xl text-blue-500">
-                    $ {{ kpis.sale_target|default:0|floatformat:2|intcomma }}
-                </span>
-            </a>
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Objetivo de venta
+            </span><br>
+            <span class="text-xl text-blue-500">
+                $ {{ kpis.sale_target|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
 
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Alcance
-                </span><br>
-                <span class="text-xl text-violet-500">
-                    {{ kpis.target_achivement|default:0|floatformat:2|intcomma }} %
-                </span>
-            </a>
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Alcance
+            </span><br>
+            <span class="text-xl text-violet-500">
+                {{ kpis.target_achivement|default:0|floatformat:2|intcomma }} %
+            </span>
+        </a>
 
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Diferencia
-                </span><br>
-                <span class="text-xl {% if kpis.diff_amount < 0 %} text-red-500 {% else %} text-emerald-500 {% endif %}">
-                    $ {{ kpis.diff_amount|default:0|floatformat:2|intcomma }}
-                </span>
-            </a>
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Diferencia
+            </span><br>
+            <span class="text-xl {% if kpis.diff_amount < 0 %} text-red-500 {% else %} text-emerald-500 {% endif %}">
+                $ {{ kpis.diff_amount|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
 
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Venta total
-                </span><br>
-                <span class="text-xl text-emerald-500">
-                    $ {{ kpis.gross_amount|default:0|floatformat:2|intcomma }}
-                </span>
-            </a>
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Venta total
+            </span><br>
+            <span class="text-xl text-emerald-500">
+                $ {{ kpis.gross_amount|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
 
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Unidades
-                </span><br>
-                <span class="text-xl text-title">
-                    {{ kpis.quantity|default:0|floatformat:0|intcomma }}
-                </span>
-            </a>
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Unidades
+            </span><br>
+            <span class="text-xl text-title">
+                {{ kpis.quantity|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
 
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Clientes con compra
-                </span><br>
-                <span class="text-xl text-cyan-500">
-                    {{ kpis.occupied_positions_count|default:0|floatformat:0|intcomma }}
-                </span>
-            </a>
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Clientes con compra
+            </span><br>
+            <span class="text-xl text-cyan-500">
+                {{ kpis.occupied_positions_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
 
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-                <span class="text-sm text-title">
-                    Margen
-                </span><br>
-                {% if request.user|has_group:"vendedor" %}
-                    {% if kpis.margin >= 43 %}
-                        <p class="text-xl text-emerald-600">Excelente</p>
-                    {% elif kpis.margin >= 40 %}
-                        <p class="text-xl text-emerald-500">Óptimo</p>
-                    {% elif kpis.margin >= 37 %}
-                        <p class="text-xl text-yellow-500">Regular</p>
-                    {% elif kpis.margin >= 35 %}
-                        <p class="text-xl text-red-500">Malo</p>
-                    {% else %}
-                        <p class="text-xl text-red-500">Muy malo</p>
-                    {% endif %}
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Margen
+            </span><br>
+            {% if request.user|has_group:"vendedor" %}
+                {% if kpis.margin >= 43 %}
+                    <p class="text-xl text-emerald-600">Excelente</p>
+                {% elif kpis.margin >= 40 %}
+                    <p class="text-xl text-emerald-500">Óptimo</p>
+                {% elif kpis.margin >= 37 %}
+                    <p class="text-xl text-yellow-500">Regular</p>
+                {% elif kpis.margin >= 35 %}
+                    <p class="text-xl text-red-500">Malo</p>
                 {% else %}
-                    <p class="text-xl text-strong">
-                        {{ kpis.margin|floatformat:2|intcomma }}%
-                        <span class="text-[12px]">
-                            {% if kpis.margin >= 43 %}
-                                <span class="text-green-600">Excelente</span>
-                            {% elif kpis.margin >= 40 %}
-                                <span class="text-green-500">Óptimo</span>
-                            {% elif kpis.margin >= 37 %}
-                                <span class="text-yellow-500">Regular</span>
-                            {% elif kpis.margin >= 35 %}
-                                <span class="text-red-500">Malo</span>
-                        {% else %}
-                            <span class="text-red-500">Muy malo</span>
-                        {% endif %}
-                    </span>
-                </p>
+                    <p class="text-xl text-red-500">Muy malo</p>
                 {% endif %}
-            </a>
-        </div>
+            {% else %}
+                <p class="text-xl text-strong">
+                    {{ kpis.margin|floatformat:2|intcomma }}%
+                    <span class="text-[12px]">
+                        {% if kpis.margin >= 43 %}
+                            <span class="text-green-600">Excelente</span>
+                        {% elif kpis.margin >= 40 %}
+                            <span class="text-green-500">Óptimo</span>
+                        {% elif kpis.margin >= 37 %}
+                            <span class="text-yellow-500">Regular</span>
+                        {% elif kpis.margin >= 35 %}
+                            <span class="text-red-500">Malo</span>
+                    {% else %}
+                        <span class="text-red-500">Muy malo</span>
+                    {% endif %}
+                </span>
+            </p>
+            {% endif %}
+        </a>
+    </div>
 
     <p class="text-title pb-1 border-b border-border">
         Evolución de venta neta, unidades y alcance de objetivos

@@ -240,6 +240,9 @@
   .pointer-events-none {
     pointer-events: none;
   }
+  .invisible {
+    visibility: hidden;
+  }
   .visible {
     visibility: visible;
   }
@@ -554,6 +557,9 @@
   }
   .min-h-\[400px\] {
     min-height: 400px;
+  }
+  .min-h-\[420px\] {
+    min-height: 420px;
   }
   .min-h-dvh {
     min-height: 100dvh;
@@ -926,6 +932,11 @@
     --tw-space-y-reverse: 0;
     margin-block-start: calc(var(--spacing) * var(--tw-space-y-reverse));
     margin-block-end: calc(var(--spacing) * calc(1 - var(--tw-space-y-reverse)));
+  }
+  :where(.space-y-1\.5 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 1.5) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 1.5) * calc(1 - var(--tw-space-y-reverse)));
   }
   :where(.space-y-2 > :not(:last-child)) {
     --tw-space-y-reverse: 0;
@@ -1576,6 +1587,9 @@
   .accent-blue-500 {
     accent-color: var(--color-blue-500);
   }
+  .opacity-0 {
+    opacity: 0%;
+  }
   .opacity-40 {
     opacity: 40%;
   }
@@ -1684,6 +1698,12 @@
     .group-hover\:text-hover:is(:where(.group):hover *) {
       color: var(--theme-hover);
     }
+  }
+  .group-focus\:visible:is(:where(.group):focus *) {
+    visibility: visible;
+  }
+  .group-focus\:opacity-100:is(:where(.group):focus *) {
+    opacity: 100%;
   }
   .group-\[\.htmx-request\]\:flex:is(:where(.group):is(.htmx-request) *) {
     display: flex;

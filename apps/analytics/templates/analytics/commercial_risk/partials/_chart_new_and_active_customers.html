@@ -1,0 +1,165 @@
+<div class="border border-border rounded flex flex-col bg-container p-2 h-full min-h-[380px]">
+    <div id="newCtmActiveCtmChart" style="width: 100%; height: 360px; min-height: 360px;"></div>
+</div>
+
+<script>
+    (function() {
+        function initNewAndActiveChart() {
+            const chartDom = document.getElementById("newCtmActiveCtmChart");
+            if (!chartDom) return;
+
+            if (echarts.getInstanceByDom(chartDom)) {
+                echarts.dispose(chartDom);
+            }
+
+            const rawData = {{ chart_data.new_and_active_customers|safe|default:'{}' }};
+            const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+
+            if (!data || !data.months || data.months.length === 0) {
+                return;
+            }
+
+            const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim() || '#9ca3af';
+            const isMobile = window.innerWidth < 768;
+
+            const newCtmChart = echarts.init(chartDom);
+            const option = {
+                title: {
+                    text: 'Nuevos clientes y alcance de cartera',
+                    top: 8,
+                    left: 'center',
+                    textStyle: {
+                        fontWeight: 'normal',
+                        fontSize: 14,
+                        color: titleColor
+                    },
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross',
+                        crossStyle: { color: '#999' }
+                    },
+                    formatter: function(params) {
+                        if (!params || params.length === 0) return '';
+                        const idx = params[0].dataIndex;
+                        const month = params[0].axisValue || '';
+                        let res = `<span style="font-weight:600;">${month}</span><br/>`;
+                        
+                        params.forEach(p => {
+                            if (p.seriesName === 'Nuevos Clientes') {
+                                res += `${p.marker} ${p.seriesName}: <b>${Number(p.value || 0).toLocaleString()}</b><br/>`;
+                            } else {
+                                const activeCount = data.active_customers ? data.active_customers[idx] : 0;
+                                const totPort = data.total_portfolio ? data.total_portfolio[idx] : 0;
+                                res += `${p.marker} ${p.seriesName}: <b>${Number(p.value || 0).toFixed(2)} %</b> <span style="font-size:11px;opacity:0.75;">(${activeCount}/${totPort})</span><br/>`;
+                            }
+                        });
+                        res += `<span style="font-size:11px;opacity:0.75;display:inline-block;margin-top:4px;">Clic para ver clientes en el KPI</span>`;
+                        return res;
+                    }
+                },
+                legend: {
+                    data: ['Nuevos Clientes', 'Alcance de Cartera'],
+                    bottom: 0,
+                    left: 'center',
+                    textStyle: { color: titleColor }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '12%',
+                    containLabel: true
+                },
+                toolbox: {
+                    feature: {
+                        saveAsImage: {
+                            title: 'Guardar imagen',
+                            name: 'nuevos_clientes_alcance_cartera'
+                        }
+                    }
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: true,
+                    data: data.months || [],
+                    axisLabel: { color: titleColor },
+                    splitLine: { lineStyle: { opacity: 0.1 } }
+                },
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: 'Nuevos',
+                        nameTextStyle: { color: titleColor, fontSize: 11 },
+                        axisLabel: { color: titleColor },
+                        splitLine: { lineStyle: { opacity: 0.1 } }
+                    },
+                    {
+                        type: 'value',
+                        name: 'Alcance',
+                        nameTextStyle: { color: titleColor, fontSize: 11 },
+                        axisLabel: {
+                            color: titleColor,
+                            formatter: '{value}%'
+                        },
+                        splitLine: { show: false }
+                    }
+                ],
+                series: [
+                    {
+                        name: 'Nuevos Clientes',
+                        type: 'bar',
+                        yAxisIndex: 0,
+                        data: data.new_customers || [],
+                        itemStyle: {
+                            color: '#34d399',
+                            borderRadius: [4, 4, 0, 0]
+                        },
+                        cursor: 'pointer',
+                        barMaxWidth: 30
+                    },
+                    {
+                        name: 'Alcance de Cartera',
+                        type: 'line',
+                        yAxisIndex: 1,
+                        data: data.portfolio_coverage || [],
+                        itemStyle: { color: '#38bdf8' },
+                        lineStyle: { width: 2.5, color: '#38bdf8' },
+                        areaStyle: {
+                            color: '#38bdf8',
+                            opacity: 0.12
+                        },
+                        symbolSize: 8,
+                        cursor: 'pointer'
+                    }
+                ]
+            };
+
+            newCtmChart.setOption(option);
+
+            newCtmChart.on('click', function(params) {
+                if (!params) return;
+                const dataIndex = params.dataIndex;
+                let customerIds = [];
+
+                if (params.seriesName === 'Nuevos Clientes') {
+                    customerIds = (data.new_customer_ids && data.new_customer_ids[dataIndex]) ? data.new_customer_ids[dataIndex] : [];
+                } else if (params.seriesName === 'Alcance de Cartera') {
+                    customerIds = (data.active_customer_ids && data.active_customer_ids[dataIndex]) ? data.active_customer_ids[dataIndex] : [];
+                }
+
+                if (customerIds && customerIds.length > 0) {
+                    const baseUrl = "{% url 'analytics:customer_kpis_view' %}";
+                    const targetUrl = `${baseUrl}?customer=${encodeURIComponent(customerIds.join(','))}`;
+                    window.location.href = targetUrl;
+                }
+            });
+
+            window.addEventListener('resize', function () { newCtmChart.resize(); });
+        }
+
+        document.addEventListener('DOMContentLoaded', initNewAndActiveChart);
+        document.addEventListener('htmx:afterSwap', initNewAndActiveChart);
+        initNewAndActiveChart();
+    })();
+</script>

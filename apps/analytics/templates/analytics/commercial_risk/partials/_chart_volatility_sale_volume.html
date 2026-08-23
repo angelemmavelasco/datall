@@ -1,0 +1,229 @@
+<div class="border border-border rounded flex flex-col bg-container p-3 h-full min-h-[420px]">
+    <div id="volatilitySaleVolumeChart" style="width: 100%; height: 390px; min-height: 390px;"></div>
+</div>
+
+<script id="volatility-sale-volume-data" type="application/json">
+{{ chart_data.volatility_and_volume|safe }}
+</script>
+
+<script>
+    (function () {
+        function initVolatilitySaleVolumeChart() {
+            const chartDom = document.getElementById("volatilitySaleVolumeChart");
+            if (!chartDom) return;
+
+            if (echarts.getInstanceByDom(chartDom)) {
+                echarts.dispose(chartDom);
+            }
+
+            const dataEl = document.getElementById("volatility-sale-volume-data");
+            const data = dataEl ? JSON.parse(dataEl.textContent || '{}') : {};
+
+            if (!data || !data.scatter_data || data.scatter_data.length === 0) {
+                return;
+            }
+
+            const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim() || '#9ca3af';
+            const isMobile = window.innerWidth < 768;
+
+            const scatterData = data.scatter_data;
+            const thresholds = data.thresholds || { volume: 0, volatility: 0 };
+
+            const growingData = scatterData.filter(function (item) {
+                return Number(item[2] || 0) >= 1.0;
+            });
+            const decreasingData = scatterData.filter(function (item) {
+                return Number(item[2] || 0) < 1.0;
+            });
+
+            const chart = echarts.init(chartDom);
+            const option = {
+                color: ['#10b981', '#ef4444'],
+                title: {
+                    text: 'Volatilidad y volumen de ventas',
+                    top: 8,
+                    left: 'center',
+                    textStyle: {
+                        fontWeight: 'normal',
+                        fontSize: 14,
+                        color: titleColor
+                    },
+                },
+                legend: {
+                    data: ['Creciendo', 'Decreciendo'],
+                    bottom: 0,
+                    left: 'center',
+                    icon: 'circle',
+                    itemWidth: 10,
+                    itemHeight: 10,
+                    textStyle: { color: titleColor, fontSize: 12 },
+                    cursor: 'pointer'
+                },
+                toolbox: {
+                    feature: {
+                        saveAsImage: {
+                            title: 'Guardar imagen',
+                            name: 'volatilidad_y_volumen'
+                        }
+                    }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function (params) {
+                        const val = params.value || [];
+                        const meanSales = Number(val[0] || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                        const cvNum = Number(val[1] || 0);
+                        const cv = cvNum.toFixed(2);
+                        const momentumRaw = Number(val[2] || 0);
+                        const momentumPct = ((momentumRaw - 1.0) * 100).toFixed(2);
+                        const momentumSign = momentumRaw >= 1.0 ? '+' : '';
+                        const momentumFormatted = `${momentumSign}${momentumPct}%`;
+                        const cid = val[3] || '';
+                        const rawName = val[4] || '';
+                        const name = rawName.toLowerCase().replace(/(?:^|\s|-)\S/g, function (a) { return a.toUpperCase(); });
+                        const isSingle = val[5];
+                        const bias = Number(val[6] || 0).toFixed(2);
+                        const lastMonthSale = Number(val[7] || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                        const lastMonthName = val[8] || 'Último mes';
+                        const recentMean = Number(val[9] || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                        const recentLabel = val[10] || 'Venta prom. trimestral';
+
+                        const isGrowing = momentumRaw >= 1.0;
+                        const statusBadge = isGrowing
+                            ? '<span style="color:#10b981;">▲ Creciendo</span>'
+                            : '<span style="color:#ef4444;">▼ Decreciendo</span>';
+
+                        let habitoBadge = '';
+                        if (isSingle) {
+                            habitoBadge = `<span style="color:#6366f1;">Consumo único</span> <span style="font-size:11px;opacity:0.75;">(1 mes)</span>`;
+                        } else if (cvNum <= 0.50) {
+                            habitoBadge = `<span style="color:#10b981;">Baja volatilidad (Muy estable)</span> <span style="font-size:11px;opacity:0.75;">[CV ${cv}]</span>`;
+                        } else if (cvNum <= 1.00) {
+                            habitoBadge = `<span style="color:#f59e0b;">Volatilidad media (Variable)</span> <span style="font-size:11px;opacity:0.75;">[CV ${cv}]</span>`;
+                        } else {
+                            habitoBadge = `<span style="color:#ef4444;">Alta volatilidad (Errático)</span> <span style="font-size:11px;opacity:0.75;">[CV ${cv}]</span>`;
+                        }
+
+                        let res = `<span>${name}</span> <span style="font-size:11px;opacity:0.75;">(#${cid})</span><br/>`;
+                        res += `Venta ${lastMonthName}: ${lastMonthSale}<br/>`;
+                        res += `${recentLabel}: ${recentMean}<br/>`;
+                        res += `Venta prom. mensual: ${meanSales}<br/>`;
+                        res += `Hábito de compra: ${habitoBadge}<br/>`;
+                        res += `Tendencia trimestral: ${statusBadge} <span style="font-size:11px;opacity:0.75;">(${momentumFormatted})</span><br/>`;
+
+                        const alertIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:3px;" class="lucide lucide-circle-alert"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>`;
+
+                        if (isSingle) {
+                            res += `<span style="color:#f59e0b;font-size:11px;display:inline-block;margin-top:2px;">${alertIcon}Consumo único en el periodo</span><br/>`;
+                        } else if (Number(bias) >= 0.4) {
+                            res += `<span style="color:#f97316;font-size:11px;display:inline-block;margin-top:2px;">${alertIcon}Compra atípica detectada (Media inflada)</span><br/>`;
+                        }
+
+                        res += `<span style="font-size:11px;opacity:0.75;display:inline-block;margin-top:4px;">Clic para ver detalle del cliente</span>`;
+                        return res;
+                    }
+                },
+                grid: {
+                    left: isMobile ? '8%' : '6%',
+                    right: isMobile ? '8%' : '6%',
+                    bottom: isMobile ? '18%' : '14%',
+                    top: 55,
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'value',
+                    name: 'Venta Promedio ($)',
+                    nameLocation: 'middle',
+                    nameGap: 30,
+                    nameTextStyle: { color: titleColor, fontSize: 11 },
+                    axisLabel: {
+                        color: titleColor,
+                        formatter: function (value) {
+                            if (value >= 1000000) return '$' + (value / 1000000).toFixed(1) + 'M';
+                            if (value >= 1000) return '$' + (value / 1000).toFixed(0) + 'k';
+                            return '$' + value;
+                        }
+                    },
+                    splitLine: {
+                        lineStyle: { type: 'dashed', opacity: 0.12 }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: 'Volatilidad (CV)',
+                    nameLocation: 'middle',
+                    nameGap: 35,
+                    nameTextStyle: { color: titleColor, fontSize: 11 },
+                    axisLabel: { color: titleColor },
+                    splitLine: {
+                        lineStyle: { type: 'dashed', opacity: 0.12 }
+                    }
+                },
+                series: [
+                    {
+                        name: 'Creciendo',
+                        type: 'scatter',
+                        data: growingData,
+                        symbolSize: 10,
+                        itemStyle: {
+                            color: '#10b981',
+                            borderColor: '#ffffff',
+                            borderWidth: 1,
+                            opacity: 0.85
+                        },
+                        cursor: 'pointer',
+                        markLine: {
+                            silent: true,
+                            symbol: 'none',
+                            lineStyle: {
+                                type: 'dashed',
+                                color: '#94a3b8',
+                                width: 1,
+                                opacity: 0.6
+                            },
+                            label: {
+                                show: false
+                            },
+                            data: [
+                                { xAxis: thresholds.volume },
+                                { yAxis: thresholds.volatility }
+                            ]
+                        }
+                    },
+                    {
+                        name: 'Decreciendo',
+                        type: 'scatter',
+                        data: decreasingData,
+                        symbolSize: 10,
+                        itemStyle: {
+                            color: '#ef4444',
+                            borderColor: '#ffffff',
+                            borderWidth: 1,
+                            opacity: 0.85
+                        },
+                        cursor: 'pointer'
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+
+            chart.on('click', function (params) {
+                if (params.componentType === 'series' && params.value) {
+                    const cid = params.value[3];
+                    if (cid) {
+                        const baseUrl = "{% url 'analytics:customer_kpis_view' %}";
+                        const targetUrl = `${baseUrl}?customer=${encodeURIComponent(cid)}`;
+                        window.location.href = targetUrl;
+                    }
+                }
+            });
+
+            window.addEventListener('resize', function () { chart.resize(); });
+        }
+
+        document.addEventListener('DOMContentLoaded', initVolatilitySaleVolumeChart);
+        document.addEventListener('htmx:afterSwap', initVolatilitySaleVolumeChart);
+        initVolatilitySaleVolumeChart();
+    })();
+</script>
