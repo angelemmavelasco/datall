@@ -9,6 +9,7 @@ from dateutil.relativedelta import relativedelta
 from collections import defaultdict
 from django.db.models import QuerySet, Sum, Q
 from django.utils import timezone
+from apps.core.models import Reference
 
 @dataclass
 class CommercialRiskService:
@@ -670,6 +671,411 @@ class CommercialRiskService:
             }
         }
 
+    def _get_momentum_and_bias(self) -> dict[str, Any]:
+        """
+        returns scatter data and universal thresholds for growth factor (momentum) vs bias analysis.
+        """
+        cv_dict = self._get_cv_by_customer()
+        if not cv_dict:
+            return {
+                'scatter_data': [],
+                'thresholds': {
+                    'momentum': 1.0,
+                    'bias': 0.0,
+                },
+                'quadrants': {
+                    'stable_growing': [],
+                    'erratic_growing': [],
+                    'stable_decreasing': [],
+                    'erratic_decreasing': [],
+                }
+            }
+
+        scatter_data = []
+        stable_growing_cids = []
+        erratic_growing_cids = []
+        stable_decreasing_cids = []
+        erratic_decreasing_cids = []
+
+        for cid, info in cv_dict.items():
+            momentum = info['momentum']
+            bias = info['bias']
+            mean_sales = info['mean_sales']
+            name = info['customer_name']
+            is_single = info['is_single_month']
+            last_sale = info['last_month_sale']
+            last_label = info['last_month_label']
+            recent_mean = info['recent_mean']
+            recent_label = info['recent_label']
+            cv = info['cv']
+
+            #universal thresholds Momentum = 1.0, Bias = 0.0
+            if momentum >= 1.0 and bias <= 0.0:
+                stable_growing_cids.append(cid)
+            elif momentum >= 1.0 and bias > 0.0:
+                erratic_growing_cids.append(cid)
+            elif momentum < 1.0 and bias <= 0.0:
+                stable_decreasing_cids.append(cid)
+            else:
+                erratic_decreasing_cids.append(cid)
+
+            scatter_data.append([
+                round(momentum, 4),      # 0: X axis (Momentum)
+                round(bias, 4),          # 1: Y axis (Bias)
+                round(mean_sales, 2),    # 2: Mean sales ($)
+                cid,                     # 3: Customer ID
+                name,                    # 4: Name
+                is_single,               # 5: Single month boolean
+                round(last_sale, 2),     # 6: Last month sales ($)
+                last_label,              # 7: Last month label
+                round(recent_mean, 2),   # 8: Recent mean sales ($)
+                recent_label,            # 9: Recent label
+                round(cv, 4),            # 10: CV
+            ])
+
+        return {
+            'scatter_data': scatter_data,
+            'thresholds': {
+                'momentum': 1.0,
+                'bias': 0.0,
+            },
+            'quadrants': {
+                'stable_growing': stable_growing_cids,
+                'erratic_growing': erratic_growing_cids,
+                'stable_decreasing': stable_decreasing_cids,
+                'erratic_decreasing': erratic_decreasing_cids,
+            }
+        }
+
+    def _init_categories(self) -> None:
+        refs = Reference.objects.filter(context='categoria_cliente_monto')
+        parsed = []
+        for r in refs:
+            try:
+                parsed.append((r.key.strip().lower(), Decimal(str(r.value))))
+            except (ValueError, TypeError):
+                continue
+        if parsed:
+            self.categories = sorted(parsed, key=lambda x: x[1], reverse=True)
+        else:
+            self.categories = [
+                ('diamante', Decimal('250000')),
+                ('oro', Decimal('100000')),
+                ('aa', Decimal('25000')),
+                ('a', Decimal('3000')),
+                ('c', Decimal('0')),
+            ]
+
+    def _calculate_category(self, sales: Decimal | float | None = None) -> str:
+        """returns the category to which the customer belongs given a sales amount"""
+        if not hasattr(self, 'categories'):
+            self._init_categories()
+        if sales is None:
+            return 'c'
+        sales_dec = Decimal(str(sales))
+        for name, min_amount in self.categories:
+            if sales_dec >= min_amount:
+                return name
+        return 'c'
+
+    def _get_monthly_category_composition(self) -> dict[str, Any]:
+        """
+        Calculates customer category composition over time (month by month).
+        Evaluates the rolling 3-month average purchase before each month,
+        adjusting fairly for customer registration dates.
+        Returns:
+            - timeline_months: list of month keys ('2025-08', '2025-09', ...)
+            - months_labels: list of month labels ('Ago 2025', 'Sep 2025', ...)
+            - categories: ['c', 'a', 'aa', 'oro', 'diamante']
+            - category_display: {'c': 'C', 'a': 'A', 'aa': 'AA', 'oro': 'Oro', 'diamante': 'Diamante'}
+            - category_counts: {'c': [...], 'a': [...], 'aa': [...], 'oro': [...], 'diamante': [...]}
+            - category_pcts: {'c': [...], 'a': [...], ...}
+            - category_customer_ids: {'c': [[...], ...], ...}
+            - total_portfolio: [total_m0, total_m1, ...]
+        """
+        if not hasattr(self, 'categories'):
+            self._init_categories()
+
+        ordered_cat_keys = [cat[0] for cat in reversed(self.categories)]
+        cat_display_map = {
+            'c': 'C',
+            'a': 'A',
+            'aa': 'AA',
+            'oro': 'Oro',
+            'diamante': 'Diamante'
+        }
+
+        if not self.route_id:
+            return {
+                'timeline_months': [],
+                'months_labels': [],
+                'categories': ordered_cat_keys,
+                'category_display': [cat_display_map.get(k, k.upper()) for k in ordered_cat_keys],
+                'category_counts': {k: [] for k in ordered_cat_keys},
+                'category_pcts': {k: [] for k in ordered_cat_keys},
+                'category_customer_ids': {k: [] for k in ordered_cat_keys},
+                'total_portfolio': [],
+            }
+
+        curr = self.date_start.replace(day=1)
+        end_m = self.date_end.replace(day=1)
+        timeline_months = []
+        months_labels = []
+
+        month_abbr_es = {
+            1: 'Ene', 2: 'Feb', 3: 'Mar', 4: 'Abr', 5: 'May', 6: 'Jun',
+            7: 'Jul', 8: 'Ago', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dic'
+        }
+
+        while curr <= end_m:
+            timeline_months.append(curr.strftime('%Y-%m'))
+            months_labels.append(f"{month_abbr_es[curr.month]} '{str(curr.year)[2:]}")
+            curr += relativedelta(months=1)
+
+        if not timeline_months:
+            return {
+                'timeline_months': [],
+                'months_labels': [],
+                'categories': ordered_cat_keys,
+                'category_display': [cat_display_map.get(k, k.upper()) for k in ordered_cat_keys],
+                'category_counts': {k: [] for k in ordered_cat_keys},
+                'category_pcts': {k: [] for k in ordered_cat_keys},
+                'category_customer_ids': {k: [] for k in ordered_cat_keys},
+                'total_portfolio': [],
+            }
+
+        customers_qs = (
+            self.customers_qs
+            .filter(assignments__route_id=self.route_id)
+            .values('id', 'registration_date')
+            .distinct()
+        )
+        customers_map = {c['id']: c['registration_date'] for c in customers_qs}
+
+        extended_start = self.date_start.replace(day=1) - relativedelta(months=4)
+        tx_qs = (
+            self.transactions_qs
+            .filter(
+                route_id=self.route_id,
+                sale_date__gte=extended_start,
+                sale_date__lte=self.date_end,
+                net_amount__gt=0
+            )
+            .values('sale_date', 'customer_id', 'net_amount')
+        )
+
+        monthly_customer_sales = defaultdict(lambda: defaultdict(float))
+        for tx in tx_qs:
+            m_key = tx['sale_date'].strftime('%Y-%m')
+            monthly_customer_sales[m_key][tx['customer_id']] += float(tx['net_amount'])
+
+        category_counts = {k: [] for k in ordered_cat_keys}
+        category_pcts = {k: [] for k in ordered_cat_keys}
+        category_customer_ids = {k: [] for k in ordered_cat_keys}
+        total_portfolio_list = []
+
+        for m_str in timeline_months:
+            target_date = datetime.strptime(m_str, '%Y-%m').date()
+            end_q = target_date.replace(day=1) - relativedelta(days=1)
+            eval_months = [(end_q.replace(day=1) - relativedelta(months=i)).strftime('%Y-%m') for i in (2, 1, 0)]
+
+            portfolio_cids = [
+                cid for cid, reg_date in customers_map.items()
+                if reg_date and reg_date <= (target_date.replace(day=1) + relativedelta(months=1) - relativedelta(days=1))
+            ]
+            total_customers_in_m = len(portfolio_cids)
+            total_portfolio_list.append(total_customers_in_m)
+
+            m_cat_counts = {k: 0 for k in ordered_cat_keys}
+            m_cat_cids = {k: [] for k in ordered_cat_keys}
+
+            for cid in portfolio_cids:
+                reg_date = customers_map.get(cid)
+                reg_month = reg_date.strftime('%Y-%m') if reg_date else '1970-01'
+
+                active_eval_months = sum(1 for qm in eval_months if qm >= reg_month)
+                if active_eval_months == 0:
+                    avg_sales = 0.0
+                else:
+                    total_eval_sales = sum(monthly_customer_sales[qm].get(cid, 0.0) for qm in eval_months)
+                    avg_sales = total_eval_sales / active_eval_months
+
+                cat = self._calculate_category(avg_sales)
+                if cat not in m_cat_counts:
+                    cat = 'c'
+                m_cat_counts[cat] += 1
+                m_cat_cids[cat].append(cid)
+
+            for k in ordered_cat_keys:
+                cnt = m_cat_counts[k]
+                category_counts[k].append(cnt)
+                category_customer_ids[k].append(m_cat_cids[k])
+                pct = round((cnt / total_customers_in_m * 100.0), 2) if total_customers_in_m > 0 else 0.0
+                category_pcts[k].append(pct)
+
+        return {
+            'timeline_months': timeline_months,
+            'months_labels': months_labels,
+            'categories': ordered_cat_keys,
+            'category_display': [cat_display_map.get(k, k.upper()) for k in ordered_cat_keys],
+            'category_counts': category_counts,
+            'category_pcts': category_pcts,
+            'category_customer_ids': category_customer_ids,
+            'total_portfolio': total_portfolio_list,
+        }
+
+    def _get_monetary_contrib_by_category(self) -> dict[str, Any]:
+        """
+        calculates monetary contribution by customer category month by month.
+        evaluates the rolling 3-month average purchase before each month to determine category,
+        then aggregates actual month sales ($ and %) for each category.
+        returns:
+            - timeline_months: list of month keys ('2025-08', '2025-09', ...)
+            - months_labels: list of month labels ('Ago 2025', 'Sep 2025', ...)
+            - categories: ['c', 'a', 'aa', 'oro', 'diamante']
+            - category_display: ['C', 'A', 'AA', 'Oro', 'Diamante']
+            - category_amounts: {'c': [...], 'a': [...], 'aa': [...], 'oro': [...], 'diamante': [...]}
+            - category_percentages: {'c': [...], 'a': [...], 'aa': [...], 'oro': [...], 'diamante': [...]}
+            - category_customer_ids: {'c': [[...], ...], ...}
+            - total_sales_by_month: [total_m0, total_m1, ...]
+        """
+        if not hasattr(self, 'categories'):
+            self._init_categories()
+
+        ordered_cat_keys = [cat[0] for cat in reversed(self.categories)]
+        cat_display_map = {
+            'c': 'C',
+            'a': 'A',
+            'aa': 'AA',
+            'oro': 'Oro',
+            'diamante': 'Diamante'
+        }
+
+        if not self.route_id:
+            return {
+                'timeline_months': [],
+                'months_labels': [],
+                'categories': ordered_cat_keys,
+                'category_display': [cat_display_map.get(k, k.upper()) for k in ordered_cat_keys],
+                'category_amounts': {k: [] for k in ordered_cat_keys},
+                'category_percentages': {k: [] for k in ordered_cat_keys},
+                'category_customer_ids': {k: [] for k in ordered_cat_keys},
+                'total_sales_by_month': [],
+            }
+
+        curr = self.date_start.replace(day=1)
+        end_m = self.date_end.replace(day=1)
+        timeline_months = []
+        months_labels = []
+
+        month_abbr_es = {
+            1: 'Ene', 2: 'Feb', 3: 'Mar', 4: 'Abr', 5: 'May', 6: 'Jun',
+            7: 'Jul', 8: 'Ago', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dic'
+        }
+
+        while curr <= end_m:
+            timeline_months.append(curr.strftime('%Y-%m'))
+            months_labels.append(f"{month_abbr_es[curr.month]} '{str(curr.year)[2:]}")
+            curr += relativedelta(months=1)
+
+        if not timeline_months:
+            return {
+                'timeline_months': [],
+                'months_labels': [],
+                'categories': ordered_cat_keys,
+                'category_display': [cat_display_map.get(k, k.upper()) for k in ordered_cat_keys],
+                'category_amounts': {k: [] for k in ordered_cat_keys},
+                'category_percentages': {k: [] for k in ordered_cat_keys},
+                'category_customer_ids': {k: [] for k in ordered_cat_keys},
+                'total_sales_by_month': [],
+            }
+
+        customers_qs = (
+            self.customers_qs
+            .filter(assignments__route_id=self.route_id)
+            .values('id', 'registration_date')
+            .distinct()
+        )
+        customers_map = {c['id']: c['registration_date'] for c in customers_qs}
+
+        extended_start = self.date_start.replace(day=1) - relativedelta(months=4)
+        tx_qs = (
+            self.transactions_qs
+            .filter(
+                route_id=self.route_id,
+                sale_date__gte=extended_start,
+                sale_date__lte=self.date_end,
+                net_amount__gt=0
+            )
+            .values('sale_date', 'customer_id', 'net_amount')
+        )
+
+        monthly_customer_sales = defaultdict(lambda: defaultdict(float))
+        for tx in tx_qs:
+            m_key = tx['sale_date'].strftime('%Y-%m')
+            monthly_customer_sales[m_key][tx['customer_id']] += float(tx['net_amount'])
+
+        category_amounts = {k: [] for k in ordered_cat_keys}
+        category_percentages = {k: [] for k in ordered_cat_keys}
+        category_customer_ids = {k: [] for k in ordered_cat_keys}
+        total_sales_by_month = []
+
+        for m_str in timeline_months:
+            target_date = datetime.strptime(m_str, '%Y-%m').date()
+            end_q = target_date.replace(day=1) - relativedelta(days=1)
+            eval_months = [(end_q.replace(day=1) - relativedelta(months=i)).strftime('%Y-%m') for i in (2, 1, 0)]
+
+            portfolio_cids = [
+                cid for cid, reg_date in customers_map.items()
+                if reg_date and reg_date <= (target_date.replace(day=1) + relativedelta(months=1) - relativedelta(days=1))
+            ]
+
+            m_amounts = {k: 0.0 for k in ordered_cat_keys}
+            m_cids = {k: [] for k in ordered_cat_keys}
+            total_m_sale = 0.0
+
+            for cid in portfolio_cids:
+                reg_date = customers_map.get(cid)
+                reg_month = reg_date.strftime('%Y-%m') if reg_date else '1970-01'
+
+                active_eval_months = sum(1 for qm in eval_months if qm >= reg_month)
+                if active_eval_months == 0:
+                    avg_sales = 0.0
+                else:
+                    total_eval_sales = sum(monthly_customer_sales[qm].get(cid, 0.0) for qm in eval_months)
+                    avg_sales = total_eval_sales / active_eval_months
+
+                cat = self._calculate_category(avg_sales)
+                if cat not in m_amounts:
+                    cat = 'c'
+
+                actual_sale = float(monthly_customer_sales[m_str].get(cid, 0.0))
+                m_amounts[cat] += actual_sale
+                total_m_sale += actual_sale
+                if actual_sale > 0:
+                    m_cids[cat].append(cid)
+
+            total_sales_by_month.append(round(total_m_sale, 2))
+
+            for k in ordered_cat_keys:
+                amt = m_amounts[k]
+                category_amounts[k].append(round(amt, 2))
+                category_customer_ids[k].append(m_cids[k])
+                pct = round((amt / total_m_sale * 100.0), 2) if total_m_sale > 0 else 0.0
+                category_percentages[k].append(pct)
+
+        return {
+            'timeline_months': timeline_months,
+            'months_labels': months_labels,
+            'categories': ordered_cat_keys,
+            'category_display': [cat_display_map.get(k, k.upper()) for k in ordered_cat_keys],
+            'category_amounts': category_amounts,
+            'category_percentages': category_percentages,
+            'category_customer_ids': category_customer_ids,
+            'total_sales_by_month': total_sales_by_month,
+        }
+    
+
 
 @dataclass
 class CommercialRiskStats:
@@ -771,8 +1177,7 @@ class CommercialRiskStats:
             service.transactions_qs
             .filter(
                 route_id=service.route_id,
-                sale_date__gte=service.date_start,
-                sale_date__lte=service.date_end
+                sale_date__lte=service.end_q_date
             )
             .values('sale_date', 'net_amount')
         )

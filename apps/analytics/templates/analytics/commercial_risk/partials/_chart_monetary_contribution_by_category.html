@@ -1,0 +1,184 @@
+<div class="border border-border rounded flex flex-col bg-container p-3 h-full min-h-[420px]">
+    <div id="customerCategoryContribChart" style="width: 100%; height: 390px; min-height: 390px;"></div>
+</div>
+
+<script id="monetary-contrib-data" type="application/json">
+{{ chart_data.monetary_contrib_by_category|safe }}
+</script>
+
+<script>
+    (function () {
+        function initMonetaryContributionChart() {
+            const chartDom = document.getElementById("customerCategoryContribChart");
+            if (!chartDom) return;
+
+            if (echarts.getInstanceByDom(chartDom)) {
+                echarts.dispose(chartDom);
+            }
+
+            const dataEl = document.getElementById("monetary-contrib-data");
+            const data = dataEl ? JSON.parse(dataEl.textContent || '{}') : {};
+
+            if (!data || !data.months_labels || data.months_labels.length === 0) {
+                return;
+            }
+
+            const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim() || '#9ca3af';
+            const isMobile = window.innerWidth < 768;
+
+            const months = data.months_labels || [];
+            const categories = data.categories || ['c', 'a', 'aa', 'oro', 'diamante'];
+            const categoryDisplay = data.category_display || ['C', 'A', 'AA', 'Oro', 'Diamante'];
+            const amounts = data.category_amounts || {};
+            const percentages = data.category_percentages || {};
+            const customerIds = data.category_customer_ids || {};
+            const totalSales = data.total_sales_by_month || [];
+
+            const colorMap = {
+                'c': '#94a3b8',
+                'a': '#3b82f6',
+                'aa': '#10b981',
+                'oro': '#f59e0b',
+                'diamante': '#06b6d4'
+            };
+
+            const seriesList = categories.map(function (catKey, idx) {
+                const displayName = categoryDisplay[idx] || catKey.toUpperCase();
+                const color = colorMap[catKey] || '#6366f1';
+                const catPcts = percentages[catKey] || [];
+
+                return {
+                    name: displayName,
+                    type: 'line',
+                    data: catPcts,
+                    itemStyle: { color: color },
+                    lineStyle: { width: 2.5 },
+                    symbolSize: 7,
+                    areaStyle: {
+                        color: color,
+                        opacity: 0.08
+                    },
+                    cursor: 'pointer'
+                };
+            });
+
+            const chart = echarts.init(chartDom);
+            const option = {
+                title: {
+                    text: 'Contribución monetaria por categoría',
+                    top: 8,
+                    left: 'center',
+                    textStyle: {
+                        fontWeight: 'normal',
+                        fontSize: 14,
+                        color: titleColor
+                    },
+                },
+                legend: {
+                    data: categoryDisplay,
+                    bottom: 0,
+                    left: 'center',
+                    icon: 'circle',
+                    itemWidth: 10,
+                    itemHeight: 10,
+                    textStyle: { color: titleColor, fontSize: 11 },
+                    cursor: 'pointer'
+                },
+                toolbox: {
+                    feature: {
+                        saveAsImage: {
+                            title: 'Guardar imagen',
+                            name: 'contribucion_monetaria_categoria'
+                        }
+                    }
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross',
+                        crossStyle: { color: '#999' }
+                    },
+                    formatter: function (params) {
+                        if (!params || params.length === 0) return '';
+                        const monthIndex = params[0].dataIndex;
+                        const monthName = months[monthIndex] || '';
+                        const total = Number(totalSales[monthIndex] || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+
+                        let tooltipHtml = `<span>${monthName}</span><br/>`;
+                        tooltipHtml += `<span style="font-size:11px;opacity:0.75;">Venta total: ${total}</span><br/>`;
+                        tooltipHtml += `<div style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.1);padding-top:4px;">`;
+
+                        // Order from Diamante down to C in tooltip for clarity
+                        for (let i = params.length - 1; i >= 0; i--) {
+                            const p = params[i];
+                            const catKey = categories[p.seriesIndex];
+                            const amt = Number((amounts[catKey] && amounts[catKey][monthIndex]) || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                            const pctVal = Number(p.value || 0).toFixed(2);
+                            tooltipHtml += `${p.marker} ${p.seriesName}: <span>${amt}</span> (${pctVal}%)<br/>`;
+                        }
+                        tooltipHtml += `</div>`;
+                        tooltipHtml += `<span style="font-size:11px;opacity:0.75;display:inline-block;margin-top:4px;">Clic para ver clientes en el KPI</span>`;
+                        return tooltipHtml;
+                    }
+                },
+                grid: {
+                    left: isMobile ? '8%' : '4%',
+                    right: isMobile ? '8%' : '4%',
+                    bottom: isMobile ? '20%' : '14%',
+                    top: 55,
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: months,
+                    axisLabel: {
+                        color: titleColor,
+                        interval: 0,
+                        rotate: isMobile ? 45 : (months.length > 10 ? 30 : 0),
+                        fontSize: 10
+                    },
+                    splitLine: {
+                        lineStyle: { type: 'dashed', opacity: 0.12 }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    min: 0,
+                    max: 100,
+                    axisLabel: {
+                        color: titleColor,
+                        formatter: '{value}%'
+                    },
+                    splitLine: {
+                        lineStyle: { type: 'dashed', opacity: 0.12 }
+                    }
+                },
+                series: seriesList
+            };
+
+            chart.setOption(option);
+
+            chart.on('click', function (params) {
+                if (params.componentType === 'series') {
+                    const seriesIndex = params.seriesIndex;
+                    const dataIndex = params.dataIndex;
+                    const catKey = categories[seriesIndex];
+                    const cids = (customerIds[catKey] && customerIds[catKey][dataIndex]) ? customerIds[catKey][dataIndex] : [];
+
+                    if (cids && cids.length > 0) {
+                        const baseUrl = "{% url 'analytics:customer_kpis_view' %}";
+                        const targetUrl = `${baseUrl}?customer=${encodeURIComponent(cids.join(','))}`;
+                        window.location.href = targetUrl;
+                    }
+                }
+            });
+
+            window.addEventListener('resize', function () { chart.resize(); });
+        }
+
+        document.addEventListener('DOMContentLoaded', initMonetaryContributionChart);
+        document.addEventListener('htmx:afterSwap', initMonetaryContributionChart);
+        initMonetaryContributionChart();
+    })();
+</script>

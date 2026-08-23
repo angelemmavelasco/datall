@@ -1,0 +1,260 @@
+<div class="border border-border rounded flex flex-col bg-container p-3 h-full min-h-[420px]">
+    <div id="growthBiasChart" style="width: 100%; height: 390px; min-height: 390px;"></div>
+</div>
+
+<script id="growth-bias-data" type="application/json">
+{{ chart_data.momentum_and_bias|safe }}
+</script>
+
+<script>
+    (function () {
+        function initGrowthBiasChart() {
+            const chartDom = document.getElementById("growthBiasChart");
+            if (!chartDom) return;
+
+            if (echarts.getInstanceByDom(chartDom)) {
+                echarts.dispose(chartDom);
+            }
+
+            const dataEl = document.getElementById("growth-bias-data");
+            const data = dataEl ? JSON.parse(dataEl.textContent || '{}') : {};
+
+            if (!data || !data.scatter_data || data.scatter_data.length === 0) {
+                return;
+            }
+
+            const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim() || '#9ca3af';
+            const isMobile = window.innerWidth < 768;
+
+            const scatterData = data.scatter_data;
+            const thresholds = data.thresholds || { momentum: 1.0, bias: 0.0 };
+
+            const stableGrowing = scatterData.filter(function (item) {
+                return Number(item[0] || 0) >= 1.0 && Number(item[1] || 0) <= 0.0;
+            });
+            const erraticGrowing = scatterData.filter(function (item) {
+                return Number(item[0] || 0) >= 1.0 && Number(item[1] || 0) > 0.0;
+            });
+            const stableDecreasing = scatterData.filter(function (item) {
+                return Number(item[0] || 0) < 1.0 && Number(item[1] || 0) <= 0.0;
+            });
+            const erraticDecreasing = scatterData.filter(function (item) {
+                return Number(item[0] || 0) < 1.0 && Number(item[1] || 0) > 0.0;
+            });
+
+            const chart = echarts.init(chartDom);
+            const option = {
+                color: ['#10b981', '#f59e0b', '#8b5cf6', '#ef4444'],
+                title: {
+                    text: 'Factor de crecimiento y sesgo',
+                    top: 8,
+                    left: 'center',
+                    textStyle: {
+                        fontWeight: 'normal',
+                        fontSize: 14,
+                        color: titleColor
+                    },
+                },
+                legend: {
+                    data: ['Estable y Creciendo', 'Errático Creciendo', 'Estable Decreciendo', 'Errático Decreciendo'],
+                    bottom: 0,
+                    left: 'center',
+                    icon: 'circle',
+                    itemWidth: 10,
+                    itemHeight: 10,
+                    textStyle: { color: titleColor, fontSize: 11 },
+                    cursor: 'pointer'
+                },
+                toolbox: {
+                    feature: {
+                        saveAsImage: {
+                            title: 'Guardar imagen',
+                            name: 'crecimiento_y_sesgo'
+                        }
+                    }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function (params) {
+                        const val = params.value || [];
+                        const momentumRaw = Number(val[0] || 0);
+                        const momentumPct = ((momentumRaw - 1.0) * 100).toFixed(2);
+                        const momentumSign = momentumRaw >= 1.0 ? '+' : '';
+                        const momentumFormatted = `${momentumSign}${momentumPct}%`;
+                        const bias = Number(val[1] || 0).toFixed(2);
+                        const meanSales = Number(val[2] || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                        const cid = val[3] || '';
+                        const rawName = val[4] || '';
+                        const name = rawName.toLowerCase().replace(/(?:^|\s|-)\S/g, function (a) { return a.toUpperCase(); });
+                        const isSingle = val[5];
+                        const lastMonthSale = Number(val[6] || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                        const lastMonthName = val[7] || 'Último mes';
+                        const recentMean = Number(val[8] || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+                        const recentLabel = val[9] || 'Venta prom. trimestral';
+
+                        const isGrowing = momentumRaw >= 1.0;
+                        const statusBadge = isGrowing
+                            ? '<span style="color:#10b981;">▲ Creciendo</span>'
+                            : '<span style="color:#ef4444;">▼ Decreciendo</span>';
+
+                        let estatusBadge = '';
+                        if (isSingle) {
+                            estatusBadge = `<span style="color:#6366f1;">Consumo único</span> <span style="font-size:11px;opacity:0.75;">(1 mes)</span>`;
+                        } else if (momentumRaw >= 1.0 && Number(bias) <= 0.0) {
+                            estatusBadge = `<span style="color:#10b981;">Estable y Creciendo</span>`;
+                        } else if (momentumRaw >= 1.0 && Number(bias) > 0.0) {
+                            estatusBadge = `<span style="color:#f59e0b;">Errático Creciendo</span>`;
+                        } else if (momentumRaw < 1.0 && Number(bias) <= 0.0) {
+                            estatusBadge = `<span style="color:#8b5cf6;">Estable Decreciendo</span>`;
+                        } else {
+                            estatusBadge = `<span style="color:#ef4444;">Errático Decreciendo</span>`;
+                        }
+
+                        let res = `<span>${name}</span> <span style="font-size:11px;opacity:0.75;">(#${cid})</span><br/>`;
+                        res += `Venta ${lastMonthName}: ${lastMonthSale}<br/>`;
+                        res += `${recentLabel}: ${recentMean}<br/>`;
+                        res += `Venta prom. mensual: ${meanSales}<br/>`;
+                        res += `Estatus: ${estatusBadge}<br/>`;
+                        res += `Tendencia trimestral: ${statusBadge} <span style="font-size:11px;opacity:0.75;">(${momentumFormatted})</span><br/>`;
+                        res += `Índice de sesgo: ${bias} <span style="font-size:11px;opacity:0.75;">${Number(bias) > 0 ? '(Compras atípicas)' : '(Estable)'}</span><br/>`;
+
+                        const alertIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:3px;" class="lucide lucide-circle-alert"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>`;
+
+                        if (isSingle) {
+                            res += `<span style="color:#f59e0b;font-size:11px;display:inline-block;margin-top:2px;">${alertIcon}Consumo único en el periodo</span><br/>`;
+                        } else if (Number(bias) >= 0.4) {
+                            res += `<span style="color:#f97316;font-size:11px;display:inline-block;margin-top:2px;">${alertIcon}Compra atípica detectada (Media inflada)</span><br/>`;
+                        }
+
+                        res += `<span style="font-size:11px;opacity:0.75;display:inline-block;margin-top:4px;">Clic para ver detalle del cliente</span>`;
+                        return res;
+                    }
+                },
+                grid: {
+                    left: isMobile ? '8%' : '6%',
+                    right: isMobile ? '8%' : '6%',
+                    bottom: isMobile ? '20%' : '15%',
+                    top: 55,
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'value',
+                    name: 'Factor de Crecimiento (1.0 = Neutro)',
+                    nameLocation: 'middle',
+                    nameGap: 30,
+                    nameTextStyle: { color: titleColor, fontSize: 11 },
+                    axisLabel: {
+                        color: titleColor,
+                        formatter: function (value) {
+                            return value.toFixed(1);
+                        }
+                    },
+                    splitLine: {
+                        lineStyle: { type: 'dashed', opacity: 0.12 }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: 'Índice de Sesgo (0.0 = Neutro)',
+                    nameLocation: 'middle',
+                    nameGap: 35,
+                    nameTextStyle: { color: titleColor, fontSize: 11 },
+                    axisLabel: { color: titleColor },
+                    splitLine: {
+                        lineStyle: { type: 'dashed', opacity: 0.12 }
+                    }
+                },
+                series: [
+                    {
+                        name: 'Estable y Creciendo',
+                        type: 'scatter',
+                        data: stableGrowing,
+                        symbolSize: 10,
+                        itemStyle: {
+                            color: '#10b981',
+                            borderColor: '#ffffff',
+                            borderWidth: 1,
+                            opacity: 0.85
+                        },
+                        cursor: 'pointer',
+                        markLine: {
+                            silent: true,
+                            symbol: 'none',
+                            lineStyle: {
+                                type: 'dashed',
+                                color: '#94a3b8',
+                                width: 1,
+                                opacity: 0.6
+                            },
+                            label: {
+                                show: false
+                            },
+                            data: [
+                                { xAxis: thresholds.momentum },
+                                { yAxis: thresholds.bias }
+                            ]
+                        }
+                    },
+                    {
+                        name: 'Errático Creciendo',
+                        type: 'scatter',
+                        data: erraticGrowing,
+                        symbolSize: 10,
+                        itemStyle: {
+                            color: '#f59e0b',
+                            borderColor: '#ffffff',
+                            borderWidth: 1,
+                            opacity: 0.85
+                        },
+                        cursor: 'pointer'
+                    },
+                    {
+                        name: 'Estable Decreciendo',
+                        type: 'scatter',
+                        data: stableDecreasing,
+                        symbolSize: 10,
+                        itemStyle: {
+                            color: '#8b5cf6',
+                            borderColor: '#ffffff',
+                            borderWidth: 1,
+                            opacity: 0.85
+                        },
+                        cursor: 'pointer'
+                    },
+                    {
+                        name: 'Errático Decreciendo',
+                        type: 'scatter',
+                        data: erraticDecreasing,
+                        symbolSize: 10,
+                        itemStyle: {
+                            color: '#ef4444',
+                            borderColor: '#ffffff',
+                            borderWidth: 1,
+                            opacity: 0.85
+                        },
+                        cursor: 'pointer'
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+
+            chart.on('click', function (params) {
+                if (params.componentType === 'series' && params.value) {
+                    const cid = params.value[3];
+                    if (cid) {
+                        const baseUrl = "{% url 'analytics:customer_kpis_view' %}";
+                        const targetUrl = `${baseUrl}?customer=${encodeURIComponent(cid)}`;
+                        window.location.href = targetUrl;
+                    }
+                }
+            });
+
+            window.addEventListener('resize', function () { chart.resize(); });
+        }
+
+        document.addEventListener('DOMContentLoaded', initGrowthBiasChart);
+        document.addEventListener('htmx:afterSwap', initGrowthBiasChart);
+        initGrowthBiasChart();
+    })();
+</script>

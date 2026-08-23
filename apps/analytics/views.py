@@ -362,6 +362,9 @@ def commercial_risk_view(request):
     new_customers_data = risk_service._get_monthly_new_customers()
     coverage_data = risk_service._get_monthly_portafolio_coverage()
     volatility_data = risk_service._get_volatility_and_volume()
+    momentum_bias_data = risk_service._get_momentum_and_bias()
+    category_composition_data = risk_service._get_monthly_category_composition()
+    monetary_contrib_data = risk_service._get_monetary_contrib_by_category()
 
     chart_data = {
         'timeline_chart': json.dumps(timeline_chart),
@@ -376,6 +379,9 @@ def commercial_risk_view(request):
             'total_portfolio': coverage_data['total_portfolio'],
         }),
         'volatility_and_volume': json.dumps(volatility_data),
+        'momentum_and_bias': json.dumps(momentum_bias_data),
+        'category_composition': json.dumps(category_composition_data),
+        'monetary_contrib_by_category': json.dumps(monetary_contrib_data),
     }
 
     query_dict = request.GET.copy()
@@ -386,6 +392,8 @@ def commercial_risk_view(request):
         'allowed_routes': allowed_routes,
         'selected_date_start': risk_service.date_start,
         'selected_date_end': risk_service.date_end,
+        'selected_start_q_date': risk_service.start_q_date,
+        'selected_end_q_date': risk_service.end_q_date,
         'kpis': kpis,
         'chart_data': chart_data,
         'query_string': query_dict.urlencode(),
