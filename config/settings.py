@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'storages',
     'widget_tweaks',
     'django_filters',
+    'django_q',
 
     'apps.core',
     'apps.human_resources',
@@ -197,3 +198,15 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+#django q2 cluster config
+Q_CLUSTER = {
+    'name': 'datall_q',
+    'workers': 4,
+    'recycle': 500,
+    'timeout': 300,
+    'retry': 360,
+    'queue_limit': 50,
+    'bulk': 10,
+    'orm': 'default',
+}
