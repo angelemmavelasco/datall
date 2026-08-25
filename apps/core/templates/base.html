@@ -334,7 +334,8 @@
                     <ul class="ml-3 flex flex-col gap-1.5 border-l border-border pl-4 text-body">
                         {% for submodule in module.submodules.all %}
                         <li class="sidebar-submodule-item">
-                            <a href="{% url submodule.url_name %}" class="sidebar-submodule-link flex items-center gap-1 hover:text-hover transition-colors text-sm md:text-xs py-2 border-b border-border md:border-none">
+                            {% url submodule.url_name as submodule_url %}
+                            <a href="{{ submodule_url }}" class="sidebar-submodule-link flex items-center gap-1 {% if request.path == submodule_url %}text-blue-500 font-bold{% endif %} hover:text-hover transition-colors text-sm md:text-xs py-2 border-b border-border md:border-none">
                                 {% if submodule.icon %}
                                     {{ submodule.icon|safe }}
                                 {% endif %}
