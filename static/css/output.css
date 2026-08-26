@@ -1144,6 +1144,12 @@
   .bg-page {
     background-color: var(--theme-page);
   }
+  .bg-page\/80 {
+    background-color: var(--theme-page);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--theme-page) 80%, transparent);
+    }
+  }
   .bg-red-50 {
     background-color: var(--color-red-50);
   }

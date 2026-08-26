@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from .exports import *
+from time import perf_counter
 
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
@@ -477,6 +478,7 @@ def target_achievement_view(request):
 
 @login_required
 def yearly_sale_breakdown_view(request):
+    init = perf_counter()
     template = 'analytics/yearly_sale_breakdown/yearly_sale_breakdown.html'
 
     req_data = request.GET.copy()
@@ -522,6 +524,11 @@ def yearly_sale_breakdown_view(request):
     query_dict = req_data.copy()
     if 'page' in query_dict:
         del query_dict['page']
+    
+    end = perf_counter()
+    perf = end - init
+    
+    print(f'yearly_sale_breakdown_view: {perf} seconds')
 
     context = {
         'filter': filter_set,
@@ -532,6 +539,7 @@ def yearly_sale_breakdown_view(request):
         'pivot_data': pivot_data,
         'page_obj': page_obj,
         'query_string': query_dict.urlencode(),
+        'perf': perf,
     }
 
     if request.htmx:
