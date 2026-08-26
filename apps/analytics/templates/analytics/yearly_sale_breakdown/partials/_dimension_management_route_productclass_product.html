@@ -1,0 +1,89 @@
+{% load humanize %}
+
+{% for mgt_key, mgt_data in pivot_data.items %}
+    {% with m_id=forloop.counter %}
+<!-- gerencia -->
+    <tr class="border-b border-border cursor-pointer hover:bg-hover/20 transition-colors"
+        onclick="togglePivot('mrpp-mgt-{{ m_id }}', 'icon-mrpp-mgt-{{ m_id }}')">
+        <td class="py-2 pr-2 pl-2 text-strong flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
+            <svg id="icon-mrpp-mgt-{{ m_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
+            <span class="truncate font-semibold text-title" title="{{ mgt_data.name|title }}">{{ mgt_data.name|title }}</span>
+        </td>
+        {% for total in mgt_data.totals %}
+            <td class="p-2 text-right text-strong border-l border-border min-w-[140px]">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="rounded text-[10px] px-1 py-[1px] whitespace-nowrap font-medium
+                    {% if total.growth > 0 %}
+                        border border-emerald-500 text-emerald-500 bg-emerald-500/10
+                    {% elif total.growth < 0 %}
+                        border border-red-500 text-red-500 bg-red-500/10
+                    {% else %}
+                        border border-border text-muted bg-page
+                    {% endif %}">
+                        {% if total.growth > 0 %}+{% endif %}{{ total.growth|default:0|floatformat:2|intcomma }}%
+                    </span>
+                    <div class="text-right">
+                        <span class="text-title font-medium text-xs">$ {{ total.net|default:0|floatformat:2|intcomma }}</span><br>
+                        <span class="text-muted italic text-[10px]">Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%</span>
+                    </div>
+                </div>
+            </td>
+        {% endfor %}
+    </tr>
+
+<!-- ruta -->
+    {% for route_key, route_data in mgt_data.children.items %}
+        {% with r_id=forloop.counter %}
+        <tr class="mrpp-mgt-{{ m_id }} hidden border-b border-border cursor-pointer hover:bg-hover/20 transition-colors bg-page"
+            onclick="togglePivot('mrpp-route-{{ m_id }}-{{ r_id }}', 'icon-mrpp-route-{{ m_id }}-{{ r_id }}')">
+            <td class="py-2 pr-2 pl-8 text-body flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
+                <svg id="icon-mrpp-route-{{ m_id }}-{{ r_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
+                <span class="truncate font-medium text-title text-xs" title="Ruta {% if route_data.id %}{{ route_data.id|upper }} - {% endif %}{{ route_data.name|title }}">
+                    Ruta {% if route_data.id %}<span class="text-muted">{{ route_data.id|upper }}</span> - {% endif %}{{ route_data.name|title }}
+                </span>
+            </td>
+            {% for total in route_data.totals %}
+                <td class="p-2 text-right border-l border-border text-title text-xs">
+                    $ {{ total.net|default:0|floatformat:2|intcomma }}
+                </td>
+            {% endfor %}
+        </tr>
+
+<!-- clase -->
+        {% for line_key, line_data in route_data.children.items %}
+            {% with l_id=forloop.counter %}
+            <tr class="mrpp-route-{{ m_id }}-{{ r_id }} hidden border-b border-border cursor-pointer hover:bg-hover/20 transition-colors bg-page"
+                onclick="togglePivot('mrpp-line-{{ m_id }}-{{ r_id }}-{{ l_id }}', 'icon-mrpp-line-{{ m_id }}-{{ r_id }}-{{ l_id }}')">
+                <td class="py-2 pr-2 pl-16 text-body flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
+                    <svg id="icon-mrpp-line-{{ m_id }}-{{ r_id }}-{{ l_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
+                    <span class="truncate font-medium text-title text-xs" title="{{ line_data.name|title }}">{{ line_data.name|title }}</span>
+                </td>
+                {% for total in line_data.totals %}
+                    <td class="p-2 text-right border-l border-border text-title text-xs">
+                        $ {{ total.net|default:0|floatformat:2|intcomma }}
+                    </td>
+                {% endfor %}
+            </tr>
+
+<!-- producto -->
+            {% for prod_key, prod_data in line_data.children.items %}
+                <tr class="mrpp-line-{{ m_id }}-{{ r_id }}-{{ l_id }} hidden border-b border-border hover:bg-hover/20 transition-colors bg-page">
+                    <td class="py-2 pr-2 pl-24 text-muted flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
+                        <span class="w-4 flex justify-center shrink-0 text-secondary text-xs">•</span>
+                        <span class="truncate text-xs" title="{% if prod_data.id and prod_data.id != 'otros' %}{{ prod_data.id|upper }} - {% endif %}{{ prod_data.name|title }}">
+                            {% if prod_data.id and prod_data.id != 'otros' %}<span>{{ prod_data.id|upper }}</span> - {% endif %}{{ prod_data.name|title }}
+                        </span>
+                    </td>
+                    {% for total in prod_data.totals %}
+                        <td class="p-2 text-right border-l border-border text-muted text-xs">
+                            $ {{ total.net|default:0|floatformat:2|intcomma }}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+            {% endwith %}
+        {% endfor %}
+        {% endwith %}
+    {% endfor %}
+    {% endwith %}
+{% endfor %}

@@ -55,14 +55,14 @@
             <thead class="sticky top-0 z-30 bg-page">
                 <tr class="border-b border-border text-xs">
                     <th scope="col" class="p-2 text-title border-r border-border sticky top-0 md:left-0 z-35 bg-page min-w-[280px]">
-                        Dimensión
+                        Jerarquía / Dimensión
                     </th>
                     {% for year in available_years %}
-                        <th scope="col" class="p-2 text-title font-semibold text-right border-l border-border sticky top-0 z-30 bg-page min-w-[140px]">
+                        <th scope="col" class="p-2 text-title  text-center border-l border-border sticky top-0 z-30 bg-page min-w-[140px]">
                             Año {{ year }}
                         </th>
                     {% empty %}
-                        <th scope="col" class="p-2 text-title font-semibold text-center border-l border-border sticky top-0 z-30 bg-page">
+                        <th scope="col" class="p-2 text-title  text-center border-l border-border sticky top-0 z-30 bg-page">
                             Sin periodos
                         </th>
                     {% endfor %}
@@ -92,17 +92,16 @@
 
         if (icon) {
             if (isOpening) {
-                icon.classList.remove('lucide-circle-arrow-right');
-                icon.classList.add('lucide-circle-arrow-down');
-                icon.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="m8 12 4 4 4-4"/>';
+                icon.classList.remove('lucide-circle-chevron-right');
+                icon.classList.add('lucide-circle-chevron-down');
+                icon.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/>';
             } else {
-                icon.classList.remove('lucide-circle-arrow-down');
-                icon.classList.add('lucide-circle-arrow-right');
-                icon.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/>';
+                icon.classList.remove('lucide-circle-chevron-down');
+                icon.classList.add('lucide-circle-chevron-right');
+                icon.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/>';
             }
         }
 
-        // Si se esta cerrando el padre, ocultar recursivamente todos los descendientes y reiniciar sus iconos
         if (!isOpening) {
             let selectorsToHide = [];
             let iconsToReset = [];
@@ -119,6 +118,16 @@
                 const prefix = targetClass.split('-')[2];
                 selectorsToHide = [`[class*="mpp-line-${prefix}-"]`];
                 iconsToReset = [`[id^="icon-mpp-line-${prefix}-"]`];
+            } else if (targetClass.startsWith('mrpp-mgt-')) {
+                const prefix = targetClass.split('-')[2];
+                selectorsToHide = [`[class*="mrpp-route-${prefix}-"]`, `[class*="mrpp-line-${prefix}-"]`];
+                iconsToReset = [`[id^="icon-mrpp-route-${prefix}-"]`, `[id^="icon-mrpp-line-${prefix}-"]`];
+            } else if (targetClass.startsWith('mrpp-route-')) {
+                const parts = targetClass.split('-');
+                const m_id = parts[2];
+                const r_id = parts[3];
+                selectorsToHide = [`[class*="mrpp-line-${m_id}-${r_id}-"]`];
+                iconsToReset = [`[id^="icon-mrpp-line-${m_id}-${r_id}-"]`];
             } else if (targetClass.startsWith('rpp-route-')) {
                 const prefix = targetClass.split('-')[2];
                 selectorsToHide = [`[class*="rpp-line-${prefix}-"]`];
@@ -130,9 +139,9 @@
             });
             iconsToReset.forEach(s => {
                 document.querySelectorAll(s).forEach(ic => {
-                    ic.classList.remove('lucide-circle-arrow-down');
-                    ic.classList.add('lucide-circle-arrow-right');
-                    ic.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/>';
+                    ic.classList.remove('lucide-circle-chevron-down');
+                    ic.classList.add('lucide-circle-chevron-right');
+                    ic.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/>';
                 });
             });
         }

@@ -2,12 +2,13 @@
 
 {% for customer_key, customer_data in pivot_data.items %}
     {% with c_id=forloop.counter %}
-    <tr class="border-b border-border cursor-pointer hover:bg-hover transition-colors"
+<!-- cliente -->
+    <tr class="border-b border-border cursor-pointer hover:bg-hover/20 transition-colors"
         onclick="togglePivot('cust-{{ c_id }}', 'icon-cust-{{ c_id }}')">
-        <td class="p-2 text-strong flex items-center gap-2 sticky md:left-0 z-20  min-w-[280px]">
-            <svg id="icon-cust-{{ c_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+        <td class="py-2 pr-2 pl-2 text-strong flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
+            <svg id="icon-cust-{{ c_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
             <span class="truncate font-semibold text-title" title="{% if customer_data.id %}{{ customer_data.id|upper }} - {% endif %}{{ customer_data.name|title }}">
-                {% if customer_data.id %}<span class="text-muted  text-xs">{{ customer_data.id|upper }}</span> - {% endif %}{{ customer_data.name|title }}
+                {% if customer_data.id %}<span class="text-muted text-xs">{{ customer_data.id|upper }}</span> - {% endif %}{{ customer_data.name|title }}
             </span>
         </td>
         {% for total in customer_data.totals %}
@@ -24,7 +25,7 @@
                         {% if total.growth > 0 %}+{% endif %}{{ total.growth|default:0|floatformat:2|intcomma }}%
                     </span>
                     <div class="text-right">
-                        <span class="text-title font-medium text-xs ">$ {{ total.net|default:0|floatformat:2|intcomma }}</span><br>
+                        <span class="text-title font-medium text-xs">$ {{ total.net|default:0|floatformat:2|intcomma }}</span><br>
                         <span class="text-muted italic text-[10px]">Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%</span>
                     </div>
                 </div>
@@ -32,28 +33,33 @@
         {% endfor %}
     </tr>
 
+<!-- clase -->
     {% for line_key, line_data in customer_data.children.items %}
         {% with l_id=forloop.counter %}
-        <tr class="cust-{{ c_id }} hidden border-b border-border cursor-pointer hover:bg-hover transition-colors bg-page/40"
+        <tr class="cust-{{ c_id }} hidden border-b border-border cursor-pointer hover:bg-hover/20 transition-colors bg-page"
             onclick="togglePivot('line-cust-{{ c_id }}-{{ l_id }}', 'icon-line-cust-{{ c_id }}-{{ l_id }}')">
-            <td class="p-2 pl-8 text-body flex items-center gap-2 sticky md:left-0 z-20 bg-page/90 min-w-[280px]">
-                <svg id="icon-line-cust-{{ c_id }}-{{ l_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+            <td class="py-2 pr-2 pl-8 text-body flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
+                <svg id="icon-line-cust-{{ c_id }}-{{ l_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
                 <span class="truncate font-medium text-title text-xs" title="{{ line_data.name|title }}">{{ line_data.name|title }}</span>
             </td>
             {% for total in line_data.totals %}
-                <td class="p-2 text-right border-l border-border text-title text-xs ">
+                <td class="p-2 text-right border-l border-border text-title text-xs">
                     $ {{ total.net|default:0|floatformat:2|intcomma }}
                 </td>
             {% endfor %}
         </tr>
 
+<!-- producto -->
         {% for prod_key, prod_data in line_data.children.items %}
-            <tr class="line-cust-{{ c_id }}-{{ l_id }} hidden border-b border-border hover:bg-hover transition-colors bg-page/70">
-                <td class="p-2 pl-14 text-muted truncate text-xs sticky md:left-0 z-20 bg-page/90 min-w-[280px]" title="{% if prod_data.id and prod_data.id != 'otros' %}{{ prod_data.id|upper }} - {% endif %}{{ prod_data.name|title }}">
-                    <span class="text-secondary">•</span> {% if prod_data.id and prod_data.id != 'otros' %}<span class="">{{ prod_data.id|upper }}</span> - {% endif %}{{ prod_data.name|title }}
+            <tr class="line-cust-{{ c_id }}-{{ l_id }} hidden border-b border-border hover:bg-hover/20 transition-colors bg-page">
+                <td class="py-2 pr-2 pl-16 text-muted flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
+                    <span class="w-4 flex justify-center shrink-0 text-secondary text-xs">•</span>
+                    <span class="truncate text-xs" title="{% if prod_data.id and prod_data.id != 'otros' %}{{ prod_data.id|upper }} - {% endif %}{{ prod_data.name|title }}">
+                        {% if prod_data.id and prod_data.id != 'otros' %}<span>{{ prod_data.id|upper }}</span> - {% endif %}{{ prod_data.name|title }}
+                    </span>
                 </td>
                 {% for total in prod_data.totals %}
-                    <td class="p-2 text-right border-l border-border text-muted text-xs ">
+                    <td class="p-2 text-right border-l border-border text-muted text-xs">
                         $ {{ total.net|default:0|floatformat:2|intcomma }}
                     </td>
                 {% endfor %}

@@ -3,12 +3,12 @@
 {% for prod_key, prod_data in pivot_data.items %}
     {% with p_id=forloop.counter %}
 <!-- producto -->
-    <tr class="border-b border-border cursor-pointer hover:bg-hover transition-colors"
+    <tr class="border-b border-border cursor-pointer hover:bg-hover/20 transition-colors"
         onclick="togglePivot('pm-prod-{{ p_id }}', 'icon-pm-prod-{{ p_id }}')">
-        <td class="p-2 text-strong flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
-            <svg id="icon-pm-prod-{{ p_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+        <td class="py-2 pr-2 pl-2 text-strong flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
+            <svg id="icon-pm-prod-{{ p_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
             <span class="truncate font-semibold text-title" title="{% if prod_data.id %}{{ prod_data.id|upper }} - {% endif %}{{ prod_data.name|title }}">
-                {% if prod_data.id %}<span class="font-mono text-muted">{{ prod_data.id|upper }}</span> - {% endif %}{{ prod_data.name|title }}
+                {% if prod_data.id %}<span class="text-muted">{{ prod_data.id|upper }}</span> - {% endif %}{{ prod_data.name|title }}
             </span>
         </td>
         {% for total in prod_data.totals %}
@@ -25,7 +25,7 @@
                         {% if total.growth > 0 %}+{% endif %}{{ total.growth|default:0|floatformat:2|intcomma }}%
                     </span>
                     <div class="text-right">
-                        <span class="text-title font-medium text-xs font-mono">$ {{ total.net|default:0|floatformat:2|intcomma }}</span><br>
+                        <span class="text-title font-medium text-xs">$ {{ total.net|default:0|floatformat:2|intcomma }}</span><br>
                         <span class="text-muted italic text-[10px]">Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%</span>
                     </div>
                 </div>
@@ -35,12 +35,15 @@
 
 <!-- gerencia -->
     {% for mgt_key, mgt_data in prod_data.children.items %}
-        <tr class="pm-prod-{{ p_id }} hidden border-b border-border hover:bg-hover transition-colors bg-page/70">
-            <td class="p-2 pl-8 text-body truncate text-xs sticky md:left-0 z-20 bg-page/90 min-w-[280px]" title="{{ mgt_data.name|title }}">
-                <span class="text-secondary">•</span> {{ mgt_data.name|title }}
+        <tr class="pm-prod-{{ p_id }} hidden border-b border-border hover:bg-hover/20 transition-colors bg-page">
+            <td class="py-2 pr-2 pl-8 text-muted flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
+                <span class="w-4 flex justify-center shrink-0 text-secondary text-xs">•</span>
+                <span class="truncate text-xs" title="{{ mgt_data.name|title }}">
+                    {{ mgt_data.name|title }}
+                </span>
             </td>
             {% for total in mgt_data.totals %}
-                <td class="p-2 text-right border-l border-border text-title text-xs font-mono">
+                <td class="p-2 text-right border-l border-border text-muted text-xs">
                     $ {{ total.net|default:0|floatformat:2|intcomma }}
                 </td>
             {% endfor %}

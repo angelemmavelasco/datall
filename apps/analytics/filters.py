@@ -680,6 +680,7 @@ class YearlySaleBreakdownFilter(django_filters.FilterSet):
         ('productclass_product', 'Clase de producto → Producto'),
         ('productclass_customer_product', 'Clase de producto → Cliente → Producto'),
         ('management_productclass_product', 'Gerencia → Clase de producto → Producto'),
+        ('management_route_productclass_product', 'Gerencia → Ruta → Clase de producto → Producto'),
         ('route_productclass_product', 'Ruta → Clase de producto → Producto'),
         ('product_customer', 'Producto → Cliente'),
         ('product_management', 'Producto → Gerencia'),

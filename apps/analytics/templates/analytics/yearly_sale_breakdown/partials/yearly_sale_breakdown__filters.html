@@ -10,7 +10,7 @@
                 {% for choice in filter.form.dimension %}
                     <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
                         {{ choice.tag }}
-                        <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label }}</span>
+                        <span class="option-label" title="{{ choice.choice_label }}">{{ choice.choice_label }}</span>
                     </label>
                 {% endfor %}
             </div>
