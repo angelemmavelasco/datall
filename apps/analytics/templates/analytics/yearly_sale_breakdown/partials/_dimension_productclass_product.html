@@ -1,0 +1,48 @@
+{% load humanize %}
+
+{% for line_key, line_data in pivot_data.items %}
+    {% with l_id=forloop.counter %}
+<!-- clase -->
+    <tr class="border-b border-border cursor-pointer hover:bg-hover transition-colors"
+        onclick="togglePivot('lp-line-{{ l_id }}', 'icon-lp-line-{{ l_id }}')">
+        <td class="p-2 text-strong flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
+            <svg id="icon-lp-line-{{ l_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+            <span class="truncate font-semibold text-title" title="{{ line_data.name|title }}">{{ line_data.name|title }}</span>
+        </td>
+        {% for total in line_data.totals %}
+            <td class="p-2 text-right text-strong border-l border-border min-w-[140px]">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="rounded text-[10px] px-1 py-[1px] whitespace-nowrap font-medium
+                    {% if total.growth > 0 %}
+                        border border-emerald-500 text-emerald-500 bg-emerald-500/10
+                    {% elif total.growth < 0 %}
+                        border border-red-500 text-red-500 bg-red-500/10
+                    {% else %}
+                        border border-border text-muted bg-page
+                    {% endif %}">
+                        {% if total.growth > 0 %}+{% endif %}{{ total.growth|default:0|floatformat:2|intcomma }}%
+                    </span>
+                    <div class="text-right">
+                        <span class="text-title font-medium text-xs font-mono">$ {{ total.net|default:0|floatformat:2|intcomma }}</span><br>
+                        <span class="text-muted italic text-[10px]">Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%</span>
+                    </div>
+                </div>
+            </td>
+        {% endfor %}
+    </tr>
+
+<!-- producto -->
+    {% for prod_key, prod_data in line_data.children.items %}
+        <tr class="lp-line-{{ l_id }} hidden border-b border-border hover:bg-hover transition-colors bg-page/70">
+            <td class="p-2 pl-8 text-body truncate text-xs sticky md:left-0 z-20 bg-page/90 min-w-[280px]" title="{% if prod_data.id and prod_data.id != 'otros' %}{{ prod_data.id|upper }} - {% endif %}{{ prod_data.name|title }}">
+                <span class="text-secondary">•</span> {% if prod_data.id and prod_data.id != 'otros' %}<span class="font-mono text-muted">{{ prod_data.id|upper }}</span> - {% endif %}{{ prod_data.name|title }}
+            </td>
+            {% for total in prod_data.totals %}
+                <td class="p-2 text-right border-l border-border text-title text-xs font-mono">
+                    $ {{ total.net|default:0|floatformat:2|intcomma }}
+                </td>
+            {% endfor %}
+        </tr>
+    {% endfor %}
+    {% endwith %}
+{% endfor %}

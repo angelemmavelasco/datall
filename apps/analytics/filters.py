@@ -672,3 +672,127 @@ class TargetAchievementFilter(django_filters.FilterSet):
         return queryset.filter(
             Q(route__business_unit_id__in=bu_ids) | Q(business_unit_id__in=bu_ids)
         ).distinct()
+
+
+class YearlySaleBreakdownFilter(django_filters.FilterSet):
+    DIMENSION_CHOICES = [
+        ('customer_productclass_product', 'Cliente → Clase de producto → Producto'),
+        ('productclass_product', 'Clase de producto → Producto'),
+        ('productclass_customer_product', 'Clase de producto → Cliente → Producto'),
+        ('management_productclass_product', 'Gerencia → Clase de producto → Producto'),
+        ('route_productclass_product', 'Ruta → Clase de producto → Producto'),
+        ('product_customer', 'Producto → Cliente'),
+        ('product_management', 'Producto → Gerencia'),
+        ('product_route', 'Producto → Ruta'),
+    ]
+
+    MONTH_CHOICES = [
+        ('1', 'Enero'),
+        ('2', 'Febrero'),
+        ('3', 'Marzo'),
+        ('4', 'Abril'),
+        ('5', 'Mayo'),
+        ('6', 'Junio'),
+        ('7', 'Julio'),
+        ('8', 'Agosto'),
+        ('9', 'Septiembre'),
+        ('10', 'Octubre'),
+        ('11', 'Noviembre'),
+        ('12', 'Diciembre'),
+    ]
+
+    dimension = django_filters.ChoiceFilter(
+        choices=DIMENSION_CHOICES,
+        label='Dimensión de visualización',
+        widget=forms.RadioSelect,
+        method='filter_noop',
+        empty_label=None,
+        null_label=None,
+        initial='customer_productclass_product',
+    )
+    months = django_filters.MultipleChoiceFilter(
+        choices=MONTH_CHOICES,
+        method='filter_months',
+        widget=forms.CheckboxSelectMultiple,
+        label='Meses a comparar',
+    )
+    region = BusinessUnitMultipleChoiceFilter(
+        method='filter_region',
+        queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION),
+        widget=forms.CheckboxSelectMultiple,
+        label='Región'
+    )
+    business_unit = BusinessUnitMultipleChoiceFilter(
+        method='filter_business_unit',
+        queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT),
+        widget=forms.CheckboxSelectMultiple,
+        label='Gerencia'
+    )
+    route = django_filters.ModelMultipleChoiceFilter(
+        field_name='route',
+        queryset=Route.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Ruta'
+    )
+    product_category = ProductCategoryMultipleChoiceFilter(
+        field_name='product_class__product_category',
+        queryset=ProductCategory.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Categoría de producto'
+    )
+    product_class = ProductClassMultipleChoiceFilter(
+        field_name='product_class',
+        queryset=ProductClass.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Clase de producto'
+    )
+
+    class Meta:
+        model = SaleTransaction
+        fields = []
+
+    def __init__(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+        if request:
+            bu_service = BusinessUnitsService(user=request.user)
+            self.filters['region'].queryset = bu_service.read_regions()
+            self.filters['business_unit'].queryset = bu_service.read_units()
+            self.filters['route'].queryset = RoutesService(user=request.user).read_routes().order_by('id')
+            self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
+            self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
+
+    def filter_noop(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        return queryset
+
+    def filter_months(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        month_ints = [int(v) for v in value if str(v).isdigit()]
+        if month_ints:
+            return queryset.filter(sale_date__month__in=month_ints)
+        return queryset
+
+    def filter_region(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        selected_region_ids = set(r.pk if hasattr(r, 'pk') else r for r in value)
+        all_bu_ids = set(selected_region_ids)
+        current_parents = set(selected_region_ids)
+        while current_parents:
+            child_ids = set(
+                BusinessUnit.objects.filter(parent_id__in=current_parents).values_list('id', flat=True)
+            )
+            new_ids = child_ids - all_bu_ids
+            if not new_ids:
+                break
+            all_bu_ids.update(new_ids)
+            current_parents = new_ids
+        return queryset.filter(route__business_unit_id__in=all_bu_ids)
+
+    def filter_business_unit(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in value]
+        return queryset.filter(route__business_unit_id__in=bu_ids)
+

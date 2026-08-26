@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}
+    Desglose anual de ventas
+{% endblock %}
+
+{% block module_name %}
+    Desglose anual de ventas
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+
+    <button onclick="toggleFilters()"
+        class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+            <path d="M10 5H3" />
+            <path d="M12 19H3" />
+            <path d="M14 3v4" />
+            <path d="M16 17v4" />
+            <path d="M21 12h-9" />
+            <path d="M21 19h-5" />
+            <path d="M21 5h-7" />
+            <path d="M8 10v4" />
+            <path d="M8 12H3" />
+        </svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+{% endblock %}
+
+{% block filters %}
+    {% include 'analytics/yearly_sale_breakdown/partials/yearly_sale_breakdown__filters.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-4">
+    <div class="flex items-center justify-between pb-1 border-b border-border">
+        <p class="text-title font-medium text-xs">
+            {{ dimension_label }}
+        </p>
+        <p class="text-xs text-muted">
+            {% if page_obj %}{{ page_obj.paginator.count }} registros principales{% endif %}
+        </p>
+    </div>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[82vh] relative @container shadow-sm">
+        <table class="w-full text-left border-collapse min-w-[600px]">
+            <thead class="sticky top-0 z-30 bg-page">
+                <tr class="border-b border-border text-xs">
+                    <th scope="col" class="p-2 text-title border-r border-border sticky top-0 md:left-0 z-35 bg-page min-w-[280px]">
+                        Dimensión
+                    </th>
+                    {% for year in available_years %}
+                        <th scope="col" class="p-2 text-title font-semibold text-right border-l border-border sticky top-0 z-30 bg-page min-w-[140px]">
+                            Año {{ year }}
+                        </th>
+                    {% empty %}
+                        <th scope="col" class="p-2 text-title font-semibold text-center border-l border-border sticky top-0 z-30 bg-page">
+                            Sin periodos
+                        </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody id="yearly-sale-breakdown-rows">
+                {% include "analytics/yearly_sale_breakdown/partials/_yearly_sale_breakdown_rows.html" %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function togglePivot(targetClass, iconId) {
+        const childRows = document.querySelectorAll('.' + targetClass);
+        const icon = document.getElementById(iconId);
+        let isOpening = false;
+
+        childRows.forEach(row => {
+            if (row.classList.contains('hidden')) {
+                row.classList.remove('hidden');
+                isOpening = true;
+            } else {
+                row.classList.add('hidden');
+            }
+        });
+
+        if (icon) {
+            if (isOpening) {
+                icon.classList.remove('lucide-circle-arrow-right');
+                icon.classList.add('lucide-circle-arrow-down');
+                icon.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="m8 12 4 4 4-4"/>';
+            } else {
+                icon.classList.remove('lucide-circle-arrow-down');
+                icon.classList.add('lucide-circle-arrow-right');
+                icon.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/>';
+            }
+        }
+
+        // Si se esta cerrando el padre, ocultar recursivamente todos los descendientes y reiniciar sus iconos
+        if (!isOpening) {
+            let selectorsToHide = [];
+            let iconsToReset = [];
+
+            if (targetClass.startsWith('cust-')) {
+                const prefix = targetClass.split('-')[1];
+                selectorsToHide = [`[class*="line-cust-${prefix}-"]`];
+                iconsToReset = [`[id^="icon-line-cust-${prefix}-"]`];
+            } else if (targetClass.startsWith('lcp-line-')) {
+                const prefix = targetClass.split('-')[2];
+                selectorsToHide = [`[class*="lcp-cust-${prefix}-"]`];
+                iconsToReset = [`[id^="icon-lcp-cust-${prefix}-"]`];
+            } else if (targetClass.startsWith('mpp-mgt-')) {
+                const prefix = targetClass.split('-')[2];
+                selectorsToHide = [`[class*="mpp-line-${prefix}-"]`];
+                iconsToReset = [`[id^="icon-mpp-line-${prefix}-"]`];
+            } else if (targetClass.startsWith('rpp-route-')) {
+                const prefix = targetClass.split('-')[2];
+                selectorsToHide = [`[class*="rpp-line-${prefix}-"]`];
+                iconsToReset = [`[id^="icon-rpp-line-${prefix}-"]`];
+            }
+
+            selectorsToHide.forEach(s => {
+                document.querySelectorAll(s).forEach(el => el.classList.add('hidden'));
+            });
+            iconsToReset.forEach(s => {
+                document.querySelectorAll(s).forEach(ic => {
+                    ic.classList.remove('lucide-circle-arrow-down');
+                    ic.classList.add('lucide-circle-arrow-right');
+                    ic.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/>';
+                });
+            });
+        }
+    }
+</script>
+{% endblock %}

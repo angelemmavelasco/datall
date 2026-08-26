@@ -21,12 +21,13 @@ from apps.customers.services.customers import CustomersService
 from apps.sales.services.routes import RoutesService
 
 #base services analytics
-from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter, CommercialRiskFilter, CollectionsDashboardFilter, TargetAchievementFilter
+from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter, CommercialRiskFilter, CollectionsDashboardFilter, TargetAchievementFilter, YearlySaleBreakdownFilter
 from apps.analytics.services.sales_dashboard import SalesDashboardService
 from apps.analytics.services.customer_kpis import CustomerKpisService
 from apps.analytics.services.route_kpis import RouteKpisService
 from apps.analytics.services.commercial_risk import CommercialRiskService
 from apps.analytics.services.target_achievement import TargetAchievementService
+from apps.analytics.services.yearly_sale_breakdown import YearlySaleBreakdownService
 
 @login_required
 def sales_dashboard_view(request):
@@ -475,8 +476,72 @@ def target_achievement_view(request):
     return render(request, template, context)
 
 @login_required
-def annual_sale_breakdown_view(request):
-    pass
+def yearly_sale_breakdown_view(request):
+    template = 'analytics/yearly_sale_breakdown/yearly_sale_breakdown.html'
+
+    req_data = request.GET.copy()
+    if not req_data.get('dimension'):
+        req_data['dimension'] = 'customer_productclass_product'
+
+    dimension = req_data.get('dimension', 'customer_productclass_product')
+
+    # perspective determination
+    sale_transaction_service = SaleTransactionsService(user=request.user)
+    perspective = YearlySaleBreakdownService.get_perspective(dimension)
+    if perspective == 'customers':
+        tx_qs = sale_transaction_service.read_transactions_by_allowed_customers()
+    else:
+        tx_qs = sale_transaction_service.read_transactions_by_allowed_routes()
+
+    # filters
+    filter_set = YearlySaleBreakdownFilter(req_data, queryset=tx_qs, request=request)
+    filtered_tx_qs = filter_set.qs
+
+    # service initialization
+    breakdown_service = YearlySaleBreakdownService(
+        queryset=filtered_tx_qs,
+        dimension=dimension,
+        user=request.user,
+    )
+
+    # level 1 pagination
+    l1_qs = breakdown_service.get_level_1_queryset()
+    paginator = Paginator(l1_qs, 50)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    # level 1 ids for the current page
+    l1_id_field = breakdown_service.l1_id_field
+    top_l1_ids = [
+        item[l1_id_field] for item in page_obj.object_list if item.get(l1_id_field) is not None
+    ]
+
+    # aggregated calculation for the page data
+    pivot_data = breakdown_service.get_pivot_data(top_l1_ids)
+
+    query_dict = req_data.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
+
+    context = {
+        'filter': filter_set,
+        'dimension': dimension,
+        'dimension_label': breakdown_service.dimension_config.get('label', ''),
+        'available_years': breakdown_service.sorted_years,
+        'years': breakdown_service.sorted_years,
+        'pivot_data': pivot_data,
+        'page_obj': page_obj,
+        'query_string': query_dict.urlencode(),
+    }
+
+    if request.htmx:
+        return render(
+            request,
+            'analytics/yearly_sale_breakdown/partials/_yearly_sale_breakdown_rows.html',
+            context,
+        )
+
+    return render(request, template, context)
 
 @login_required
 def monthly_sale_breakdown_view(request):
