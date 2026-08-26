@@ -40,7 +40,13 @@ Nuevo colaborador
             {% if updating %}
                 {% render_field form.id class='w-full bg-page border border-border rounded p-1 text-secondary cursor-not-allowed' readonly='readonly' %}
             {% else %}
-                {% render_field form.id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ej: EMP-001' required='required' %}
+                <div class="flex flex-col gap-1.5">
+                    {% render_field form.id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ej: a1b2c' id='employee-id-input' %}
+                    <label class="flex items-center gap-1.5 cursor-pointer text-xs text-title select-none w-fit">
+                        {% render_field form.auto_generate_id class='rounded border-border focus:outline-none bg-page cursor-pointer' id='auto-generate-id-checkbox' %}
+                        <span>Autogenerar</span>
+                    </label>
+                </div>
             {% endif %}
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.id.errors %}
@@ -261,5 +267,32 @@ Nuevo colaborador
         </a>
     </div>
 </form>
+
+{% if not updating %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const autoGenCheckbox = document.getElementById('auto-generate-id-checkbox');
+        const idInput = document.getElementById('employee-id-input');
+
+        if (autoGenCheckbox && idInput) {
+            function updateIdInputState() {
+                if (autoGenCheckbox.checked) {
+                    idInput.value = '';
+                    idInput.disabled = true;
+                    idInput.placeholder = 'Se generará automáticamente (5 caracteres)';
+                    idInput.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    idInput.disabled = false;
+                    idInput.placeholder = 'Ej: a1b2c';
+                    idInput.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+
+            autoGenCheckbox.addEventListener('change', updateIdInputState);
+            updateIdInputState();
+        }
+    });
+</script>
+{% endif %}
 
 {% endblock %}

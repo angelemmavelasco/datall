@@ -1,12 +1,20 @@
+import random
+import string
+import uuid
+import os
 from django import forms
 from django.forms import inlineformset_factory
 from apps.human_resources.models import Department, Skill, Position, PositionSkill, PositionKPI, BusinessUnit, Employee
 from apps.human_resources.models import MonitoringForm, MonitoringFormSchedule, MonitoringFormQuestion, MonitoringFormField
 from django.core.files.storage import default_storage
-import uuid
-import os
 
 class EmployeeForm(forms.ModelForm):
+    auto_generate_id = forms.BooleanField(
+        required=False,
+        initial=False,
+        label='Autogenerar'
+    )
+
     class Meta:
         model = Employee
         fields = [
@@ -19,6 +27,35 @@ class EmployeeForm(forms.ModelForm):
             'hire_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
             'termination_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.fields['id'].required = False
+
+    def clean_id(self):
+        emp_id = self.cleaned_data.get('id')
+        if emp_id:
+            return emp_id.strip().lower()
+        return emp_id
+
+    def clean(self):
+        cleaned_data = super().clean()
+        auto_generate = cleaned_data.pop('auto_generate_id', False)
+
+        if not self.instance.pk:
+            if auto_generate or not cleaned_data.get('id'):
+                chars = string.ascii_lowercase + string.digits
+                while True:
+                    generated_id = ''.join(random.choices(chars, k=5))
+                    if not Employee.objects.filter(id=generated_id).exists():
+                        cleaned_data['id'] = generated_id
+                        break
+            elif not cleaned_data.get('id'):
+                self.add_error('id', 'El identificador es obligatorio.')
+
+        return cleaned_data
+
 
 class BusinessUnitForm(forms.ModelForm):
     class Meta:
