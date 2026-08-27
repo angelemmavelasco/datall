@@ -133,8 +133,6 @@ class SaleTransactionsService(UsersService):
             return False, "La librería 'pandas' no está instalada en el entorno."
 
         from apps.core.services.uploads import BaseETLHelper
-        from django.contrib.contenttypes.models import ContentType
-        from apps.core.models import Reference
 
         is_valid, df_or_err = BaseETLHelper.read_file_to_dataframe(file_obj)
         if not is_valid:
@@ -144,79 +142,62 @@ class SaleTransactionsService(UsersService):
         df = BaseETLHelper.apply_reference_column_mappings(
             df,
             self.sale_transaction_model,
-            submodule_name='importacion',
+            submodule_url_name='core:upload_options_list_view',
             context='columna'
         )
         df = BaseETLHelper.resolve_foreign_key_columns(df, self.sale_transaction_model)
 
-        if 'sale_date' not in df.columns:
-            return False, "El archivo debe contener una columna identificadora mapeada a 'sale_date'."
+        is_req_valid, req_msg = BaseETLHelper.validate_required_columns(
+            df,
+            {
+                'sale_date': 'Fecha de Venta',
+                'doc_id': 'Número de Documento / Factura',
+                'customer_id': 'Cliente',
+                'product_id': 'Producto',
+            }
+        )
+        if not is_req_valid:
+            return False, req_msg
+
+        valid_classes_dict = {str(c.id).strip().lower(): c.id for c in self.product_class_model.objects.all()}
+        default_class = valid_classes_dict.get('otr') or (next(iter(valid_classes_dict.values())) if valid_classes_dict else None)
 
         if 'product_class_id' in df.columns:
-            valid_classes = set(self.product_class_model.objects.values_list('id', flat=True))
-            default_class = 'otr' if 'otr' in valid_classes else (next(iter(valid_classes)) if valid_classes else None)
-
-            pc_ctype = ContentType.objects.get_for_model(self.product_class_model)
-            st_ctype = ContentType.objects.get_for_model(self.sale_transaction_model)
-            type_references = Reference.objects.filter(
-                Q(content_type=pc_ctype, context__icontains='valor') |
-                Q(content_type=st_ctype, context__icontains='clase') |
-                Q(content_type=st_ctype, context__icontains='product_class')
+            df = BaseETLHelper.apply_reference_value_mappings(
+                df,
+                column='product_class_id',
+                target_model=self.product_class_model,
+                context='valor_clase_producto',
+                submodule_url_name='core:upload_options_list_view'
             )
-            type_map = {}
-            for ref in type_references:
-                k = str(ref.key).strip().lower()
-                v = str(ref.value).strip() if getattr(ref, 'value', '') else str(getattr(ref, 'reference', '')).strip()
-                if k and v:
-                    type_map[k] = v
-            
-            raw_series = df['product_class_id'].astype(str).str.strip().str.lower()
-            if type_map:
-                mapped_series = raw_series.map(type_map).fillna(raw_series)
-            else:
-                mapped_series = raw_series
-
-            df['product_class_id'] = mapped_series.apply(
-                lambda x: x if x in valid_classes else default_class
+            df['product_class_id'] = df['product_class_id'].apply(
+                lambda x: valid_classes_dict.get(str(x).strip().lower(), default_class) if x not in (None, 'None', 'nan', '') else default_class
             )
-        else:
-            valid_classes = set(self.product_class_model.objects.values_list('id', flat=True))
-            df['product_class_id'] = 'otr' if 'otr' in valid_classes else (next(iter(valid_classes)) if valid_classes else None)
+        elif default_class:
+            df['product_class_id'] = default_class
+
+        valid_warehouses_dict = {str(w.id).strip().lower(): w.id for w in self.warehouse_model.objects.all()}
+        default_warehouse = valid_warehouses_dict.get('snc') or (next(iter(valid_warehouses_dict.values())) if valid_warehouses_dict else None)
 
         if 'warehouse_id' in df.columns:
-            valid_warehouses = set(self.warehouse_model.objects.values_list('id', flat=True))
-            default_warehouse = 'snc' if 'snc' in valid_warehouses else None
-
-            wh_ctype = ContentType.objects.get_for_model(self.warehouse_model)
-            st_ctype = ContentType.objects.get_for_model(self.sale_transaction_model)
-            warehouse_references = Reference.objects.filter(
-                Q(content_type=wh_ctype, context__icontains='valor') |
-                Q(content_type=st_ctype, context__icontains='almacen') |
-                Q(content_type=st_ctype, context__icontains='cedis') |
-                Q(content_type=st_ctype, context__icontains='warehouse')
+            df = BaseETLHelper.apply_reference_value_mappings(
+                df,
+                column='warehouse_id',
+                target_model=self.warehouse_model,
+                context='valor_cedis',
+                submodule_url_name='core:upload_options_list_view'
             )
-            warehouse_map = {}
-            for ref in warehouse_references:
-                k = str(ref.key).strip().lower()
-                v = str(ref.value).strip() if getattr(ref, 'value', '') else str(getattr(ref, 'reference', '')).strip()
-                if k and v:
-                    warehouse_map[k] = v
-            
-            raw_w_series = df['warehouse_id'].astype(str).str.strip().str.lower()
-            if warehouse_map:
-                mapped_w_series = raw_w_series.map(warehouse_map).fillna(raw_w_series)
-            else:
-                mapped_w_series = raw_w_series
-
-            df['warehouse_id'] = mapped_w_series.apply(
-                lambda x: x if x in valid_warehouses else default_warehouse
+            df['warehouse_id'] = df['warehouse_id'].apply(
+                lambda x: valid_warehouses_dict.get(str(x).strip().lower(), default_warehouse) if x not in (None, 'None', 'nan', '') else default_warehouse
             )
+        elif default_warehouse:
+            df['warehouse_id'] = default_warehouse
 
         str_cols = ['customer_id', 'route_id', 'doc_id', 'product_id']
         for col in str_cols:
             if col in df.columns:
                 df[col] = df[col].astype(str).str.strip()
-                df[col] = df[col].replace({'nan': None, '': None, 'None': None, 'none': None})
+                df[col] = df[col].replace({'nan': None, '': None, 'None': None, 'none': None, 'null': None, 'NULL': None})
 
         fechas_str = df['sale_date'].astype(str).str.strip().str.replace(' 00:00:00', '', regex=False)
         
@@ -224,11 +205,11 @@ class SaleTransactionsService(UsersService):
         dates_mx = pd.to_datetime(fechas_str, format='%d/%m/%Y', errors='coerce')
         dates_mx_short = pd.to_datetime(fechas_str, format='%d/%m/%y', errors='coerce')
         
-        df['sale_date'] = dates_iso.fillna(dates_mx).fillna(dates_mx_short)
+        df['sale_date'] = dates_iso.fillna(dates_mx).fillna(dates_mx_short).fillna(pd.to_datetime(fechas_str, errors='coerce'))
         df['sale_date'] = df['sale_date'].ffill().bfill()
 
         if df['sale_date'].isnull().all():
-            return False, "No se pudo parsear ninguna fecha válida en la columna mapeada a sale_date."
+            return False, "No se pudo interpretar ninguna fecha válida en la columna mapeada a 'sale_date'."
 
         num_cols = ['cost', 'net_amount', 'gross_amount', 'profit', 'quantity']
         for c in num_cols:
@@ -236,15 +217,23 @@ class SaleTransactionsService(UsersService):
                 df[c] = pd.to_numeric(
                     df[c].astype(str).str.replace(r'[$, ]', '', regex=True),
                     errors='coerce'
-                ).fillna(0).round(6)
+                ).fillna(0.0).round(6)
+
+        df = df.dropna(subset=['customer_id', 'sale_date'])
+        if df.empty:
+            return False, "El archivo no contiene transacciones válidas después de descartar filas sin cliente o fecha."
+
+        is_fk_valid, fk_msg = BaseETLHelper.validate_foreign_keys(df, self.sale_transaction_model)
+        if not is_fk_valid:
+            return False, fk_msg
 
         df = df.where(pd.notnull(df), None)
-        df['sale_date'] = df['sale_date'].dt.date
+        df['sale_date'] = pd.to_datetime(df['sale_date']).dt.date
 
         return True, df
 
     def bulk_create_transactions(self, file_obj) -> object:
-        from apps.core.services.uploads import ImportResult, PermissionsError
+        from apps.core.services.uploads import ImportResult, PermissionsError, BaseETLHelper
         from django.db import transaction
 
         if not self.has_full_access:
@@ -257,7 +246,7 @@ class SaleTransactionsService(UsersService):
         df = df_or_err
 
         if df is None or df.empty:
-            return ImportResult(success=False, message="El DataFrame está vacío.")
+            return ImportResult(success=False, message="El archivo no contiene transacciones para procesar.")
 
         min_date = df['sale_date'].min()
         max_date = df['sale_date'].max()
@@ -265,30 +254,9 @@ class SaleTransactionsService(UsersService):
         model_fields = [f.name for f in self.sale_transaction_model._meta.get_fields() if not f.is_relation]
         model_fields.extend([f.attname for f in self.sale_transaction_model._meta.get_fields() if f.is_relation and hasattr(f, 'attname')])
         
-        valid_columns = [col for col in df.columns if col in model_fields]
+        valid_columns = [col for col in df.columns if col in model_fields and col != 'id']
 
-        fk_fields = [f for f in self.sale_transaction_model._meta.get_fields() if f.is_relation and hasattr(f, 'attname')]
-        for fk in fk_fields:
-            column_name = fk.attname         
-            related_model = fk.related_model 
-
-            if column_name in df.columns:
-                df_ids = set(df[column_name].dropna().unique())
-                
-                if not df_ids:
-                    continue
-
-                db_ids = set(related_model.objects.filter(pk__in=df_ids).values_list('pk', flat=True))
-
-                missing_ids = df_ids - db_ids
-
-                if missing_ids:
-                    missing_list = list(missing_ids)
-                    sample_missing = missing_list[:10] 
-                    return ImportResult(success=False, message=f"Error de Foreign Key: En la columna '{column_name}', los siguientes IDs no existen en el sistema: {sample_missing}{'...' if len(missing_list) > 10 else ''}. Registra estos datos primero e intenta de nuevo.")
-        
         transactions_to_create = []
-
         total_processed = 0
 
         for _, row in df.iterrows():
@@ -325,9 +293,10 @@ class SaleTransactionsService(UsersService):
             )
 
         except Exception as e:
+            humanized_msg = BaseETLHelper.humanize_database_error(e)
             return ImportResult(
                 success=False,
-                message=f"Error durante la inserción masiva: {str(e)}",
+                message=humanized_msg,
                 total_processed=total_processed,
                 errors=[str(e)]
             )
