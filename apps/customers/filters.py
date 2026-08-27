@@ -130,26 +130,22 @@ class AccountsReceivableFilter(django_filters.FilterSet):
         method='filter_aging_status'
     )
     issue_date_from = django_filters.DateFilter(
-        field_name='issue_date',
-        lookup_expr='gte',
+        method='filter_issue_date_from',
         label='Fecha de emisión (Desde)',
         widget=forms.DateInput(attrs={'type': 'date'})
     )
     issue_date_to = django_filters.DateFilter(
-        field_name='issue_date',
-        lookup_expr='lte',
+        method='filter_issue_date_to',
         label='Fecha de emisión (Hasta)',
         widget=forms.DateInput(attrs={'type': 'date'})
     )
     due_date_from = django_filters.DateFilter(
-        field_name='due_date',
-        lookup_expr='gte',
+        method='filter_due_date_from',
         label='Fecha de pago (Desde)',
         widget=forms.DateInput(attrs={'type': 'date'})
     )
     due_date_to = django_filters.DateFilter(
-        field_name='due_date',
-        lookup_expr='lte',
+        method='filter_due_date_to',
         label='Fecha de pago (Hasta)',
         widget=forms.DateInput(attrs={'type': 'date'})
     )
@@ -295,3 +291,23 @@ class AccountsReceivableFilter(django_filters.FilterSet):
             Q(customer__id__icontains=value) |
             Q(customer__name__icontains=value)
         ).distinct()
+
+    def filter_issue_date_from(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.filter(Q(issue_date__gte=value) | Q(issue_date__isnull=True))
+
+    def filter_issue_date_to(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.filter(Q(issue_date__lte=value) | Q(issue_date__isnull=True))
+
+    def filter_due_date_from(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.filter(Q(due_date__gte=value) | Q(due_date__isnull=True))
+
+    def filter_due_date_to(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.filter(Q(due_date__lte=value) | Q(due_date__isnull=True))
