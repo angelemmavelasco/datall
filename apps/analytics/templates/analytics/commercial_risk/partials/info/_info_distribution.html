@@ -1,0 +1,76 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-sm cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo interpretar la sección de Distribución (Volatilidad, Volumen y Sesgo)?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2 space-y-3">
+        <div class="space-y-3 text-xs pl-1">
+            <div>
+                <p class="font-medium text-title mb-1">Las 4 tarjetas de cuadrantes (¿Dónde está parada tu cartera?):</p>
+                <ul class="space-y-1 list-disc list-inside pl-1">
+                    <li>
+                        <span class="text-emerald-500 font-medium">Baja volatilidad / consumo alto (Verde):</span> <em>"Tus clientes VIP"</em>. Compran mucho dinero y compran siempre mes con mes (son predecibles y fieles). ¡Hay que consentirlos y blindarlos contra la competencia!
+                    </li>
+                    <li>
+                        <span class="text-amber-500 font-medium">Baja volatilidad / consumo bajo (Ámbar):</span> <em>"Tus clientes leales pero pequeños"</em>. Compran con puntualidad cada mes pero montos moderados. La oportunidad aquí es ofrecerles más productos del catálogo para elevar su ticket.
+                    </li>
+                    <li>
+                        <span class="text-amber-500 font-medium">Alta volatilidad / consumo alto (Ámbar):</span> <em>"Tus gigantes impredecibles"</em>. Hacen compras muy grandes pero espaciadas o de oportunidad (no se sabe cuándo volverán). Estrategia: Buscar acuerdos o calendarios de pedidos para estabilizarlos.
+                    </li>
+                    <li>
+                        <span class="text-red-500 font-medium">Alta volatilidad / consumo bajo (Rojo):</span> <em>"Clientes ocasionales / Ruido"</em>. Compran poquito y muy rara vez. Requieren poco desgaste comercial a menos que tengan potencial no explotado.
+                    </li>
+                </ul>
+            </div>
+
+            <div>
+                <p class="font-medium text-title mb-1">Gráfica de Volatilidad y Volumen:</p>
+                <p class="mb-1">
+                    Cada punto representa a un cliente. El <span class="font-medium">eje horizontal (X)</span> es cuánto compra en promedio al mes ($) y el <span class="font-medium">eje vertical (Y)</span> es su inestabilidad (más arriba = más irregular).
+                </p>
+                <p class="mb-1.5">
+                    <span class="font-medium">¿Por qué las líneas divisorias usan la mediana de la ruta?</span><br>
+                    La <em>mediana</em> es el valor del centro que divide a los clientes de la ruta en dos mitades exactas: el 50% con mayor volumen/estabilidad y el 50% con menor. Se utiliza la mediana en lugar del promedio porque el promedio se distorsiona con facilidad si hay 1 o 2 clientes gigantes; la mediana, en cambio, representa el punto medio real de la cartera.
+                </p>
+                <ul class="space-y-1 list-disc list-inside pl-1">
+                    <li><span class="text-emerald-500 font-medium">Puntos verdes:</span> Clientes en <em>aceleración</em> (su consumo trimestral reciente superó a su promedio).</li>
+                    <li><span class="text-red-500 font-medium">Puntos rojos:</span> Clientes en <em>desaceleración</em> (están comprando por debajo de lo habitual, alerta de posible abandono).</li>
+                </ul>
+            </div>
+
+            <div>
+                <p class="font-medium text-title mb-1">Gráfica de Factor de Crecimiento vs Sesgo:</p>
+                <ul class="space-y-1.5 list-disc list-inside pl-1">
+                    <li>
+                        <span class="font-medium">Eje Horizontal (Crecimiento / Momentum):</span> La línea central en 1.0 es el punto neutro. A la derecha (&gt; 1.0) el cliente está creciendo; a la izquierda (&lt; 1.0) su compra reciente está cayendo.
+                    </li>
+                    <li>
+                        <span class="font-medium">Eje Vertical (Sesgo / Regularidad):</span> 
+                        La mitad inferior (Sesgo &le; 0.0) indica compras <em>parejas y constantes</em> mes con mes. 
+                        La mitad superior (Sesgo &gt; 0.0) indica compras <em>con picos o espejismos</em> (un pedido enorme aislado que infla el promedio, pero con meses vacíos).
+                    </li>
+                    <li>
+                        <span class="font-medium">Los 4 cuadrantes de acción comercial:</span>
+                        <ul class="list-none pl-2 pt-1 space-y-1 text-title/90">
+                            <li>• <span class="font-medium">Abajo a la derecha:</span> <em>Crecimiento real y saludable</em> (compras frecuentes y en aumento sólido).</li>
+                            <li>• <span class="font-medium">Arriba a la derecha:</span> <em>Crecimiento aparente por compras atípicas</em> (no confiarse: su promedio subió por un solo pedido fuerte, puede caer a ceros el próximo mes).</li>
+                            <li>• <span class="font-medium">Abajo a la izquierda:</span> <em>Enfriamiento silencioso</em> (sigue comprando con regularidad, pero cada vez menos monto; ¡visitarlo de inmediato para recuperarlo!).</li>
+                            <li>• <span class="font-medium">Arriba a la izquierda:</span> <em>Cartera en riesgo crítico</em> (compras espaciadas y montos en declive).</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+
+            <p class="italic pt-1">
+                Tip: Al dar clic en cualquier tarjeta o punto de las gráficas, el sistema te abrirá la lista con nombre y detalles de esos clientes específicos.
+            </p>
+        </div>
+    </div>
+</details>

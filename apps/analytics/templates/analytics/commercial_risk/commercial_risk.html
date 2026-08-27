@@ -40,6 +40,8 @@
         Del {{ kpis.start_q_date|default:selected_start_q_date|default:'-' }} al {{ kpis.end_q_date|default:selected_end_q_date|default:'-' }}
     </p>
 
+    {% include 'analytics/commercial_risk/partials/info/_info_bans.html' %}
+
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
             <span class="text-sm text-title">
@@ -78,37 +80,23 @@
         </a>
     </div>
 
-    <div class="flex items-center justify-between text-title pb-1 border-b border-border">
-        <p>Evolución del riesgo comercial <br>
-            Del {{ selected_date_start|default:'-' }} al {{ selected_date_end|default:'-' }}
-        </p>
-        <div class="group relative flex items-center outline-none" tabindex="0">
-            <svg xmlns="http://www.w3.org/2000/svg"
-                width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round"
-                class="lucide lucide-info-icon lucide-info hover:text-hover cursor-pointer transition-colors">
-                <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
-            </svg>
+    <p class="text-title pb-1 border-b border-border">
+        Evolución del riesgo comercial <br>
+        Del {{ selected_date_start|default:'-' }} al {{ selected_date_end|default:'-' }}
+    </p>
 
-            <div class="absolute text-page right-0 top-full mt-1 w-80 p-3 bg-strong border border-border rounded opacity-0 invisible group-focus:opacity-100 group-focus:visible transition-all duration-200 z-50 shadow-lg text-xs">
-                <h4 class="font-semibold mb-2">¿Cómo leer esta gráfica?</h4>
-                <ul class="space-y-1.5 list-disc pl-4">
-                    <li><strong>Índice de riesgo (IRC):</strong> Combina la concentración y la inactividad en cada trimestre móvil previo.</li>
-                    <li><strong>Concentración (Gini):</strong> Evalúa qué tan dependiente es la ruta de pocos clientes.</li>
-                    <li><strong>Clientes desatendidos:</strong> % de la cartera registrada que no compró en el trimestre móvil.</li>
-                </ul>
-            </div>
-        </div>
-    </div>
+    {% include 'analytics/commercial_risk/partials/info/_info_evolution.html' %}
+
     <div class="min-h-[400px] border border-border rounded bg-container p-2">
         {% include 'analytics/commercial_risk/partials/_chart_commercial_risk_evolution.html' %}
     </div>
 
     <p class="text-title pb-1 border-b border-border">
-        Cobertura <br>
+        Cobertura y rotación<br>
         Del {{ selected_date_start|default:'-' }} al {{ selected_date_end|default:'-' }}
     </p>
+
+    {% include 'analytics/commercial_risk/partials/info/_info_coverage.html' %}
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
@@ -148,6 +136,11 @@
         </a>
     </div>
 
+    <p class="flex items-center gap-1 text-title/70">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mouse-pointer2-icon lucide-mouse-pointer-2 animate-pulse text-sky-500"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/></svg>
+        Da clic en algún punto de las gráficas (ganados, perdidos, nuevos o alcance) para ver el listado y detalles de los clientes en el módulo de KPIs
+    </p>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[400px]">
         {% include 'analytics/route_kpis/partials/_chart_customer_churn.html' %}
         {% include 'analytics/commercial_risk/partials/_chart_new_and_active_customers.html' %}
@@ -157,6 +150,8 @@
         Distribución <br>
         Del {{ selected_date_start|default:'-' }} al {{ selected_date_end|default:'-' }}
     </p>
+
+    {% include 'analytics/commercial_risk/partials/info/_info_distribution.html' %}
 
     <p class="flex items-center gap-1 text-title/70">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mouse-pointer2-icon lucide-mouse-pointer-2 animate-pulse text-sky-500"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/></svg>
@@ -215,6 +210,13 @@
         Del {{ selected_date_start|default:'-' }} al {{ selected_date_end|default:'-' }}
     </p>
 
+    {% include 'analytics/commercial_risk/partials/info/_info_composition.html' %}
+
+    <p class="flex items-center gap-1 text-title/70">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mouse-pointer2-icon lucide-mouse-pointer-2 animate-pulse text-sky-500"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/></svg>
+        Da clic en cualquier barra para consultar el listado de clientes que pertenecían a esa categoría en ese mes específico.
+    </p>
+
     <div class="min-h-[400px]">
         {% include 'analytics/commercial_risk/partials/_chart_customer_category_composition.html' %}
     </div>
@@ -222,6 +224,13 @@
     <p class="text-title pb-1 border-b border-border">
         Contribución <br>
         Del {{ selected_date_start|default:'-' }} al {{ selected_date_end|default:'-' }}
+    </p>
+
+    {% include 'analytics/commercial_risk/partials/info/_info_contribution.html' %}
+
+    <p class="flex items-center gap-1 text-title/70">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mouse-pointer2-icon lucide-mouse-pointer-2 animate-pulse text-sky-500"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/></svg>
+        Da clic en cualquier punto de las líneas para consultar el listado de clientes que generaron compras en esa categoría durante el mes.
     </p>
 
     <div class="min-h-[400px]">

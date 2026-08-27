@@ -1,0 +1,43 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-sm cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo interpretar la sección de Cobertura y Rotación de clientes?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2 space-y-3">
+        <p class="text-xs">
+            Analiza la dinámica, rotación y crecimiento de la cartera en el periodo seleccionado mediante 4 tarjetas de resumen y 2 gráficas interactivas:
+        </p>
+
+        <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+            <li>
+                <span class="text-emerald-500 font-medium">Clientes ganados (neto):</span> Total de clientes que compraron en un mes tras no haber comprado el mes previo (reactivaciones y nuevas compras).
+            </li>
+            <li>
+                <span class="text-red-500 font-medium">Clientes perdidos (neto):</span> Total de clientes que compraron el mes anterior pero dejaron de comprar en el mes actual (desgaste/inactivación).
+            </li>
+            <li>
+                <span class="text-blue-500 font-medium">Clientes nuevos:</span> Nuevas altas registradas en la ruta durante el periodo filtrado.
+            </li>
+            <li>
+                <span class="text-title font-medium">Crecimiento de cobertura (%):</span> Compara el porcentaje de alcance del último mes contra el promedio del periodo (positivo en verde indica mayor activación reciente).
+            </li>
+            <li>
+                <span class="text-title font-medium">Gráfica de Ganados vs Perdidos (Churn):</span> Muestra mes a mes las altas/reactivaciones vs abandonos.
+            </li>
+            <li>
+                <span class="text-title font-medium">Gráfica de Nuevos clientes y Alcance:</span> Muestra las altas mensuales (barras) junto al porcentaje de la cartera total que compró activamente en cada mes (línea azul).
+            </li>
+        </ul>
+
+        <p class="text-xs italic pt-1">
+            Tip: Al hacer clic sobre cualquier punto o barra de las gráficas, el sistema abrirá automáticamente la lista con los clientes específicos en el módulo de KPIs.
+        </p>
+    </div>
+</details>

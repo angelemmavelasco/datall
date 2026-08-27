@@ -1,0 +1,74 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-sm cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo entender los indicadores clave del resumen de la ruta?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2 space-y-3">
+        <p>
+            Este resumen evalúa la estabilidad, concentración y salud comercial de la ruta en el último trimestre cerrado:
+        </p>
+
+        <ul class="space-y-2.5 list-disc list-inside pl-1 text-xs">
+            <li>
+                <span class="text-violet-500 font-medium">Índice de Gini (Concentración de la venta):</span>
+                <span>
+                    Mide qué tan repartido está el dinero entre los clientes que compraron. 
+                    Un valor bajo (cercano a 0%) significa que muchos clientes compran montos similares (cartera equilibrada). 
+                    Un valor alto (cercano a 100%) indica que la ruta depende de 1 o 2 clientes estrella para subsistir, lo cual representa una alta vulnerabilidad si alguno deja de comprar.
+                </span><br>
+                <span>
+                    Un Gini sano se encuentra entre el 40% - 50%
+                </span>
+            </li>
+
+            <li>
+                <span class="text-blue-500 font-medium">Alcance de cartera (Cobertura activa):</span>
+                <span>
+                    Es el porcentaje de clientes registrados en la ruta que realizaron al menos una compra durante el trimestre cerrado.
+                    Por ejemplo, un 20% de alcance significa que de cada 100 clientes asignados a la ruta, solo 20 están activos y los otros 80 están desatendidos o inactivos.
+                </span><br>
+                <span>
+                    Un alcance óptimo varía según la categoría, pero un buen objetivo es apuntar al 90% o más de cobertura.
+                </span>
+            </li>
+
+            <li>
+                <span class="text-emerald-500 font-medium">Factor de crecimiento (Momentum de venta):</span>
+                <span>
+                    Compara el promedio de venta mensual del último trimestre contra el promedio mensual histórico de la ruta.
+                    Un valor <span class="text-emerald-500">positivo (+)</span> indica que la ruta está en <em>fase de aceleración</em> y vendiendo por encima de su histórico.
+                    Un valor <span class="text-red-500">negativo (-)</span> alerta una <em>desaceleración o caída</em> respecto a lo habitual.
+                </span><br>
+                <span>
+                    Se considera saludable un momentum mayor al +5%.
+                </span>
+            </li>
+
+            <li>
+                <span class="text-title font-medium">Índice de Riesgo Comercial (IRC):</span>
+                <span>
+                    Es la calificación global de riesgo de la ruta (en escala de 0 a 100). 
+                    Se calcula promediando en partes iguales la concentración de ventas (Gini) y el porcentaje de clientes desatendidos (100 - Alcance).
+                    A menor puntaje, más sólida y segura es la ruta; a mayor puntaje, mayor es la urgencia de reactivar cartera y diversificar ventas.
+                </span><br>
+                <span>
+                    Se considera saludable un IRC menor a 30 puntos.
+                </span>
+            </li>
+        </ul>
+
+        <div class="pt-2 border-t border-border/60 text-xs">
+            <p class="font-medium text-title mb-1">Nota sobre los filtros:</p>
+            <p>
+                Estas 4 tarjetas reflejan exclusivamente la fotografía del <em>último trimestre cerrado</em> y el <em>histórico de la ruta</em>. Por esta razón, el filtro de Fecha inicio no modifica estas tarjetas (solo el filtro de Ruta y Fecha fin).
+            </p>
+        </div>
+    </div>
+</details>

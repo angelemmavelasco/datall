@@ -1,0 +1,39 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-sm cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo interpretar la gráfica de Composición de clientes por categoría?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2 space-y-3">
+        <p class="text-xs">
+            Muestra la distribución y evolución de los clientes de la ruta según su nivel de consumo a lo largo del tiempo:
+        </p>
+
+        <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+            <li>
+                <span class="font-medium text-title">Cálculo de la categoría:</span> Para cada mes, se evalúa el promedio de compra mensual del cliente durante el <em>trimestre móvil previo</em> (ajustado justamente por su fecha de alta).
+            </li>
+            <li>
+                <span class="font-medium text-title">Escala de categorías:</span> 
+                Diamante (&ge; $250k), 
+                Oro (&ge; $100k), 
+                AA (&ge; $25k), 
+                A (&ge; $3k) y 
+                C (&lt; $3k o inactivo).
+            </li>
+            <li>
+                <span class="font-medium text-title">Lectura de la pirámide:</span> Permite detectar si la ruta está desarrollando clientes hacia categorías superiores (Diamante/Oro/AA) o si la base de clientes C está creciendo debido a clientes que dejaron de comprar.
+            </li>
+        </ul>
+
+        <p class="text-xs italic pt-1">
+            Tip: Al hacer clic en cualquier barra puedes consultar el listado de clientes que pertenecían a esa categoría en ese mes específico.
+        </p>
+    </div>
+</details>

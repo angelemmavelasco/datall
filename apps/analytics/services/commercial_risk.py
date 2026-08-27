@@ -171,19 +171,21 @@ class CommercialRiskService:
 
             quarter_customer_sales = defaultdict(float)
             for qm in q_months:
-                for cid, amount in monthly_customer_sales[qm].items():
-                    quarter_customer_sales[cid] += amount
+                for cid in portfolio_cids:
+                    amt = monthly_customer_sales[qm].get(cid, 0.0)
+                    if amt > 0.0:
+                        quarter_customer_sales[cid] += amt
 
             active_count = sum(1 for cid in portfolio_cids if quarter_customer_sales.get(cid, 0.0) > 0.0)
 
             if total_portfolio > 0:
-                scope = active_count / total_portfolio
+                scope = min(1.0, active_count / total_portfolio)
             else:
                 scope = 0.0
 
-            unattended = 1.0 - scope
+            unattended = max(0.0, 1.0 - scope)
 
-            sales_arr = sorted([amt for amt in quarter_customer_sales.values() if amt > 0.0])
+            sales_arr = sorted([quarter_customer_sales[cid] for cid in portfolio_cids if quarter_customer_sales.get(cid, 0.0) > 0.0])
             n = len(sales_arr)
             cum_sales = sum(sales_arr)
 
@@ -246,10 +248,18 @@ class CommercialRiskService:
         _, last_day_end = calendar.monthrange(all_periods[-1][0], all_periods[-1][1])
         end_bound = date(all_periods[-1][0], all_periods[-1][1], last_day_end)
 
+        assigned_cids = set(
+            self.customers_qs
+            .filter(assignments__route_id=self.route_id)
+            .values_list('id', flat=True)
+            .distinct()
+        )
+
         tx_churn = (
             self.transactions_qs
             .filter(
                 route_id=self.route_id,
+                customer_id__in=assigned_cids,
                 sale_date__gte=start_bound,
                 sale_date__lte=end_bound,
                 net_amount__gt=0
@@ -1108,18 +1118,23 @@ class CommercialRiskStats:
             .values_list('id', flat=True)
             .distinct()
         )
-        return list(target_qs)
+        return [str(cid) for cid in target_qs]
 
     def _get_quarter_customer_sales(self) -> dict[str, Decimal]:
-        """Returns {customer_id: total_net_amount} for transactions in the closed quarter with net_amount > 0"""
+        """Returns {customer_id: total_net_amount} for assigned customers in the closed quarter with net_amount > 0"""
         service = self.commercial_risk_service
         if not service.route_id:
+            return {}
+
+        target_cids = self._get_target_customers_registered()
+        if not target_cids:
             return {}
 
         sales_qs = (
             service.transactions_qs
             .filter(
                 route_id=service.route_id,
+                customer_id__in=target_cids,
                 sale_date__gte=service.start_q_date,
                 sale_date__lte=service.end_q_date,
                 net_amount__gt=0
@@ -1127,7 +1142,7 @@ class CommercialRiskStats:
             .values('customer_id')
             .annotate(total=Sum('net_amount'))
         )
-        return {row['customer_id']: (row['total'] or Decimal('0.00')) for row in sales_qs}
+        return {str(row['customer_id']): (row['total'] or Decimal('0.00')) for row in sales_qs}
 
     def _get_gini(self) -> Decimal:
         """
@@ -1156,10 +1171,11 @@ class CommercialRiskStats:
         total_registered = len(registered_cids)
 
         customer_sales = self._get_quarter_customer_sales()
-        active_customers = sum(1 for cid, amt in customer_sales.items() if amt > 0)
+        active_customers = sum(1 for cid, amt in customer_sales.items() if amt > 0 and str(cid) in registered_cids)
 
         if total_registered > 0:
             coverage_pct = (Decimal(active_customers) / Decimal(total_registered)) * Decimal('100.00')
+            coverage_pct = min(Decimal('100.00'), max(Decimal('0.00'), coverage_pct))
         else:
             coverage_pct = Decimal('0.00')
 

@@ -1,0 +1,34 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-sm cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo leer la gráfica de Evolución del riesgo comercial?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2 space-y-3">
+        <p class="text-xs">
+            Rastrea la trayectoria histórica de la ruta mes a mes calculando ventanas de trimestres móviles (los 3 meses previos cerrados a cada fecha) para suavizar compras esporádicas y mostrar tendencias reales de estabilidad:
+        </p>
+
+        <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+            <li>
+                <span class="text-violet-500 font-medium">Línea continua violeta (IRC):</span> Índice global de riesgo de la ruta (50% Concentración Gini + 50% Clientes desatendidos). Si tiene tendencia a la baja, la ruta está fortaleciéndose; si sube, se está volviendo más frágil y vulnerable.
+            </li>
+            <li>
+                <span class="text-rose-500 font-medium">Línea punteada coral (Concentración Gini):</span> Mide qué tan dependiente es la ruta de pocos clientes compradores en cada trimestre móvil evaluado.
+            </li>
+            <li>
+                <span class="text-slate-400 font-medium">Línea punteada gris (Clientes desatendidos):</span> Porcentaje de la cartera registrada que no realizó ninguna compra en los 3 meses evaluados (100% − Alcance de cartera).
+            </li>
+        </ul>
+
+        <p class="text-xs italic pt-1">
+            Tip: Al pasar el cursor por cualquier mes podrás ver el desglose detallado de valores y el porcentaje de alcance activo complementario.
+        </p>
+    </div>
+</details>

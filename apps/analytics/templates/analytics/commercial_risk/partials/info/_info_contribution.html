@@ -1,0 +1,34 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-sm cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo interpretar la gráfica de Contribución monetaria por categoría?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2 space-y-3">
+        <p class="text-xs">
+            Muestra el aporte en dinero ($ y %) que cada categoría de cliente genera sobre la venta total mensual de la ruta:
+        </p>
+
+        <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+            <li>
+                <span class="font-medium text-title">Peso financiero real:</span> Permite contrastar el volumen de clientes contra el dinero facturado. Por ejemplo, ayuda a visualizar si el 5% de clientes (Diamante/Oro) aporta el 70% u 80% de los ingresos de la ruta.
+            </li>
+            <li>
+                <span class="font-medium text-title">Vulnerabilidad de facturación:</span> Si las líneas de Diamante y Oro se mantienen en niveles muy altos (70%-80%+), cualquier baja en esos clientes impactará drásticamente el cumplimiento de venta de la ruta.
+            </li>
+            <li>
+                <span class="font-medium text-title">Evolución del mix de venta:</span> Ayuda a monitorear si las líneas de categorías intermedias (AA y A) van en ascenso para equilibrar la estructura de ingresos.
+            </li>
+        </ul>
+
+        <p class="text-xs italic pt-1">
+            Tip: Al hacer clic en cualquier punto de las líneas puedes ver el listado de clientes que generaron compras en esa categoría durante el mes.
+        </p>
+    </div>
+</details>
