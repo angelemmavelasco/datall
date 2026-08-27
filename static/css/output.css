@@ -514,9 +514,6 @@
   .max-h-48 {
     max-height: calc(var(--spacing) * 48);
   }
-  .max-h-50 {
-    max-height: calc(var(--spacing) * 50);
-  }
   .max-h-56 {
     max-height: calc(var(--spacing) * 56);
   }
@@ -1276,9 +1273,6 @@
   }
   .object-contain {
     object-fit: contain;
-  }
-  .p-0 {
-    padding: 0px;
   }
   .p-1 {
     padding: var(--spacing);

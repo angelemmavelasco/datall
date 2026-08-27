@@ -104,10 +104,33 @@ def user_detail_view(request, pk):
     employees_service = EmployeesService(user=request.user)
     can_update_access = users_service.has_full_access
 
-    user_instance = users_service.read_user(pk=pk)
+    if not users_service.has_full_access and str(pk) != str(request.user.pk):
+        messages.error(request, 'No tienes permisos suficientes para acceder a otros usuarios. Has sido redirigido a tu perfil.')
+        return redirect('core:user_detail_view', pk=request.user.pk)
+
+    try:
+        user_instance = users_service.read_user(pk=pk)
+    except UserNotFoundError:
+        messages.error(request, 'El usuario solicitado no existe.')
+        if users_service.has_full_access:
+            return redirect('core:user_list_view')
+        return redirect('core:user_detail_view', pk=request.user.pk)
+    except UserPermissionError as e:
+        messages.error(request, str(e))
+        if users_service.has_full_access:
+            return redirect('core:user_list_view')
+        return redirect('core:user_detail_view', pk=request.user.pk)
+    except Exception as e:
+        messages.error(request, f'Ocurrió un error inesperado al consultar el usuario: {str(e)}')
+        if users_service.has_full_access:
+            return redirect('core:user_list_view')
+        return redirect('core:user_detail_view', pk=request.user.pk)
+
     if not user_instance:
         messages.error(request, 'Usuario no encontrado o no tienes permisos para verlo.')
-        return redirect('core:user_list_view')
+        if users_service.has_full_access:
+            return redirect('core:user_list_view')
+        return redirect('core:user_detail_view', pk=request.user.pk)
 
     user_employees = employees_service.read_employees_by_user(user_id=user_instance.pk)
 
@@ -174,17 +197,27 @@ def user_update_form_view(request, pk):
     can_update = users_service.has_full_access
     creating = False
 
+    if not users_service.has_full_access and str(pk) != str(request.user.pk):
+        messages.error(request, 'No tienes permisos suficientes para editar otros usuarios. Has sido redirigido a tu perfil.')
+        return redirect('core:user_update_form_view', pk=request.user.pk)
+
     try:
         user_instance = users_service.read_user(pk=pk)
     except UserNotFoundError:
         messages.error(request, 'El usuario solicitado no existe.')
-        return redirect('core:user_list_view')
+        if users_service.has_full_access:
+            return redirect('core:user_list_view')
+        return redirect('core:user_detail_view', pk=request.user.pk)
     except UserPermissionError:
-        messages.warning(request, 'No tienes permisos suficientes para acceder a este usuario.')
-        return redirect('core:user_list_view')
+        messages.error(request, 'No tienes permisos suficientes para acceder a este usuario.')
+        if users_service.has_full_access:
+            return redirect('core:user_list_view')
+        return redirect('core:user_detail_view', pk=request.user.pk)
     except Exception as e:
         messages.error(request, f'Ocurrió un error inesperado al consultar el usuario: {str(e)}')
-        return redirect('core:user_list_view')
+        if users_service.has_full_access:
+            return redirect('core:user_list_view')
+        return redirect('core:user_detail_view', pk=request.user.pk)
 
     if request.method == 'POST':
         form = UserForm(

@@ -335,7 +335,7 @@
                         {% for submodule in module.submodules.all %}
                         <li class="sidebar-submodule-item">
                             {% url submodule.url_name as submodule_url %}
-                            <a href="{{ submodule_url }}" class="sidebar-submodule-link flex items-center gap-1 {% if request.path == submodule_url %}text-blue-500 font-bold{% endif %} hover:text-hover transition-colors text-sm md:text-xs py-2 border-b border-border md:border-none">
+                            <a href="{{ submodule_url }}" class="sidebar-submodule-link flex items-center gap-1 cursor-pointer {% if request.path == submodule_url %}text-blue-500 font-bold{% endif %} hover:text-hover transition-colors text-sm md:text-xs py-2 border-b border-border md:border-none">
                                 {% if submodule.icon %}
                                     {{ submodule.icon|safe }}
                                 {% endif %}
@@ -347,17 +347,37 @@
                 </section>
                 {% endfor %}
 
-                {% if request.user.is_authenticated %}
-                <div class="sidebar-module-section pt-3">
-                    <form method="POST" action="{% url 'core:logout' %}" class="w-full">
-                        {% csrf_token %}
-                        <button type="submit" class="sidebar-submodule-item sidebar-submodule-link flex items-center gap-1.5 hover:text-red-500 text-body transition-colors text-sm md:text-xs py-1.5 w-full text-left cursor-pointer">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out-icon lucide-log-out shrink-0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-                            <span class="sidebar-submodule-name">Cerrar sesión</span>
-                        </button>
-                    </form>
-                </div>
-                {% endif %}
+                <section class="sidebar-module-section flex flex-col gap-2">
+                    <p class="sidebar-module-title text-title font-medium">Cuenta</p>
+                    <ul class="ml-3 flex flex-col gap-1.5 border-l border-border pl-4 text-body">
+                        <li class="sidebar-submodule-item">
+                            <a href="{% url 'core:user_detail_view' request.user.pk %}" class="sidebar-submodule-link flex items-center gap-1 cursor-pointer {% if request.path == submodule_url %}text-blue-500 font-bold{% endif %} hover:text-hover transition-colors text-sm md:text-xs py-2 border-b border-border md:border-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-round-icon lucide-user-round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+                                <span class="sidebar-submodule-name">Mi perfíl</span>
+                            </a>
+                        </li>
+
+                        <li class="sidebar-submodule-item">
+                            <a href="{% url 'core:password_change' %}" class="sidebar-submodule-link flex items-center gap-1 cursor-pointer {% if request.path == submodule_url %}text-blue-500 font-bold{% endif %} hover:text-hover transition-colors text-sm md:text-xs py-2 border-b border-border md:border-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw-key-icon lucide-rotate-ccw-key"><path d="M12 7v6"/><path d="M12 9h2"/><path d="M3 12a9 9 0 1 0 9-9 9.74 9.74 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><circle cx="12" cy="15" r="2"/></svg>
+                                <span class="sidebar-submodule-name">Cambiar contraseña</span>
+                            </a>
+                        </li>
+
+                        {% if request.user.is_authenticated %}
+
+                            <li class="sidebar-submodule-item">
+                                <form method="POST" action="{% url 'core:logout' %}" class="w-full">
+                                    {% csrf_token %}
+                                    <button type="submit" class="sidebar-submodule-link flex items-center gap-1 hover:text-hover text-red-500 cursor-pointer transition-colors text-sm md:text-xs py-2 border-b border-border md:border-none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out-icon lucide-log-out shrink-0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                                        <span class="sidebar-submodule-name">Cerrar sesión</span>
+                                    </button>
+                                </form>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </section>
             </div>
         </nav>
     </div>
