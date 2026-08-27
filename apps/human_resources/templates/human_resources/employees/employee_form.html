@@ -23,6 +23,25 @@ Nuevo colaborador
 <form method="POST" enctype="multipart/form-data" class="flex flex-col gap-4">
     {% csrf_token %}
 
+    {% if form.errors %}
+    <div class="bg-red-500/10 border border-red-500/30 text-red-500 p-3 rounded flex flex-col gap-1.5 text-xs">
+        <div class="flex items-center gap-2 font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-circle shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+            <span>Por favor corrige los siguientes errores para continuar:</span>
+        </div>
+        <ul class="list-disc pl-5 flex flex-col gap-1">
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            {% for field in form %}
+                {% for error in field.errors %}
+                    <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     <p class="text-title text-sm">Información general</p>
     <hr class="border-border border">
 
@@ -66,7 +85,7 @@ Nuevo colaborador
         </span>
         <div>
             <details class="group relative w-full custom-search-dropdown">
-                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border {% if form.user.errors %}border-red-500 ring-1 ring-red-500{% else %}border-border{% endif %} rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
                     <span id="label_user" class="truncate">
                         {% if form.instance.user %}
                             {{ form.instance.user.first_name|title }} {{ form.instance.user.last_name|title }} (@{{ form.instance.user.username|lower }})
@@ -132,7 +151,7 @@ Nuevo colaborador
         </span>
         <div>
             <details class="group relative w-full custom-search-dropdown">
-                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border {% if form.position.errors %}border-red-500 ring-1 ring-red-500{% else %}border-border{% endif %} rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
                     <span id="label_position" class="truncate">
                         {% if form.instance.position %}
                             {{ form.instance.position }}
@@ -185,7 +204,7 @@ Nuevo colaborador
         <span class="text-title flex items-center gap-1">Responsable directo (Manager)</span>
         <div>
             <details class="group relative w-full custom-search-dropdown">
-                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border {% if form.manager.errors %}border-red-500 ring-1 ring-red-500{% else %}border-border{% endif %} rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
                     <span id="label_manager" class="truncate">
                         {% if form.instance.manager %}
                             {{ form.instance.manager }}
@@ -238,7 +257,7 @@ Nuevo colaborador
         <span class="text-title flex items-center gap-1">Gerencia / Unidad de Negocio</span>
         <div>
             <details class="group relative w-full custom-search-dropdown">
-                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border {% if form.business_unit.errors %}border-red-500 ring-1 ring-red-500{% else %}border-border{% endif %} rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
                     <span id="label_business_unit" class="truncate">
                         {% if form.instance.business_unit %}
                             {{ form.instance.business_unit }}
@@ -299,7 +318,7 @@ Nuevo colaborador
         </span>
         <div>
             <details class="group relative w-full custom-search-dropdown">
-                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border {% if form.contract_type.errors %}border-red-500 ring-1 ring-red-500{% else %}border-border{% endif %} rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
                     <span id="label_contract_type" class="truncate">
                         {% if form.instance.contract_type %}
                             {{ form.instance.get_contract_type_display|title }}
@@ -396,7 +415,7 @@ Nuevo colaborador
         <span class="text-title flex items-center gap-1">Régimen fiscal</span>
         <div>
             <details class="group relative w-full custom-search-dropdown">
-                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border {% if form.tax_regime.errors %}border-red-500 ring-1 ring-red-500{% else %}border-border{% endif %} rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
                     <span id="label_tax_regime" class="truncate">
                         {% if form.instance.tax_regime %}
                             {{ form.instance.get_tax_regime_display|title }}
@@ -450,7 +469,7 @@ Nuevo colaborador
         <span class="text-title flex items-center gap-1">Forma de pago</span>
         <div>
             <details class="group relative w-full custom-search-dropdown">
-                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border {% if form.payment_form.errors %}border-red-500 ring-1 ring-red-500{% else %}border-border{% endif %} rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
                     <span id="label_payment_form" class="truncate">
                         {% if form.instance.payment_form %}
                             {{ form.instance.get_payment_form_display|title }}
@@ -504,7 +523,7 @@ Nuevo colaborador
         <span class="text-title flex items-center gap-1">Periodicidad de pago</span>
         <div>
             <details class="group relative w-full custom-search-dropdown">
-                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border {% if form.payroll_frequency.errors %}border-red-500 ring-1 ring-red-500{% else %}border-border{% endif %} rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
                     <span id="label_payroll_frequency" class="truncate">
                         {% if form.instance.payroll_frequency %}
                             {{ form.instance.get_payroll_frequency_display|title }}

@@ -12,7 +12,7 @@ class EmployeeForm(forms.ModelForm):
     auto_generate_id = forms.BooleanField(
         required=False,
         initial=False,
-        label='Autogenerar'
+        label='Autogenerar identificador'
     )
 
     class Meta:
@@ -23,6 +23,23 @@ class EmployeeForm(forms.ModelForm):
             'contract_doc', 'tax_doc', 'tax_regime', 'tax_id',
             'payment_form', 'payroll_payment_amount', 'payroll_frequency'
         ]
+        labels = {
+            'id': 'Identificador',
+            'user': 'Usuario del sistema',
+            'position': 'Posición / Puesto',
+            'manager': 'Responsable / líder directo',
+            'business_unit': 'Gerencia / Unidad de Negocio',
+            'hire_date': 'Fecha de contratación',
+            'termination_date': 'Fecha de terminación / baja',
+            'contract_type': 'Tipo de contrato',
+            'contract_doc': 'Documento de contrato',
+            'tax_doc': 'Constancia de situación fiscal',
+            'tax_regime': 'Régimen fiscal',
+            'tax_id': 'RFC / ID Fiscal',
+            'payment_form': 'Forma de pago',
+            'payroll_payment_amount': 'Monto de nómina',
+            'payroll_frequency': 'Periodicidad de pago',
+        }
         widgets = {
             'hire_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
             'termination_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
@@ -53,6 +70,25 @@ class EmployeeForm(forms.ModelForm):
                         break
             elif not cleaned_data.get('id'):
                 self.add_error('id', 'El identificador es obligatorio.')
+
+        user = cleaned_data.get('user')
+        position = cleaned_data.get('position')
+        termination_date = cleaned_data.get('termination_date')
+
+        if user and position and not termination_date:
+            existing_qs = Employee.objects.filter(
+                user=user,
+                position=position,
+                termination_date__isnull=True
+            )
+            if self.instance.pk:
+                existing_qs = existing_qs.exclude(pk=self.instance.pk)
+
+            if existing_qs.exists():
+                self.add_error(
+                    'position',
+                    f'El usuario ya tiene asignado y activo el puesto "{position.name}". Asigna una fecha de baja al registro anterior o selecciona otro puesto.'
+                )
 
         return cleaned_data
 
