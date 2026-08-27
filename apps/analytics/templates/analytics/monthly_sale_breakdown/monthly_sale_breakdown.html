@@ -96,10 +96,14 @@
                         <tbody class="divide-y divide-border">
                             {% for product_class in route.product_classes %}
                                 <tr class="hover:bg-hover transition-colors duration-200">
-                                    <td class="sticky left-0 z-10 p-1 bg-container border-r border-border text-center text-muted">
-                                        {{ route.route_id|title }}
+                                    <td class="sticky left-0 z-10 w-24 min-w-24 max-w-24 p-1 bg-container border-r border-border text-center text-muted">
+                                        {% if route.route_id == 'TOTAL' %}
+                                            Total
+                                        {% else %}
+                                            {{ route.route_id|title }}
+                                        {% endif %}
                                     </td>
-                                    <td class="sticky left-24 z-10 p-1 bg-container border-r border-border truncate text-title">
+                                    <td class="sticky left-24 z-10 w-44 min-w-44 max-w-44 p-1 bg-container border-r border-border truncate text-title">
                                         {{ product_class.name|title }}
                                     </td>
 
@@ -115,10 +119,10 @@
                             {% endfor %}
 
                             <tr class="bg-muted/10 font-semibold border-t-2 border-border">
-                                <td class="sticky left-0 z-10 p-1 bg-container border-r border-border text-center text-title font-semibold">
+                                <td class="sticky left-0 z-10 w-24 min-w-24 max-w-24 p-1 bg-container border-r border-border text-center text-title font-semibold">
                                     
                                 </td>
-                                <td class="sticky left-24 z-10 p-1 bg-container border-r border-border text-title font-semibold border-b ">
+                                <td class="sticky left-24 z-10 w-44 min-w-44 max-w-44 p-1 bg-container border-r border-border text-title font-semibold border-b ">
                                     Total clases
                                 </td>
 
@@ -134,10 +138,10 @@
 
                             {% for result in route.results %}
                                 <tr class="hover:bg-hover transition-colors duration-200 text-xs">
-                                    <td class="sticky left-0 z-10 p-1 bg-container border-r border-border text-center text-muted">
+                                    <td class="sticky left-0 z-10 w-24 min-w-24 max-w-24 p-1 bg-container border-r border-border text-center text-muted">
                                         
                                     </td>
-                                    <td class="sticky left-24 z-10 p-1 bg-container border-r border-b border-border capitalize text-title">
+                                    <td class="sticky left-24 z-10 w-44 min-w-44 max-w-44 p-1 bg-container border-r border-b border-border capitalize text-title">
                                         {{ result.name|title }}
                                     </td>
 
