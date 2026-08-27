@@ -5,6 +5,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 
 from apps.core.services.uploads import UploadsService, BaseETLHelper
+from apps.human_resources.services.employees import EmployeesService
+
 from django_q.tasks import async_task
 from .filters import UserFilter
 from .forms import UserForm
@@ -99,19 +101,19 @@ def user_list_view(request):
 def user_detail_view(request, pk):
     template = 'core/users/user_detail.html'
     users_service = UsersService(user=request.user)
-    # employees_service = EmployeesService(user=request.user)
+    employees_service = EmployeesService(user=request.user)
     can_update_access = users_service.has_full_access
 
     user_instance = users_service.read_user(pk=pk)
     if not user_instance:
         messages.error(request, 'Usuario no encontrado o no tienes permisos para verlo.')
-        return redirect('core:user_list')
+        return redirect('core:user_list_view')
 
-    # user_positions = employees_service.read_employees_by_user(user_id=user_instance.pk)
+    user_employees = employees_service.read_employees_by_user(user_id=user_instance.pk)
 
     context = {
         'user_instance': user_instance,
-        # 'user_positions': user_positions,
+        'user_employees': user_employees,
         'can_update_access': can_update_access
     }
     return render(request, template, context)

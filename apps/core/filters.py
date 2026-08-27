@@ -1,6 +1,7 @@
 import django_filters
 from django.db.models import Q
 from django import forms
+from django.contrib.auth.models import Group
 from apps.core.models import User
 
 
@@ -17,6 +18,13 @@ class UserFilter(django_filters.FilterSet):
         empty_label='Todos'
     )
 
+    groups = django_filters.ModelMultipleChoiceFilter(
+        queryset=Group.objects.all().order_by('name'),
+        field_name='groups',
+        label='Grupo / Rol',
+        widget=forms.CheckboxSelectMultiple
+    )
+
     last_login__gte = django_filters.DateFilter(
         field_name='last_login',
         lookup_expr='gte',
@@ -26,7 +34,7 @@ class UserFilter(django_filters.FilterSet):
 
     class Meta:
         model = User
-        fields = ['search', 'is_active', 'gender', 'last_login__gte']
+        fields = ['search', 'is_active', 'gender', 'groups', 'last_login__gte']
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(
@@ -34,4 +42,4 @@ class UserFilter(django_filters.FilterSet):
             Q(first_name__icontains=value) |
             Q(last_name__icontains=value) |
             Q(second_last_name__icontains=value)
-        )
+        ).distinct()

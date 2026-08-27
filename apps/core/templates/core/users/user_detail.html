@@ -10,9 +10,23 @@ Perfil de usuario
 {% endblock %}
 
 {% block module_actions %}
-<a href="{% url 'core:user_update_form_view' user_instance.pk %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0" title="Editar usuario">
-    Editar
-</a>
+    {% with primary_emp=user_employees.first %}
+        {% if primary_emp %}
+            <a href="{% url 'human_resources:employee_detail_view' primary_emp.pk %}" class="hover:text-hover transition-colors flex items-center gap-1" title="Ver expediente de colaborador">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-id-card-lanyard-icon lucide-id-card-lanyard"><path d="M13.5 8h-3"/><path d="m15 2-1 2h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3"/><path d="M16.899 22A5 5 0 0 0 7.1 22"/><path d="m9 2 3 6"/><circle cx="12" cy="15" r="3"/></svg>
+                <span>Ver colaborador principal</span>
+            </a>
+        {% endif %}
+    {% endwith %}
+
+    <a href="{% url 'core:user_update_form_view' user_instance.pk %}" class="hover:text-hover transition-colors flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-pencil">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M14 7l3 3-7 7H7v-3z"/>
+            <path d="m13 8 3 3"/>
+        </svg>
+        <span>Editar usuario</span>
+    </a>
 {% endblock module_actions %}
 
 {% block content %}
@@ -123,137 +137,38 @@ Perfil de usuario
         </div>
     </div>
 
-    <p class="text-title text-sm pb-2 border-b border-border">Puestos asignados</p>
+    <!-- Desglose de Colaboradores y Puestos Asignados -->
+    <p class="text-title text-sm pb-2 border-b border-border">Colaboradores y puestos asignados</p>
 
-    {% for position in user_positions %}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
-        <span class="text-title md:col-span-2 p-2 text-center mt-2 font-bold rounded border border-border">
-            Información general
-        </span>
-        <a href="{% url 'human_resources:employee_details_view' position.id %}" target="_blank"
-            class="underline  md:col-span-2 p-2 text-right">Ver más</a>
+        <span class="text-title md:col-span-2">{{ user_employees.count|default:0|floatformat:0|intcomma }} colaborador(es) asignado(s)</span>
 
-        <span class="text-title">Puesto</span>
-        <div class="w-full  text-body  flex items-center">
-            {{ position.position.name|default:"-"|title }}
-        </div>
-
-        <span class="text-title">Departamento</span>
-        <div class="w-full  text-body  flex items-center">
-            {{ position.position.department.name|default:"-"|title }}
-        </div>
-
-        <span class="text-title">Estado</span>
-        <div
-            class="w-full  text-body  flex items-center {{ position.is_active|yesno:'text-emerald-500,text-red-500' }}">
-            {{ position.is_active|yesno:"Activo, Inactivo"|default:"-" }}
-        </div>
-
-        <span class="text-title">Fecha de ingreso</span>
-        <div class="w-full  text-body  flex items-center">
-            {{ position.hire_date|date:"d/m/Y"|default:"-" }}
-        </div>
-
-        <span class="text-title">Fecha de baja</span>
-        <div class="w-full  text-body  flex items-center">
-            {{ position.termination_date|date:"d/m/Y"|default:"No aplica" }}
-        </div>
-
-        <span class="text-title">Contrato</span>
-        <div class="w-full  text-body  flex items-center">
-            {% if position.contract_doc %}
-            <a href="{{ position.contract_doc.url }}" class="underline " target="_blank">Ver contrato</a>
-            {% else %}
-            No adjunto
-            {% endif %}
-        </div>
-
-        <span class="text-title">Régimen fiscal asociado a pago o facturación</span>
-        <div class="w-full  text-body  flex items-center">
-            {{ position.get_tax_regime_display|default:"No aplica"|title }}
-        </div>
-
-        <span class="text-title">RFC asociado a pago o facturación</span>
-        <div class="w-full  text-body  flex items-center">
-            {{ position.tax_id|default:"XAXX010101000"|upper }}
-        </div>
-
-        <span class="text-title">Constancia de situación fiscal</span>
-        <div class="w-full  text-body  flex items-center">
-            {% if position.tax_doc %}
-            <a href="{{ position.tax_doc.url }}" class="underline " target="_blank">Ver constancia</a>
-            {% else %}
-            No adjunta
-            {% endif %}
-        </div>
-
-        <span class="text-title">Tipo de contrato</span>
-        <div class="w-full  text-body  flex items-center">
-            {{ position.get_contract_type_display|default:"Otro"|title }}
-        </div>
-
-        <span class="text-title md:col-span-2 p-2 text-center mt-2 font-bold rounded border border-border">Colaboradores
-            a cargo</span>
-
-        {% if position.human_resources_direct_reports.all %}
-        <div
-            class="md:col-span-2 w-full overflow-auto border border-border rounded bg-container max-h-50 relative mt-2">
-            <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
-                <thead>
-                    <tr class="border-b border-border text-xs">
-                        <th
-                            class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">
-                            Departamento</th>
-                        <th
-                            class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">
-                            Puesto</th>
-                        <th
-                            class="min-w-[200px] p-2 text-left text-title border-r border-b border-border sticky top-0 z-30 bg-page">
-                            Colaborador</th>
-                        <th
-                            class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">
-                            Ingreso</th>
-                        <th
-                            class="min-w-[100px] p-2 text-center text-title border-r border-b border-border sticky top-0 z-30 bg-page">
-                            Baja</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for sub in position.human_resources_direct_reports.all %}
-                    <tr class="hover:bg-hover transition-colors duration-300">
-                        <td class="p-2 text-left text-body border-r border-b border-border">
-                            {{ sub.position.department.name|title }}
-                        </td>
-                        <td class="p-2 text-left text-body border-r border-b border-border">
-                            {{ sub.position.name|title }}
-                        </td>
-                        <td class="p-2 text-left text-body border-r border-b border-border">
-                            {{ sub.user.first_name|title }} {{ sub.user.last_name|title }}
-                        </td>
-                        <td class="p-2 text-center text-body border-r border-b border-border">
-                            {{ sub.hire_date|date:"d/m/Y"|default:"-" }}
-                        </td>
-                        <td class="p-2 text-center text-body border-r border-b border-border">
-                            {{ sub.termination_date|date:"d/m/Y"|default:"-" }}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="w-full md:col-span-2 text-body justify-center flex items-center p-4">
-            No hay colaboradores a cargo en este puesto
-        </div>
-        {% endif %}
-
-
+        <ul class="md:col-span-2 w-full max-h-48 overflow-y-auto rounded bg-page p-1 flex flex-col gap-2 border border-border">
+            {% for emp in user_employees %}
+                <li class="pb-1 border-b border-border last:border-b-0 last:pb-0 flex items-center justify-between gap-2">
+                    <div>
+                        <a href="{% url 'human_resources:employee_detail_view' emp.pk %}" class="font-medium text-body hover:text-hover transition-colors flex items-center gap-1 underline">
+                            <span>{{ emp.id|default:'-'|upper }} - {{ emp.position.name|default:'-'|title }} ({{ emp.position.department.name|default:'-'|title }})</span>
+                        </a>
+                        <p class="italic text-xs text-secondary">
+                            • Gerencia: {{ emp.business_unit.name|default:'-'|title }} <br>
+                            • Ingreso: {{ emp.hire_date|date:"d/m/Y"|default:"-" }}
+                            {% if emp.termination_date %}<br>• Baja: {{ emp.termination_date|date:"d/m/Y" }}{% endif %}
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <span class="text-xs p-1 rounded border {% if emp.employee_status %}border-emerald-500/30 text-emerald-500 bg-emerald-500/10{% else %}border-red-500/30 text-red-500 bg-red-500/10{% endif %}">
+                            {{ emp.employee_status|yesno:"Activo,Inactivo" }}
+                        </span>
+                    </div>
+                </li>
+            {% empty %}
+                <li>
+                    {% include 'layouts/data_not_found.html' %}
+                </li>
+            {% endfor %}
+        </ul>
     </div>
-    {% empty %}
-    <div class="w-full col-span-2  text-body  flex items-center justify-center">
-        No hay puestos asignados
-    </div>
-    {% endfor %}
 
 
 

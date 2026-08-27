@@ -38,7 +38,9 @@
 
             <span class="text-title">Usuario del sistema</span>
             <div class="w-full text-body flex items-center">
-                @{{ employee.user.username|lower }}
+                <a href="{% url 'core:user_detail_view' employee.user.pk %}" class="hover:text-hover underline transition-colors flex items-center gap-1" title="Ver perfil de usuario">
+                    <span>@{{ employee.user.username|lower }}</span>
+                </a>
             </div>
 
             <span class="text-title">Correo electrónico</span>

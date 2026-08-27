@@ -86,6 +86,12 @@ class EmployeesService(UsersService):
 
         raise EmployeeNotFound(f'No se encontró ningún colaborador con el ID "{pk}".')
 
+    def read_employees_by_user(self, *, user_id: int | str) -> QuerySet:
+        """
+        returns all employee profiles assigned to a specific user, verified by permissions.
+        """
+        return self.read_employees().filter(user_id=user_id)
+
     def create_employee(self, **data) -> Employee:
         '''
         Create a new employee based on provided data.
