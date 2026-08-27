@@ -289,43 +289,36 @@ class ProductsService(UsersService):
         df = BaseETLHelper.apply_reference_column_mappings(
             df,
             self.product_model,
-            submodule_name='importacion',
+            submodule_url_name='core:upload_options_list_view',
             context='columna'
         )
         df = BaseETLHelper.resolve_foreign_key_columns(df, self.product_model)
 
-        if 'id' not in df.columns:
-            return False, f"El archivo debe contener una columna identificadora mapeada a 'id'. Columnas encontradas: {', '.join(df.columns)}"
+        is_req_valid, req_msg = BaseETLHelper.validate_required_columns(df, {'id': 'Identificador de Producto'})
+        if not is_req_valid:
+            return False, req_msg
 
-        valid_types = set(self.product_class_model.objects.values_list('id', flat=True))
-        default_type = 'otr' if 'otr' in valid_types else (next(iter(valid_types)) if valid_types else 'otr')
+        valid_types_dict = {str(t.id).strip().lower(): t.id for t in self.product_class_model.objects.all()}
+        default_type = valid_types_dict.get('otr') or (next(iter(valid_types_dict.values())) if valid_types_dict else None)
 
         if 'product_class_id' in df.columns:
-            pc_ctype = ContentType.objects.get_for_model(self.product_class_model)
-            p_ctype = ContentType.objects.get_for_model(self.product_model)
-            type_references = Reference.objects.filter(
-                Q(content_type=pc_ctype, context__icontains='valor') |
-                Q(content_type=p_ctype, context__icontains='clase') |
-                Q(content_type=p_ctype, context__icontains='product_class')
+            df = BaseETLHelper.apply_reference_value_mappings(
+                df,
+                column='product_class_id',
+                target_model=self.product_class_model,
+                context='valor_clase_producto',
+                submodule_url_name='core:upload_options_list_view'
             )
-            type_map = {}
-            for ref in type_references:
-                k = str(ref.key).strip().lower()
-                v = str(ref.value).strip() if getattr(ref, 'value', '') else str(getattr(ref, 'reference', '')).strip()
-                if k and v:
-                    type_map[k] = v
-            
-            raw_series = df['product_class_id'].astype(str).str.strip().str.lower()
-            if type_map:
-                mapped_series = raw_series.map(type_map).fillna(raw_series)
-            else:
-                mapped_series = raw_series
 
-            df['product_class_id'] = mapped_series.apply(
-                lambda x: x if x in valid_types else default_type
+            df['product_class_id'] = df['product_class_id'].apply(
+                lambda x: valid_types_dict.get(str(x).strip().lower(), str(x).strip()) if x not in (None, 'None', 'nan', '') else default_type
             )
-        else:
+        elif default_type:
             df['product_class_id'] = default_type
+
+        is_fk_valid, fk_msg = BaseETLHelper.validate_foreign_keys(df, self.product_model)
+        if not is_fk_valid:
+            return False, fk_msg
 
         df['id'] = df['id'].astype(str).str.strip()
         df.drop_duplicates(subset=['id'], keep='last', inplace=True)
@@ -348,7 +341,7 @@ class ProductsService(UsersService):
         return True, df
 
     def bulk_create_products(self, file_obj) -> object:
-        from apps.core.services.uploads import ImportResult, PermissionsError
+        from apps.core.services.uploads import ImportResult, PermissionsError, BaseETLHelper
         from django.db import transaction
 
         if not self.has_full_access:
@@ -418,9 +411,10 @@ class ProductsService(UsersService):
                 updated_count=updated_count
             )
         except Exception as e:
+            humanized_msg = BaseETLHelper.humanize_database_error(e)
             return ImportResult(
                 success=False,
-                message=f"Error durante la inserción/actualización masiva: {str(e)}",
+                message=humanized_msg,
                 total_processed=total_processed,
                 errors=[str(e)]
             )

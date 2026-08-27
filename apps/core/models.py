@@ -145,7 +145,9 @@ class Submodule(models.Model):
     is_active = models.BooleanField(default=True, help_text="Indica si el submódulo está activo y se muestra al usuario")
 
     def __str__(self):
-        return f"{self.module.name.title()} > {self.name.title()}"
+        mod_name = self.module.name.title() if self.module and getattr(self.module, 'name', None) else "Sin Módulo"
+        sub_name = self.name.title() if self.name else "Sin Nombre"
+        return f"{mod_name} > {sub_name}"
     
     class Meta:
         ordering = ['order']
@@ -160,7 +162,9 @@ class Reference(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, blank=True, null=True, related_name='references', help_text='Tabla o modelo al cual se le aplica el valor homologado de la referencia')
 
     def __str__(self):
-        return f"{self.submodule.name.title()}: {self.context}"
+        sub_name = self.submodule.name.title() if self.submodule and getattr(self.submodule, 'name', None) else "General"
+        ctx = self.context or "sin_contexto"
+        return f"{sub_name}: {ctx} ({self.key} -> {self.value})"
 
     class Meta:
         verbose_name = 'Referencia'

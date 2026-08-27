@@ -381,7 +381,7 @@ class CustomersService(UsersService):
         df = BaseETLHelper.apply_reference_column_mappings(
             df,
             self.customer_model,
-            submodule_name='importacion',
+            submodule_url_name='core:upload_options_list_view',
             context='columna'
         )
         df = BaseETLHelper.resolve_foreign_key_columns(df, self.customer_model)
@@ -400,27 +400,15 @@ class CustomersService(UsersService):
         default_type = valid_types_dict.get('otr') or next(iter(valid_types_dict.values()))
 
         if 'customer_type_id' in df.columns:
-            ct_type = ContentType.objects.get_for_model(self.customer_type_model)
-            c_ctype = ContentType.objects.get_for_model(self.customer_model)
-            type_references = Reference.objects.filter(
-                Q(content_type=ct_type, context__icontains='valor') |
-                Q(content_type=c_ctype, context__icontains='tipo') |
-                Q(content_type=c_ctype, context__icontains='type')
+            df = BaseETLHelper.apply_reference_value_mappings(
+                df,
+                column='customer_type_id',
+                target_model=self.customer_type_model,
+                context='valor_tipo_cliente',
+                submodule_url_name='core:upload_options_list_view'
             )
-            type_map = {}
-            for ref in type_references:
-                k = str(ref.key).strip().lower()
-                v = str(ref.value).strip() if getattr(ref, 'value', '') else str(getattr(ref, 'reference', '')).strip()
-                if k and v:
-                    type_map[k] = v
 
-            raw_series = df['customer_type_id'].astype(str).str.strip().str.lower()
-            if type_map:
-                mapped_series = raw_series.map(type_map).fillna(raw_series)
-            else:
-                mapped_series = raw_series
-
-            df['customer_type_id'] = mapped_series.apply(
+            df['customer_type_id'] = df['customer_type_id'].apply(
                 lambda x: valid_types_dict.get(str(x).strip().lower(), str(x).strip()) if x not in (None, 'None', 'nan', '') else default_type
             )
         else:

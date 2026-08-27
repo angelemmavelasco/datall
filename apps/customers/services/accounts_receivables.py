@@ -140,7 +140,7 @@ class AccountsReceivablesService(UsersService):
         df = BaseETLHelper.apply_reference_column_mappings(
             df,
             self.accounts_receivable_model,
-            submodule_name='importacion',
+            submodule_url_name='core:upload_options_list_view',
             context='columna'
         )
         df = BaseETLHelper.resolve_foreign_key_columns(df, self.accounts_receivable_model)

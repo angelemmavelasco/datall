@@ -142,7 +142,7 @@ class BaseETLHelper:
         cls,
         df: pd.DataFrame,
         model: type[models.Model],
-        submodule_name: str = 'importacion',
+        submodule_url_name: str = 'core:upload_options_list_view',
         context: str = 'columna'
     ) -> pd.DataFrame:
         """
@@ -150,14 +150,11 @@ class BaseETLHelper:
         """
         ctype = ContentType.objects.get_for_model(model)
 
-        references = Reference.objects.filter(content_type=ctype)
-        if context:
-            references = references.filter(context__icontains=context)
-
-        if submodule_name:
-            submodule_refs = references.filter(submodule__name__icontains=submodule_name)
-            if submodule_refs.exists():
-                references = submodule_refs
+        references = Reference.objects.filter(
+            content_type=ctype,
+            context=context,
+            submodule__url_name=submodule_url_name
+        )
 
         column_map = {}
         for ref in references:
@@ -174,6 +171,46 @@ class BaseETLHelper:
 
         if new_columns:
             df.rename(columns=new_columns, inplace=True)
+
+        return df
+
+    @classmethod
+    def apply_reference_value_mappings(
+        cls,
+        df: pd.DataFrame,
+        column: str,
+        target_model: type[models.Model],
+        context: str,
+        submodule_url_name: str = 'core:upload_options_list_view'
+    ) -> pd.DataFrame:
+        """
+        maps raw categorical values in a DataFrame column to target catalog PKs/values
+        using Reference records where:
+        - content_type = ContentType for target_model
+        - context = context (e.g. 'valor_clase_producto', 'valor_tipo_cliente')
+        - submodule = Submodule matching submodule_url_name
+        """
+        if column not in df.columns or df.empty:
+            return df
+
+        ctype = ContentType.objects.get_for_model(target_model)
+        references = Reference.objects.filter(
+            content_type=ctype,
+            context=context,
+            submodule__url_name=submodule_url_name
+        )
+
+        value_map = {}
+        for ref in references:
+            raw_key = str(ref.key).strip().lower()
+            target_val = str(ref.value).strip() if getattr(ref, 'value', '') else str(getattr(ref, 'reference', '')).strip()
+            if raw_key and target_val:
+                value_map[raw_key] = target_val
+
+        if value_map:
+            raw_series = df[column].astype(str).str.strip().str.lower()
+            mapped = raw_series.map(value_map)
+            df[column] = mapped.fillna(df[column])
 
         return df
 
