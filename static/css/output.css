@@ -1788,6 +1788,9 @@
     .md\:hidden {
       display: none;
     }
+    .md\:h-100 {
+      height: calc(var(--spacing) * 100);
+    }
     .md\:h-\[480px\] {
       height: 480px;
     }

@@ -1,4 +1,8 @@
-<div id="businessUnitBarChart" class="w-full h-[380px] min-h-full border border-border rounded bg-container"></div>
+<div class="border border-border rounded bg-container h-full flex flex-col overflow-hidden min-h-98">
+    <div class="overflow-y-auto overflow-x-hidden flex-1 h-80" style="max-height: 380px; overflow-y: auto;">
+        <div id="businessUnitBarChart" class="w-full" style="min-height: 380px;"></div>
+    </div>
+</div>
 
 <script>
     (function() {
@@ -12,6 +16,12 @@
 
             const rawData = {{ chart_data.business_unit_chart_data|safe|default:'{}' }};
             const businessUnitData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+
+            const categories = businessUnitData.categories || [];
+            const itemCount = categories.length;
+            const minHeightPerItem = 42;
+            const dynamicHeight = Math.max(380, itemCount * minHeightPerItem + 70);
+            chartDom.style.height = dynamicHeight + 'px';
 
             const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim() || '#9ca3af';
             const isMobile = window.innerWidth < 768;
@@ -65,7 +75,7 @@
                 },
                 legend: {
                     data: ['Venta', 'Objetivo'],
-                    bottom: 0,
+                    bottom: 4,
                     left: 'center',
                     textStyle: {
                         color: titleColor
@@ -74,7 +84,8 @@
                 grid: {
                     left: '3%',
                     right: '4%',
-                    bottom: '12%',
+                    top: 40,
+                    bottom: 36,
                     containLabel: true,
                 },
                 xAxis: {
@@ -98,10 +109,10 @@
                 },
                 yAxis: {
                     type: 'category',
-                    data: businessUnitData.categories || [],
+                    data: categories,
                     axisLabel: {
+                        interval: 0,
                         color: titleColor,
-                        fontSize: 10,
                         formatter: function(val, index) {
                             const sale = (businessUnitData.sales && businessUnitData.sales[index] !== undefined)
                                 ? '$ ' + Number(businessUnitData.sales[index]).toLocaleString('es-MX', { maximumFractionDigits: 0 })
@@ -111,8 +122,8 @@
                         rich: {
                             sale: {
                                 color: greenColor,
-                                fontSize: 9,
-                                lineHeight: 12,
+                                fontSize: 10,
+                                lineHeight: 14,
                                 fontWeight: '500'
                             }
                         }
@@ -123,15 +134,13 @@
                         name: 'Venta',
                         type: 'bar',
                         data: businessUnitData.sales || [],
-                        barMaxWidth: 16,
-                        barGap: '20%',
-                        barCategoryGap: '25%',
+                        barMaxWidth: 20,
                     },
                     {
                         name: 'Objetivo',
                         type: 'bar',
                         data: businessUnitData.targets || [],
-                        barMaxWidth: 16,
+                        barMaxWidth: 20,
                     }
                 ]
             };
