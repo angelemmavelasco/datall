@@ -167,30 +167,39 @@ class AccountsReceivablesService(UsersService):
         ar_ctype = ContentType.objects.get_for_model(self.accounts_receivable_model)
 
         if 'issue_date' in df.columns:
-            issue_refs = Reference.objects.filter(content_type=ar_ctype, context__icontains='emision')
+            issue_refs = Reference.objects.filter(
+                content_type=ar_ctype,
+                context='valor_fecha_emision',
+                submodule__url_name='core:upload_options_list_view'
+            )
             for ref in issue_refs:
                 k = str(ref.key)
                 v = str(ref.value).strip().lower() if getattr(ref, 'value', '') else str(getattr(ref, 'reference', '')).strip().lower()
-                if v == 'null':
-                    df['issue_date'] = df['issue_date'].replace(k, None)
+                if v == 'null' or not v:
+                    df['issue_date'] = df['issue_date'].replace([k, k.strip()], None)
                 elif k and v:
-                    df['issue_date'] = df['issue_date'].replace(k, v)
+                    df['issue_date'] = df['issue_date'].replace([k, k.strip()], v)
 
         if 'due_date' in df.columns:
-            due_refs = Reference.objects.filter(content_type=ar_ctype, context__icontains='pago')
+            due_refs = Reference.objects.filter(
+                content_type=ar_ctype,
+                context='valor_fecha_pago',
+                submodule__url_name='core:upload_options_list_view'
+            )
             for ref in due_refs:
                 k = str(ref.key)
                 v = str(ref.value).strip().lower() if getattr(ref, 'value', '') else str(getattr(ref, 'reference', '')).strip().lower()
-                if v == 'null':
-                    df['due_date'] = df['due_date'].replace(k, None)
+                if v == 'null' or not v:
+                    df['due_date'] = df['due_date'].replace([k, k.strip()], None)
                 elif k and v:
-                    df['due_date'] = df['due_date'].replace(k, v)
+                    df['due_date'] = df['due_date'].replace([k, k.strip()], v)
 
         date_cols = ['issue_date', 'due_date']
         for col in date_cols:
             if col in df.columns:
                 df[col] = df[col].replace({'null': None, 'NULL': None, 'nan': None, 'none': None, '': None})
                 df[col] = pd.to_datetime(df[col], errors='coerce').dt.date
+                df[col] = df[col].where(pd.notnull(df[col]), None)
 
         num_cols = ['total_balance', 'balance_15', 'balance_30', 'balance_60', 'past_due', 'current_balance']
         for c in num_cols:
