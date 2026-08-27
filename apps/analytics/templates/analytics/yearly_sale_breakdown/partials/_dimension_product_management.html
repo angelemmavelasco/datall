@@ -43,8 +43,23 @@
                 </span>
             </td>
             {% for total in mgt_data.totals %}
-                <td class="p-2 text-right border-l border-border text-muted text-xs">
-                    $ {{ total.net|default:0|floatformat:2|intcomma }}
+                <td class="p-2 text-right text-strong border-l border-border min-w-[140px]">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="rounded text-[10px] px-1 py-[1px] whitespace-nowrap font-medium
+                        {% if total.growth > 0 %}
+                            border border-emerald-500 text-emerald-500 bg-emerald-500/10
+                        {% elif total.growth < 0 %}
+                            border border-red-500 text-red-500 bg-red-500/10
+                        {% else %}
+                            border border-border text-muted bg-page
+                        {% endif %}">
+                            {% if total.growth > 0 %}+{% endif %}{{ total.growth|default:0|floatformat:2|intcomma }}%
+                        </span>
+                        <div class="text-right">
+                            <span class="text-title font-medium text-xs">$ {{ total.net|default:0|floatformat:2|intcomma }}</span><br>
+                            <span class="text-muted italic text-[10px]">Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%</span>
+                        </div>
+                    </div>
                 </td>
             {% endfor %}
         </tr>
