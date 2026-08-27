@@ -22,15 +22,234 @@
 
 <div class="flex flex-col w-full gap-4">
 
-    <div class="mb-2">
-        <div class="flex justify-between items-center">
-            <p class="text-title text-sm mb-2 font-medium">Detalle de alcance de objetivos</p>
-            <span class="cursor-pointer text-title hover:text-hover transition-colors"
-                title="Muestra el progreso y cumplimiento de objetivos de venta por ruta y por clase de producto.&#10;&#10;Cartera de clientes:&#10;• Registrados: clientes dados de alta hasta el fin del periodo seleccionado.&#10;• Con compras: clientes con al menos una compra en el periodo seleccionado.&#10;• Alcance: porcentaje de la cartera con compras.&#10;• Nuevos: clientes registrados dentro del periodo filtrado.&#10;&#10;Avance general:&#10;• Familias completadas: clases principales (Diamond, Care, etc.) que ya llegaron al 100% de su objetivo.&#10;• Objetivo: meta de venta asignada en el periodo.&#10;• Venta neta: venta real acumulada.&#10;• Diferencia: monto que falta para alcanzar el objetivo.&#10;• Alcance: porcentaje de la venta lograda vs objetivo.&#10;• Proyección: estimación matemática del alcance al cierre.&#10;• Ranking: lugar de la ruta en la gerencia por venta y por avance.&#10;&#10;Desglose por clase:&#10;El porcentaje de alcance por familia. Al pasar el cursor verás el detalle de objetivo, venta y diferencia de cada una.">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info text-strong cursor-pointer"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-            </span>
-        </div>
+    <p class="text-title pb-1 border-b border-border">
+        Resumen por gerencia<br>
+        Del {{ selected_date_start }} al {{ selected_date_end }}
+    </p>
+
+    {% if data %}
+    <div class="w-full overflow-x-auto border border-border rounded bg-container ">
+        <table class="w-full table-auto text-left border-separate border-spacing-0">
+            <thead>
+                <tr class="border-b border-border">
+                    <th colspan="1" class="p-1 text-center bg-page border border-border text-title sticky left-0 z-20 font-semibold">
+                        Gerencias
+                    </th>
+                    <th colspan="4" class="p-1 text-center text-title border border-border bg-container font-medium">Cartera de clientes</th>
+                    <th colspan="6" class="p-1 text-center text-title border border-border bg-container font-medium">Avance</th>
+                    <th colspan="2" class="p-1 text-center text-title border border-border bg-page font-medium">Ranking</th>
+                    <th colspan="{{ display_classes|length|default:10 }}" class="p-1 text-center text-title border border-border bg-container font-medium">Desglose por clase de producto</th>
+                </tr>
+
+                <tr class="border-b border-border">
+                    <th class="w-[200px] max-w-[200px] p-1 text-center text-title border border-border bg-page sticky left-0 z-20 font-medium">Gerencia</th>
+
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Total de clientes dados de alta hasta el fin del periodo con asignación activa en la gerencia.">Registrados</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Clientes con al menos una compra en el periodo filtrado en la gerencia.">Con compras</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Porcentaje de la cartera con compras (Con compras / Registrados).">Alcance</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Clientes registrados dentro del rango de fechas del periodo filtrado en la gerencia.">Nuevos</th>
+
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Número de familias principales (Diamond, Care, etc.) que alcanzaron o superaron el 100% de su objetivo en la gerencia.">Familias <br>completadas</th>
+                    <th class="min-w-[120px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Monto total del objetivo o cuota asignada a la gerencia en el periodo.">Objetivo</th>
+                    <th class="min-w-[120px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Venta neta acumulada en la gerencia en el periodo filtrado.">Venta neta</th>
+                    <th class="min-w-[120px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Diferencia monetaria pendiente para alcanzar el objetivo (Objetivo - Venta neta).">Diferencia</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Porcentaje de avance sobre el objetivo de venta (Venta neta / Objetivo).">Alcance</th>
+                    <th class="min-w-[100px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Estimación matemática del alcance al cierre según el ritmo de venta y días hábiles.">Proyección</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Posición de la gerencia por volumen de venta neta.">Ranking <br> Venta</th>
+                    <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium cursor-help"
+                        title="Posición de la gerencia por porcentaje de avance/alcance.">Ranking <br> Avance</th>
+
+                    {% for cname in display_classes %}
+                        <th class="min-w-[80px] p-1 text-center text-title border border-border bg-page font-medium">{{ cname|title }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for gerencia_data in data %}
+                    {% with bu=gerencia_data.total_business_unit_data %}
+                    <tr class="hover:bg-hover/10 transition-colors">
+                        <td class="p-1 text-left text-title font-medium border border-border bg-container sticky left-0 z-20 truncate max-w-[200px] min-w-[200px] w-[200px]">
+                            <a href="{% url 'analytics:monthly_sale_breakdown_view' %}?business_unit={{ bu.business_unit_id }}&year={{ selected_date_start|slice:':4' }}"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               class="text-title hover:text-hover underline transition-colors font-semibold"
+                               title="Ver desglose mensual de ventas para la gerencia {{ bu.business_unit_name|title }}">
+                                {{ bu.business_unit_name|title }}
+                            </a>
+                        </td>
+                        
+                        <td class="p-1 text-center text-strong border border-border">
+                            {% if bu.registered_customers > 0 %}
+                                <a href="{% url 'analytics:customer_kpis_view' %}?business_unit={{ bu.business_unit_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                title="Ver todos los {{ bu.registered_customers }} clientes asignados a la gerencia {{ bu.business_unit_name|title }}"
+                                class="text-strong hover:text-hover underline">{{ bu.registered_customers|intcomma }}</a>
+                            {% else %}
+                                {{ bu.registered_customers|intcomma }}
+                            {% endif %}
+                        </td>
+                        <td class="p-1 text-center text-strong border border-border">
+                            {% if bu.active_customers > 0 %}
+                                <a href="{% url 'analytics:customer_kpis_view' %}?business_unit={{ bu.business_unit_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}&has_purchases=True" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                title="Ver los {{ bu.active_customers }} clientes con compras en el periodo para la gerencia {{ bu.business_unit_name|title }}"
+                                class="text-strong hover:text-hover underline">{{ bu.active_customers|intcomma }}</a>
+                            {% else %}
+                                {{ bu.active_customers|intcomma }}
+                            {% endif %}
+                        </td>
+                        <td class="p-1 text-center text-strong border border-border">{{ bu.portfolio_scope|floatformat:2 }}%</td>
+                        <td class="p-1 text-center text-strong border border-border">
+                            {% if bu.new_customers > 0 %}
+                                <a href="{% url 'analytics:customer_kpis_view' %}?business_unit={{ bu.business_unit_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}&registration_date_start={{ selected_date_start|default:'' }}&registration_date_end={{ selected_date_end|default:'' }}" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                title="Ver los {{ bu.new_customers }} clientes nuevos registrados en el periodo para la gerencia {{ bu.business_unit_name|title }}"
+                                class="text-strong hover:text-hover underline">{{ bu.new_customers|intcomma }}</a>
+                            {% else %}
+                                {{ bu.new_customers|intcomma }}
+                            {% endif %}
+                        </td>
+                        
+                        <td class="p-1 text-center text-strong border border-border">{{ bu.completed_product_classes }}</td>
+                        <td class="p-1 text-right text-strong border border-border">$ {{ bu.target|floatformat:2|intcomma }}</td>
+                        <td class="p-1 text-right text-strong border border-border">$ {{ bu.net_amount|floatformat:2|intcomma }}</td>
+                        
+                        <td class="p-1 text-right border border-border {% if bu.difference < 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                           $ {{ bu.difference|floatformat:2|intcomma }}
+                        </td>
+                        
+                        <td class="p-1 text-center border border-border
+                        {% if bu.scope >= 100 %}text-green-600
+                        {% elif bu.scope >= 90 %}text-yellow-500
+                        {% elif bu.scope >= 80 %}text-orange-600
+                        {% else %}text-red-600
+                        {% endif %}
+                        ">{{ bu.scope|floatformat:2 }} %</td>
+
+                        <td class="p-1 text-right border border-border
+                        {% if bu.scope_forecast >= 100 %}text-green-600
+                        {% elif bu.scope_forecast >= 90 %}text-yellow-500
+                        {% elif bu.scope_forecast >= 80 %}text-orange-600
+                        {% else %}text-red-600
+                        {% endif %}
+                        ">{{ bu.scope_forecast|floatformat:2|intcomma }} %</td>
+
+                        <td class="p-1 text-center text-strong border border-border">{{ bu.rank_sale }}</td>
+                        <td class="p-1 text-center text-strong border border-border">{{ bu.rank_scope }}</td>
+                        
+                        {% for c in bu.business_unit_product_classes_breakdown %}
+                            <td class="p-1 text-center border border-border
+                                {% if c.scope >= 100 %}text-green-600
+                                {% elif c.scope >= 90 %}text-yellow-500
+                                {% elif c.scope >= 80 %}text-amber-600
+                                {% else %}text-red-600
+                                {% endif %}
+                            ">
+                                <span class="underline cursor-pointer"
+                                    title="Familia: {{ c.product_class_name|title }} ({{ bu.business_unit_name|title }})&#10;&#10;• Objetivo: ${{ c.target|floatformat:2|intcomma }}&#10;• Venta neta: ${{ c.net_amount|floatformat:2|intcomma }}&#10;• Diferencia: ${{ c.difference|floatformat:2|intcomma }}&#10;• Alcance: {{ c.scope|floatformat:2 }}%&#10;• Proyección: {{ c.scope_forecast|floatformat:2|intcomma }}%">
+                                    {{ c.scope|floatformat:2 }}%
+                                </span>
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    {% endwith %}
+                {% endfor %}
+            </tbody>
+
+            {% if grand_total %}
+            <tfoot>
+                <tr class="bg-page font-semibold">
+                    <td class="p-2 text-left text-title border border-border sticky left-0 z-20 bg-page font-semibold">Total general</td>
+                    
+                    <td class="p-2 text-center text-title border border-border">
+                        {% if grand_total.registered_customers > 0 %}
+                            <a href="{% url 'analytics:customer_kpis_view' %}?start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            title="Ver todos los {{ grand_total.registered_customers }} clientes asignados"
+                            class="text-title hover:text-hover underline"> 
+                            {{ grand_total.registered_customers|intcomma }}
+                            </a>
+                        {% else %}
+                            {{ grand_total.registered_customers|intcomma }}
+                        {% endif %}
+                    </td>
+                    <td class="p-1 text-center text-title border border-border">
+                        {% if grand_total.active_customers > 0 %}
+                            <a href="{% url 'analytics:customer_kpis_view' %}?start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}&has_purchases=True" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            title="Ver los {{ grand_total.active_customers }} clientes con compras en el periodo"
+                            class="text-title hover:text-hover underline"> 
+                            {{ grand_total.active_customers|intcomma }}
+                            </a>
+                        {% else %}
+                            {{ grand_total.active_customers|intcomma }}
+                        {% endif %}
+                    </td>
+                    <td class="p-1 text-center text-title border border-border">{{ grand_total.portfolio_scope|floatformat:2 }}%</td>
+                    <td class="p-1 text-center text-strong border border-border">
+                        {% if grand_total.new_customers > 0 %}
+                            <a href="{% url 'analytics:customer_kpis_view' %}?start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}&registration_date_start={{ selected_date_start|default:'' }}&registration_date_end={{ selected_date_end|default:'' }}" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            title="Ver los {{ grand_total.new_customers }} clientes nuevos registrados en el periodo"
+                            class="text-strong hover:text-hover underline"> 
+                            {{ grand_total.new_customers|intcomma }}
+                            </a>
+                        {% else %}
+                            {{ grand_total.new_customers|intcomma }}
+                        {% endif %}
+                    </td>
+                                        
+                    <td class="p-1 text-center text-title border border-border">{{ grand_total.completed_product_classes }}</td>
+                    <td class="p-1 text-right text-title border border-border">${{ grand_total.target|floatformat:2|intcomma }}</td>
+                    <td class="p-1 text-right text-title border border-border">${{ grand_total.net_amount|floatformat:2|intcomma }}</td>
+                    
+                    <td class="p-1 text-right border border-border {% if grand_total.difference < 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                        ${{ grand_total.difference|floatformat:2|intcomma }}
+                    </td>
+                    
+                    <td class="p-1 text-center text-title border border-border">{{ grand_total.scope|floatformat:2 }} %</td>
+                    <td class="p-1 text-right text-title border border-border">{{ grand_total.scope_forecast|floatformat:2|intcomma }} %</td>
+                    
+                    <td class="p-1 text-center text-title border-t border-border"></td>
+                    <td class="p-1 text-center text-title border-t border-border"></td>
+                    
+                    {% for c in grand_total.product_classes_breakdown %}
+                        <td class="p-1 text-center text-title border border-border">
+                            <span class="underline cursor-pointer"
+                                title="Total general: {{ c.product_class_name|title }}&#10;&#10;• Objetivo: ${{ c.target|floatformat:2|intcomma }}&#10;• Venta neta: ${{ c.net_amount|floatformat:2|intcomma }}&#10;• Diferencia: ${{ c.difference|floatformat:2|intcomma }}&#10;• Alcance: {{ c.scope|floatformat:2 }}%&#10;• Proyección: {{ c.scope_forecast|floatformat:2|intcomma }}%">
+                                {{ c.scope|floatformat:2 }}%
+                            </span>
+                        </td>
+                    {% endfor %}
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
     </div>
+    {% endif %}
+
+    <p class="text-title pb-1 border-b border-border">
+        Detalle por gerencia por ruta<br>
+        Del {{ selected_date_start }} al {{ selected_date_end }}
+    </p>
     
     {% for gerencia_data in data %}
     <div class="w-full overflow-x-auto border border-border rounded bg-container mb-8">
@@ -83,7 +302,7 @@
 
             <tbody>
                 {% for r in gerencia_data.routes_data %}
-                    <tr class="hover:bg-hover transition-colors">
+                    <tr class="hover:bg-hover/10 transition-colors">
                         <td class="p-1 text-left text-title font-medium border border-border bg-container sticky left-0 z-20 truncate max-w-[200px] min-w-[200px] w-[200px]">
                             <a href="{% url 'analytics:route_kpis_view' %}?route={{ r.route_id }}&date_start={{ selected_date_start|default:'' }}&date_end={{ selected_date_end|default:'' }}" 
                             target="_blank" 
@@ -229,7 +448,7 @@
                     <td class="p-1 text-right text-title border border-border">${{ gerencia_data.total_business_unit_data.net_amount|floatformat:2|intcomma }}</td>
                     
                     <td class="p-1 text-right border border-border {% if gerencia_data.total_business_unit_data.difference < 0 %}text-green-600{% else %}text-red-600{% endif %}">
-                        {{ gerencia_data.total_business_unit_data.difference|floatformat:2|intcomma }}
+                        $ {{ gerencia_data.total_business_unit_data.difference|floatformat:2|intcomma }}
                     </td>
                     
                     <td class="p-1 text-center text-title border border-border">{{ gerencia_data.total_business_unit_data.scope|floatformat:2 }} %</td>

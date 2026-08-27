@@ -20,9 +20,10 @@ urlpatterns = [
 
     path('yearly-sale-breakdown/', yearly_sale_breakdown_view, name='yearly_sale_breakdown_view'),
     
-    path('product-kpis/', product_kpis_view, name='product_kpis_view'),
     path('monthly-sale-breakdown/', monthly_sale_breakdown_view, name='monthly_sale_breakdown_view'),
     path('monthly-sale-breakdown/export/', monthly_sale_breakdown_export_view, name='monthly_sale_breakdown_export_view'),
+    
+    path('product-kpis/', product_kpis_view, name='product_kpis_view'),
     path('business-unit-sale-breakdown/', business_unit_sale_breakdown_view, name='business_unit_sale_breakdown_view'),
     path('unique-customer-count/', unique_customer_count_view, name='unique_customer_count_view'),
 ]

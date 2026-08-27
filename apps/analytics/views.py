@@ -21,6 +21,7 @@ from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.sales.services.sale_targets import SaleTargetsService
 from apps.customers.services.customers import CustomersService
 from apps.sales.services.routes import RoutesService
+from apps.human_resources.models import BusinessUnit
 
 #base services analytics
 from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter, CommercialRiskFilter, CollectionsDashboardFilter, TargetAchievementFilter, YearlySaleBreakdownFilter, MonthlySaleBreakdownFilter
@@ -446,31 +447,71 @@ def target_achievement_view(request):
 
     #apply filters
     filtered_tx_qs = base_tx_qs
+    filtered_routes_qs = allowed_routes_qs
+    filtered_customers_qs = base_customers_qs
+
+    if cleaned_data.get('region'):
+        selected_region_ids = set(r.pk if hasattr(r, 'pk') else r for r in cleaned_data['region'])
+        all_bu_ids = set(selected_region_ids)
+        current_parents = set(selected_region_ids)
+        while current_parents:
+            child_ids = set(
+                BusinessUnit.objects.filter(parent_id__in=current_parents).values_list('id', flat=True)
+            )
+            new_ids = child_ids - all_bu_ids
+            if not new_ids:
+                break
+            all_bu_ids.update(new_ids)
+            current_parents = new_ids
+
+        filtered_tx_qs = filtered_tx_qs.filter(route__business_unit_id__in=all_bu_ids)
+        filtered_routes_qs = filtered_routes_qs.filter(business_unit_id__in=all_bu_ids)
+        filtered_customers_qs = filtered_customers_qs.filter(
+            assignments__route__business_unit_id__in=all_bu_ids
+        )
+
+    if cleaned_data.get('business_unit'):
+        bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in cleaned_data['business_unit']]
+        filtered_tx_qs = filtered_tx_qs.filter(route__business_unit_id__in=bu_ids)
+        filtered_routes_qs = filtered_routes_qs.filter(business_unit_id__in=bu_ids)
+        filtered_customers_qs = filtered_customers_qs.filter(
+            assignments__route__business_unit_id__in=bu_ids
+        )
+
     if cleaned_data.get('route'):
-        filtered_tx_qs = filtered_tx_qs.filter(route__in=cleaned_data['route'])
-    if cleaned_data.get('product_class'):
-        filtered_tx_qs = filtered_tx_qs.filter(product_class__in=cleaned_data['product_class'])
+        route_ids = [r.pk if hasattr(r, 'pk') else r for r in cleaned_data['route']]
+        filtered_tx_qs = filtered_tx_qs.filter(route_id__in=route_ids)
+        filtered_routes_qs = filtered_routes_qs.filter(id__in=route_ids)
+        filtered_customers_qs = filtered_customers_qs.filter(
+            assignments__route_id__in=route_ids
+        )
+
     if cleaned_data.get('product_category'):
         filtered_tx_qs = filtered_tx_qs.filter(product_class__product_category__in=cleaned_data['product_category'])
-    if cleaned_data.get('business_unit'):
-        filtered_tx_qs = filtered_tx_qs.filter(route__business_unit__in=cleaned_data['business_unit'])
+
+    if cleaned_data.get('product_class'):
+        filtered_tx_qs = filtered_tx_qs.filter(product_class__in=cleaned_data['product_class'])
 
     achievement_service = TargetAchievementService(
         user=request.user,
         targets_qs=filtered_targets_qs,
         transactions_qs=filtered_tx_qs,
-        customers_qs=base_customers_qs,
-        routes_qs=allowed_routes_qs,
+        customers_qs=filtered_customers_qs,
+        routes_qs=filtered_routes_qs,
         date_start=date_start,
         date_end=date_end,
         cleaned_data=cleaned_data
     )
 
     data = achievement_service.get_target_achievement_data()
+    display_classes = achievement_service._get_display_product_classes()
+    grand_total = achievement_service.get_grand_total_data(data, display_classes) if data else None
 
     context = {
         'filter': filter_set,
         'data': data,
+        'display_classes': display_classes,
+        'grand_total': grand_total,
         'selected_date_start': achievement_service.date_start_dt.strftime('%Y-%m-%d'),
         'selected_date_end': achievement_service.date_end_dt.strftime('%Y-%m-%d'),
         'total_b_days': achievement_service.total_b_days,

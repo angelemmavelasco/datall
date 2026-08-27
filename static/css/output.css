@@ -1860,6 +1860,14 @@
     .hover\:bg-hover:hover {
       background-color: var(--theme-hover);
     }
+    .hover\:bg-hover\/10:hover {
+      background-color: var(--theme-hover);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-hover\/10:hover {
+        background-color: color-mix(in oklab, var(--theme-hover) 10%, transparent);
+      }
+    }
     .hover\:bg-hover\/20:hover {
       background-color: var(--theme-hover);
     }
@@ -1874,6 +1882,14 @@
     @supports (color: color-mix(in lab, red, red)) {
       .hover\:bg-hover\/50:hover {
         background-color: color-mix(in oklab, var(--theme-hover) 50%, transparent);
+      }
+    }
+    .hover\:bg-hover\/70:hover {
+      background-color: var(--theme-hover);
+    }
+    @supports (color: color-mix(in lab, red, red)) {
+      .hover\:bg-hover\/70:hover {
+        background-color: color-mix(in oklab, var(--theme-hover) 70%, transparent);
       }
     }
     .hover\:text-emerald-400:hover {

@@ -106,13 +106,22 @@ class TargetAchievementService:
         """
         normalize product class names to show in columns
         """
-        db_classes = list(
-            ProductClass.objects.all()
-            .values_list('name', flat=True)
-            .order_by('name')
-        )
+        classes_qs = ProductClass.objects.all()
+        if self.cleaned_data and self.cleaned_data.get('product_category'):
+            classes_qs = classes_qs.filter(product_category__in=self.cleaned_data['product_category'])
+        if self.cleaned_data and self.cleaned_data.get('product_class'):
+            classes_qs = classes_qs.filter(pk__in=[c.pk if hasattr(c, 'pk') else c for c in self.cleaned_data['product_class']])
+
+        db_classes = list(classes_qs.values_list('name', flat=True).order_by('name'))
         normalized_db = [c.strip().lower() for c in db_classes if c and c.strip()]
-        
+
+        if self.cleaned_data and (self.cleaned_data.get('product_class') or self.cleaned_data.get('product_category')):
+            ordered_list = []
+            for c in normalized_db:
+                if c not in ordered_list:
+                    ordered_list.append(c)
+            return ordered_list or ['otros']
+
         ordered_list = []
         for vc in self.VALID_CORE_CLASSES:
             ordered_list.append(vc)
@@ -246,7 +255,10 @@ class TargetAchievementService:
 
             cname = (row['product_class__name'] or 'otros').strip().lower()
             if cname not in display_classes:
-                cname = 'otros'
+                if 'otros' in display_classes:
+                    cname = 'otros'
+                else:
+                    continue
 
             key = (rid, buid)
             if key not in routes_raw_dict:
@@ -288,7 +300,10 @@ class TargetAchievementService:
 
             cname = (row['product_class__name'] or 'otros').strip().lower()
             if cname not in display_classes:
-                cname = 'otros'
+                if 'otros' in display_classes:
+                    cname = 'otros'
+                else:
+                    continue
 
             # If route has established (rid, buid) entries, apply sales to them
             assigned_bus = route_assigned_bus.get(rid, set())
@@ -521,13 +536,88 @@ class TargetAchievementService:
                     'scope': bu_sum['scope'],
                     'scope_forecast': bu_sum['scope_forecast'],
                     'business_unit_product_classes_breakdown': bu_classes_breakdown,
+                    'rank_sale': 0,
+                    'rank_scope': 0,
                 },
                 'routes_data': bu_sum['routes_data'],
                 'display_classes': display_classes,
             })
 
+        # calculate rankings among business units by scope and sale
+        bu_by_scope = sorted(final_bu_list, key=lambda x: x['total_business_unit_data']['scope'], reverse=True)
+        bu_by_sale = sorted(final_bu_list, key=lambda x: x['total_business_unit_data']['net_amount'], reverse=True)
+
+        for rank, item in enumerate(bu_by_scope, start=1):
+            item['total_business_unit_data']['rank_scope'] = rank
+        for rank, item in enumerate(bu_by_sale, start=1):
+            item['total_business_unit_data']['rank_sale'] = rank
+
         final_bu_list.sort(key=lambda x: x['total_business_unit_data']['business_unit_name'])
         return final_bu_list
+
+    def get_grand_total_data(self, final_bu_list: list[dict[str, Any]], display_classes: list[str]) -> dict[str, Any]:
+        """
+        Consolidate grand totals across all business units for the summary table.
+        """
+        if not final_bu_list:
+            return {}
+
+        total_registered = sum(x['total_business_unit_data']['registered_customers'] for x in final_bu_list)
+        total_active = sum(x['total_business_unit_data']['active_customers'] for x in final_bu_list)
+        total_new = sum(x['total_business_unit_data']['new_customers'] for x in final_bu_list)
+        total_target = sum((x['total_business_unit_data']['target'] for x in final_bu_list), Decimal('0.00'))
+        total_net = sum((x['total_business_unit_data']['net_amount'] for x in final_bu_list), Decimal('0.00'))
+        total_diff = total_target - total_net
+
+        port_scope = round((total_active / total_registered * 100.0), 2) if total_registered > 0 else 0.00
+        scope = (total_net / total_target * Decimal('100.00')) if total_target > 0 else Decimal('0.00')
+
+        proj = (total_net / Decimal(self.elapsed_b_days)) * Decimal(self.total_b_days)
+        scope_forecast = (proj / total_target * Decimal('100.00')) if total_target > 0 else Decimal('0.00')
+
+        classes_totals = defaultdict(lambda: {'target': Decimal('0.00'), 'net_amount': Decimal('0.00')})
+        for x in final_bu_list:
+            for c in x['total_business_unit_data']['business_unit_product_classes_breakdown']:
+                cname = c['product_class_name']
+                classes_totals[cname]['target'] += c['target']
+                classes_totals[cname]['net_amount'] += c['net_amount']
+
+        gt_completed_fams = 0
+        gt_classes_breakdown = []
+        for cname in display_classes:
+            t = classes_totals[cname]['target']
+            n = classes_totals[cname]['net_amount']
+            c_diff = t - n
+            c_scope = (n / t * Decimal('100.00')) if t > 0 else Decimal('0.00')
+            c_proj = (n / Decimal(self.elapsed_b_days)) * Decimal(self.total_b_days)
+            c_scope_forecast = (c_proj / t * Decimal('100.00')) if t > 0 else Decimal('0.00')
+
+            if cname in self.VALID_CORE_CLASSES:
+                if t > 0 and n >= t:
+                    gt_completed_fams += 1
+
+            gt_classes_breakdown.append({
+                'product_class_name': cname,
+                'target': t,
+                'net_amount': n,
+                'difference': c_diff,
+                'scope': c_scope,
+                'scope_forecast': c_scope_forecast
+            })
+
+        return {
+            'registered_customers': total_registered,
+            'active_customers': total_active,
+            'portfolio_scope': port_scope,
+            'new_customers': total_new,
+            'completed_product_classes': gt_completed_fams,
+            'target': total_target,
+            'net_amount': total_net,
+            'difference': total_diff,
+            'scope': scope,
+            'scope_forecast': scope_forecast,
+            'product_classes_breakdown': gt_classes_breakdown,
+        }
 
     def get_target_achievement_data(self) -> list[dict[str, Any]]:
         """
