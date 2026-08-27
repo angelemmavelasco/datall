@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.utils import timezone
+from django.db.models import Q
 
 from .services.positions import PositionsStats, PositionsService, SkillsService, PositionNotFound, ServiceError, PermissionsError
 from .services.departments import DepartmentsService, DepartmentsStats, ServiceError, PermissionsError, DepartmentNotFound
@@ -13,6 +14,8 @@ from .services.monitoring import MonitoringFormsService, MonitoringSubmissionSer
 from .services.business_units import BusinessUnitsService, BusinessUnitsStats, BusinessUnitNotFound, ServiceError as BUServiceError, PermissionsError as BUPermissionsError
 from .services.employees import EmployeesService, EmployeesStats, EmployeeNotFound, ServiceError as EmpServiceError, PermissionsError as EmpPermissionsError
 from .services.org_chart import OrgChartService
+from apps.core.models import User
+from .models import Position, BusinessUnit, Employee
 
 from .forms import (
     DepartmentForm,
@@ -1190,10 +1193,19 @@ def employee_create_view(request):
     else:
         form = EmployeeForm()
 
+    initial_users = User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')[:30]
+    initial_positions = Position.objects.select_related('department').order_by('department__name', 'name')[:30]
+    initial_employees = service.read_employees()[:30]
+    initial_business_units = BusinessUnit.objects.order_by('name')[:30]
+
     context = {
         'form': form,
         'can_update_access': service.has_full_access,
-        'updating': None
+        'updating': None,
+        'initial_users': initial_users,
+        'initial_positions': initial_positions,
+        'initial_employees': initial_employees,
+        'initial_business_units': initial_business_units,
     }
     return render(request, template, context)
 
@@ -1237,10 +1249,19 @@ def employee_update_view(request, pk: str):
     else:
         form = EmployeeForm(instance=employee_instance)
 
+    initial_users = User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')[:30]
+    initial_positions = Position.objects.select_related('department').order_by('department__name', 'name')[:30]
+    initial_employees = service.read_employees()[:30]
+    initial_business_units = BusinessUnit.objects.order_by('name')[:30]
+
     context = {
         'form': form,
         'updating': employee_instance,
-        'can_update_access': service.has_full_access
+        'can_update_access': service.has_full_access,
+        'initial_users': initial_users,
+        'initial_positions': initial_positions,
+        'initial_employees': initial_employees,
+        'initial_business_units': initial_business_units,
     }
     return render(request, template, context)
 
@@ -1289,6 +1310,68 @@ def employee_options_view(request):
         'human_resources/employees/partials/employee_options.html',
         {
             'employees': employees,
+            'field_name': field_name,
+            'selected_id': str(selected_id),
+        }
+    )
+
+
+@login_required
+def position_options_view(request):
+    """
+    returns html option items for searchable position dropdowns via htmx
+    """
+    q = request.GET.get('q_position', request.GET.get('q', '')).strip()
+    field_name = request.GET.get('field_name', 'position')
+    selected_id = request.GET.get('selected_id', '')
+
+    base_qs = Position.objects.select_related('department')
+
+    if q:
+        base_qs = base_qs.filter(
+            Q(id__icontains=q) |
+            Q(name__icontains=q) |
+            Q(department__name__icontains=q) |
+            Q(department__id__icontains=q)
+        )
+
+    positions = base_qs.order_by('department__name', 'name')[:30]
+
+    return render(
+        request,
+        'human_resources/positions/partials/position_options.html',
+        {
+            'positions': positions,
+            'field_name': field_name,
+            'selected_id': str(selected_id),
+        }
+    )
+
+
+@login_required
+def business_unit_options_view(request):
+    """
+    returns html option items for searchable business unit dropdowns via htmx
+    """
+    q = request.GET.get('q_business_unit', request.GET.get('q', '')).strip()
+    field_name = request.GET.get('field_name', 'business_unit')
+    selected_id = request.GET.get('selected_id', '')
+
+    base_qs = BusinessUnit.objects.all()
+
+    if q:
+        base_qs = base_qs.filter(
+            Q(id__icontains=q) |
+            Q(name__icontains=q)
+        )
+
+    business_units = base_qs.order_by('name')[:30]
+
+    return render(
+        request,
+        'human_resources/business_units/partials/business_unit_options.html',
+        {
+            'business_units': business_units,
             'field_name': field_name,
             'selected_id': str(selected_id),
         }

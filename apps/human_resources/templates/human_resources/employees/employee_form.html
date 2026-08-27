@@ -38,10 +38,10 @@ Nuevo colaborador
         </span>
         <div>
             {% if updating %}
-                {% render_field form.id class='w-full bg-page border border-border rounded p-1 text-secondary cursor-not-allowed' readonly='readonly' %}
+                {% render_field form.id class='w-full bg-page border border-border rounded p-1 text-secondary cursor-not-allowed font-mono' readonly='readonly' %}
             {% else %}
                 <div class="flex flex-col gap-1.5">
-                    {% render_field form.id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ej: a1b2c' id='employee-id-input' %}
+                    {% render_field form.id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='Ej: a1b2c' id='employee-id-input' %}
                     <label class="flex items-center gap-1.5 cursor-pointer text-xs text-title select-none w-fit">
                         {% render_field form.auto_generate_id class='rounded border-border focus:outline-none bg-page cursor-pointer' id='auto-generate-id-checkbox' %}
                         <span>Autogenerar</span>
@@ -65,8 +65,47 @@ Nuevo colaborador
             </svg>
         </span>
         <div>
-            {% render_field form.user class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' required='required' %}
-            <a href="{% url 'core:user_create_form_view' %}" target="_blank" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px]">
+            <details class="group relative w-full custom-search-dropdown">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                    <span id="label_user" class="truncate">
+                        {% if form.instance.user %}
+                            {{ form.instance.user.first_name|title }} {{ form.instance.user.last_name|title }} (@{{ form.instance.user.username|lower }})
+                        {% elif form.user.value %}
+                            {% for u in initial_users %}
+                                {% if u.id|stringformat:"s" == form.user.value|stringformat:"s" %}
+                                    {{ u.first_name|title }} {{ u.last_name|title }} (@{{ u.username|lower }})
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            Seleccionar usuario...
+                        {% endif %}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+
+                <input type="hidden"
+                       name="user"
+                       id="id_user"
+                       value="{{ form.user.value|default:'' }}">
+
+                <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                    <input type="text"
+                           name="q_user"
+                           hx-get="{% url 'core:user_options_view' %}?field_name=user"
+                           hx-trigger="input delay:300ms, focus"
+                           hx-target="#options-user"
+                           hx-swap="innerHTML"
+                           hx-push-url="false"
+                           autocomplete="off"
+                           class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                           placeholder="Buscar por nombre o usuario...">
+
+                    <div id="options-user" class="h-36 overflow-y-auto flex flex-col gap-1">
+                        {% include "core/users/partials/user_options.html" with users=initial_users field_name="user" selected_id=form.user.value %}
+                    </div>
+                </div>
+            </details>
+            <a href="{% url 'core:user_create_form_view' %}" target="_blank" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px] mt-1">
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
                 Nuevo usuario
             </a>
@@ -92,8 +131,47 @@ Nuevo colaborador
             </svg>
         </span>
         <div>
-            {% render_field form.position class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' required='required' %}
-            <a href="{% url 'human_resources:position_create_view' %}?next={{ request.path }}" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px]">
+            <details class="group relative w-full custom-search-dropdown">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                    <span id="label_position" class="truncate">
+                        {% if form.instance.position %}
+                            {{ form.instance.position }}
+                        {% elif form.position.value %}
+                            {% for pos in initial_positions %}
+                                {% if pos.id|stringformat:"s" == form.position.value|stringformat:"s" %}
+                                    {{ pos }}
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            Seleccionar posición / puesto...
+                        {% endif %}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+
+                <input type="hidden"
+                       name="position"
+                       id="id_position"
+                       value="{{ form.position.value|default:'' }}">
+
+                <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                    <input type="text"
+                           name="q_position"
+                           hx-get="{% url 'human_resources:position_options_view' %}?field_name=position"
+                           hx-trigger="input delay:300ms, focus"
+                           hx-target="#options-position"
+                           hx-swap="innerHTML"
+                           hx-push-url="false"
+                           autocomplete="off"
+                           class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                           placeholder="Buscar por puesto o departamento...">
+
+                    <div id="options-position" class="h-36 overflow-y-auto flex flex-col gap-1">
+                        {% include "human_resources/positions/partials/position_options.html" with positions=initial_positions field_name="position" selected_id=form.position.value %}
+                    </div>
+                </div>
+            </details>
+            <a href="{% url 'human_resources:position_create_view' %}?next={{ request.path }}" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px] mt-1">
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
                 Nueva posición
             </a>
@@ -106,8 +184,47 @@ Nuevo colaborador
 
         <span class="text-title flex items-center gap-1">Responsable directo (Manager)</span>
         <div>
-            {% render_field form.manager class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
-            <a href="{% url 'human_resources:employee_create_view' %}?next={{ request.path }}" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px]">
+            <details class="group relative w-full custom-search-dropdown">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                    <span id="label_manager" class="truncate">
+                        {% if form.instance.manager %}
+                            {{ form.instance.manager }}
+                        {% elif form.manager.value %}
+                            {% for emp in initial_employees %}
+                                {% if emp.id|stringformat:"s" == form.manager.value|stringformat:"s" %}
+                                    {{ emp }}
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            Seleccionar responsable (opcional)...
+                        {% endif %}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+
+                <input type="hidden"
+                       name="manager"
+                       id="id_manager"
+                       value="{{ form.manager.value|default:'' }}">
+
+                <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                    <input type="text"
+                           name="q_employee"
+                           hx-get="{% url 'human_resources:employee_options_view' %}?field_name=manager"
+                           hx-trigger="input delay:300ms, focus"
+                           hx-target="#options-manager"
+                           hx-swap="innerHTML"
+                           hx-push-url="false"
+                           autocomplete="off"
+                           class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                           placeholder="Buscar por ID, nombre o puesto...">
+
+                    <div id="options-manager" class="h-36 overflow-y-auto flex flex-col gap-1">
+                        {% include "human_resources/employees/partials/employee_options.html" with employees=initial_employees field_name="manager" selected_id=form.manager.value %}
+                    </div>
+                </div>
+            </details>
+            <a href="{% url 'human_resources:employee_create_view' %}?next={{ request.path }}" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px] mt-1">
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
                 Nuevo colaborador
             </a>
@@ -120,8 +237,47 @@ Nuevo colaborador
 
         <span class="text-title flex items-center gap-1">Gerencia / Unidad de Negocio</span>
         <div>
-            {% render_field form.business_unit class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
-            <a href="{% url 'human_resources:business_unit_create_view' %}?next={{ request.path }}" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px]">
+            <details class="group relative w-full custom-search-dropdown">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                    <span id="label_business_unit" class="truncate">
+                        {% if form.instance.business_unit %}
+                            {{ form.instance.business_unit }}
+                        {% elif form.business_unit.value %}
+                            {% for bu in initial_business_units %}
+                                {% if bu.id|stringformat:"s" == form.business_unit.value|stringformat:"s" %}
+                                    {{ bu }}
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            Seleccionar gerencia (opcional)...
+                        {% endif %}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+
+                <input type="hidden"
+                       name="business_unit"
+                       id="id_business_unit"
+                       value="{{ form.business_unit.value|default:'' }}">
+
+                <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                    <input type="text"
+                           name="q_business_unit"
+                           hx-get="{% url 'human_resources:business_unit_options_view' %}?field_name=business_unit"
+                           hx-trigger="input delay:300ms, focus"
+                           hx-target="#options-business_unit"
+                           hx-swap="innerHTML"
+                           hx-push-url="false"
+                           autocomplete="off"
+                           class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                           placeholder="Buscar gerencia...">
+
+                    <div id="options-business_unit" class="h-36 overflow-y-auto flex flex-col gap-1">
+                        {% include "human_resources/business_units/partials/business_unit_options.html" with business_units=initial_business_units field_name="business_unit" selected_id=form.business_unit.value %}
+                    </div>
+                </div>
+            </details>
+            <a href="{% url 'human_resources:business_unit_create_view' %}?next={{ request.path }}" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px] mt-1">
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
                 Nueva gerencia
             </a>
@@ -142,7 +298,51 @@ Nuevo colaborador
             </svg>
         </span>
         <div>
-            {% render_field form.contract_type class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' required='required' %}
+            <details class="group relative w-full custom-search-dropdown">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                    <span id="label_contract_type" class="truncate">
+                        {% if form.instance.contract_type %}
+                            {{ form.instance.get_contract_type_display|title }}
+                        {% elif form.contract_type.value %}
+                            {% for val, label in form.contract_type.field.choices %}
+                                {% if val|stringformat:"s" == form.contract_type.value|stringformat:"s" %}
+                                    {{ label|title }}
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            Seleccionar tipo de contrato...
+                        {% endif %}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+
+                <input type="hidden"
+                       name="contract_type"
+                       id="id_contract_type"
+                       value="{{ form.contract_type.value|default:'' }}">
+
+                <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                    <input type="text"
+                           oninput="filterDropdownOptions(this)"
+                           autocomplete="off"
+                           class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                           placeholder="Buscar tipo de contrato...">
+
+                    <div class="h-36 overflow-y-auto flex flex-col gap-1 dropdown-options-list">
+                        {% for val, label in form.contract_type.field.choices %}
+                            {% if val %}
+                            <div onclick="selectDropdownOption('contract_type', '{{ val }}', '{{ label|title }}', this)"
+                                 class="option-item flex items-center justify-between p-1.5 rounded cursor-pointer hover:bg-hover transition-colors text-xs text-title {% if val|stringformat:'s' == form.contract_type.value|stringformat:'s' %}bg-muted/10 font-medium{% endif %}">
+                                <span class="truncate">{{ label|title }}</span>
+                                {% if val|stringformat:'s' == form.contract_type.value|stringformat:'s' %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500 shrink-0 ml-1"><polyline points="20 6 9 17 4 12"/></svg>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </details>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.contract_type.errors %}
                 <span class="block">• {{ error }}</span>
@@ -195,7 +395,51 @@ Nuevo colaborador
 
         <span class="text-title flex items-center gap-1">Régimen fiscal</span>
         <div>
-            {% render_field form.tax_regime class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <details class="group relative w-full custom-search-dropdown">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                    <span id="label_tax_regime" class="truncate">
+                        {% if form.instance.tax_regime %}
+                            {{ form.instance.get_tax_regime_display|title }}
+                        {% elif form.tax_regime.value %}
+                            {% for val, label in form.tax_regime.field.choices %}
+                                {% if val|stringformat:"s" == form.tax_regime.value|stringformat:"s" %}
+                                    {{ label|title }}
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            Seleccionar régimen fiscal...
+                        {% endif %}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+
+                <input type="hidden"
+                       name="tax_regime"
+                       id="id_tax_regime"
+                       value="{{ form.tax_regime.value|default:'' }}">
+
+                <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                    <input type="text"
+                           oninput="filterDropdownOptions(this)"
+                           autocomplete="off"
+                           class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                           placeholder="Buscar régimen fiscal...">
+
+                    <div class="h-36 overflow-y-auto flex flex-col gap-1 dropdown-options-list">
+                        {% for val, label in form.tax_regime.field.choices %}
+                            {% if val %}
+                            <div onclick="selectDropdownOption('tax_regime', '{{ val }}', '{{ label|title }}', this)"
+                                 class="option-item flex items-center justify-between p-1.5 rounded cursor-pointer hover:bg-hover transition-colors text-xs text-title {% if val|stringformat:'s' == form.tax_regime.value|stringformat:'s' %}bg-muted/10 font-medium{% endif %}">
+                                <span class="truncate">{{ label|title }}</span>
+                                {% if val|stringformat:'s' == form.tax_regime.value|stringformat:'s' %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500 shrink-0 ml-1"><polyline points="20 6 9 17 4 12"/></svg>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </details>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.tax_regime.errors %}
                 <span class="block">• {{ error }}</span>
@@ -205,7 +449,51 @@ Nuevo colaborador
 
         <span class="text-title flex items-center gap-1">Forma de pago</span>
         <div>
-            {% render_field form.payment_form class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <details class="group relative w-full custom-search-dropdown">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                    <span id="label_payment_form" class="truncate">
+                        {% if form.instance.payment_form %}
+                            {{ form.instance.get_payment_form_display|title }}
+                        {% elif form.payment_form.value %}
+                            {% for val, label in form.payment_form.field.choices %}
+                                {% if val|stringformat:"s" == form.payment_form.value|stringformat:"s" %}
+                                    {{ label|title }}
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            Seleccionar forma de pago...
+                        {% endif %}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+
+                <input type="hidden"
+                       name="payment_form"
+                       id="id_payment_form"
+                       value="{{ form.payment_form.value|default:'' }}">
+
+                <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                    <input type="text"
+                           oninput="filterDropdownOptions(this)"
+                           autocomplete="off"
+                           class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                           placeholder="Buscar forma de pago...">
+
+                    <div class="h-36 overflow-y-auto flex flex-col gap-1 dropdown-options-list">
+                        {% for val, label in form.payment_form.field.choices %}
+                            {% if val %}
+                            <div onclick="selectDropdownOption('payment_form', '{{ val }}', '{{ label|title }}', this)"
+                                 class="option-item flex items-center justify-between p-1.5 rounded cursor-pointer hover:bg-hover transition-colors text-xs text-title {% if val|stringformat:'s' == form.payment_form.value|stringformat:'s' %}bg-muted/10 font-medium{% endif %}">
+                                <span class="truncate">{{ label|title }}</span>
+                                {% if val|stringformat:'s' == form.payment_form.value|stringformat:'s' %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500 shrink-0 ml-1"><polyline points="20 6 9 17 4 12"/></svg>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </details>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.payment_form.errors %}
                 <span class="block">• {{ error }}</span>
@@ -215,7 +503,51 @@ Nuevo colaborador
 
         <span class="text-title flex items-center gap-1">Periodicidad de pago</span>
         <div>
-            {% render_field form.payroll_frequency class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <details class="group relative w-full custom-search-dropdown">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                    <span id="label_payroll_frequency" class="truncate">
+                        {% if form.instance.payroll_frequency %}
+                            {{ form.instance.get_payroll_frequency_display|title }}
+                        {% elif form.payroll_frequency.value %}
+                            {% for val, label in form.payroll_frequency.field.choices %}
+                                {% if val|stringformat:"s" == form.payroll_frequency.value|stringformat:"s" %}
+                                    {{ label|title }}
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            Seleccionar periodicidad...
+                        {% endif %}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+
+                <input type="hidden"
+                       name="payroll_frequency"
+                       id="id_payroll_frequency"
+                       value="{{ form.payroll_frequency.value|default:'' }}">
+
+                <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                    <input type="text"
+                           oninput="filterDropdownOptions(this)"
+                           autocomplete="off"
+                           class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                           placeholder="Buscar periodicidad...">
+
+                    <div class="h-36 overflow-y-auto flex flex-col gap-1 dropdown-options-list">
+                        {% for val, label in form.payroll_frequency.field.choices %}
+                            {% if val %}
+                            <div onclick="selectDropdownOption('payroll_frequency', '{{ val }}', '{{ label|title }}', this)"
+                                 class="option-item flex items-center justify-between p-1.5 rounded cursor-pointer hover:bg-hover transition-colors text-xs text-title {% if val|stringformat:'s' == form.payroll_frequency.value|stringformat:'s' %}bg-muted/10 font-medium{% endif %}">
+                                <span class="truncate">{{ label|title }}</span>
+                                {% if val|stringformat:'s' == form.payroll_frequency.value|stringformat:'s' %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500 shrink-0 ml-1"><polyline points="20 6 9 17 4 12"/></svg>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </details>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.payroll_frequency.errors %}
                 <span class="block">• {{ error }}</span>
@@ -268,31 +600,61 @@ Nuevo colaborador
     </div>
 </form>
 
-{% if not updating %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const autoGenCheckbox = document.getElementById('auto-generate-id-checkbox');
-        const idInput = document.getElementById('employee-id-input');
+function selectDropdownOption(fieldName, optionId, optionLabel, element) {
+    const input = document.getElementById('id_' + fieldName);
+    const label = document.getElementById('label_' + fieldName);
+    if (input) input.value = optionId;
+    if (label) label.textContent = optionLabel;
 
-        if (autoGenCheckbox && idInput) {
-            function updateIdInputState() {
-                if (autoGenCheckbox.checked) {
-                    idInput.value = '';
-                    idInput.disabled = true;
-                    idInput.placeholder = 'Se generará automáticamente (5 caracteres)';
-                    idInput.classList.add('opacity-50', 'cursor-not-allowed');
-                } else {
-                    idInput.disabled = false;
-                    idInput.placeholder = 'Ej: a1b2c';
-                    idInput.classList.remove('opacity-50', 'cursor-not-allowed');
-                }
-            }
+    const details = element.closest('details');
+    if (details) details.removeAttribute('open');
+}
 
-            autoGenCheckbox.addEventListener('change', updateIdInputState);
-            updateIdInputState();
+function filterDropdownOptions(input) {
+    const term = input.value.toLowerCase().trim();
+    const list = input.parentElement.querySelector('.dropdown-options-list');
+    if (!list) return;
+    const items = list.querySelectorAll('.option-item');
+    items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        item.style.display = text.includes(term) ? '' : 'none';
+    });
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('.custom-search-dropdown[open]').forEach(function(details) {
+        if (!details.contains(e.target)) {
+            details.removeAttribute('open');
         }
     });
-</script>
+});
+
+{% if not updating %}
+document.addEventListener('DOMContentLoaded', function() {
+    const autoGenCheckbox = document.getElementById('auto-generate-id-checkbox');
+    const idInput = document.getElementById('employee-id-input');
+
+    if (autoGenCheckbox && idInput) {
+        function updateIdInputState() {
+            if (autoGenCheckbox.checked) {
+                idInput.value = '';
+                idInput.disabled = true;
+                idInput.placeholder = 'Se generará automáticamente (5 caracteres)';
+                idInput.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                idInput.disabled = false;
+                idInput.placeholder = 'Ej: a1b2c';
+                idInput.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        autoGenCheckbox.addEventListener('change', updateIdInputState);
+        updateIdInputState();
+    }
+});
 {% endif %}
+</script>
 
 {% endblock %}

@@ -1,0 +1,11 @@
+{% for pos in positions %}
+    <div onclick="selectDropdownOption('{{ field_name }}', '{{ pos.id }}', '{{ pos|escapejs }}', this)"
+         class="option-item flex items-center justify-between p-1.5 rounded cursor-pointer hover:bg-hover transition-colors text-xs text-title {% if pos.id|stringformat:'s' == selected_id|stringformat:'s' %}bg-muted/10 font-medium{% endif %}">
+        <span class="truncate" title="{{ pos }}">{{ pos }}</span>
+        {% if pos.id|stringformat:"s" == selected_id|stringformat:"s" %}
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500 shrink-0 ml-1"><polyline points="20 6 9 17 4 12"/></svg>
+        {% endif %}
+    </div>
+{% empty %}
+    <div class="text-center py-3 text-secondary italic text-xs">No se encontraron puestos</div>
+{% endfor %}
