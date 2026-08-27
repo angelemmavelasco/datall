@@ -311,7 +311,7 @@ class ProductsService(UsersService):
             )
 
             df['product_class_id'] = df['product_class_id'].apply(
-                lambda x: valid_types_dict.get(str(x).strip().lower(), str(x).strip()) if x not in (None, 'None', 'nan', '') else default_type
+                lambda x: valid_types_dict.get(str(x).strip().lower(), default_type) if x not in (None, 'None', 'nan', '') else default_type
             )
         elif default_type:
             df['product_class_id'] = default_type

@@ -409,7 +409,7 @@ class CustomersService(UsersService):
             )
 
             df['customer_type_id'] = df['customer_type_id'].apply(
-                lambda x: valid_types_dict.get(str(x).strip().lower(), str(x).strip()) if x not in (None, 'None', 'nan', '') else default_type
+                lambda x: valid_types_dict.get(str(x).strip().lower(), default_type) if x not in (None, 'None', 'nan', '') else default_type
             )
         else:
             df['customer_type_id'] = default_type
