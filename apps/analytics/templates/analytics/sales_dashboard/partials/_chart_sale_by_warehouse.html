@@ -101,6 +101,7 @@
                     data: businessUnitData.categories || [],
                     axisLabel: {
                         color: titleColor,
+                        fontSize: 10,
                         formatter: function(val, index) {
                             const sale = (businessUnitData.sales && businessUnitData.sales[index] !== undefined)
                                 ? '$ ' + Number(businessUnitData.sales[index]).toLocaleString('es-MX', { maximumFractionDigits: 0 })
@@ -110,8 +111,8 @@
                         rich: {
                             sale: {
                                 color: greenColor,
-                                fontSize: 10,
-                                lineHeight: 14,
+                                fontSize: 9,
+                                lineHeight: 12,
                                 fontWeight: '500'
                             }
                         }
@@ -122,13 +123,15 @@
                         name: 'Venta',
                         type: 'bar',
                         data: businessUnitData.sales || [],
-                        barMaxWidth: 20,
+                        barMaxWidth: 16,
+                        barGap: '20%',
+                        barCategoryGap: '35%',
                     },
                     {
                         name: 'Objetivo',
                         type: 'bar',
                         data: businessUnitData.targets || [],
-                        barMaxWidth: 20,
+                        barMaxWidth: 16,
                     }
                 ]
             };
