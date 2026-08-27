@@ -1,0 +1,157 @@
+{% load widget_tweaks %}
+
+<form method="GET" class="flex flex-col gap-4" id="params_filters">
+    <!-- Año -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title text-xs font-medium">{{ filter.form.year.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs" placeholder="Buscar año...">
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
+                {% for choice in filter.form.year %}
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                        {{ choice.tag }}
+                        <span class="option-label" title="{{ choice.choice_label }}">{{ choice.choice_label }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Región -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title text-xs font-medium">{{ filter.form.region.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs" placeholder="Buscar región...">
+            <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border text-xs">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
+                {% for choice in filter.form.region %}
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                        {{ choice.tag }}
+                        <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Gerencia -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title text-xs font-medium">{{ filter.form.business_unit.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs" placeholder="Buscar gerencia...">
+            <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border text-xs">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
+                {% for choice in filter.form.business_unit %}
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                        {{ choice.tag }}
+                        <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Ruta -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title text-xs font-medium">{{ filter.form.route.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs" placeholder="Buscar ruta...">
+            <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border text-xs">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
+                {% for choice in filter.form.route %}
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                        {{ choice.tag }}
+                        <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Categoría de producto -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title text-xs font-medium">{{ filter.form.product_category.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs" placeholder="Buscar categoría...">
+            <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border text-xs">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
+                {% for choice in filter.form.product_category %}
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                        {{ choice.tag }}
+                        <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Clase de producto -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title text-xs font-medium">{{ filter.form.product_class.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text" class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs" placeholder="Buscar clase...">
+            <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border text-xs">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options">
+                {% for choice in filter.form.product_class %}
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                        {{ choice.tag }}
+                        <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="bg-container border border-border text-title hover:bg-hover hover:text-hover p-2 rounded transition-colors cursor-pointer w-full text-xs">
+        Aplicar filtros
+    </button>
+    <a href="?" class="block bg-page border border-border text-title hover:bg-hover hover:text-hover p-2 rounded transition-colors cursor-pointer w-full text-center text-xs">
+        Limpiar filtros
+    </a>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.filter-group').forEach(group => {
+            const searchInput = group.querySelector('.filter-search');
+            const selectAll = group.querySelector('.filter-select-all');
+            const options = group.querySelectorAll('.filter-option');
+
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const val = e.target.value.toLowerCase().trim();
+                    options.forEach(opt => {
+                        const label = opt.querySelector('.option-label')?.textContent.toLowerCase() || '';
+                        opt.style.display = label.includes(val) ? '' : 'none';
+                    });
+                });
+            }
+
+            if (selectAll) {
+                selectAll.addEventListener('change', (e) => {
+                    options.forEach(opt => {
+                        if (opt.style.display !== 'none') {
+                            const cb = opt.querySelector('input[type="checkbox"]');
+                            if (cb) cb.checked = e.target.checked;
+                        }
+                    });
+                });
+            }
+        });
+    });
+</script>

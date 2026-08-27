@@ -587,3 +587,97 @@ class YearlySaleBreakdownFilter(django_filters.FilterSet):
         bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in value]
         return queryset.filter(route__business_unit_id__in=bu_ids)
 
+
+class MonthlySaleBreakdownFilter(django_filters.FilterSet):
+    year = django_filters.ChoiceFilter(
+        label='Año',
+        widget=forms.RadioSelect,
+        method='filter_noop',
+        empty_label=None,
+        null_label=None,
+    )
+    region = BusinessUnitMultipleChoiceFilter(
+        method='filter_region',
+        queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION),
+        widget=forms.CheckboxSelectMultiple,
+        label='Región'
+    )
+    business_unit = BusinessUnitMultipleChoiceFilter(
+        method='filter_business_unit',
+        queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT),
+        widget=forms.CheckboxSelectMultiple,
+        label='Gerencia'
+    )
+    route = django_filters.ModelMultipleChoiceFilter(
+        field_name='route',
+        queryset=Route.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Ruta'
+    )
+    product_category = ProductCategoryMultipleChoiceFilter(
+        field_name='product_class__product_category',
+        queryset=ProductCategory.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Categoría de producto'
+    )
+    product_class = ProductClassMultipleChoiceFilter(
+        field_name='product_class',
+        queryset=ProductClass.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Clase de producto'
+    )
+
+    class Meta:
+        model = SaleTransaction
+        fields = []
+
+    def __init__(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+
+        today_year = timezone.localdate().year
+        # get distinct years from SaleTransaction or generate range
+        years = list(SaleTransaction.objects.dates('sale_date', 'year', order='DESC'))
+        year_choices = [(str(d.year), str(d.year)) for d in years] if years else []
+        if not year_choices:
+            year_choices = [(str(y), str(y)) for y in range(today_year, today_year - 5, -1)]
+        elif str(today_year) not in [c[0] for c in year_choices]:
+            year_choices.insert(0, (str(today_year), str(today_year)))
+
+        self.filters['year'].extra['choices'] = year_choices
+
+        if request:
+            bu_service = BusinessUnitsService(user=request.user)
+            self.filters['region'].queryset = bu_service.read_regions()
+            self.filters['business_unit'].queryset = bu_service.read_units()
+            self.filters['route'].queryset = RoutesService(user=request.user).read_routes().order_by('id')
+            self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
+            self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
+
+    def filter_noop(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        return queryset
+
+    def filter_region(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        selected_region_ids = set(r.pk if hasattr(r, 'pk') else r for r in value)
+        all_bu_ids = set(selected_region_ids)
+        current_parents = set(selected_region_ids)
+        while current_parents:
+            child_ids = set(
+                BusinessUnit.objects.filter(parent_id__in=current_parents).values_list('id', flat=True)
+            )
+            new_ids = child_ids - all_bu_ids
+            if not new_ids:
+                break
+            all_bu_ids.update(new_ids)
+            current_parents = new_ids
+        return queryset.filter(route__business_unit_id__in=all_bu_ids)
+
+    def filter_business_unit(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in value]
+        return queryset.filter(route__business_unit_id__in=bu_ids)
+
+

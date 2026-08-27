@@ -1,0 +1,39 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-sm cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo interpretar el Desglose mensual de ventas?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2 space-y-3">
+        <p class="text-xs">
+            Esta vista desglosa el cumplimiento comercial mes a mes durante el año seleccionado, agrupado por Gerencia (Unidad de Negocio) y Ruta:
+        </p>
+
+        <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+            <li>
+                <span class="font-medium text-title">Clases de producto:</span> Compara el Objetivo ($), la Venta neta ($), el Alcance (%) y la Diferencia ($) para cada categoría de productos.
+            </li>
+            <li>
+                <span class="font-medium text-title">Fila total:</span> Resume la facturación total y el cumplimiento consolidado de la ruta o gerencia en cada mes.
+            </li>
+            <li>
+                <span class="font-medium text-title">Margen:</span> Porcentaje de utilidad real generado en las transacciones del mes (Utilidad / Venta Neta).
+            </li>
+            <li>
+                <span class="font-medium text-title">Clientes nuevos:</span> Cantidad de clientes registrados en el sistema durante ese mes asignados a la ruta.
+            </li>
+            <li>
+                <span class="font-medium text-title">Cuentas por cobrar:</span> Conteo de clientes únicos con facturas emitidas en el mes con saldo pendiente.
+            </li>
+            <li>
+                <span class="font-medium text-title">Cuentas por cobrar $:</span> Monto monetario total pendiente de cobro emitido en ese mes.
+            </li>
+        </ul>
+    </div>
+</details>

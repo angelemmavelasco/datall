@@ -11,7 +11,8 @@ from django_q.tasks import async_task
 from apps.core.models import GeneratedReport
 from apps.customers.services.customers import CustomersService
 from apps.sales.services.routes import RoutesService
-from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter
+from apps.sales.services.sale_transactions import SaleTransactionsService
+from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter, MonthlySaleBreakdownFilter
 
 from time import perf_counter
 
@@ -145,5 +146,69 @@ def commercial_risk_export_view(request):
     redirect_url = reverse('analytics:commercial_risk_view')
     if query_str:
         redirect_url += f"?{query_str}"
+
+    return redirect(redirect_url)
+
+
+@login_required
+def monthly_sale_breakdown_export_view(request):
+    start = perf_counter()
+
+    today = timezone.localdate()
+    req_data = request.GET.copy()
+    if not req_data.get('year'):
+        req_data['year'] = str(today.year)
+
+    selected_year = int(req_data.get('year', today.year))
+
+    # base services
+    sale_transaction_service = SaleTransactionsService(user=request.user)
+    base_tx_qs = sale_transaction_service.read_transactions_by_allowed_routes()
+
+    # set filters
+    filter_set = MonthlySaleBreakdownFilter(req_data, queryset=base_tx_qs, request=request)
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+
+    # serializable cleaned_data dict
+    serializable_cleaned_data = {}
+    for k, v in cleaned_data.items():
+        if isinstance(v, (date, timezone.datetime)):
+            serializable_cleaned_data[k] = v.strftime('%Y-%m-%d')
+        elif hasattr(v, 'id'):
+            serializable_cleaned_data[k] = v.id
+        elif isinstance(v, (str, int, float, bool, list, dict)) or v is None:
+            serializable_cleaned_data[k] = v
+        elif hasattr(v, '__iter__'):
+            serializable_cleaned_data[k] = [item.id if hasattr(item, 'id') else str(item) for item in v]
+        else:
+            serializable_cleaned_data[k] = str(v)
+
+    # create database record for user downloads
+    report = GeneratedReport.objects.create(
+        user=request.user,
+        title=f"Reporte de Desglose Mensual de Ventas - {selected_year}",
+        module_name="monthly_sale_breakdown",
+        status=GeneratedReport.Status.PENDING,
+        filters=serializable_cleaned_data,
+    )
+
+    # dispatch async task to Django Q worker
+    async_task(
+        'apps.analytics.tasks.generate_monthly_sale_breakdown_report_task',
+        request.user.id,
+        request.GET.urlencode(),
+        serializable_cleaned_data,
+        report.id,
+    )
+
+    messages.info(request, "Tu reporte de desglose mensual de ventas se está generando en segundo plano. Aparecerá en tus archivos cuando esté listo. Puedes seguir navegando por la web sin problemas.")
+
+    query_str = request.GET.urlencode()
+    redirect_url = reverse('analytics:monthly_sale_breakdown_view')
+    if query_str:
+        redirect_url += f"?{query_str}"
+
+    end = perf_counter()
+    print(f"Monthly Sale Breakdown export took {end - start} seconds")
 
     return redirect(redirect_url)

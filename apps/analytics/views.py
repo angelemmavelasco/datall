@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from .exports import *
 from time import perf_counter
 
@@ -22,13 +23,14 @@ from apps.customers.services.customers import CustomersService
 from apps.sales.services.routes import RoutesService
 
 #base services analytics
-from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter, CommercialRiskFilter, CollectionsDashboardFilter, TargetAchievementFilter, YearlySaleBreakdownFilter
+from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter, CommercialRiskFilter, CollectionsDashboardFilter, TargetAchievementFilter, YearlySaleBreakdownFilter, MonthlySaleBreakdownFilter
 from apps.analytics.services.sales_dashboard import SalesDashboardService
 from apps.analytics.services.customer_kpis import CustomerKpisService
 from apps.analytics.services.route_kpis import RouteKpisService
 from apps.analytics.services.commercial_risk import CommercialRiskService
 from apps.analytics.services.target_achievement import TargetAchievementService
 from apps.analytics.services.yearly_sale_breakdown import YearlySaleBreakdownService
+from apps.analytics.services.monthly_sale_breakdown import MonthlySaleBreakdownService
 
 @login_required
 def sales_dashboard_view(request):
@@ -554,7 +556,59 @@ def yearly_sale_breakdown_view(request):
 
 @login_required
 def monthly_sale_breakdown_view(request):
-    pass
+    template = 'analytics/monthly_sale_breakdown/monthly_sale_breakdown.html'
+
+    today = timezone.localdate()
+    req_data = request.GET.copy()
+    if not req_data.get('year'):
+        req_data['year'] = str(today.year)
+
+    selected_year = int(req_data.get('year', today.year))
+
+    #base services
+    sale_transaction_service = SaleTransactionsService(user=request.user)
+    base_tx_qs = sale_transaction_service.read_transactions_by_allowed_routes()
+
+    targets_service = SaleTargetsService(user=request.user)
+    base_targets_qs = targets_service.read_sale_targets()
+
+    customers_service = CustomersService(user=request.user)
+    base_customers_qs = customers_service.read_customers()
+
+    ar_service = AccountsReceivablesService(user=request.user)
+    base_ars_qs = ar_service.read_ars_by_allowed_customers()
+
+    routes_service = RoutesService(user=request.user)
+    allowed_routes_qs = routes_service.read_routes().order_by('id')
+
+    #filter
+    filter_set = MonthlySaleBreakdownFilter(req_data, queryset=base_tx_qs, request=request)
+    filtered_tx_qs = filter_set.qs
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+
+    breakdown_service = MonthlySaleBreakdownService(
+        user=request.user,
+        targets_qs=base_targets_qs,
+        transactions_qs=filtered_tx_qs,
+        customers_qs=base_customers_qs,
+        ars_qs=base_ars_qs,
+        routes_qs=allowed_routes_qs,
+        year=selected_year,
+        cleaned_data=cleaned_data
+    )
+
+    breakdown_data = breakdown_service.get_data()
+
+    query_dict = req_data.copy()
+
+    context = {
+        'filter': filter_set,
+        'selected_year': selected_year,
+        'breakdown_data': breakdown_data,
+        'query_string': query_dict.urlencode(),
+    }
+
+    return render(request, template, context)
 
 @login_required
 def business_unit_sale_breakdown_view(request):
