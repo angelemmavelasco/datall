@@ -271,7 +271,8 @@ def collections_dashboard_view(request):
     else:
         ars_qs = service.read_ars_by_allowed_customers()
 
-    filter_set = CollectionsDashboardFilter(request.GET or None, queryset=ars_qs, request=request)
+    from apps.customers.filters import AccountsReceivableFilter
+    filter_set = AccountsReceivableFilter(request.GET or None, queryset=ars_qs, request=request)
     filtered_ars_qs = filter_set.qs
 
     # for htmx lookup in customer filter
@@ -300,8 +301,8 @@ def collections_dashboard_view(request):
         'initial_customers': initial_customers,
         'selected_customer_ids': selected_customer_ids,
         'current_perspective': perspective,
-        'selected_issue_date_start': request.GET.get('issue_date_start', ''),
-        'selected_issue_date_end': request.GET.get('issue_date_end', ''),
+        'selected_issue_date_start': request.GET.get('issue_date_from') or request.GET.get('issue_date_start', ''),
+        'selected_issue_date_end': request.GET.get('issue_date_to') or request.GET.get('issue_date_end', ''),
         'kpis': kpis,
         'collections_by_customer': page_obj.object_list,
         'page_obj': page_obj,

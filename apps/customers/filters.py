@@ -117,6 +117,10 @@ class AccountsReceivableFilter(django_filters.FilterSet):
         method='filter_search',
         label='Búsqueda general'
     )
+    customer_search = django_filters.CharFilter(
+        method='filter_customer_search',
+        label='Buscar cliente'
+    )
     perspective = django_filters.ChoiceFilter(
         choices=PERSPECTIVE_CHOICES,
         label='Forma de visualización',
@@ -288,6 +292,14 @@ class AccountsReceivableFilter(django_filters.FilterSet):
         return queryset.filter(
             Q(doc_id__icontains=value) |
             Q(description__icontains=value) |
+            Q(customer__id__icontains=value) |
+            Q(customer__name__icontains=value)
+        ).distinct()
+
+    def filter_customer_search(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.filter(
             Q(customer__id__icontains=value) |
             Q(customer__name__icontains=value)
         ).distinct()
