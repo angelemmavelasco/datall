@@ -132,7 +132,6 @@ class AccountsReceivablesService(UsersService):
             return False, "La librería 'pandas' no está instalada en el entorno."
 
         from apps.core.services.uploads import BaseETLHelper
-
         is_valid, df_or_err = BaseETLHelper.read_file_to_dataframe(file_obj)
         if not is_valid:
             return False, df_or_err
@@ -146,8 +145,12 @@ class AccountsReceivablesService(UsersService):
         )
         df = BaseETLHelper.resolve_foreign_key_columns(df, self.accounts_receivable_model)
 
-        if 'customer_id' not in df.columns:
-            return False, "El archivo debe contener una columna identificadora mapeada a 'customer' (ID de Cliente)."
+        if 'customer' in df.columns and 'customer_id' not in df.columns:
+            df.rename(columns={'customer': 'customer_id'}, inplace=True)
+
+        is_req_valid, req_msg = BaseETLHelper.validate_required_columns(df, {'customer_id': 'Cliente'})
+        if not is_req_valid:
+            return False, req_msg
 
         str_cols = ['customer_id', 'route_id', 'doc_id', 'description']
         for col in str_cols:
@@ -157,7 +160,7 @@ class AccountsReceivablesService(UsersService):
 
         df = df.dropna(subset=['customer_id'])
         if df.empty:
-            return False, "Después de limpiar las filas sin cliente, el archivo se quedó vacío."
+            return False, "El archivo no contiene registros válidos después de descartar filas sin identificador de cliente."
 
         from django.contrib.contenttypes.models import ContentType
         from apps.core.models import Reference
@@ -201,7 +204,7 @@ class AccountsReceivablesService(UsersService):
         return True, df
 
     def bulk_create_ars(self, file_obj) -> object:
-        from apps.core.services.uploads import ImportResult, PermissionsError
+        from apps.core.services.uploads import ImportResult, PermissionsError, BaseETLHelper
         from django.db import transaction
 
         if not self.has_full_access:
@@ -213,31 +216,15 @@ class AccountsReceivablesService(UsersService):
 
         df = df_or_err
 
+        is_fk_valid, fk_msg = BaseETLHelper.validate_foreign_keys(df, self.accounts_receivable_model)
+        if not is_fk_valid:
+            return ImportResult(success=False, message=fk_msg)
+
         model_fields = [f.name for f in self.accounts_receivable_model._meta.get_fields() if not f.is_relation]
         model_fields.extend([f.attname for f in self.accounts_receivable_model._meta.get_fields() if f.is_relation and hasattr(f, 'attname')])
         
         valid_columns = [col for col in df.columns if col in model_fields and col != 'id']
 
-        fk_fields = [f for f in self.accounts_receivable_model._meta.get_fields() if f.is_relation and hasattr(f, 'attname')]
-        for fk in fk_fields:
-            column_name = fk.attname         
-            related_model = fk.related_model 
-
-            if column_name in df.columns:
-                df_ids = set(df[column_name].dropna().unique())
-                
-                if not df_ids:
-                    continue
-
-                db_ids = set(related_model.objects.filter(pk__in=df_ids).values_list('pk', flat=True))
-
-                missing_ids = df_ids - db_ids
-
-                if missing_ids:
-                    missing_list = list(missing_ids)
-                    sample_missing = missing_list[:10] 
-                    return ImportResult(success=False, message=f"Error de Foreign Key: En la columna '{column_name}', los siguientes IDs no existen en el sistema: {sample_missing}{'...' if len(missing_list) > 10 else ''}. Registra estos datos primero e intenta de nuevo.")
-        
         records_to_create = []
         total_processed = 0
 
@@ -255,7 +242,7 @@ class AccountsReceivablesService(UsersService):
             total_processed += 1
 
         if not records_to_create:
-            return ImportResult(success=False, message="No se encontraron cuentas por cobrar válidas para importar.")
+            return ImportResult(success=False, message="El archivo no contiene cuentas por cobrar válidas para importar.")
 
         try:
             with transaction.atomic():
@@ -275,9 +262,10 @@ class AccountsReceivablesService(UsersService):
             )
 
         except Exception as e:
+            humanized_msg = BaseETLHelper.humanize_database_error(e)
             return ImportResult(
                 success=False,
-                message=f"Error durante la inserción masiva: {str(e)}",
+                message=humanized_msg,
                 total_processed=total_processed,
                 errors=[str(e)]
             )

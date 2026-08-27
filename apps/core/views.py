@@ -4,6 +4,8 @@ from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 
+from apps.core.services.uploads import UploadsService, BaseETLHelper
+from django_q.tasks import async_task
 from .filters import UserFilter
 from .forms import UserForm
 from .models import User, GeneratedReport
@@ -248,7 +250,7 @@ def upload_options_list_view(request):
     template = 'core/uploads/upload_options_list.html'
 
     if request.method == 'POST':
-        model_key = request.POST.get('model_key', '').strip()
+        model_key = request.POST.get('model_key', '').strip().lower()
         file_obj = request.FILES.get('file')
 
         if not model_key:
@@ -259,15 +261,49 @@ def upload_options_list_view(request):
             messages.error(request, 'Debes seleccionar un archivo para importar (.xlsx, .xls, .csv).')
             return redirect('core:upload_options_list_view')
 
-        from apps.core.services.uploads import UploadsService
         service = UploadsService(user=request.user)
-        result = service.process_upload(model_key=model_key, file_obj=file_obj)
 
-        if result.success:
-            messages.success(request, result.message)
-        else:
-            messages.error(request, result.message)
+        try:
+            service.validate_permission()
+        except Exception as e:
+            messages.error(request, str(e))
+            return redirect('core:upload_options_list_view')
 
+        is_valid_file, file_err = BaseETLHelper.validate_file(file_obj)
+        if not is_valid_file:
+            messages.error(request, file_err)
+            return redirect('core:upload_options_list_view')
+
+        catalog_titles = {
+            'product': 'Catálogo de Productos',
+            'customer': 'Catálogo de Clientes',
+            'saletransaction': 'Transacciones de Venta',
+            'accountsreceivable': 'Cuentas por Cobrar',
+            'stock': 'Existencias (Stock)',
+        }
+        title_label = catalog_titles.get(model_key, model_key.title())
+
+        report = GeneratedReport.objects.create(
+            user=request.user,
+            title=f"Importación: {title_label}",
+            module_name="uploads",
+            file=file_obj,
+            file_size=file_obj.size,
+            status=GeneratedReport.Status.PENDING,
+            filters={'model_key': model_key, 'filename': getattr(file_obj, 'name', '')},
+        )
+
+        async_task(
+            'apps.core.tasks.process_bulk_upload_task',
+            report.id,
+            model_key,
+            request.user.id,
+        )
+
+        messages.info(
+            request,
+            f"El archivo para {title_label} se ha cargado correctamente y se está procesando en segundo plano. Puedes consultar el progreso y los resultados en 'Mis Archivos'."
+        )
         return redirect('core:upload_options_list_view')
 
     upload_options = [

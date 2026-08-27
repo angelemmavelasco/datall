@@ -67,10 +67,16 @@ class BaseETLHelper:
             allowed = ', '.join(cls.ALLOWED_EXTENSIONS)
             return False, f"Formato de archivo no soportado. Debe ser uno de los siguientes: {allowed}"
 
-        # Check if file has content
         file_size = getattr(file_obj, 'size', None)
+        if file_size is None and hasattr(file_obj, 'getbuffer'):
+            file_size = file_obj.getbuffer().nbytes
+        elif file_size is None and hasattr(file_obj, 'seek') and hasattr(file_obj, 'tell'):
+            file_obj.seek(0, io.SEEK_END)
+            file_size = file_obj.tell()
+            file_obj.seek(0)
+
         if file_size is not None and file_size <= 0:
-            return False, "El archivo proporcionado está vacío."
+            return False, "El archivo proporcionado se encuentra vacío o no contiene datos."
 
         return True, ""
 
@@ -186,6 +192,133 @@ class BaseETLHelper:
             df.rename(columns=fk_map, inplace=True)
 
         return df
+
+    @classmethod
+    def validate_required_columns(
+            cls,
+            df: pd.DataFrame,
+            required_columns: list[str] | dict[str, str]
+        ) -> tuple[bool, str]:
+        """
+        Validates that required columns exist in the DataFrame after mapping.
+        required_columns can be a list of column names or a dict of {col_name: human_label}.
+        """
+        detected_cols = list(df.columns)
+        if isinstance(required_columns, dict):
+            missing = [f"'{col}' ({label})" for col, label in required_columns.items() if col not in df.columns]
+        else:
+            missing = [f"'{col}'" for col in required_columns if col not in df.columns]
+
+        if missing:
+            missing_str = ', '.join(missing)
+            detected_str = ', '.join([f"'{c}'" for c in detected_cols]) if detected_cols else '(ninguna)'
+            return False, (
+                f"El archivo no contiene la(s) columna(s) obligatoria(s): {missing_str}. "
+                f"Columnas detectadas en el archivo: [{detected_str}]. "
+                f"Por favor asegúrate de incluir las columnas requeridas o definir las Referencias correspondientes."
+            )
+
+        return True, ""
+
+    @classmethod
+    def validate_foreign_keys(
+            cls,
+            df: pd.DataFrame,
+            model: type[models.Model],
+            fields: list[str] | None = None,
+            ignore_fields: list[str] | None = None
+        ) -> tuple[bool, str]:
+        """
+        Universally validates that all Foreign Key values present in df exist in the related database tables.
+        Returns (True, '') if valid, or (False, error_message) with detailed missing IDs and content type.
+        """
+        ignore_set = set(ignore_fields or [])
+        fk_fields = [
+            f for f in model._meta.get_fields()
+            if f.is_relation and f.many_to_one and hasattr(f, 'attname')
+        ]
+
+        if fields:
+            field_set = set(fields)
+            fk_fields = [f for f in fk_fields if f.name in field_set or f.attname in field_set]
+
+        for fk in fk_fields:
+            col_name = fk.attname
+            if col_name in ignore_set or fk.name in ignore_set:
+                continue
+
+            target_col = col_name if col_name in df.columns else (fk.name if fk.name in df.columns else None)
+            if not target_col:
+                continue
+
+            related_model = fk.related_model
+            model_verbose_name = getattr(related_model._meta, 'verbose_name', related_model.__name__).title()
+
+            raw_values = df[target_col].dropna().astype(str).str.strip().unique()
+            df_ids = {v for v in raw_values if v and v.lower() not in ('none', 'nan', 'null', '')}
+
+            if not df_ids:
+                continue
+
+            if not related_model.objects.exists():
+                return False, (
+                    f"Error de clave foránea en la columna '{target_col}': "
+                    f"No existen registros en el catálogo de {model_verbose_name} ({related_model.__name__}). "
+                    f"Debes registrar al menos un registro en dicho catálogo antes de continuar."
+                )
+
+            db_pks = set(
+                str(pk).strip() for pk in related_model.objects.filter(pk__in=df_ids).values_list('pk', flat=True)
+            )
+
+            missing_ids = df_ids - db_pks
+            if missing_ids:
+                missing_list = sorted(list(missing_ids))
+                sample = missing_list[:10]
+                suffix = f" ...y {len(missing_list) - 10} más" if len(missing_list) > 10 else ""
+                return False, (
+                    f"Error de clave foránea en la columna '{target_col}': "
+                    f"Los siguientes IDs deben ser registrados en el catálogo de {model_verbose_name} ({related_model.__name__}): "
+                    f"{sample}{suffix}. "
+                    f"Por favor registra estos datos primero en el sistema o agrega su equivalencia en Referencias."
+                )
+
+        return True, ""
+
+    @classmethod
+    def humanize_database_error(cls, error: Exception) -> str:
+        """
+        parses raw database exceptions and converts them into friendly, readable spanish diagnostic messages.
+        """
+        err_msg = str(error)
+        err_lower = err_msg.lower()
+
+        if "violates foreign key constraint" in err_lower:
+            import re
+            detail_match = re.search(r"Key \((.*?)\)=\((.*?)\) is not present in table \"(.*?)\"", err_msg)
+            if detail_match:
+                col, val, table = detail_match.groups()
+                return (
+                    f"Error de integridad referencial: El valor '{val}' para el campo '{col}' "
+                    f"no existe en la tabla '{table}'. Por favor regístralo antes de continuar."
+                )
+            return f"Error de clave foránea: Uno o más registros hacen referencia a datos inexistentes en el sistema. Detalle: {err_msg}"
+
+        if "violates unique constraint" in err_lower or "duplicate key" in err_lower:
+            import re
+            detail_match = re.search(r"Key \((.*?)\)=\((.*?)\) already exists", err_msg)
+            if detail_match:
+                col, val = detail_match.groups()
+                return f"Error de registro duplicado: Ya existe un registro con '{col}' = '{val}'."
+            return f"Error de registro duplicado: Ya existe un registro con los mismos identificadores únicos."
+
+        if "violates not-null constraint" in err_lower:
+            import re
+            match = re.search(r"column \"(.*?)\"", err_msg)
+            col = match.group(1) if match else "desconocida"
+            return f"Error de campo obligatorio: La columna '{col}' no puede estar vacía."
+
+        return f"Error durante la inserción/actualización en base de datos: {err_msg}"
 
 
 @dataclass

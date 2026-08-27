@@ -3,49 +3,69 @@
     {% for rep in user_reports %}
     <li class="border border-border p-3 rounded bg-page hover:border-strong transition-colors">
         <div class="flex items-start justify-between gap-2 mb-1">
-            <div class="flex flex-col flex-1">
-                <span class="text-xs text-strong font-medium leading-tight">
+            <div class="flex flex-col flex-1 min-w-0">
+                <span class="text-xs text-strong font-medium leading-tight" title="{{ rep.title }}">
                     {{ rep.title|title }}
                 </span>
                 <span class="text-[10px] text-muted mt-0.5">
                     {{ rep.created_at|date:"M d, Y H:i" }}
                 </span>
             </div>
-            <div>
+            <div class="shrink-0">
                 {% if rep.status == 'completed' %}
                 <span class="inline-flex items-center p-1 rounded text-[10px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                     Listo
                 </span>
                 {% elif rep.status == 'pending' %}
-                <span class="inline-flex items-center gap-1 p-1 rounded text-[10px]  bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                <span class="inline-flex items-center gap-1 p-1 rounded text-[10px] bg-amber-500/10 text-amber-500 border border-amber-500/20">
                     {% include 'layouts/loading_animation_icon.html' %}
                     En proceso
                 </span>
                 {% elif rep.status == 'failed' %}
-                <span class="inline-flex items-center p-1 rounded text-[10px]  bg-red-500/10 text-red-500 border border-red-500/20">
+                <span class="inline-flex items-center p-1 rounded text-[10px] bg-red-500/10 text-red-500 border border-red-500/20">
                     Error
                 </span>
                 {% endif %}
             </div>
         </div>
 
+        {% if rep.status == 'completed' and rep.module_name == 'uploads' and rep.error_message %}
+            <p class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 leading-snug">
+                {{ rep.error_message }}
+            </p>
+        {% endif %}
+
+        {% if rep.status == 'failed' and rep.error_message %}
+            <div class="mt-2 p-1.5 rounded bg-red-500/10 border border-red-500/20 text-[10px] text-red-400 leading-snug break-words">
+                {{ rep.error_message }}
+            </div>
+        {% endif %}
+
         <div class="flex items-center justify-between mt-2 pt-2 border-t border-border/50 text-xs">
             {% if rep.status == 'completed' and rep.file %}
                 <span class="text-[10px] text-muted">
                     {{ rep.file_size|default:0|filesizeformat }}
                 </span>
-                <a href="{{ rep.file.url }}" download class="inline-flex items-center gap-1  p-1 rounded text-xs text-emerald-500 hover:text-hover transition-colors cursor-pointer">
+                <a href="{{ rep.file.url }}" download class="inline-flex items-center gap-1 p-1 rounded text-xs text-emerald-500 hover:text-hover transition-colors cursor-pointer">
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download-icon lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                     <span>Descargar</span>
                 </a>
             {% elif rep.status == 'pending' %}
                 <span class="text-[10px] text-muted italic">
-                    Generando archivo...
+                    {% if rep.module_name == 'uploads' %}
+                        Procesando importación...
+                    {% else %}
+                        Generando archivo...
+                    {% endif %}
                 </span>
-            {% elif rep.status == 'failed' %}
-                <span class="text-[10px] text-red-400 truncate max-w-[200px]" title="{{ rep.error_message }}">
-                    {{ rep.error_message|default:'Fallo en exportación' }}
+            {% elif rep.status == 'failed' and rep.file %}
+                <span class="text-[10px] text-muted">
+                    {{ rep.file_size|default:0|filesizeformat }}
                 </span>
+                <a href="{{ rep.file.url }}" download class="inline-flex items-center gap-1 p-1 rounded text-xs text-muted hover:text-hover transition-colors cursor-pointer" title="Descargar archivo original">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-spreadsheet"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>
+                    <span>Archivo</span>
+                </a>
             {% endif %}
         </div>
     </li>

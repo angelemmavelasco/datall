@@ -21,6 +21,12 @@ from django.db.models import (
     Avg,
 )
 
+from apps.core.services.uploads import BaseETLHelper
+from django.contrib.contenttypes.models import ContentType
+from apps.core.models import Reference
+from apps.sales.models import Route
+import datetime
+
 from apps.core.services.users import UsersService
 from apps.sales.services.routes import RoutesService
 from ..models import (
@@ -367,11 +373,6 @@ class CustomersService(UsersService):
         except ImportError:
             return False, "La librería 'pandas' no está instalada en el entorno."
 
-        from apps.core.services.uploads import BaseETLHelper
-        from django.contrib.contenttypes.models import ContentType
-        from apps.core.models import Reference
-        import datetime
-
         is_valid, df_or_err = BaseETLHelper.read_file_to_dataframe(file_obj)
         if not is_valid:
             return False, df_or_err
@@ -388,11 +389,15 @@ class CustomersService(UsersService):
         if 'route' in df.columns and 'route_id' not in df.columns:
             df.rename(columns={'route': 'route_id'}, inplace=True)
 
-        if 'id' not in df.columns:
-            return False, f"El archivo debe contener una columna identificadora mapeada a 'id'. Columnas encontradas: {', '.join(df.columns)}"
+        is_req_valid, req_msg = BaseETLHelper.validate_required_columns(df, {'id': 'Identificador de Cliente'})
+        if not is_req_valid:
+            return False, req_msg
 
-        valid_types = set(self.customer_type_model.objects.values_list('id', flat=True))
-        default_type = 'otr' if 'otr' in valid_types else (next(iter(valid_types)) if valid_types else 'otr')
+        if not self.customer_type_model.objects.exists():
+            return False, "No existen registros en el catálogo de Tipos de Cliente. Debes crear al menos un Tipo de Cliente antes de importar clientes."
+
+        valid_types_dict = {str(t.id).strip().lower(): t.id for t in self.customer_type_model.objects.all()}
+        default_type = valid_types_dict.get('otr') or next(iter(valid_types_dict.values()))
 
         if 'customer_type_id' in df.columns:
             ct_type = ContentType.objects.get_for_model(self.customer_type_model)
@@ -408,7 +413,7 @@ class CustomersService(UsersService):
                 v = str(ref.value).strip() if getattr(ref, 'value', '') else str(getattr(ref, 'reference', '')).strip()
                 if k and v:
                     type_map[k] = v
-            
+
             raw_series = df['customer_type_id'].astype(str).str.strip().str.lower()
             if type_map:
                 mapped_series = raw_series.map(type_map).fillna(raw_series)
@@ -416,10 +421,23 @@ class CustomersService(UsersService):
                 mapped_series = raw_series
 
             df['customer_type_id'] = mapped_series.apply(
-                lambda x: x if x in valid_types else default_type
+                lambda x: valid_types_dict.get(str(x).strip().lower(), str(x).strip()) if x not in (None, 'None', 'nan', '') else default_type
             )
         else:
             df['customer_type_id'] = default_type
+
+        #universal Foreign Key validation for customer model
+        is_fk_valid, fk_msg = BaseETLHelper.validate_foreign_keys(df, self.customer_model)
+        if not is_fk_valid:
+            return False, fk_msg
+
+        #if route_id is provided, validate against route table
+        if 'route_id' in df.columns:
+            is_route_fk_valid, route_fk_msg = BaseETLHelper.validate_foreign_keys(
+                df, self.customer_assignment_model, fields=['route_id']
+            )
+            if not is_route_fk_valid:
+                return False, route_fk_msg
 
         if 'registration_date' in df.columns:
             df['registration_date'] = pd.to_datetime(df['registration_date'], errors='coerce')
@@ -449,7 +467,7 @@ class CustomersService(UsersService):
 
 
     def bulk_create_customers(self, file_obj) -> object:
-        from apps.core.services.uploads import ImportResult, PermissionsError
+        from apps.core.services.uploads import ImportResult, PermissionsError, BaseETLHelper
         from apps.sales.models import Route
         from django.db import transaction
 
@@ -556,7 +574,6 @@ class CustomersService(UsersService):
                         )
                     )
 
-
         try:
             with transaction.atomic():
                 if customers_to_create:
@@ -581,9 +598,10 @@ class CustomersService(UsersService):
                 updated_count=updated_count
             )
         except Exception as e:
+            humanized_msg = BaseETLHelper.humanize_database_error(e)
             return ImportResult(
                 success=False,
-                message=f"Error durante la inserción/actualización masiva: {str(e)}",
+                message=humanized_msg,
                 total_processed=total_processed,
                 errors=[str(e)]
             )
