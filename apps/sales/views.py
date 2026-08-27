@@ -31,6 +31,8 @@ from .services.sale_targets import (
 )
 from apps.customers.services.customers import CustomersService
 from apps.products.services.products import ProductsService
+from apps.human_resources.services.employees import EmployeesService
+from apps.core.models import User
 from .filters import WarehouseFilter, RouteFilter, SaleTransactionFilter, SaleTargetFilter
 from .forms import (
     WarehouseForm,
@@ -259,10 +261,16 @@ def route_create_view(request):
         assignments_formset = RouteAssignmentFormSet(prefix='assignments')
         accesses_formset = UserRouteAccessFormSet(prefix='accesses')
 
+    employees_service = EmployeesService(user=request.user)
+    initial_employees = employees_service.read_employees()[:30]
+    initial_users = User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')[:30]
+
     context = {
         'form': form,
         'assignments_formset': assignments_formset,
         'accesses_formset': accesses_formset,
+        'initial_employees': initial_employees,
+        'initial_users': initial_users,
         'can_update_access': service.has_full_access,
     }
     return render(request, template, context)
@@ -323,11 +331,17 @@ def route_update_view(request, pk: str):
         assignments_formset = RouteAssignmentFormSet(instance=route_instance, prefix='assignments')
         accesses_formset = UserRouteAccessFormSet(instance=route_instance, prefix='accesses')
 
+    employees_service = EmployeesService(user=request.user)
+    initial_employees = employees_service.read_employees()[:30]
+    initial_users = User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')[:30]
+
     context = {
         'form': form,
         'assignments_formset': assignments_formset,
         'accesses_formset': accesses_formset,
         'updating': route_instance,
+        'initial_employees': initial_employees,
+        'initial_users': initial_users,
         'can_update_access': service.has_full_access,
     }
     return render(request, template, context)

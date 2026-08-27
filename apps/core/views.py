@@ -392,4 +392,37 @@ def reports_indicator_view(request):
     }
     return render(request, 'core/partials/_reports_nav_indicator.html', context)
 
+#used universally
+@login_required
+def user_options_view(request):
+    """
+    Returns HTML option items for searchable user dropdowns via HTMX.
+    """
+    q = request.GET.get('q_user', request.GET.get('q', '')).strip()
+    field_name = request.GET.get('field_name', 'user')
+    selected_id = request.GET.get('selected_id', '')
+
+    base_qs = User.objects.filter(is_active=True)
+
+    if q:
+        from django.db.models import Q
+        base_qs = base_qs.filter(
+            Q(username__icontains=q) |
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q) |
+            Q(email__icontains=q)
+        )
+
+    users = base_qs.order_by('first_name', 'last_name', 'username')[:30]
+
+    return render(
+        request,
+        'core/users/partials/user_options.html',
+        {
+            'users': users,
+            'field_name': field_name,
+            'selected_id': str(selected_id),
+        }
+    )
+
 

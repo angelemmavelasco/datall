@@ -37,6 +37,7 @@ urlpatterns = [
     path('hello-world/', hello_world, name='hello_world'),
 
     path('users/', user_list_view, name='user_list_view'),
+    path('users/options/', user_options_view, name='user_options_view'),
     path('users/<int:pk>/', user_detail_view, name='user_detail_view'),
     path('users/create/', user_create_form_view, name='user_create_form_view'),
     path('users/<int:pk>/update/', user_update_form_view, name='user_update_form_view'),

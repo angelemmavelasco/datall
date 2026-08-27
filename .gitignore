@@ -9,8 +9,6 @@ node_modules/
 .vscode/
 venv/
 .venv/
-.env
-users/
 seed_*.py
 legacy_code
 db.*

@@ -41,6 +41,7 @@ urlpatterns = [
     path('monitoring-submissions/delete/<int:pk>/', monitoring_form_submission_delete_view, name='monitoring_form_submission_delete_view'),
 
     path('employees/', employee_list_view, name='employee_list_view'),
+    path('employees/options/', employee_options_view, name='employee_options_view'),
     path('employees/details/<str:pk>/', employee_detail_view, name='employee_detail_view'),
     path('employees/create/', employee_create_view, name='employee_create_view'),
     path('employees/update/<str:pk>/', employee_update_view, name='employee_update_view'),

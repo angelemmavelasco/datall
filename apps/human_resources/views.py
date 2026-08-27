@@ -1259,3 +1259,38 @@ def org_chart_view(request):
     }
     return render(request, template, context)
 
+#used universally
+@login_required
+def employee_options_view(request):
+    """
+    Returns HTML option items for searchable employee dropdowns via HTMX.
+    """
+    q = request.GET.get('q_employee', request.GET.get('q', '')).strip()
+    field_name = request.GET.get('field_name', 'employee')
+    selected_id = request.GET.get('selected_id', '')
+
+    service = EmployeesService(user=request.user)
+    base_qs = service.read_employees()
+
+    if q:
+        from django.db.models import Q
+        base_qs = base_qs.filter(
+            Q(id__icontains=q) |
+            Q(user__first_name__icontains=q) |
+            Q(user__last_name__icontains=q) |
+            Q(user__username__icontains=q) |
+            Q(position__name__icontains=q)
+        )
+
+    employees = base_qs[:30]
+
+    return render(
+        request,
+        'human_resources/employees/partials/employee_options.html',
+        {
+            'employees': employees,
+            'field_name': field_name,
+            'selected_id': str(selected_id),
+        }
+    )
+

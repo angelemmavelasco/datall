@@ -156,7 +156,48 @@ Nueva ruta
                     <span class="text-title text-xs flex items-center gap-1">Colaborador
                         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
                     </span>
-                    {% render_field assignment_form.employee class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+
+                    <details class="group relative w-full custom-search-dropdown">
+                        <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                            <span id="label_{{ assignment_form.employee.html_name }}" class="truncate">
+                                {% if assignment_form.instance.employee %}
+                                    {{ assignment_form.instance.employee }}
+                                {% elif assignment_form.employee.value %}
+                                    {% for emp in initial_employees %}
+                                        {% if emp.id|stringformat:"s" == assignment_form.employee.value|stringformat:"s" %}
+                                            {{ emp }}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    Seleccionar colaborador...
+                                {% endif %}
+                            </span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                        </summary>
+
+                        <input type="hidden"
+                               name="{{ assignment_form.employee.html_name }}"
+                               id="id_{{ assignment_form.employee.html_name }}"
+                               value="{{ assignment_form.employee.value|default:'' }}">
+
+                        <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                            <input type="text"
+                                   name="q_employee"
+                                   hx-get="{% url 'human_resources:employee_options_view' %}?field_name={{ assignment_form.employee.html_name }}"
+                                   hx-trigger="input delay:300ms, focus"
+                                   hx-target="#options-{{ assignment_form.employee.html_name }}"
+                                   hx-swap="innerHTML"
+                                   hx-push-url="false"
+                                   autocomplete="off"
+                                   class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                                   placeholder="Buscar por ID, nombre o puesto...">
+
+                            <div id="options-{{ assignment_form.employee.html_name }}" class="h-36 overflow-y-auto flex flex-col gap-1">
+                                {% include "human_resources/employees/partials/employee_options.html" with employees=initial_employees field_name=assignment_form.employee.html_name selected_id=assignment_form.employee.value %}
+                            </div>
+                        </div>
+                    </details>
+
                     <p class="text-red-500 text-xs mt-0.5">
                         {% for error in assignment_form.employee.errors %}
                             <span class="block">• {{ error }}</span>
@@ -227,7 +268,48 @@ Nueva ruta
                     <span class="text-title text-xs flex items-center gap-1">Usuario
                         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
                     </span>
-                    {% render_field access_form.user class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+
+                    <details class="group relative w-full custom-search-dropdown">
+                        <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                            <span id="label_{{ access_form.user.html_name }}" class="truncate">
+                                {% if access_form.instance.user %}
+                                    {{ access_form.instance.user.first_name|title }} {{ access_form.instance.user.last_name|title }} (@{{ access_form.instance.user.username|lower }})
+                                {% elif access_form.user.value %}
+                                    {% for u in initial_users %}
+                                        {% if u.id|stringformat:"s" == access_form.user.value|stringformat:"s" %}
+                                            {{ u.first_name|title }} {{ u.last_name|title }} (@{{ u.username|lower }})
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    Seleccionar usuario...
+                                {% endif %}
+                            </span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                        </summary>
+
+                        <input type="hidden"
+                               name="{{ access_form.user.html_name }}"
+                               id="id_{{ access_form.user.html_name }}"
+                               value="{{ access_form.user.value|default:'' }}">
+
+                        <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                            <input type="text"
+                                   name="q_user"
+                                   hx-get="{% url 'core:user_options_view' %}?field_name={{ access_form.user.html_name }}"
+                                   hx-trigger="input delay:300ms, focus"
+                                   hx-target="#options-{{ access_form.user.html_name }}"
+                                   hx-swap="innerHTML"
+                                   hx-push-url="false"
+                                   autocomplete="off"
+                                   class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                                   placeholder="Buscar usuario por nombre o usuario...">
+
+                            <div id="options-{{ access_form.user.html_name }}" class="h-36 overflow-y-auto flex flex-col gap-1">
+                                {% include "core/users/partials/user_options.html" with users=initial_users field_name=access_form.user.html_name selected_id=access_form.user.value %}
+                            </div>
+                        </div>
+                    </details>
+
                     <p class="text-red-500 text-xs mt-0.5">
                         {% for error in access_form.user.errors %}
                             <span class="block">• {{ error }}</span>
@@ -294,7 +376,36 @@ Nueva ruta
             <span class="text-title text-xs flex items-center gap-1">Colaborador
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
             </span>
-            {% render_field assignments_formset.empty_form.employee class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <details class="group relative w-full custom-search-dropdown">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                    <span id="label_assignments-__prefix__-employee" class="truncate">
+                        Seleccionar colaborador...
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+
+                <input type="hidden"
+                       name="assignments-__prefix__-employee"
+                       id="id_assignments-__prefix__-employee"
+                       value="">
+
+                <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                    <input type="text"
+                           name="q_employee"
+                           hx-get="{% url 'human_resources:employee_options_view' %}?field_name=assignments-__prefix__-employee"
+                           hx-trigger="input delay:300ms, focus"
+                           hx-target="#options-assignments-__prefix__-employee"
+                           hx-swap="innerHTML"
+                           hx-push-url="false"
+                           autocomplete="off"
+                           class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                           placeholder="Buscar por ID, nombre o puesto...">
+
+                    <div id="options-assignments-__prefix__-employee" class="h-36 overflow-y-auto flex flex-col gap-1">
+                        {% include "human_resources/employees/partials/employee_options.html" with employees=initial_employees field_name="assignments-__prefix__-employee" selected_id="" %}
+                    </div>
+                </div>
+            </details>
         </div>
         <div class="flex flex-col gap-1">
             <span class="text-title text-xs flex items-center gap-1">Fecha inicio
@@ -320,7 +431,36 @@ Nueva ruta
             <span class="text-title text-xs flex items-center gap-1">Usuario
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
             </span>
-            {% render_field accesses_formset.empty_form.user class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <details class="group relative w-full custom-search-dropdown">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border border-border rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                    <span id="label_accesses-__prefix__-user" class="truncate">
+                        Seleccionar usuario...
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+
+                <input type="hidden"
+                       name="accesses-__prefix__-user"
+                       id="id_accesses-__prefix__-user"
+                       value="">
+
+                <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                    <input type="text"
+                           name="q_user"
+                           hx-get="{% url 'core:user_options_view' %}?field_name=accesses-__prefix__-user"
+                           hx-trigger="input delay:300ms, focus"
+                           hx-target="#options-accesses-__prefix__-user"
+                           hx-swap="innerHTML"
+                           hx-push-url="false"
+                           autocomplete="off"
+                           class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                           placeholder="Buscar usuario por nombre o usuario...">
+
+                    <div id="options-accesses-__prefix__-user" class="h-36 overflow-y-auto flex flex-col gap-1">
+                        {% include "core/users/partials/user_options.html" with users=initial_users field_name="accesses-__prefix__-user" selected_id="" %}
+                    </div>
+                </div>
+            </details>
         </div>
         <div class="flex flex-col gap-1">
             <span class="text-title text-xs">Puede ver</span>
@@ -344,6 +484,25 @@ Nueva ruta
 </template>
 
 <script>
+function selectDropdownOption(fieldName, optionId, optionLabel, element) {
+    const input = document.getElementById('id_' + fieldName);
+    const label = document.getElementById('label_' + fieldName);
+    if (input) input.value = optionId;
+    if (label) label.textContent = optionLabel;
+
+    const details = element.closest('details');
+    if (details) details.removeAttribute('open');
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('.custom-search-dropdown[open]').forEach(function(details) {
+        if (!details.contains(e.target)) {
+            details.removeAttribute('open');
+        }
+    });
+});
+
 function addForm(prefix) {
     const totalFormsInput = document.getElementById(`id_${prefix}-TOTAL_FORMS`);
     if (!totalFormsInput) return;
@@ -356,6 +515,10 @@ function addForm(prefix) {
     formsContainer.insertAdjacentHTML('beforeend', compiledHtml);
 
     totalFormsInput.value = currentCount + 1;
+
+    if (window.htmx) {
+        htmx.process(formsContainer);
+    }
 }
 </script>
 
