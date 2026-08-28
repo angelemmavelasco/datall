@@ -124,9 +124,14 @@ def business_unit_create_view(request):
     else:
         form = BusinessUnitForm()
 
+    employees_service = EmployeesService(user=request.user)
+    initial_employees = employees_service.read_employees()[:30]
+
     context = {
         'form': form,
-        'can_update_access': service.has_full_access
+        'can_update_access': service.has_full_access,
+        'updating': None,
+        'initial_employees': initial_employees,
     }
     return render(request, template, context)
 
@@ -170,11 +175,15 @@ def business_unit_update_view(request, pk: str):
     else:
         form = BusinessUnitForm(instance=bu_instance)
 
+    employees_service = EmployeesService(user=request.user)
+    initial_employees = employees_service.read_employees()[:30]
+
     context = {
         'form': form,
-        'updating': bu_instance
+        'updating': bu_instance,
+        'can_update_access': service.has_full_access,
+        'initial_employees': initial_employees,
     }
-
     return render(request, template, context)
 
 '''departments'''

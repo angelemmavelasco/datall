@@ -23,6 +23,25 @@ Nueva unidad de negocio
 <form method="POST" enctype="multipart/form-data" class="flex flex-col gap-4">
     {% csrf_token %}
 
+    {% if form.errors %}
+    <div class="bg-red-500/10 border border-red-500/30 text-red-500 p-3 rounded flex flex-col gap-1.5 text-xs">
+        <div class="flex items-center gap-2 font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-circle shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+            <span>Por favor corrige los siguientes errores para continuar:</span>
+        </div>
+        <ul class="list-disc pl-5 flex flex-col gap-1">
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            {% for field in form %}
+                {% for error in field.errors %}
+                    <li><strong>{{ field.label|default:field.name }}:</strong> {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     <p class="text-title text-sm">Información general</p>
     <hr class="border-border border">
 
@@ -38,9 +57,9 @@ Nueva unidad de negocio
         </span>
         <div>
             {% if updating %}
-                {% render_field form.id class='w-full bg-page border border-border rounded p-1 text-secondary cursor-not-allowed' readonly='readonly' %}
+                {% render_field form.id class='w-full bg-page border border-border rounded p-1 text-secondary cursor-not-allowed font-mono' readonly='readonly' %}
             {% else %}
-                {% render_field form.id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Ej: cdmx, gdl, foraneos' required='required' %}
+                {% render_field form.id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='Ej: cdmx, gdl, foraneos' required='required' %}
             {% endif %}
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.id.errors %}
@@ -88,7 +107,7 @@ Nueva unidad de negocio
         <span class="text-title flex items-center gap-1">Unidad / Región padre</span>
         <div>
             {% render_field form.parent class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
-            <a href="{% url 'human_resources:business_unit_create_view' %}?next={{ request.path }}" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px]">
+            <a href="{% url 'human_resources:business_unit_create_view' %}?next={{ request.path }}" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px] mt-1">
                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
                 Nueva unidad
             </a>
@@ -101,7 +120,50 @@ Nueva unidad de negocio
 
         <span class="text-title flex items-center gap-1">Responsable</span>
         <div>
-            {% render_field form.manager class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+            <details class="group relative w-full custom-search-dropdown">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border {% if form.manager.errors %}border-red-500 ring-1 ring-red-500{% else %}border-border{% endif %} rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                    <span id="label_manager" class="truncate">
+                        {% if form.instance.manager %}
+                            {{ form.instance.manager }}
+                        {% elif form.manager.value %}
+                            {% for emp in initial_employees %}
+                                {% if emp.id|stringformat:"s" == form.manager.value|stringformat:"s" %}
+                                    {{ emp }}
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            Seleccionar responsable (opcional)...
+                        {% endif %}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+
+                <input type="hidden"
+                       name="manager"
+                       id="id_manager"
+                       value="{{ form.manager.value|default:'' }}">
+
+                <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                    <input type="text"
+                           name="q_employee"
+                           hx-get="{% url 'human_resources:employee_options_view' %}?field_name=manager"
+                           hx-trigger="input delay:300ms, focus"
+                           hx-target="#options-manager"
+                           hx-swap="innerHTML"
+                           hx-push-url="false"
+                           autocomplete="off"
+                           class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                           placeholder="Buscar por ID, nombre o puesto...">
+
+                    <div id="options-manager" class="h-36 overflow-y-auto flex flex-col gap-1">
+                        {% include "human_resources/employees/partials/employee_options.html" with employees=initial_employees field_name="manager" selected_id=form.manager.value %}
+                    </div>
+                </div>
+            </details>
+            <a href="{% url 'human_resources:employee_create_view' %}?next={{ request.path }}" class="hover:text-hover transition-colors flex items-center w-fit gap-1 cursor-pointer text-[10px] mt-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus-icon lucide-circle-plus"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                Nuevo colaborador
+            </a>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.manager.errors %}
                 <span class="block">• {{ error }}</span>
@@ -123,5 +185,26 @@ Nueva unidad de negocio
         </a>
     </div>
 </form>
+
+<script>
+function selectDropdownOption(fieldName, optionId, optionLabel, element) {
+    const input = document.getElementById('id_' + fieldName);
+    const label = document.getElementById('label_' + fieldName);
+    if (input) input.value = optionId;
+    if (label) label.textContent = optionLabel;
+
+    const details = element.closest('details');
+    if (details) details.removeAttribute('open');
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('.custom-search-dropdown[open]').forEach(function(details) {
+        if (!details.contains(e.target)) {
+            details.removeAttribute('open');
+        }
+    });
+});
+</script>
 
 {% endblock %}
