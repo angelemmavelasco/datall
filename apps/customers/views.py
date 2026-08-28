@@ -1,7 +1,9 @@
+from datetime import date, timedelta
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.utils import timezone
 from .exports import *
 
 from .services import (
@@ -14,8 +16,10 @@ from .services import (
     AccountsReceivablesStats,
     AccountsReceivableNotFound,
 )
-from .filters import CustomerFilter, AccountsReceivableFilter
+from .filters import CustomerFilter, AccountsReceivableFilter, CustomerProfileFilter
 from .forms import CustomerForm, CustomerAssignmentFormSet, CustomerClassMarginFormSet
+from apps.sales.services.sale_transactions import SaleTransactionsService
+from apps.analytics.services.customer_kpis import CustomerProfileService
 
 
 @login_required
@@ -74,12 +78,47 @@ def customer_detail_view(request, pk: str):
         messages.error(request, f"Ocurrió un error al cargar el cliente: {str(e)}")
         return redirect('customers:customer_list_view')
 
+    tx_service = SaleTransactionsService(user=request.user)
+    base_txs = tx_service.read_transactions().filter(customer=customer)
+
+    today = timezone.localdate()
+    get_data = request.GET.copy()
+    if 'date_start' not in get_data:
+        get_data['date_start'] = date(today.year, 1, 1).strftime('%Y-%m-%d')
+    if 'date_end' not in get_data:
+        last_day_prev_month = date(today.year, today.month, 1) - timedelta(days=1)
+        default_end = last_day_prev_month if today.month > 1 else today
+        get_data['date_end'] = default_end.strftime('%Y-%m-%d')
+
+    profile_filter = CustomerProfileFilter(get_data, queryset=base_txs, request=request)
+    filtered_txs = profile_filter.qs
+
+    ar_service = AccountsReceivablesService(user=request.user)
+    base_ars = ar_service.read_ars().filter(customer=customer)
+
+    cleaned_data = profile_filter.form.cleaned_data if profile_filter.is_valid() else {}
+
+    date_start_val = cleaned_data.get('date_start')
+    date_end_val = cleaned_data.get('date_end')
+
+    profile_service = CustomerProfileService(
+        user=request.user,
+        customer=customer,
+        transactions_qs=filtered_txs,
+        ars_qs=base_ars,
+        cleaned_data=cleaned_data,
+        date_start=date_start_val,
+        date_end=date_end_val,
+    )
+    customer = profile_service.build_profile()
+
     available_actions = None
     if service.has_full_access:
         available_actions = 'customers/partials/customer_detail__actions.html'
 
     context = {
         'customer': customer,
+        'filter': profile_filter,
         'available_actions': available_actions,
     }
     return render(request, template, context)

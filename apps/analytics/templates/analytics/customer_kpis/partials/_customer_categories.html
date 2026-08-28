@@ -1,0 +1,42 @@
+{% load humanize %}
+
+<p class="text-title pb-2 border-b border-border">Categorización por consumo</p>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+    <span class="text-title md:col-span-2 border border-border p-1 text-center font-medium rounded bg-page">Categorización</span>
+
+    <span class="text-title">Consumo mensual previo</span>
+    <div class="w-full text-body flex items-center font-semibold">
+        {{ customer.category_prev_month|title|default:'-' }}
+    </div>
+
+    <span class="text-title">Consumo promedio trimestral</span>
+    <div class="w-full text-body flex items-center font-semibold">
+        {{ customer.category_prev_quarter|title|default:'-' }}
+    </div>
+
+    <span class="text-title">Consumo promedio anual</span>
+    <div class="w-full text-body flex items-center font-semibold">
+        {{ customer.category_prev_year|title|default:'-' }}
+    </div>
+
+    <span class="text-title md:col-span-2 border border-border p-1 text-center font-medium rounded bg-page mt-2">Comportamiento de consumo</span>
+
+    <span class="text-title">Frecuencia de compra</span>
+    <div class="w-full text-body flex items-center">
+        {{ customer.purchase_frequency_category|default:'-' }}
+        {% if customer.purchase_frequency_days %}
+            <span class="text-secondary ml-1">({{ customer.purchase_frequency_days }})</span>
+        {% endif %}
+    </div>
+
+    <span class="text-title">Clases consumidas regularmente</span>
+    <div class="w-full text-body flex items-center font-mono">
+        {{ customer.consumed_classes|default:0 }}
+    </div>
+
+    <span class="text-title">Clase más consumida en el último trimestre</span>
+    <div class="w-full text-body flex items-center">
+        {{ customer.most_consumed_class_last_q.name|title|default:'Sin consumo reciente' }}
+    </div>
+</div>

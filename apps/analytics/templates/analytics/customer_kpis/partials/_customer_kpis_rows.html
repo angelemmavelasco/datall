@@ -3,7 +3,7 @@
 <tr class="">
 
     <th class="min-w-[240px] max-w-[240px] w-[240px] p-2 sticky md:left-0 z-20 bg-container text-left border-r border-border">
-        <a href="" target="_blank" class="block truncate w-[220px] max-w-[220px] underline text-title" title="{{ customer.id|upper }} {{ customer.name|title }}">
+        <a href="{% url 'customers:customer_detail_view' customer.id %}" target="_blank" class="block truncate w-[220px] max-w-[220px] underline text-title" title="{{ customer.id|upper }} {{ customer.name|title }}">
             {{ customer.id|upper }} {{ customer.name|title }}
         </a>
         <p class="font-medium text-hover">Ruta {{ customer.current_route_id|default:'-'|upper }} {{ customer.current_route_business_unit|default:'-'|title }}</p>

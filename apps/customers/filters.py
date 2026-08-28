@@ -1,12 +1,14 @@
+from typing import Any
 import django_filters
 from django import forms
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.utils import timezone
 
 from apps.human_resources.models import BusinessUnit
 from apps.human_resources.services.business_units import BusinessUnitsService
-from apps.sales.models import Route
+from apps.sales.models import Route, SaleTransaction
 from apps.sales.services.routes import RoutesService
+from apps.products.models import ProductClass, ProductCategory
 from .models import Customer, CustomerType, CustomerAssignment
 
 
@@ -17,6 +19,24 @@ class BusinessUnitMultipleChoiceField(forms.ModelMultipleChoiceField):
 
 class BusinessUnitMultipleChoiceFilter(django_filters.ModelMultipleChoiceFilter):
     field_class = BusinessUnitMultipleChoiceField
+
+
+class ProductClassMultipleChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj: ProductClass) -> str:
+        return (obj.name or obj.id).title()
+
+
+class ProductClassMultipleChoiceFilter(django_filters.ModelMultipleChoiceFilter):
+    field_class = ProductClassMultipleChoiceField
+
+
+class ProductCategoryMultipleChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj: ProductCategory) -> str:
+        return (obj.name or obj.id).title()
+
+
+class ProductCategoryMultipleChoiceFilter(django_filters.ModelMultipleChoiceFilter):
+    field_class = ProductCategoryMultipleChoiceField
 
 
 class CustomerFilter(django_filters.FilterSet):
@@ -357,3 +377,88 @@ class AccountsReceivableFilter(django_filters.FilterSet):
         if not value:
             return queryset
         return queryset.filter(Q(due_date__lte=value) | Q(due_date__isnull=True))
+
+
+class CustomerProfileFilter(django_filters.FilterSet):
+    date_start = django_filters.DateFilter(
+        field_name='sale_date',
+        lookup_expr='gte',
+        label='Fecha inicio',
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    date_end = django_filters.DateFilter(
+        field_name='sale_date',
+        lookup_expr='lte',
+        label='Fecha fin',
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    region = BusinessUnitMultipleChoiceFilter(
+        method='filter_region',
+        queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION),
+        widget=forms.CheckboxSelectMultiple,
+        label='Región'
+    )
+    business_unit = BusinessUnitMultipleChoiceFilter(
+        method='filter_business_unit',
+        queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT),
+        widget=forms.CheckboxSelectMultiple,
+        label='Gerencia'
+    )
+    route = django_filters.ModelMultipleChoiceFilter(
+        field_name='route',
+        queryset=Route.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Ruta'
+    )
+    product_category = ProductCategoryMultipleChoiceFilter(
+        field_name='product_class__product_category',
+        queryset=ProductCategory.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Categoría de producto'
+    )
+    product_class = ProductClassMultipleChoiceFilter(
+        field_name='product_class',
+        queryset=ProductClass.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Clase de producto'
+    )
+
+    class Meta:
+        model = SaleTransaction
+        fields = []
+
+    def __init__(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+        if request:
+            user = request.user if hasattr(request, 'user') else request
+            bu_service = BusinessUnitsService(user=user)
+            self.filters['region'].queryset = bu_service.read_regions()
+            self.filters['business_unit'].queryset = bu_service.read_units()
+            self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
+            self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
+            self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
+
+    def filter_region(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        selected_region_ids = set(r.pk if hasattr(r, 'pk') else r for r in value)
+        all_bu_ids = set(selected_region_ids)
+        current_parents = set(selected_region_ids)
+        while current_parents:
+            child_ids = set(
+                BusinessUnit.objects.filter(parent_id__in=current_parents).values_list('id', flat=True)
+            )
+            new_ids = child_ids - all_bu_ids
+            if not new_ids:
+                break
+            all_bu_ids.update(new_ids)
+            current_parents = new_ids
+        return queryset.filter(route__business_unit_id__in=all_bu_ids)
+
+    def filter_business_unit(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in value]
+        return queryset.filter(route__business_unit_id__in=bu_ids)
+

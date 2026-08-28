@@ -1,0 +1,54 @@
+{% load humanize %}
+
+<p class="text-title  pb-2 border-b border-border">Detalles de cobranza</p>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+    <span class="text-title md:col-span-2 border border-border p-1 text-center font-medium rounded bg-page">Total general</span>
+
+    <span class="text-title">Límite de crédito</span>
+    <div class="w-full text-body flex items-center font-mono">
+        ${{ customer.credit_limit|default:0|floatformat:2|intcomma }}
+    </div>
+
+    <span class="text-title">Uso</span>
+    <div class="w-full text-body flex items-center font-mono">
+        {{ customer.credit_usage|default:0|floatformat:2|intcomma }}%
+    </div>
+
+    <span class="text-title">Días de crédito</span>
+    <div class="w-full text-body flex items-center font-mono">
+        {{ customer.credit_days|default:0 }}
+    </div>
+
+    <span class="text-title">Saldo total</span>
+    <div class="w-full text-body flex items-center font-mono font-medium">
+        ${{ customer.total_balance|default:0|floatformat:2|intcomma }}
+    </div>
+
+    <span class="text-title">Saldo vencido</span>
+    <div class="w-full text-body flex items-center font-mono {% if customer.overdue_balance > 0 %}text-red-500 font-medium{% endif %}">
+        ${{ customer.overdue_balance|default:0|floatformat:2|intcomma }}
+    </div>
+
+    <span class="text-title md:col-span-2 border border-border p-1 text-center font-medium rounded bg-page mt-2">Antigüedad de saldos</span>
+
+    <span class="text-title">1 a 15 días</span>
+    <div class="w-full text-body flex items-center font-mono">
+        ${{ customer.balance_15|default:0.00|floatformat:2|intcomma }}
+    </div>
+
+    <span class="text-title">16 a 30 días</span>
+    <div class="w-full text-body flex items-center font-mono">
+        ${{ customer.balance_30|default:0.00|floatformat:2|intcomma }}
+    </div>
+
+    <span class="text-title">31 a 60 días</span>
+    <div class="w-full text-body flex items-center font-mono">
+        ${{ customer.balance_60|default:0.00|floatformat:2|intcomma }}
+    </div>
+
+    <span class="text-title">60+ días</span>
+    <div class="w-full text-body flex items-center font-mono">
+        ${{ customer.past_due|default:0.00|floatformat:2|intcomma }}
+    </div>
+</div>

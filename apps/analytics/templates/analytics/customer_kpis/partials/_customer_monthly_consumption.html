@@ -1,0 +1,65 @@
+{% load humanize %}
+
+<p class="text-title  pb-2 border-b border-border">Consumos mensuales</p>
+
+<div class="w-full overflow-x-auto border border-border rounded bg-container max-h-[60vh]">
+    <table class="w-full text-left border-separate border-spacing-0 table-fixed">
+        <thead>
+            <tr class="border-b border-border text-xs">
+                <th class="w-[220px] min-w-[180px] p-1 text-left bg-container border-r border-t border-b border-border sticky left-0 z-30 font-medium text-title">
+                    Clase de producto
+                </th>
+                {% for m in customer.consumption_months %}
+                    <th class="w-[120px] min-w-[120px] p-1 text-center border-r border-t border-b border-border font-medium text-title bg-page">
+                        {{ m|date:"M Y"|title }}
+                    </th>
+                {% endfor %}
+                <th class="w-[140px] min-w-[140px] p-1 text-right border-t border-b border-border font-medium text-title bg-page">
+                    Total
+                </th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for cc in customer.monthly_consumption_by_class %}
+                <tr class="hover:bg-hover transition-colors text-xs">
+                    <td class="p-1 text-left bg-container border-r border-b border-border sticky left-0 text-strong font-medium truncate" title="{{ cc.product_class.id|upper }} - {{ cc.product_class.name|title }}">
+                        {{ cc.product_class.name|title }}
+                    </td>
+                    {% for amt in cc.monthly_amounts %}
+                        <td class="p-1 text-right border-r border-b border-border text-strong font-mono">
+                            ${{ amt|floatformat:2|intcomma }}
+                        </td>
+                    {% endfor %}
+                    <td class="p-1 text-right border-b border-border text-strong font-bold font-mono">
+                        ${{ cc.total|floatformat:2|intcomma }}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="100%" class="py-12 text-center border-b border-border text-secondary">
+                        {% include 'layouts/data_not_found.html' %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+
+        {% if customer.monthly_consumption_by_class %}
+        <tfoot>
+            <tr class="bg-page text-xs">
+                <td class="p-1 text-left bg-page border-r border-t border-border sticky left-0 font-bold text-title z-10">
+                    Total
+                </td>
+                {% for amt in customer.consumption_totals.monthly_amounts %}
+                    <td class="p-1 text-right border-r border-t border-border font-bold text-title font-mono">
+                        ${{ amt|floatformat:2|intcomma }}
+                    </td>
+                {% endfor %}
+                <td class="p-1 text-right border-t border-border font-bold text-title font-mono">
+                    ${{ customer.consumption_totals.grand_total|floatformat:2|intcomma }}
+                </td>
+            </tr>
+        </tfoot>
+        {% endif %}
+    </table>
+</div>

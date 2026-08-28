@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.db.models import QuerySet, Sum, Q
 from django.utils import timezone
 from collections import defaultdict
+from django.db.models.functions import TruncMonth
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -900,3 +901,283 @@ class CustomerKpisExports:
         wb.save(output)
         output.seek(0)
         return output
+
+
+@dataclass
+class CustomerProfileService(CustomerKpisService):
+    '''
+    dedicated to calculate dynamic metrics and attributes for a single Customer Profile.
+    enriches the customer instance with consumption categories, behavior KPIs,
+    filtered collections (Accounts Receivable), and monthly consumption by product class.
+    '''
+    customer: Any = None
+    customers_qs: QuerySet | None = None
+    transactions_qs: QuerySet | None = None
+    ars_qs: QuerySet | None = None
+
+    def __post_init__(self):
+        if self.customer and self.customers_qs is None:
+            from apps.customers.models import Customer
+            self.customers_qs = Customer.objects.filter(pk=self.customer.pk)
+
+        if self.transactions_qs is None:
+            from apps.sales.services.sale_transactions import SaleTransactionsService
+            self.transactions_qs = SaleTransactionsService(user=self.user).read_transactions()
+
+        if self.ars_qs is None:
+            from apps.customers.services.accounts_receivables import AccountsReceivablesService
+            self.ars_qs = AccountsReceivablesService(user=self.user).read_ars()
+
+        super().__post_init__()
+
+        #baseline dates
+        first_day_curr_month = self.today.replace(day=1)
+        self.last_day_prev_month = first_day_curr_month - timedelta(days=1)
+        self.first_day_prev_month = self.last_day_prev_month.replace(day=1)
+
+        self.first_day_prev_year = date(self.previous_year, 1, 1)
+        self.last_day_prev_year = date(self.previous_year, 12, 31)
+
+    def build_profile(self) -> Any:
+        '''
+        enriches and returns the customer object with all profile attributes.
+        '''
+        if not self.customer:
+            return None
+
+        self._set_static_categories()
+        self._set_behavior_kpis()
+        self._set_collections_kpis()
+        self._set_monthly_consumption_by_class()
+        return self.customer
+
+    def _set_static_categories(self) -> None:
+        '''
+        calculates static consumption categories:
+        • monthly category (previous full month)
+        • quarterly category (previous 3 full months average)
+        • annual category (previous year average)
+        '''
+        from apps.sales.services.sale_transactions import SaleTransactionsService
+        base_txs = SaleTransactionsService(user=self.user).read_transactions().filter(customer=self.customer)
+
+        #previous full month
+        sales_prev_month = base_txs.filter(
+            sale_date__gte=self.first_day_prev_month,
+            sale_date__lte=self.last_day_prev_month
+        ).aggregate(total=Sum('net_amount'))['total'] or Decimal('0.00')
+        self.customer.category_prev_month = self.CategoryObj(self._calculate_category(sales_prev_month))
+
+        #previous full quarter average
+        sales_q = base_txs.filter(
+            sale_date__gte=self.first_day_q,
+            sale_date__lte=self.last_day_q
+        ).aggregate(total=Sum('net_amount'))['total'] or Decimal('0.00')
+        avg_q = self._calculate_period_avg(sales_q, self.first_day_q, self.last_day_q, self.customer.registration_date)
+        self.customer.category_prev_quarter = self.CategoryObj(self._calculate_category(avg_q))
+
+        #previous full year average
+        sales_y = base_txs.filter(
+            sale_date__gte=self.first_day_prev_year,
+            sale_date__lte=self.last_day_prev_year
+        ).aggregate(total=Sum('net_amount'))['total'] or Decimal('0.00')
+        avg_y = self._calculate_period_avg(sales_y, self.first_day_prev_year, self.last_day_prev_year, self.customer.registration_date)
+        self.customer.category_prev_year = self.CategoryObj(self._calculate_category(avg_y))
+
+    def _set_behavior_kpis(self) -> None:
+        '''
+        calculates purchase frequency, consumed classes count, and top class in previous quarter.
+        '''
+        filtered_txs = self.transactions_qs.filter(customer=self.customer)
+
+        #purchase frequency
+        dates = list(
+            filtered_txs.filter(net_amount__gt=0)
+            .order_by('sale_date')
+            .values_list('sale_date', flat=True)
+            .distinct()
+        )
+
+        if len(dates) < 2:
+            self.customer.frequency = 'nula'
+            self.customer.frequency_days = 0
+            self.customer.purchase_frequency_category = 'Nula'
+            self.customer.purchase_frequency_days = ''
+        else:
+            intervals = [(dates[i] - dates[i-1]).days for i in range(1, len(dates))]
+            avg_interval = round(sum(intervals) / len(intervals)) if intervals else 0
+
+            freq_name = 'atipico'
+            for name, max_days in self.frequency_categories:
+                if avg_interval <= max_days:
+                    freq_name = name
+                    break
+
+            self.customer.frequency = freq_name
+            self.customer.frequency_days = avg_interval
+            self.customer.purchase_frequency_category = freq_name.title()
+            self.customer.purchase_frequency_days = f"cada {avg_interval} días"
+
+        #consumed relevant classes count
+        classes_count = (
+            filtered_txs.filter(
+                net_amount__gt=0,
+                product_class_id__in=self.relevant_classes
+            )
+            .values('product_class_id')
+            .distinct()
+            .count()
+        )
+        self.customer.consumed_classes = classes_count
+        self.customer.product_classes_with_consumption = classes_count
+
+        #most consumed class in previous quarter
+        from apps.sales.services.sale_transactions import SaleTransactionsService
+        base_txs = SaleTransactionsService(user=self.user).read_transactions().filter(customer=self.customer)
+        top_class = (
+            base_txs.filter(
+                sale_date__gte=self.first_day_q,
+                sale_date__lte=self.last_day_q,
+                net_amount__gt=0
+            )
+            .values('product_class__id', 'product_class__name')
+            .annotate(total_net=Sum('net_amount'))
+            .order_by('-total_net')
+            .first()
+        )
+        if top_class and top_class.get('product_class__name'):
+            self.customer.most_consumed_class_last_q = {
+                'id': top_class['product_class__id'],
+                'name': top_class['product_class__name']
+            }
+        else:
+            self.customer.most_consumed_class_last_q = {'id': '', 'name': 'Sin consumo reciente'}
+
+    def _set_collections_kpis(self) -> None:
+        '''
+        calculates accounts receivable metrics for the customer respecting route/unit filters.
+        '''
+        ar_qs = self.ars_qs.filter(customer=self.customer)
+
+        #apply route/business_unit/region filters if present in cleaned_data
+        if self.cleaned_data:
+            if self.cleaned_data.get('route'):
+                ar_qs = ar_qs.filter(route__in=self.cleaned_data['route'])
+            if self.cleaned_data.get('business_unit'):
+                bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in self.cleaned_data['business_unit']]
+                ar_qs = ar_qs.filter(route__business_unit_id__in=bu_ids)
+            if self.cleaned_data.get('region'):
+                region_objs = self.cleaned_data['region']
+                region_ids = set(r.pk if hasattr(r, 'pk') else r for r in region_objs)
+                all_bu_ids = set(region_ids)
+                current_parents = set(region_ids)
+                from apps.human_resources.models import BusinessUnit
+                while current_parents:
+                    child_ids = set(
+                        BusinessUnit.objects.filter(parent_id__in=current_parents)
+                        .values_list('id', flat=True)
+                    )
+                    new_ids = child_ids - all_bu_ids
+                    if not new_ids:
+                        break
+                    all_bu_ids.update(new_ids)
+                    current_parents = new_ids
+                ar_qs = ar_qs.filter(route__business_unit_id__in=all_bu_ids)
+
+        ar_agg = ar_qs.aggregate(
+            total_balance=Sum('total_balance'),
+            current_balance=Sum('current_balance'),
+            balance_15=Sum('balance_15'),
+            balance_30=Sum('balance_30'),
+            balance_60=Sum('balance_60'),
+            past_due=Sum('past_due'),
+        )
+
+        self.customer.total_balance = ar_agg['total_balance'] or Decimal('0.00')
+        self.customer.current_balance = ar_agg['current_balance'] or Decimal('0.00')
+        self.customer.overdue_balance = max(self.customer.total_balance - self.customer.current_balance, Decimal('0.00'))
+        self.customer.balance_15 = ar_agg['balance_15'] or Decimal('0.00')
+        self.customer.balance_30 = ar_agg['balance_30'] or Decimal('0.00')
+        self.customer.balance_60 = ar_agg['balance_60'] or Decimal('0.00')
+        self.customer.past_due = ar_agg['past_due'] or Decimal('0.00')
+
+        credit_limit = self.customer.credit_limit or Decimal('0.00')
+        if credit_limit > Decimal('0.00'):
+            self.customer.credit_usage = (self.customer.total_balance / credit_limit) * Decimal('100.00')
+        else:
+            self.customer.credit_usage = Decimal('0.00')
+
+    def _set_monthly_consumption_by_class(self) -> None:
+        '''
+        builds matrix of monthly consumption by product class for the customer based on filtered transactions.
+        Defaults to the current year period if no date range is provided.
+        '''
+
+        txs = self.transactions_qs.filter(customer=self.customer)
+
+        start_date = self.date_start or date(self.current_year, 1, 1)
+        end_date = self.date_end or self.last_day_prev_month
+
+        if start_date > end_date:
+            start_date, end_date = end_date, start_date
+
+        start_m = date(start_date.year, start_date.month, 1)
+        end_m = date(end_date.year, end_date.month, 1)
+
+        months_list = []
+        curr = start_m
+        while curr <= end_m:
+            months_list.append(curr)
+            curr += relativedelta(months=1)
+
+        grouped = (
+            txs.filter(sale_date__gte=start_date, sale_date__lte=end_date)
+            .values('product_class__id', 'product_class__name')
+            .annotate(
+                month=TruncMonth('sale_date'),
+                total=Sum('net_amount')
+            )
+        )
+
+        classes_dict = {}
+        for row in grouped:
+            c_id = row['product_class__id'] or 'sin_clase'
+            c_name = row['product_class__name'] or c_id
+            m = row['month']
+            if hasattr(m, 'date'):
+                m = m.date()
+            m = date(m.year, m.month, 1)
+
+            if c_id not in classes_dict:
+                classes_dict[c_id] = {
+                    'product_class': {'id': c_id, 'name': c_name},
+                    'months': {mon: Decimal('0.00') for mon in months_list},
+                    'total': Decimal('0.00')
+                }
+
+            val = row['total'] or Decimal('0.00')
+            if m in classes_dict[c_id]['months']:
+                classes_dict[c_id]['months'][m] += val
+            classes_dict[c_id]['total'] += val
+
+        sorted_classes = sorted(classes_dict.values(), key=lambda x: x['total'], reverse=True)
+
+        totals_row = {
+            'months': {mon: Decimal('0.00') for mon in months_list},
+            'grand_total': Decimal('0.00')
+        }
+
+        for pc in sorted_classes:
+            for mon in months_list:
+                totals_row['months'][mon] += pc['months'][mon]
+            totals_row['grand_total'] += pc['total']
+            pc['monthly_amounts'] = [pc['months'][mon] for mon in months_list]
+
+        totals_row['monthly_amounts'] = [totals_row['months'][mon] for mon in months_list]
+
+        self.customer.monthly_consumption_by_class = sorted_classes
+        self.customer.consumption_months = months_list
+        self.customer.consumption_totals = totals_row
+
+
+CustomerKpisService.Profile = CustomerProfileService
