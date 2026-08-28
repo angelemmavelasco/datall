@@ -39,9 +39,10 @@ class UserForm(forms.ModelForm):
 
         if not is_superuser:
             self.fields.pop('is_superuser', None)
+            self.fields.pop('is_staff', None)
 
         if not is_full_access and not is_superuser:
-            disallowed_fields = ['is_staff', 'is_active', 'groups', 'username']
+            disallowed_fields = ['is_active', 'groups', 'username',]
             for field_name in disallowed_fields:
                 self.fields.pop(field_name, None)
 

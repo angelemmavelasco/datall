@@ -37,6 +37,7 @@ class BusinessUnitsService(UsersService):
         'acceso_total_usuarios',
         'acceso_total_unidades_negocio',
         'recursos_humanos',
+        'acceso_total',
     )
 
     def read_business_units(self) -> QuerySet:

@@ -43,6 +43,7 @@ class SaleTargetsService(UsersService):
         'acceso_total_rutas',
         'acceso_total_cuotas',
         'cuotas',
+        'acceso_total',
     )
 
     def _get_allowed_routes_qs(self) -> QuerySet:

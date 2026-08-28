@@ -32,6 +32,7 @@ class EmployeesService(UsersService):
         'acceso_total_usuarios',
         'acceso_total_colaboradores',
         'recursos_humanos',
+        'acceso_total',
     )
 
     def read_employees(self) -> QuerySet:

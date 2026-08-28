@@ -58,6 +58,7 @@ class CustomersService(UsersService):
         'acceso_total_clientes',
         'clientes',
         'acceso_total_ventas',
+        'acceso_total',
     )
 
     def get_allowed_customers(self, *, can_view: bool = True, can_edit: bool = False) -> QuerySet:

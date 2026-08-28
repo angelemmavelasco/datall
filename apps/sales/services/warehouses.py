@@ -27,6 +27,7 @@ class WarehousesService(UsersService):
     ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
         'acceso_total_usuarios',
         'acceso_total_centros_distribucion',
+        'acceso_total',
     )
 
     def read_warehouses(self) -> QuerySet:

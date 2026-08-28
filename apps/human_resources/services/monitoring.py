@@ -32,6 +32,7 @@ class MonitoringFormsService(UsersService):
         'acceso_total_colaboradores',
         'acceso_total_reportes_evaluaciones',
         'recursos_humanos',
+        'acceso_total',
     )
 
     def read_forms(self) -> QuerySet:
@@ -292,6 +293,7 @@ class MonitoringSubmissionService(UsersService):
         'acceso_total_colaboradores',
         'acceso_total_reportes_evaluaciones',
         'recursos_humanos',
+        'acceso_total',
     )
     
     def _get_applicable_employees_for_form(self, form: MonitoringForm, allowed_employees: QuerySet) -> list:

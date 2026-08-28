@@ -25,6 +25,7 @@ class OrgChartService(UsersService):
         'acceso_total_usuarios',
         'acceso_total_colaboradores',
         'recursos_humanos',
+        'acceso_total',
     )
     accessible_employee_ids: set = field(init=False)
 

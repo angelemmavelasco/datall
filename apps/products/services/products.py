@@ -63,6 +63,7 @@ class ProductsService(UsersService):
         'productos',
         'acceso_total_inventario',
         'acceso_total_ventas',
+        'acceso_total',
     )
 
     def read_products(self) -> QuerySet:

@@ -35,7 +35,10 @@ class UsersService:
     user: 'UserType'
     user_model: type = field(default_factory=get_user_model)
     _is_full_access: bool = field(init=False)
-    ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = ('acceso_total_usuarios',)
+    ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
+        'acceso_total_usuarios',
+        'acceso_total',
+    )
 
     def __post_init__(self):
         self._validate_access()
@@ -56,7 +59,8 @@ class UsersService:
         """
         Recovers a list with the names of the groups who have full acess to the users info.
         """
-        return list(Reference.objects.filter(context__in=self.ACCESS_CONTEXTS).values_list('value', flat=True))
+        contexts = tuple(set(self.ACCESS_CONTEXTS) | {'acceso_total'})
+        return list(Reference.objects.filter(context__in=contexts).values_list('value', flat=True))
 
     def _evaluate_full_access(self) -> bool:
         """
@@ -113,6 +117,10 @@ class UsersService:
         '''
         if not self._is_full_access:
             raise UserPermissionError('No tienes permisos suficientes para crear usuarios.')
+
+        if not getattr(self.user, 'is_superuser', False):
+            data.pop('is_superuser', None)
+            data.pop('is_staff', None)
 
         password = data.pop('password', None)
         groups = data.pop('groups', [])

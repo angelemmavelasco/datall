@@ -57,6 +57,7 @@ class RoutesService(UsersService):
     user_route_access_model: type = UserRouteAccess
     ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
         'acceso_total_rutas',
+        'acceso_total',
     )
 
     def get_allowed_routes(self, *, can_view: bool = True, can_edit: bool = False) -> QuerySet:

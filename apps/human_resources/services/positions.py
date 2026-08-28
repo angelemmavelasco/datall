@@ -28,6 +28,7 @@ class PositionsService(UsersService):
         'acceso_total_usuarios',
         'acceso_total_posiciones',
         'recursos_humanos',
+        'acceso_total',
     )
 
     def read_positions(self) -> QuerySet:
