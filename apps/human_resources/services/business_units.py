@@ -8,6 +8,7 @@ from django.db.models import QuerySet, Count, Q
 from django.core.exceptions import ValidationError
 from django.db import transaction, IntegrityError
 from apps.human_resources.services.employees import EmployeesService
+from apps.sales.services.routes import RoutesService
 from django.utils import timezone
 
 class ServiceError(Exception):
@@ -62,8 +63,19 @@ class BusinessUnitsService(UsersService):
             employees_service = EmployeesService(user=self.user)
             accessible_employees = employees_service.read_employees()
 
+            routes_service = RoutesService(user=self.user)
+            allowed_routes = routes_service.get_allowed_routes(can_view=True, can_edit=False)
+
+            route_bu_ids = set(allowed_routes.values_list('business_unit_id', flat=True).distinct())
+            parent_bu_ids = set(
+                self.business_unit_model.objects.filter(id__in=route_bu_ids).values_list('parent_id', flat=True)
+            )
+            route_and_parent_bu_ids = (route_bu_ids | parent_bu_ids) - {None}
+
             base_qs = self.business_unit_model.objects.select_related('parent', 'manager', 'manager__user').filter(
-                Q(employees__in=accessible_employees) | Q(manager__user=self.user)
+                Q(employees__in=accessible_employees) |
+                Q(manager__user=self.user) |
+                Q(id__in=route_and_parent_bu_ids)
             ).distinct()
 
             active_employees_filter = is_active_emp & Q(employees__in=accessible_employees)

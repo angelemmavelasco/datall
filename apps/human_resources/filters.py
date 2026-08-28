@@ -69,9 +69,10 @@ class EmployeeFilter(django_filters.FilterSet):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         if request:
-            self.filters['position'].queryset = PositionsService(user=request.user).read_positions()
-            self.filters['department'].queryset = DepartmentsService(user=request.user).read_departments()
-            self.filters['business_unit'].queryset = BusinessUnitsService(user=request.user).read_business_units()
+            user = request.user if hasattr(request, 'user') else request
+            self.filters['position'].queryset = PositionsService(user=user).read_positions().order_by('name')
+            self.filters['department'].queryset = DepartmentsService(user=user).read_departments().order_by('name')
+            self.filters['business_unit'].queryset = BusinessUnitsService(user=user).read_business_units().order_by('name')
 
     def filter_name(self, queryset, name, value):
         return queryset.filter(

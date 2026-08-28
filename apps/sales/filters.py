@@ -102,10 +102,11 @@ class RouteFilter(django_filters.FilterSet):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         if request:
-            self.filters['employee'].queryset = EmployeesService(user=request.user).read_employees()
-            self.filters['business_unit'].queryset = BusinessUnitsService(user=request.user).read_business_units()
-            self.filters['route_type'].queryset = RouteType.objects.all()
-            self.filters['sale_channel'].queryset = SaleChannel.objects.all()
+            user = request.user if hasattr(request, 'user') else request
+            self.filters['employee'].queryset = EmployeesService(user=user).read_employees().order_by('user__first_name')
+            self.filters['business_unit'].queryset = BusinessUnitsService(user=user).read_units()
+            self.filters['route_type'].queryset = RouteType.objects.all().order_by('name', 'id')
+            self.filters['sale_channel'].queryset = SaleChannel.objects.all().order_by('name', 'id')
 
     def filter_name(self, queryset, name, value):
         return queryset.filter(
@@ -185,13 +186,14 @@ class SaleTransactionFilter(django_filters.FilterSet):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         if request:
+            user = request.user if hasattr(request, 'user') else request
             from .services.routes import RoutesService
-            self.filters['route'].queryset = RoutesService(user=request.user).read_routes()
-            self.filters['business_unit'].queryset = BusinessUnitsService(user=request.user).read_business_units()
-            self.filters['warehouse'].queryset = Warehouse.objects.all()
+            self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
+            self.filters['business_unit'].queryset = BusinessUnitsService(user=user).read_units()
+            self.filters['warehouse'].queryset = Warehouse.objects.all().order_by('name', 'id')
             self.filters['customer'].queryset = Customer.objects.all().order_by('name', 'id')
             self.filters['product'].queryset = Product.objects.all().order_by('name', 'id')
-            self.filters['product_class'].queryset = ProductClass.objects.all()
+            self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(
@@ -252,9 +254,10 @@ class SaleTargetFilter(django_filters.FilterSet):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         if request:
+            user = request.user if hasattr(request, 'user') else request
             from .services.routes import RoutesService
-            self.filters['route'].queryset = RoutesService(user=request.user).read_routes()
-            self.filters['business_unit'].queryset = BusinessUnitsService(user=request.user).read_business_units()
+            self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
+            self.filters['business_unit'].queryset = BusinessUnitsService(user=user).read_units()
             self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
 
     def filter_search(self, queryset, name, value):

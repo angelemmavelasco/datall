@@ -98,13 +98,14 @@ class SalesDashboardFilter(django_filters.FilterSet):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         if request:
-            bu_service = BusinessUnitsService(user=request.user)
+            user = request.user if hasattr(request, 'user') else request
+            bu_service = BusinessUnitsService(user=user)
             self.filters['region'].queryset = bu_service.read_regions()
             self.filters['business_unit'].queryset = bu_service.read_units()
-            self.filters['route'].queryset = RoutesService(user=request.user).read_routes()
+            self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
             self.filters['customer'].queryset = Customer.objects.all().order_by('name', 'id')
-            self.filters['product_category'].queryset = ProductCategory.objects.all()
-            self.filters['product_class'].queryset = ProductClass.objects.all()
+            self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
+            self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
 
     def filter_region(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
         if not value:
@@ -239,11 +240,12 @@ class CustomerKpisFilter(django_filters.FilterSet):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         if request:
-            bu_service = BusinessUnitsService(user=request.user)
+            user = request.user if hasattr(request, 'user') else request
+            bu_service = BusinessUnitsService(user=user)
             self.filters['region'].queryset = bu_service.read_regions()
             self.filters['business_unit'].queryset = bu_service.read_units()
-            self.filters['route'].queryset = RoutesService(user=request.user).read_routes()
-            self.filters['customer_type'].queryset = CustomerType.objects.all()
+            self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
+            self.filters['customer_type'].queryset = CustomerType.objects.all().order_by('name', 'id')
 
     def filter_customer(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
         if not value:
@@ -340,7 +342,8 @@ class RouteKpisFilter(django_filters.FilterSet):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         if request:
-            self.filters['route'].queryset = RoutesService(user=request.user).read_routes().order_by('id')
+            user = request.user if hasattr(request, 'user') else request
+            self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
 
 
 class CommercialRiskFilter(django_filters.FilterSet):
@@ -372,7 +375,8 @@ class CommercialRiskFilter(django_filters.FilterSet):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         if request:
-            self.filters['route'].queryset = RoutesService(user=request.user).read_routes().order_by('id')
+            user = request.user if hasattr(request, 'user') else request
+            self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
 
 CollectionsDashboardFilter = AccountsReceivableFilter
 
@@ -430,23 +434,10 @@ class TargetAchievementFilter(django_filters.FilterSet):
         super().__init__(*args, **kwargs)
         if request:
             user = request.user if hasattr(request, 'user') else request
-            routes_qs = RoutesService(user=user).read_routes().order_by('id')
-            self.filters['route'].queryset = routes_qs
-
-            allowed_bu_ids = routes_qs.values_list('business_unit_id', flat=True).distinct()
-            self.filters['business_unit'].queryset = BusinessUnit.objects.filter(
-                id__in=allowed_bu_ids,
-                business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT
-            ).order_by('name')
-
-            parent_region_ids = BusinessUnit.objects.filter(
-                id__in=allowed_bu_ids
-            ).values_list('parent_id', flat=True).distinct()
-            self.filters['region'].queryset = BusinessUnit.objects.filter(
-                id__in=parent_region_ids,
-                business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION
-            ).order_by('name')
-
+            bu_service = BusinessUnitsService(user=user)
+            self.filters['region'].queryset = bu_service.read_regions()
+            self.filters['business_unit'].queryset = bu_service.read_units()
+            self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
             self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
             self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
 
@@ -561,23 +552,10 @@ class YearlySaleBreakdownFilter(django_filters.FilterSet):
         super().__init__(*args, **kwargs)
         if request:
             user = request.user if hasattr(request, 'user') else request
-            routes_qs = RoutesService(user=user).read_routes().order_by('id')
-            self.filters['route'].queryset = routes_qs
-
-            allowed_bu_ids = routes_qs.values_list('business_unit_id', flat=True).distinct()
-            self.filters['business_unit'].queryset = BusinessUnit.objects.filter(
-                id__in=allowed_bu_ids,
-                business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT
-            ).order_by('name')
-
-            parent_region_ids = BusinessUnit.objects.filter(
-                id__in=allowed_bu_ids
-            ).values_list('parent_id', flat=True).distinct()
-            self.filters['region'].queryset = BusinessUnit.objects.filter(
-                id__in=parent_region_ids,
-                business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION
-            ).order_by('name')
-
+            bu_service = BusinessUnitsService(user=user)
+            self.filters['region'].queryset = bu_service.read_regions()
+            self.filters['business_unit'].queryset = bu_service.read_units()
+            self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
             self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
             self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
 
@@ -676,23 +654,10 @@ class MonthlySaleBreakdownFilter(django_filters.FilterSet):
 
         if request:
             user = request.user if hasattr(request, 'user') else request
-            routes_qs = RoutesService(user=user).read_routes().order_by('id')
-            self.filters['route'].queryset = routes_qs
-
-            allowed_bu_ids = routes_qs.values_list('business_unit_id', flat=True).distinct()
-            self.filters['business_unit'].queryset = BusinessUnit.objects.filter(
-                id__in=allowed_bu_ids,
-                business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT
-            ).order_by('name')
-
-            parent_region_ids = BusinessUnit.objects.filter(
-                id__in=allowed_bu_ids
-            ).values_list('parent_id', flat=True).distinct()
-            self.filters['region'].queryset = BusinessUnit.objects.filter(
-                id__in=parent_region_ids,
-                business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION
-            ).order_by('name')
-
+            bu_service = BusinessUnitsService(user=user)
+            self.filters['region'].queryset = bu_service.read_regions()
+            self.filters['business_unit'].queryset = bu_service.read_units()
+            self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
             self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
             self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
 
