@@ -89,6 +89,8 @@ class MonthlySaleBreakdownService:
         if self.cleaned_data.get('product_category'):
             self.targets_qs = self.targets_qs.filter(product_class__product_category__in=self.cleaned_data['product_category'])
 
+        self.transactions_qs = self.transactions_qs.filter(route__in=self.routes_qs)
+
 
     def _get_monthly_targets(self) -> dict[tuple[str, str, int], Decimal]:
         """

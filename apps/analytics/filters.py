@@ -429,10 +429,24 @@ class TargetAchievementFilter(django_filters.FilterSet):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         if request:
-            bu_service = BusinessUnitsService(user=request.user)
-            self.filters['region'].queryset = bu_service.read_regions()
-            self.filters['business_unit'].queryset = bu_service.read_units()
-            self.filters['route'].queryset = RoutesService(user=request.user).read_routes().order_by('id')
+            user = request.user if hasattr(request, 'user') else request
+            routes_qs = RoutesService(user=user).read_routes().order_by('id')
+            self.filters['route'].queryset = routes_qs
+
+            allowed_bu_ids = routes_qs.values_list('business_unit_id', flat=True).distinct()
+            self.filters['business_unit'].queryset = BusinessUnit.objects.filter(
+                id__in=allowed_bu_ids,
+                business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT
+            ).order_by('name')
+
+            parent_region_ids = BusinessUnit.objects.filter(
+                id__in=allowed_bu_ids
+            ).values_list('parent_id', flat=True).distinct()
+            self.filters['region'].queryset = BusinessUnit.objects.filter(
+                id__in=parent_region_ids,
+                business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION
+            ).order_by('name')
+
             self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
             self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
 
@@ -546,10 +560,24 @@ class YearlySaleBreakdownFilter(django_filters.FilterSet):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         if request:
-            bu_service = BusinessUnitsService(user=request.user)
-            self.filters['region'].queryset = bu_service.read_regions()
-            self.filters['business_unit'].queryset = bu_service.read_units()
-            self.filters['route'].queryset = RoutesService(user=request.user).read_routes().order_by('id')
+            user = request.user if hasattr(request, 'user') else request
+            routes_qs = RoutesService(user=user).read_routes().order_by('id')
+            self.filters['route'].queryset = routes_qs
+
+            allowed_bu_ids = routes_qs.values_list('business_unit_id', flat=True).distinct()
+            self.filters['business_unit'].queryset = BusinessUnit.objects.filter(
+                id__in=allowed_bu_ids,
+                business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT
+            ).order_by('name')
+
+            parent_region_ids = BusinessUnit.objects.filter(
+                id__in=allowed_bu_ids
+            ).values_list('parent_id', flat=True).distinct()
+            self.filters['region'].queryset = BusinessUnit.objects.filter(
+                id__in=parent_region_ids,
+                business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION
+            ).order_by('name')
+
             self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
             self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
 
@@ -647,10 +675,24 @@ class MonthlySaleBreakdownFilter(django_filters.FilterSet):
         self.filters['year'].extra['choices'] = year_choices
 
         if request:
-            bu_service = BusinessUnitsService(user=request.user)
-            self.filters['region'].queryset = bu_service.read_regions()
-            self.filters['business_unit'].queryset = bu_service.read_units()
-            self.filters['route'].queryset = RoutesService(user=request.user).read_routes().order_by('id')
+            user = request.user if hasattr(request, 'user') else request
+            routes_qs = RoutesService(user=user).read_routes().order_by('id')
+            self.filters['route'].queryset = routes_qs
+
+            allowed_bu_ids = routes_qs.values_list('business_unit_id', flat=True).distinct()
+            self.filters['business_unit'].queryset = BusinessUnit.objects.filter(
+                id__in=allowed_bu_ids,
+                business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT
+            ).order_by('name')
+
+            parent_region_ids = BusinessUnit.objects.filter(
+                id__in=allowed_bu_ids
+            ).values_list('parent_id', flat=True).distinct()
+            self.filters['region'].queryset = BusinessUnit.objects.filter(
+                id__in=parent_region_ids,
+                business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION
+            ).order_by('name')
+
             self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
             self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
 

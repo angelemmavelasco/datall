@@ -425,6 +425,46 @@ def user_reports_partial_view(request):
 
 
 @login_required
+def report_download_view(request, pk: int):
+    """
+    secure download handler for generated reports.
+    avoids WSGI FileWrapper resource deadlock on macOS / Docker dev mounts
+    and validates user permissions.
+    """
+    report = get_object_or_404(GeneratedReport, pk=pk)
+
+    if not (request.user.is_superuser or report.user == request.user or request.user.has_perm('core.view_generatedreport')):
+        messages.error(request, "No tienes permiso para descargar este reporte.")
+        return redirect(request.META.get('HTTP_REFERER', '/'))
+
+    if not report.file:
+        messages.error(request, "El archivo solicitado no se encuentra disponible.")
+        return redirect(request.META.get('HTTP_REFERER', '/'))
+
+    filename = report.file.name.split('/')[-1]
+    content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    if filename.endswith('.csv'):
+        content_type = 'text/csv'
+    elif filename.endswith('.pdf'):
+        content_type = 'application/pdf'
+    elif filename.endswith('.txt'):
+        content_type = 'text/plain'
+
+    try:
+        report.file.open('rb')
+        file_data = report.file.read()
+        report.file.close()
+
+        response = HttpResponse(file_data, content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Content-Length'] = len(file_data)
+        return response
+    except Exception as e:
+        messages.error(request, f"Error al descargar el archivo: {e}")
+        return redirect(request.META.get('HTTP_REFERER', '/'))
+
+
+@login_required
 def reports_indicator_view(request):
     """Returns the nav indicator partial with smart polling status and animated alert icon"""
     has_pending = GeneratedReport.objects.filter(

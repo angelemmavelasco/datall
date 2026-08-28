@@ -163,7 +163,7 @@ def generate_monthly_sale_breakdown_report_task(user_id: int, req_data: dict | s
         routes_service = RoutesService(user=user)
         allowed_routes_qs = routes_service.read_routes().order_by('id')
 
-        filter_set = MonthlySaleBreakdownFilter(q_data, queryset=base_tx_qs)
+        filter_set = MonthlySaleBreakdownFilter(q_data, queryset=base_tx_qs, request=user)
         filtered_tx_qs = filter_set.qs
         parsed_cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
 

@@ -48,6 +48,7 @@ urlpatterns = [
     # Reports
     path('reports/partial/', user_reports_partial_view, name='user_reports_partial_view'),
     path('reports/indicator/', reports_indicator_view, name='reports_indicator_view'),
+    path('reports/<int:pk>/download/', report_download_view, name='report_download_view'),
 
     # Error preview routes
     path('403/', error_403_view, name='error_403'),
