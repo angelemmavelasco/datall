@@ -519,9 +519,26 @@ class MonthlySaleBreakdownExports:
 
         report_data = self.monthly_sale_breakdown_service.get_data()
 
+        if not report_data:
+            ws = wb.create_sheet(title="SIN DATOS")
+            ws.cell(row=1, column=1, value="No se encontraron datos o rutas asignadas para el periodo seleccionado.")
+            buffer = io.BytesIO()
+            wb.save(buffer)
+            buffer.seek(0)
+            return buffer
+
+        existing_titles = set()
+
         for w_data in report_data:
-            # maximum sheet title length is 31 characters
-            sheet_title = (w_data.get('business_unit_name') or 'Gerencia')[:31].replace('/', '-').replace('\\', '').replace('?', '').replace('*', '').replace(':', '').replace('[', '').replace(']', '').upper()
+            base_title = (w_data.get('business_unit_name') or 'Gerencia')[:31].replace('/', '-').replace('\\', '').replace('?', '').replace('*', '').replace(':', '').replace('[', '').replace(']', '').upper()
+            sheet_title = base_title
+            counter = 1
+            while sheet_title in existing_titles:
+                suffix = f"_{counter}"
+                sheet_title = f"{base_title[:31-len(suffix)]}{suffix}"
+                counter += 1
+            existing_titles.add(sheet_title)
+
             ws = wb.create_sheet(title=sheet_title)
             current_row = 1
 
