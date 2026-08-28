@@ -13,6 +13,38 @@ Organigrama
         {% include available_actions %}
     {% endif %}
 
+    <button type="button" onclick="expandAllTree()"
+        class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1"
+        title="Expandir todo el organigrama">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-down-up">
+            <path d="m7 20 5-5 5 5"/>
+            <path d="m7 4 5 5 5-5"/>
+        </svg>
+        <span>Expandir todo</span>
+    </button>
+
+    <button type="button" onclick="resetToLevel1()"
+        class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1"
+        title="Restaurar a vista inicial de colaboradores directos">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-git-branch">
+            <line x1="6" x2="6" y1="3" y2="15"/>
+            <circle cx="18" cy="6" r="3"/>
+            <circle cx="6" cy="18" r="3"/>
+            <path d="M18 9a9 9 0 0 1-9 9"/>
+        </svg>
+        <span>Nivel 1</span>
+    </button>
+
+    <button type="button" onclick="collapseAllTree()"
+        class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1"
+        title="Colapsar todo el organigrama">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-up-down">
+            <path d="m7 15 5 5 5-5"/>
+            <path d="m7 9 5-5 5 5"/>
+        </svg>
+        <span>Colapsar todo</span>
+    </button>
+
     <button type="button" onclick="copyTreeToClipboard()"
         class="hover:text-hover transition-colors cursor-pointer flex items-center gap-1"
         title="Copiar organigrama en formato texto">
@@ -39,20 +71,24 @@ Organigrama
 
 {% block content %}
 <div class="flex flex-col w-full gap-4">
-    <div class="flex items-center bg-container border border-border rounded p-2">
-        <input type="text" id="tree-search-input" onkeyup="filterTreeContent()"
-            placeholder="Buscar por colaborador, puesto, departamento o gerencia..."
-            class="w-full bg-page border border-border rounded p-1 text-xs text-title placeholder-muted focus:outline-none">
+    <div class="flex flex-col md:flex-row items-center justify-between bg-container border border-border rounded p-2 gap-2">
+        <div class="relative w-full">
+            <input type="text" id="tree-search-input" onkeyup="filterTreeContent()"
+                placeholder="Buscar por colaborador, puesto, departamento o gerencia..."
+                class="w-full bg-page border border-border rounded p-1 pl-7 text-xs text-title placeholder-muted focus:outline-none focus:border-strong focus:ring-strong">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search absolute left-2 top-2 text-muted pointer-events-none">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+            </svg>
+        </div>
+        <div id="search-match-count" class="text-xs text-muted shrink-0 hidden"></div>
     </div>
 
     <textarea id="raw-tree-data" class="hidden">{{ tree_text }}</textarea>
-    <template id="raw-tree-html">{{ tree_html|safe }}</template>
 
-    <div id="view-terminal" class="flex flex-col w-full border border-border rounded overflow-hidden">
-        <div class="bg-container p-4 overflow-x-auto max-h-[75vh] text-xs leading-relaxed select-text" id="terminal-content"
+    <div id="view-tree-container" class="flex flex-col w-full border border-border rounded bg-container overflow-hidden">
+        <div class="p-4 overflow-x-auto max-h-[75vh] text-xs leading-relaxed select-text flex flex-col gap-1" id="tree-interactive-content"
             style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
-            <pre class="whitespace-pre text-title tracking-normal m-0" id="tree-pre"
-                style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">{{ tree_html|safe }}</pre>
+            {{ tree_html|safe }}
         </div>
     </div>
 </div>
@@ -68,7 +104,7 @@ Organigrama
                     --
                 </div>
                 <div class="flex flex-col min-w-0 p-1">
-                    <h3 class=" text-title truncate" id="contact-modal-pos">Posición</h3>
+                    <h3 class="text-title truncate" id="contact-modal-pos">Posición</h3>
                     <p class="text-[11px] text-muted truncate" id="contact-modal-name">Nombre del colaborador</p>
                 </div>
             </div>
@@ -126,17 +162,80 @@ Organigrama
             </div>
         </div>
 
-            <a id="contact-modal-profile-link" href="#" class="p-3 hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-external-link">
-                    <path d="M15 3h6v6"/><path d="10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                </svg>
-                <span>Ver expediente</span>
-            </a>
+        <a id="contact-modal-profile-link" href="#" class="p-3 hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1 border-t border-border">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-external-link">
+                <path d="M15 3h6v6"/><path d="10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            </svg>
+            <span>Ver expediente</span>
+        </a>
     </div>
 </div>
 
 <script>
     let currentContactData = { phone: '', email: '' };
+
+    function toggleTreeNode(rowElem, event) {
+        if (event) {
+            // Do not toggle if the user clicked the contact button
+            if (event.target.closest('.contact-node-btn')) {
+                return;
+            }
+            event.stopPropagation();
+        }
+
+        const node = rowElem.closest('.tree-node');
+        if (!node) return;
+
+        const childrenContainer = node.querySelector(':scope > .tree-children-container');
+        const toggleIcon = node.querySelector(':scope > .tree-node-row .tree-toggle-icon');
+
+        if (childrenContainer) {
+            const isHidden = childrenContainer.classList.contains('hidden');
+            if (isHidden) {
+                childrenContainer.classList.remove('hidden');
+                if (toggleIcon) toggleIcon.classList.add('rotate-90');
+            } else {
+                childrenContainer.classList.add('hidden');
+                if (toggleIcon) toggleIcon.classList.remove('rotate-90');
+            }
+        }
+    }
+
+    function expandAllTree() {
+        document.querySelectorAll('.tree-children-container').forEach(el => {
+            el.classList.remove('hidden');
+        });
+        document.querySelectorAll('.tree-toggle-icon').forEach(icon => {
+            icon.classList.add('rotate-90');
+        });
+    }
+
+    function collapseAllTree() {
+        document.querySelectorAll('.tree-children-container').forEach(el => {
+            el.classList.add('hidden');
+        });
+        document.querySelectorAll('.tree-toggle-icon').forEach(icon => {
+            icon.classList.remove('rotate-90');
+        });
+    }
+
+    function resetToLevel1() {
+        document.querySelectorAll('.tree-node').forEach(node => {
+            const depth = parseInt(node.getAttribute('data-depth') || '0', 10);
+            const childrenContainer = node.querySelector(':scope > .tree-children-container');
+            const toggleIcon = node.querySelector(':scope > .tree-node-row .tree-toggle-icon');
+
+            if (childrenContainer) {
+                if (depth === 0) {
+                    childrenContainer.classList.remove('hidden');
+                    if (toggleIcon) toggleIcon.classList.add('rotate-90');
+                } else {
+                    childrenContainer.classList.add('hidden');
+                    if (toggleIcon) toggleIcon.classList.remove('rotate-90');
+                }
+            }
+        });
+    }
 
     function openContactModal(data) {
         currentContactData.phone = data.phone || '';
@@ -219,6 +318,7 @@ Organigrama
         const btn = e.target.closest('.contact-node-btn');
         if (btn) {
             e.preventDefault();
+            e.stopPropagation();
             openContactModal({
                 pos: btn.dataset.pos,
                 name: btn.dataset.name,
@@ -326,27 +426,55 @@ Organigrama
 
     function filterTreeContent() {
         const query = document.getElementById('tree-search-input').value.trim().toLowerCase();
-        const preElem = document.getElementById('tree-pre');
-        const originalHtml = document.getElementById('raw-tree-html').innerHTML;
-        const originalText = document.getElementById('raw-tree-data').value;
+        const matchCountElem = document.getElementById('search-match-count');
+        const allNodes = document.querySelectorAll('.tree-node');
+        const allRows = document.querySelectorAll('.tree-node-row');
+
+        allRows.forEach(row => {
+            row.classList.remove('bg-blue-500/15', 'ring-1', 'ring-blue-500/40', 'opacity-30');
+        });
 
         if (!query) {
-            preElem.innerHTML = originalHtml;
+            matchCountElem.classList.add('hidden');
+            matchCountElem.textContent = '';
+            resetToLevel1();
             return;
         }
 
-        const htmlLines = originalHtml.split('\n');
-        const textLines = originalText.split('\n');
+        let matchCount = 0;
 
-        const filteredLines = htmlLines.map((hLine, idx) => {
-            const plain = textLines[idx] || '';
-            if (plain.toLowerCase().includes(query)) {
-                return `<span class="text-emerald-500 font-bold">&gt;&gt; </span>${hLine}`;
+        allNodes.forEach(node => {
+            const searchText = (node.getAttribute('data-search-text') || '').toLowerCase();
+            const row = node.querySelector(':scope > .tree-node-row');
+
+            if (searchText.includes(query)) {
+                matchCount++;
+                if (row) {
+                    row.classList.add('bg-blue-500/15', 'ring-1', 'ring-blue-500/40');
+                }
+
+
+                let parentContainer = node.parentElement.closest('.tree-children-container');
+                while (parentContainer) {
+                    parentContainer.classList.remove('hidden');
+                    const parentNode = parentContainer.closest('.tree-node');
+                    if (parentNode) {
+                        const icon = parentNode.querySelector(':scope > .tree-node-row .tree-toggle-icon');
+                        if (icon) icon.classList.add('rotate-90');
+                        parentContainer = parentNode.parentElement.closest('.tree-children-container');
+                    } else {
+                        break;
+                    }
+                }
+            } else {
+                if (row) {
+                    row.classList.add('opacity-30');
+                }
             }
-            return hLine;
         });
 
-        preElem.innerHTML = filteredLines.join('\n');
+        matchCountElem.classList.remove('hidden');
+        matchCountElem.textContent = `${matchCount} coincidencia${matchCount === 1 ? '' : 's'}`;
     }
 </script>
 {% endblock %}
