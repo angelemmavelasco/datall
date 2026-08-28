@@ -67,18 +67,18 @@
             </div>
         </div>
 
-        <table class="w-full text-left border-collapse min-w-[600px]">
+        <table class="w-full text-left border-separate border-spacing-0 min-w-[600px]">
             <thead class="sticky top-0 z-30 bg-page">
                 <tr class="border-b border-border text-xs">
-                    <th scope="col" class="p-2 text-title border-r border-border sticky top-0 md:left-0 z-35 bg-page min-w-[280px]">
+                    <th scope="col" class="p-2 text-title border-r border-b border-border sticky top-0 md:left-0 z-35 bg-page min-w-[280px]">
                         Jerarquía / Dimensión
                     </th>
                     {% for year in available_years %}
-                        <th scope="col" class="p-2 text-title text-center border-l border-border sticky top-0 z-30 bg-page min-w-[200px]">
+                        <th scope="col" class="p-2 text-title text-center border-r border-b border-border sticky top-0 z-30 bg-page min-w-[200px]">
                             Año {{ year }}
                         </th>
                     {% empty %}
-                        <th scope="col" class="p-2 text-title text-center border-l border-border sticky top-0 z-30 bg-page">
+                        <th scope="col" class="p-2 text-title text-center border-r border-b border-border sticky top-0 z-30 bg-page">
                             Sin periodos
                         </th>
                     {% endfor %}

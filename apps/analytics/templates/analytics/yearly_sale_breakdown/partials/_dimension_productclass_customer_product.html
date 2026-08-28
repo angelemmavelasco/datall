@@ -5,12 +5,14 @@
 <!-- clase -->
     <tr class="border-b border-border cursor-pointer hover:bg-hover/20 transition-colors"
         onclick="togglePivot('lcp-line-{{ l_id }}', 'icon-lcp-line-{{ l_id }}')">
-        <td class="py-2 pr-2 pl-2 text-strong flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
-            <svg id="icon-lcp-line-{{ l_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
-            <span class="truncate font-semibold text-title" title="{{ line_data.name|title }}">{{ line_data.name|title }}</span>
+        <td class="p-1 text-strong sticky md:left-0 z-20 min-w-[280px] bg-container border-r border-b border-border">
+            <div class="flex items-center gap-2 min-w-full min-h-full ">
+                <svg id="icon-lcp-line-{{ l_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
+                <span class="truncate font-semibold text-title" title="{{ line_data.name|title }}">{{ line_data.name|title }}</span>
+            </div>
         </td>
         {% for total in line_data.totals %}
-            <td class="p-2 text-right text-strong border-l border-border min-w-[140px]">
+            <td class="p-1 text-right text-strong border-r border-b border-border min-w-[140px]">
                 <div class="flex items-center justify-between gap-2">
                     <span class="rounded text-[10px] px-1 py-[1px] whitespace-nowrap font-medium
                     {% if total.growth > 0 %}
@@ -36,14 +38,16 @@
         {% with c_id=forloop.counter %}
         <tr class="lcp-line-{{ l_id }} hidden border-b border-border cursor-pointer hover:bg-hover/20 transition-colors bg-page"
             onclick="togglePivot('lcp-cust-{{ l_id }}-{{ c_id }}', 'icon-lcp-cust-{{ l_id }}-{{ c_id }}')">
-            <td class="py-2 pr-2 pl-8 text-body flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
-                <svg id="icon-lcp-cust-{{ l_id }}-{{ c_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
-                <span class="truncate font-medium text-title text-xs" title="{% if cust_data.id and cust_data.id != 'otros' %}{{ cust_data.id|upper }} - {% endif %}{{ cust_data.name|title }}">
-                    {% if cust_data.id and cust_data.id != 'otros' %}<span class="text-muted">{{ cust_data.id|upper }}</span> - {% endif %}{{ cust_data.name|title }}
-                </span>
+            <td class="p-1 pl-8 text-body border-b border-border sticky md:left-0 z-20 min-w-[280px] bg-page border-r">
+                <div class="flex items-center gap-2 min-w-full min-h-full ">
+                    <svg id="icon-lcp-cust-{{ l_id }}-{{ c_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0"><circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/></svg>
+                    <span class="truncate font-medium text-title text-xs" title="{% if cust_data.id and cust_data.id != 'otros' %}{{ cust_data.id|upper }} - {% endif %}{{ cust_data.name|title }}">
+                        {% if cust_data.id and cust_data.id != 'otros' %}<span class="text-muted">{{ cust_data.id|upper }}</span> - {% endif %}{{ cust_data.name|title }}
+                    </span>
+                </div>
             </td>
             {% for total in cust_data.totals %}
-                <td class="p-2 text-right text-strong border-l border-border min-w-[140px]">
+                <td class="p-1 text-right text-strong border-r border-b border-border min-w-[140px]">
                     <div class="flex items-center justify-between gap-2">
                         <span class="rounded text-[10px] px-1 py-[1px] whitespace-nowrap font-medium
                         {% if total.growth > 0 %}
@@ -67,14 +71,16 @@
 <!-- producto -->
         {% for prod_key, prod_data in cust_data.children.items %}
             <tr class="lcp-cust-{{ l_id }}-{{ c_id }} hidden border-b border-border hover:bg-hover/20 transition-colors bg-page">
-                <td class="py-2 pr-2 pl-16 text-muted flex items-center gap-2 sticky md:left-0 z-20 min-w-[280px]">
-                    <span class="w-4 flex justify-center shrink-0 text-secondary text-xs">•</span>
-                    <span class="truncate text-xs" title="{% if prod_data.id and prod_data.id != 'otros' %}{{ prod_data.id|upper }} - {% endif %}{{ prod_data.name|title }}">
-                        {% if prod_data.id and prod_data.id != 'otros' %}<span>{{ prod_data.id|upper }}</span> - {% endif %}{{ prod_data.name|title }}
-                    </span>
+                <td class="p-1 pl-16 text-muted sticky md:left-0 z-20 min-w-[280px] bg-page border-r border-border border-b">
+                    <div class="flex items-center gap-2 min-w-full min-h-full ">
+                        <span class="w-4 flex justify-center shrink-0 text-secondary text-xs">•</span>
+                        <span class="truncate text-xs" title="{% if prod_data.id and prod_data.id != 'otros' %}{{ prod_data.id|upper }} - {% endif %}{{ prod_data.name|title }}">
+                            {% if prod_data.id and prod_data.id != 'otros' %}<span>{{ prod_data.id|upper }}</span> - {% endif %}{{ prod_data.name|title }}
+                        </span>
+                    </div>
                 </td>
                 {% for total in prod_data.totals %}
-                    <td class="p-2 text-right text-strong border-l border-border min-w-[140px]">
+                    <td class="p-1 text-right text-strong border-r border-b border-border min-w-[140px]">
                         <div class="flex items-center justify-between gap-2">
                             <span class="rounded text-[10px] px-1 py-[1px] whitespace-nowrap font-medium
                             {% if total.growth > 0 %}
