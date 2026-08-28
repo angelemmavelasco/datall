@@ -248,8 +248,25 @@
         <form id="login-form" class="flex flex-col gap-4 w-3/4 items-center justify-center" method="POST" action="{% url 'core:login' %}">
             {% csrf_token %}
 
+            {% if messages %}
+            <div class="w-full flex flex-col gap-2">
+                {% for message in messages %}
+                <div class="flex items-center gap-2 p-2.5 rounded text-xs border {% if message.tags == 'error' %}bg-rose-500/10 text-rose-600 border-rose-500/30{% elif message.tags == 'warning' %}bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30{% else %}bg-blue-500/10 text-blue-600 border-blue-500/30{% endif %}">
+                    {% if message.tags == 'error' %}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    {% elif message.tags == 'warning' %}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    {% else %}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                    {% endif %}
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             {% if form.errors %}
-            <div class="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-200">
+            <div class="w-full bg-rose-500/10 text-rose-600 text-xs p-2.5 rounded border border-rose-500/30">
                 Usuario o contraseña incorrectos.
             </div>
             {% endif %}

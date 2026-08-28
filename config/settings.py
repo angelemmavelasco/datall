@@ -8,7 +8,21 @@ load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key')
 DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 't')
 ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', '*').split(',') if host.strip()]
-CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if origin.strip()]
+
+env_origins = [origin.strip() for origin in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if origin.strip()]
+default_origins = [
+    'https://datall.com.mx',
+    'https://*.datall.com.mx',
+    'https://v2.datall.com.mx',
+    'https://www.v2.datall.com.mx',
+    'http://localhost',
+    'http://127.0.0.1',
+]
+CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(env_origins + default_origins))
+
+CSRF_FAILURE_VIEW = 'apps.core.views.custom_csrf_failure_view'
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
 
 
 INSTALLED_APPS = [

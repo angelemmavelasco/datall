@@ -3,6 +3,8 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
+from django.urls import reverse
 
 from apps.core.services.uploads import UploadsService, BaseETLHelper
 from apps.human_resources.services.employees import EmployeesService
@@ -12,6 +14,21 @@ from .filters import UserFilter
 from .forms import UserForm
 from .models import User, GeneratedReport
 from .services.users import UsersService, UsersKPIsService, ServiceError, UserNotFoundError, UserPermissionError
+
+def custom_csrf_failure_view(request, reason=""):
+    """
+    personalized handler for csrf failure
+    """
+    if request.headers.get('HX-Request') or getattr(request, 'htmx', False):
+        response = HttpResponse(status=200)
+        response['HX-Redirect'] = reverse('core:login')
+        return response
+
+    messages.warning(
+        request,
+        'Tu sesión o el formulario ha expirado por inactividad. Por favor inicia sesión nuevamente para continuar.'
+    )
+    return redirect('core:login')
 
 def error_400_view(request, exception=None):
     context = {
