@@ -17,6 +17,8 @@ urlpatterns = [
     path('commercial-risk/export/', commercial_risk_export_view, name='commercial_risk_export_view'),
     
     path('target-achievement/', target_achievement_view, name='target_achievement_view'),
+    path('target-achievement/export/', target_achievement_export_view, name='target_achievement_export_view'),
+
 
     path('yearly-sale-breakdown/', yearly_sale_breakdown_view, name='yearly_sale_breakdown_view'),
     

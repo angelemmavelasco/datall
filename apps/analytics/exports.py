@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
@@ -12,7 +12,9 @@ from apps.core.models import GeneratedReport
 from apps.customers.services.customers import CustomersService
 from apps.sales.services.routes import RoutesService
 from apps.sales.services.sale_transactions import SaleTransactionsService
-from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter, MonthlySaleBreakdownFilter
+from apps.sales.services.sale_targets import SaleTargetsService
+from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter, MonthlySaleBreakdownFilter, TargetAchievementFilter
+
 
 from time import perf_counter
 
@@ -192,7 +194,6 @@ def monthly_sale_breakdown_export_view(request):
         filters=serializable_cleaned_data,
     )
 
-    # dispatch async task to Django Q worker
     async_task(
         'apps.analytics.tasks.generate_monthly_sale_breakdown_report_task',
         request.user.id,
@@ -210,5 +211,70 @@ def monthly_sale_breakdown_export_view(request):
 
     end = perf_counter()
     print(f"Monthly Sale Breakdown export took {end - start} seconds")
+
+    return redirect(redirect_url)
+
+
+@login_required
+def target_achievement_export_view(request):
+    start = perf_counter()
+
+    today = timezone.localdate()
+    first_day_curr_month = today.replace(day=1)
+    if today.month == 12:
+        last_day_curr_month = date(today.year, 12, 31)
+    else:
+        last_day_curr_month = date(today.year, today.month + 1, 1) - timedelta(days=1)
+
+    req_data = request.GET.copy()
+    if not req_data.get('date_start'):
+        req_data['date_start'] = first_day_curr_month.strftime('%Y-%m-%d')
+    if not req_data.get('date_end'):
+        req_data['date_end'] = last_day_curr_month.strftime('%Y-%m-%d')
+
+    targets_service = SaleTargetsService(user=request.user)
+    base_targets_qs = targets_service.read_sale_targets()
+
+    filter_set = TargetAchievementFilter(req_data, queryset=base_targets_qs, request=request)
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+
+    serializable_cleaned_data = {}
+    for k, v in cleaned_data.items():
+        if isinstance(v, (date, timezone.datetime)):
+            serializable_cleaned_data[k] = v.strftime('%Y-%m-%d')
+        elif hasattr(v, 'id'):
+            serializable_cleaned_data[k] = v.id
+        elif isinstance(v, (str, int, float, bool, list, dict)) or v is None:
+            serializable_cleaned_data[k] = v
+        elif hasattr(v, '__iter__'):
+            serializable_cleaned_data[k] = [item.id if hasattr(item, 'id') else str(item) for item in v]
+        else:
+            serializable_cleaned_data[k] = str(v)
+
+    report = GeneratedReport.objects.create(
+        user=request.user,
+        title="Reporte de Alcance de Objetivos",
+        module_name="target_achievement",
+        status=GeneratedReport.Status.PENDING,
+        filters=serializable_cleaned_data,
+    )
+
+    async_task(
+        'apps.analytics.tasks.generate_target_achievement_report_task',
+        request.user.id,
+        request.GET.urlencode(),
+        serializable_cleaned_data,
+        report.id,
+    )
+
+    messages.info(request, "Tu reporte de alcance de objetivos se está generando en segundo plano. Aparecerá en tus archivos cuando esté listo. Puedes seguir navegando por la web sin problemas.")
+
+    query_str = request.GET.urlencode()
+    redirect_url = reverse('analytics:target_achievement_view')
+    if query_str:
+        redirect_url += f"?{query_str}"
+
+    end = perf_counter()
+    print(f"Target achievement export took {end - start} seconds")
 
     return redirect(redirect_url)
