@@ -9,6 +9,15 @@
     Importación de Datos
 {% endblock %}
 
+{% block module_actions %}
+    <button type="button"
+            onclick="openUpdateReportsModal()"
+            class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1 font-medium text-xs">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock-check-icon lucide-clock-check"><path d="M21.95 13a10 10 0 1 0-8.685 8.92"/><path d="M12 6v6l4 2"/><path d="m16 19 2 2 4-4"/></svg>
+        <span>Establecer última actualización</span>
+    </button>
+{% endblock %}
+
 {% block content %}
 <div class="flex flex-col w-full gap-4">
     {% include 'core/uploads/partials/upload_options_list__info.html' %}
@@ -179,7 +188,115 @@
     </div>
 </div>
 
+<div id="update-reports-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+    <div class="bg-container border border-border rounded shadow-xl w-full max-w-md overflow-hidden flex flex-col transition-all"
+         onclick="event.stopPropagation()">
+        
+        <div class="flex items-center justify-between p-3 border-b border-border bg-page">
+            <div class="flex items-center gap-2 min-w-0">
+                <div class="p-1 rounded bg-container border border-border text-title shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-clock text-muted">
+                        <path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><circle cx="16" cy="16" r="6"/><path d="M16 14v2l1 1"/>
+                    </svg>
+                </div>
+                <div class="flex flex-col min-w-0">
+                    <h3 class="text-title font-medium truncate text-xs">Última Actualización de Reportes</h3>
+                    <span class="text-[10px] text-muted truncate">Corte de datos para los reportes ETL</span>
+                </div>
+            </div>
+            <button type="button" onclick="closeUpdateReportsModal()" class="text-muted hover:text-hover cursor-pointer p-1 transition-colors shrink-0" title="Cerrar modal">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="m15 9-6 6"/>
+                    <path d="m9 9 6 6"/>
+                </svg>
+            </button>
+        </div>
+
+        <form method="POST" action="{% url 'core:upload_options_list_view' %}" class="flex flex-col">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_last_reports_date">
+
+            <div class="p-4 flex flex-col gap-3 text-xs">
+                {% if last_data_update %}
+                <div class="p-2 rounded bg-page border border-border flex items-center justify-between gap-2">
+                    <span class="text-muted text-[11px]">Valor actual:</span>
+                    <span class="text-title font-medium text-[11px] truncate">{{ last_data_update.reference }}</span>
+                </div>
+                {% endif %}
+
+                <div class="flex flex-col gap-1.5">
+                    <label for="last-update-datetime-input" class="text-title font-medium text-[11px]">
+                        Fecha y hora de corte
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input type="datetime-local"
+                               id="last-update-datetime-input"
+                               name="last_update_datetime"
+                               required
+                               class="w-full bg-page border border-border rounded p-2 text-xs text-title focus:outline-none focus:border-strong transition-colors">
+                        <button type="button"
+                                onclick="setNowDateTime()"
+                                class="shrink-0 p-2 rounded bg-page border border-border hover:border-strong hover:text-hover text-strong transition-colors text-[11px] font-medium cursor-pointer"
+                                title="Establecer fecha y hora actual">
+                            Ahora
+                        </button>
+                    </div>
+                </div>
+
+                <p class="text-[10px] text-muted leading-relaxed">
+                    * Esta fecha y hora se mostrará en el menú lateral para indicar a todos los usuarios la última actualización de los datos.
+                </p>
+            </div>
+
+            <div class="flex flex-col gap-2 p-4 border-t border-border bg-page text-xs">
+                <button type="submit"
+                        class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                    Confirmar
+                </button>
+                <button type="button"
+                        onclick="closeUpdateReportsModal()"
+                        class="border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+    function openUpdateReportsModal() {
+        const modal = document.getElementById('update-reports-modal');
+        if (modal) {
+            setNowDateTime();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+    }
+
+    function closeUpdateReportsModal() {
+        const modal = document.getElementById('update-reports-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    }
+
+    function setNowDateTime() {
+        const input = document.getElementById('last-update-datetime-input');
+        if (input) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            input.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+    }
+
     function resetModalViews() {
         const modalContent = document.getElementById('upload-modal-content');
         const loadingView = document.getElementById('upload-loading-view');
@@ -271,6 +388,7 @@
         const dropzone = document.getElementById('dropzone-container');
         const uploadForm = document.getElementById('upload-form');
         const modal = document.getElementById('upload-modal');
+        const updateReportsModal = document.getElementById('update-reports-modal');
 
         if (fileInput) {
             fileInput.addEventListener('change', (e) => {
@@ -331,9 +449,22 @@
             });
         }
 
+        if (updateReportsModal) {
+            updateReportsModal.addEventListener('click', (e) => {
+                if (e.target === updateReportsModal) {
+                    closeUpdateReportsModal();
+                }
+            });
+        }
+
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden') && !isCurrentlyUploading()) {
-                closeUploadModal();
+            if (e.key === 'Escape') {
+                if (modal && !modal.classList.contains('hidden') && !isCurrentlyUploading()) {
+                    closeUploadModal();
+                }
+                if (updateReportsModal && !updateReportsModal.classList.contains('hidden')) {
+                    closeUpdateReportsModal();
+                }
             }
         });
     });

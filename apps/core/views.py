@@ -9,10 +9,12 @@ from django.urls import reverse
 from apps.core.services.uploads import UploadsService, BaseETLHelper
 from apps.human_resources.services.employees import EmployeesService
 
+from django.utils import timezone
 from django_q.tasks import async_task
 from .filters import UserFilter
 from .forms import UserForm
-from .models import User, GeneratedReport
+from .models import User, GeneratedReport, Reference
+
 from .services.users import UsersService, UsersKPIsService, ServiceError, UserNotFoundError, UserPermissionError
 
 def custom_csrf_failure_view(request, reason=""):
@@ -302,6 +304,42 @@ def upload_options_list_view(request):
     template = 'core/uploads/upload_options_list.html'
 
     if request.method == 'POST':
+        action = request.POST.get('action', '').strip()
+        if action == 'update_last_reports_date':
+            service = UploadsService(user=request.user)
+            try:
+                service.validate_permission()
+            except Exception as e:
+                messages.error(request, str(e))
+                return redirect('core:upload_options_list_view')
+
+            raw_datetime = request.POST.get('last_update_datetime', '').strip()
+            if not raw_datetime:
+                messages.error(request, 'Debes seleccionar una fecha y hora.')
+                return redirect('core:upload_options_list_view')
+
+            months_es = {
+                1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+                5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+                9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+            }
+
+            try:
+                dt = timezone.datetime.fromisoformat(raw_datetime)
+                formatted_value = f"{dt.day} de {months_es.get(dt.month, '')} de {dt.year}, {dt.strftime('%H:%M')} hrs"
+            except Exception:
+                formatted_value = raw_datetime
+
+            ref, _ = Reference.objects.get_or_create(
+                context='ultima_actualizacion_reportes',
+                key='datetime'
+            )
+            ref.value = formatted_value
+            ref.save()
+
+            messages.success(request, f"Se actualizó la fecha de corte a: {formatted_value}")
+            return redirect('core:upload_options_list_view')
+
         model_key = request.POST.get('model_key', '').strip().lower()
         file_obj = request.FILES.get('file')
 
