@@ -88,13 +88,21 @@
                     {% with bu=gerencia_data.total_business_unit_data %}
                     <tr class="hover:bg-hover/10 transition-colors">
                         <td class="p-1 text-left text-title font-medium border border-border bg-container sticky left-0 z-20 truncate max-w-[200px] min-w-[200px] w-[200px]">
-                            <a href="{% url 'analytics:monthly_sale_breakdown_view' %}?business_unit={{ bu.business_unit_id }}&year={{ selected_date_start|slice:':4' }}"
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               class="text-title hover:text-hover underline transition-colors font-semibold"
-                               title="Ver desglose mensual de ventas para la gerencia {{ bu.business_unit_name|title }}">
-                                {{ bu.business_unit_name|title }}
-                            </a>
+                            <div class="flex items-center gap-2">
+                                <button type="button"
+                                        onclick="toggleGerenciaRoutes('{{ bu.business_unit_id }}')"
+                                        class="hover:text-hover text-title transition-colors cursor-pointer shrink-0 p-0.5 focus:outline-none flex items-center justify-center"
+                                        title="Desplegar / ocultar rutas de {{ bu.business_unit_name|title }}">
+                                    <svg id="chevron-{{ bu.business_unit_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down-icon lucide-circle-chevron-down transition-transform duration-200"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg>
+                                </button>
+                                <a href="{% url 'analytics:monthly_sale_breakdown_view' %}?business_unit={{ bu.business_unit_id }}&year={{ selected_date_start|slice:':4' }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="text-title hover:text-hover underline transition-colors font-semibold truncate"
+                                   title="Ver desglose mensual de ventas para la gerencia {{ bu.business_unit_name|title }}">
+                                    {{ bu.business_unit_name|title }}
+                                </a>
+                            </div>
                         </td>
                         
                         <td class="p-1 text-center text-strong border border-border">
@@ -174,6 +182,98 @@
                             </td>
                         {% endfor %}
                     </tr>
+
+                    {% for r in gerencia_data.routes_data %}
+                    <tr class="gerencia-routes-{{ bu.business_unit_id }} hidden bg-page hover:bg-hover/10 transition-colors">
+                        <td class="p-1 text-left text-title font-medium border border-border bg-page sticky left-0 z-20 truncate max-w-[200px] min-w-[200px] w-[200px] pl-6">
+                            <a href="{% url 'analytics:route_kpis_view' %}?route={{ r.route_id }}&date_start={{ selected_date_start|default:'' }}&date_end={{ selected_date_end|default:'' }}" 
+                               target="_blank" 
+                               rel="noopener noreferrer"
+                               title="Ver KPIs y detalle de la ruta {{ r.route_id }} {{ r.route_name|title }}"
+                               class="text-strong hover:text-hover underline">
+                                • {{ r.route_id }} {{ r.route_name|title }}
+                            </a>
+                        </td>
+                        
+                        <td class="p-1 text-center text-strong border border-border bg-page">
+                            {% if r.registered_customers > 0 %}
+                                <a href="{% url 'analytics:customer_kpis_view' %}?route={{ r.route_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer"
+                                   title="Ver todos los {{ r.registered_customers }} clientes asignados a la ruta {{ r.route_id }}"
+                                   class="text-strong hover:text-hover underline">{{ r.registered_customers|intcomma }}</a>
+                            {% else %}
+                                {{ r.registered_customers|intcomma }}
+                            {% endif %}
+                        </td>
+                        <td class="p-1 text-center text-strong border border-border bg-page">
+                            {% if r.active_customers > 0 %}
+                                <a href="{% url 'analytics:customer_kpis_view' %}?route={{ r.route_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}&has_purchases=True" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer"
+                                   title="Ver los {{ r.active_customers }} clientes con compras en el periodo para la ruta {{ r.route_id }}"
+                                   class="text-strong hover:text-hover underline">{{ r.active_customers|intcomma }}</a>
+                            {% else %}
+                                {{ r.active_customers|intcomma }}
+                            {% endif %}
+                        </td>
+                        <td class="p-1 text-center text-strong border border-border bg-page">{{ r.portfolio_scope|floatformat:2 }}%</td>
+                        <td class="p-1 text-center text-strong border border-border bg-page">
+                            {% if r.new_customers > 0 %}
+                                <a href="{% url 'analytics:customer_kpis_view' %}?route={{ r.route_id }}&start_contrib={{ selected_date_start|default:'' }}&end_contrib={{ selected_date_end|default:'' }}&registration_date_start={{ selected_date_start|default:'' }}&registration_date_end={{ selected_date_end|default:'' }}" 
+                                   target="_blank" 
+                                   rel="noopener noreferrer"
+                                   title="Ver los {{ r.new_customers }} clientes nuevos registrados en el periodo para la ruta {{ r.route_id }}"
+                                   class="text-strong hover:text-hover underline">{{ r.new_customers|intcomma }}</a>
+                            {% else %}
+                                {{ r.new_customers|intcomma }}
+                            {% endif %}
+                        </td>
+                        
+                        <td class="p-1 text-center text-strong border border-border bg-page">{{ r.completed_product_classes }}</td>
+                        <td class="p-1 text-right text-strong border border-border bg-page">$ {{ r.target|floatformat:2|intcomma }}</td>
+                        <td class="p-1 text-right text-strong border border-border bg-page">$ {{ r.net_amount|floatformat:2|intcomma }}</td>
+                        
+                        <td class="p-1 text-right border border-border bg-page {% if r.difference < 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                           $ {{ r.difference|floatformat:2|intcomma }}
+                        </td>
+                        
+                        <td class="p-1 text-center border border-border bg-page
+                        {% if r.scope >= 100 %}text-green-600
+                        {% elif r.scope >= 90 %}text-yellow-500
+                        {% elif r.scope >= 80 %}text-orange-600
+                        {% else %}text-red-600
+                        {% endif %}
+                        ">{{ r.scope|floatformat:2 }} %</td>
+
+                        <td class="p-1 text-right border border-border bg-page
+                        {% if r.scope_forecast >= 100 %}text-green-600
+                        {% elif r.scope_forecast >= 90 %}text-yellow-500
+                        {% elif r.scope_forecast >= 80 %}text-orange-600
+                        {% else %}text-red-600
+                        {% endif %}
+                        ">{{ r.scope_forecast|floatformat:2|intcomma }} %</td>
+
+                        <td class="p-1 text-center text-strong border border-border bg-page">{{ r.rank_sale }}</td>
+                        <td class="p-1 text-center text-strong border border-border bg-page">{{ r.rank_scope }}</td>
+                        
+                        {% for c in r.route_product_classes_breakdown %}
+                            <td class="p-1 text-center border border-border bg-page
+                                {% if c.scope >= 100 %}text-green-600
+                                {% elif c.scope >= 90 %}text-yellow-500
+                                {% elif c.scope >= 80 %}text-amber-600
+                                {% else %}text-red-600
+                                {% endif %}
+                            ">
+                                <span class="underline cursor-pointer"
+                                    title="Familia: {{ c.product_class_name|title }} (Ruta {{ r.route_id }})&#10;&#10;• Objetivo: ${{ c.target|floatformat:2|intcomma }}&#10;• Venta neta: ${{ c.net_amount|floatformat:2|intcomma }}&#10;• Diferencia: ${{ c.difference|floatformat:2|intcomma }}&#10;• Alcance: {{ c.scope|floatformat:2 }}%&#10;• Proyección: {{ c.scope_forecast|floatformat:2|intcomma }}%">
+                                    {{ c.scope|floatformat:2 }}%
+                                </span>
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+
                     {% endwith %}
                 {% endfor %}
             </tbody>
@@ -492,6 +592,17 @@
 </div>
 
 <script>
+    function toggleGerenciaRoutes(buId) {
+        const rows = document.querySelectorAll(`.gerencia-routes-${buId}`);
+        const icon = document.getElementById(`chevron-${buId}`);
+        rows.forEach(row => {
+            row.classList.toggle('hidden');
+        });
+        if (icon) {
+            icon.classList.toggle('rotate-180');
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         const popover = document.getElementById('touch-tooltip-popover');
         const content = document.getElementById('touch-tooltip-content');
