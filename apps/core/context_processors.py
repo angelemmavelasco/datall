@@ -1,5 +1,5 @@
 from django.db.models import Q, Prefetch
-from .models import Module, Submodule, GeneratedReport
+from .models import Module, Submodule, GeneratedReport, Reference
 
 
 def navigation_modules(request):
@@ -63,3 +63,18 @@ def user_reports_indicators(request):
         'has_pending_reports': has_pending_reports,
         'has_unseen_reports': has_unseen_reports,
     }
+
+
+def last_update_indicator(request):
+    try:
+        last_data_update = Reference.objects.filter(
+            context='ultima_actualizacion_reportes',
+            key='datetime'
+        ).first()
+    except Exception:
+        last_data_update = None
+
+    return {
+        'last_data_update': last_data_update,
+    }
+

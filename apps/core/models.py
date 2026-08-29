@@ -166,10 +166,13 @@ class Reference(models.Model):
         ctx = self.context or "sin_contexto"
         return f"{sub_name}: {ctx} ({self.key} -> {self.value})"
 
+    @property
+    def reference(self):
+        return self.value
+
     class Meta:
         verbose_name = 'Referencia'
         verbose_name_plural = 'Referencias'
-
 
 class GeneratedReport(models.Model):
     class Status(models.TextChoices):
