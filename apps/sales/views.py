@@ -675,6 +675,32 @@ def sale_target_calculator_view(request):
             product_classes_selected = request.POST.getlist('product_classes')
             selected_customers = request.POST.getlist('selected_customers')
 
+            custom_growths = {}
+            custom_bases = {}
+            for key in request.POST.keys():
+                if key.startswith('growth_pc_'):
+                    parts = key.split('_')
+                    if len(parts) == 4:
+                        _, _, pc_id, m_num = parts
+                        if pc_id not in custom_growths:
+                            custom_growths[pc_id] = {}
+                        val = request.POST.get(key)
+                        if val != '' and val is not None:
+                            try:
+                                custom_growths[pc_id][int(m_num)] = float(val)
+                            except (ValueError, TypeError):
+                                pass
+                elif key.startswith('base_pc_'):
+                    parts = key.split('_')
+                    if len(parts) == 3:
+                        _, _, pc_id = parts
+                        val = request.POST.get(key)
+                        if val != '' and val is not None:
+                            try:
+                                custom_bases[pc_id] = float(val)
+                            except (ValueError, TypeError):
+                                pass
+
             try:
                 results = calculator_service.calculate_simulation(
                     mode=mode,
@@ -691,6 +717,8 @@ def sale_target_calculator_view(request):
                     eval_route_start=eval_route_start,
                     eval_route_end=eval_route_end,
                     product_class_ids=product_classes_selected,
+                    custom_growths=custom_growths,
+                    custom_bases=custom_bases,
                 )
                 context = {
                     'results': results,

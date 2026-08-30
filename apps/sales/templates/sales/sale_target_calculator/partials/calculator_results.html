@@ -88,30 +88,160 @@
         
         <!-- Título de la Ruta -->
         <div class="flex items-center justify-between border-b border-border pb-2">
-            <span class="text-title   flex items-center gap-2">
-                <span class="p-1 rounded text-[11px] font-mono {% if role == 'origin' %}bg-amber-500/10 text-amber-600 border border-amber-500/30{% else %}bg-blue-500/10 text-blue-600 border border-blue-500/30{% endif %}">
-                    {% if role == 'origin' %}Ruta origen{% else %}Ruta destino{% endif %}
+            <span class="text-title flex items-center gap-2">
+                <span class="p-1 rounded text-[11px] font-mono {% if results.mode == 'create_new' %}bg-emerald-500/10 text-emerald-600 border border-emerald-500/30{% elif role == 'origin' %}bg-amber-500/10 text-amber-600 border border-amber-500/30{% else %}bg-blue-500/10 text-blue-600 border border-blue-500/30{% endif %}">
+                    {% if results.mode == 'create_new' %}Presupuesto de ruta{% elif role == 'origin' %}Ruta origen{% else %}Ruta destino{% endif %}
                 </span>
                 <span>{{ r.route_name }}</span>
             </span>
         </div>
 
-        <!-- 1. Tabla de Desglose de Cálculo -->
+        {% if r.is_create_new %}
+        <!-- Tabla Interactiva de Presupuestación (Cálculo Desde Cero) -->
         <div class="flex flex-col gap-2">
-            <p class="text-title text-xs ">Desglose de cálculo (Objetivo actual, Crecimiento %, Ajuste)</p>
+            <div class="flex items-center justify-between">
+                <p class="text-title text-xs">Presupuesto planificado (Edita libremente montos y crecimientos % por mes)</p>
+                <span class="text-[11px] text-muted font-mono">Mes base: {{ results.effective_month }} ({{ r.applicable_months_count }} meses activos)</span>
+            </div>
+
+            <div class="w-full overflow-x-auto border border-border rounded bg-page shadow-xs">
+                <table id="dynamic-target-table" class="w-max min-w-full text-left border-separate border-spacing-0 text-xs" data-eff-month="{{ r.effective_month_num }}">
+                    <thead>
+                        <tr class="border-b border-border bg-page">
+                            <th class="sticky left-0 z-20 p-1 bg-page border-r border-b border-border text-title min-w-[160px]">
+                                Clase de producto
+                            </th>
+                            {% for m in r.classes.0.months %}
+                                <th class="p-1 border-r border-b border-border text-center text-title bg-container min-w-[130px]">
+                                    {{ m.date|date:"M Y"|title }}
+                                </th>
+                            {% endfor %}
+                            <th class="p-1 border-r border-b border-border text-center text-title bg-page min-w-[130px]">
+                                Total Anual
+                            </th>
+                            <th class="p-1 border-b border-border text-center text-title bg-page min-w-[120px]">
+                                Crec. Anual %
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cls in r.classes %}
+                        <tr class="hover:bg-container/60 transition-colors class-row" data-class-id="{{ cls.class_id }}">
+                            <td class="sticky left-0 z-10 p-1 bg-page border-r border-b border-border text-title">
+                                {{ cls.class_name }}
+                            </td>
+                            {% for m in cls.months %}
+                            <td class="p-1 border-r border-b border-border text-right font-mono align-middle">
+                                {% if not m.is_active %}
+                                    <span class="text-muted text-xs block text-center">-</span>
+                                    <input type="hidden" class="month-target-val" data-class-id="{{ cls.class_id }}" data-month="{{ m.month_num }}" value="0">
+                                {% elif m.is_base %}
+                                    <div class="flex flex-col gap-1 items-end">
+                                        <span class="text-[10px] text-muted">Monto base:</span>
+                                        <input type="number" 
+                                               step="0.01" 
+                                               name="base_pc_{{ cls.class_id }}"
+                                               value="{{ cls.base_amount|floatformat:2 }}"
+                                               class="base-amount-input month-target-val w-28 bg-page border border-border rounded text-right p-1 text-xs font-mono focus:border-strong focus:outline-none"
+                                               data-class-id="{{ cls.class_id }}"
+                                               data-month="{{ m.month_num }}"
+                                               data-eff-month="{{ r.effective_month_num }}"
+                                               oninput="handleBaseAmountChange(this)"
+                                               title="Monto base mensual de inicio">
+                                    </div>
+                                {% else %}
+                                    <div class="flex flex-col gap-1 items-end">
+                                        <div class="flex items-center gap-1">
+                                            <span class="text-[10px] text-muted">Crec:</span>
+                                            <input type="number" 
+                                                   step="0.1" 
+                                                   name="growth_pc_{{ cls.class_id }}_{{ m.month_num }}"
+                                                   value="{{ m.growth|floatformat:1 }}"
+                                                   class="growth-pct-input w-16 bg-page border border-border rounded text-right p-0.5 text-[11px] font-mono focus:border-strong focus:outline-none"
+                                                   data-class-id="{{ cls.class_id }}"
+                                                   data-month="{{ m.month_num }}"
+                                                   oninput="handleGrowthChange(this)">
+                                            <span class="text-[10px] text-muted">%</span>
+                                        </div>
+                                        <input type="number" 
+                                               step="0.01" 
+                                               value="{{ m.new_target|floatformat:2 }}"
+                                               class="target-amount-input month-target-val w-28 bg-page border border-border rounded text-right p-1 text-xs font-mono focus:border-strong focus:outline-none mt-0.5"
+                                               data-class-id="{{ cls.class_id }}"
+                                               data-month="{{ m.month_num }}"
+                                               oninput="handleTargetAmountChange(this)">
+                                    </div>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                            <td class="p-1 border-r border-b border-border text-right font-mono bg-container/40">
+                                <span class="class-total-target text-title font-bold text-xs" data-class-id="{{ cls.class_id }}">
+                                    ${{ cls.totals.new_target|floatformat:2|intcomma }}
+                                </span>
+                            </td>
+                            <td class="p-1 border-b border-border text-center font-mono bg-container/40">
+                                <span class="class-annual-growth text-xs px-1.5 py-0.5 rounded border {% if cls.totals.annual_growth_pct > 0 %}bg-green-500/10 text-green-600 border-green-500/30{% elif cls.totals.annual_growth_pct < 0 %}bg-red-500/10 text-red-500 border-red-500/30{% else %}text-muted border-border{% endif %}" 
+                                      data-class-id="{{ cls.class_id }}"
+                                      title="Crecimiento respecto a la base anualizada">
+                                    {% if cls.totals.annual_growth_pct > 0 %}▲+{% elif cls.totals.annual_growth_pct < 0 %}▼{% endif %}{{ cls.totals.annual_growth_pct|floatformat:2|intcomma }}%
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        <tr class="bg-container">
+                            <td class="sticky left-0 z-10 p-1 bg-container border-r border-b border-border text-title font-bold">
+                                Total ruta
+                            </td>
+                            {% for mt in r.month_totals %}
+                            <td class="p-1 border-r border-b border-border text-right font-mono">
+                                <div class="flex flex-col gap-0.5 items-end">
+                                    <span class="month-total-target text-title font-bold" data-month="{{ mt.date|date:'n' }}">
+                                        ${{ mt.new_target|default:0|floatformat:2|intcomma }}
+                                    </span>
+                                    {% if mt.is_active and not mt.is_base %}
+                                        <span class="month-total-growth text-[10px] {% if mt.growth > 0 %}text-green-600{% elif mt.growth < 0 %}text-red-500{% else %}text-muted{% endif %}" data-month="{{ mt.date|date:'n' }}">
+                                            {% if mt.growth > 0 %}▲+{% elif mt.growth < 0 %}▼{% endif %}{{ mt.growth|default:0|floatformat:2|intcomma }}%
+                                        </span>
+                                    {% else %}
+                                        <span class="month-total-growth text-[10px] text-muted" data-month="{{ mt.date|date:'n' }}">-</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            {% endfor %}
+                            <td class="p-1 border-r border-b border-border text-right font-mono bg-container">
+                                <span id="grand-total-target" class="text-title font-bold text-xs">
+                                    ${{ r.grand_total.new_target|default:0|floatformat:2|intcomma }}
+                                </span>
+                            </td>
+                            <td class="p-1 border-b border-border text-center font-mono bg-container">
+                                <span id="grand-annual-growth" class="text-xs px-1.5 py-0.5 rounded border font-bold {% if r.grand_total.annual_growth_pct > 0 %}bg-green-500/10 text-green-600 border-green-500/30{% elif r.grand_total.annual_growth_pct < 0 %}bg-red-500/10 text-red-500 border-red-500/30{% else %}text-muted border-border{% endif %}"
+                                      title="Crecimiento total anual respecto a la base anualizada">
+                                    {% if r.grand_total.annual_growth_pct > 0 %}▲+{% elif r.grand_total.annual_growth_pct < 0 %}▼{% endif %}{{ r.grand_total.annual_growth_pct|default:0|floatformat:2|intcomma }}%
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% else %}
+        <div class="flex flex-col gap-2">
+            <p class="text-title text-xs">Desglose de cálculo (Objetivo actual, Crecimiento %, Ajuste)</p>
             <div class="w-full overflow-x-auto border border-border rounded bg-page shadow-xs">
                 <table class="w-max min-w-full text-left border-separate border-spacing-0 text-xs">
                     <thead>
                         <tr class="border-b border-border bg-page">
-                            <th class="sticky left-0 z-20 p-1 bg-page border-r border-b border-border text-title  min-w-[150px]">
+                            <th class="sticky left-0 z-20 p-1 bg-page border-r border-b border-border text-title min-w-[150px]">
                                 Clase de producto
                             </th>
                             {% for m in r.classes.0.months %}
-                                <th class="p-1 border-r border-b border-border text-center text-title  bg-container min-w-[110px]">
+                                <th class="p-1 border-r border-b border-border text-center text-title bg-container min-w-[110px]">
                                     {{ m.date|date:"M Y"|title }}
                                 </th>
                             {% endfor %}
-                            <th class="p-1 border-b border-border text-center text-title  bg-page min-w-[130px]">
+                            <th class="p-1 border-b border-border text-center text-title bg-page min-w-[130px]">
                                 Total Anual
                             </th>
                         </tr>
@@ -143,10 +273,10 @@
                             {% endfor %}
                             <td class="p-1 border-b border-border text-right font-mono bg-container/40">
                                 <div class="flex flex-col gap-0.5 items-end">
-                                    <span class="text-title ">${{ cls.totals.old_target|default:0|floatformat:2|intcomma }}</span>
+                                    <span class="text-title">${{ cls.totals.old_target|default:0|floatformat:2|intcomma }}</span>
                                     <span class="text-[10px] text-muted">-</span>
                                     {% if cls.totals.delta != 0 %}
-                                        <span class="text-[10px] px-1 py-0.2 rounded border  {% if cls.totals.delta > 0 %}bg-green-500/10 text-green-600 border-green-500/30{% else %}bg-red-500/10 text-red-500 border-red-500/30{% endif %}">
+                                        <span class="text-[10px] px-1 py-0.2 rounded border {% if cls.totals.delta > 0 %}bg-green-500/10 text-green-600 border-green-500/30{% else %}bg-red-500/10 text-red-500 border-red-500/30{% endif %}">
                                             {% if cls.totals.delta > 0 %}+{% endif %}${{ cls.totals.delta|default:0|floatformat:2|intcomma }}
                                         </span>
                                     {% else %}
@@ -157,12 +287,12 @@
                         </tr>
                         {% endfor %}
 
-                        <tr class="bg-container ">
-                            <td class="sticky left-0 z-10 p-1 bg-container border-r  border-b border-border text-title">
+                        <tr class="bg-container">
+                            <td class="sticky left-0 z-10 p-1 bg-container border-r border-b border-border text-title">
                                 Total ruta
                             </td>
                             {% for mt in r.month_totals %}
-                            <td class="p-1 border-r  border-b border-border text-right font-mono">
+                            <td class="p-1 border-r border-b border-border text-right font-mono">
                                 <div class="flex flex-col gap-0.5 items-end">
                                     <span class="text-title font-bold">${{ mt.old_target|default:0|floatformat:2|intcomma }}</span>
                                     <span class="text-[10px] {% if mt.growth > 0 %}text-green-600{% elif mt.growth < 0 %}text-red-500{% else %}text-muted{% endif %}">
@@ -178,7 +308,7 @@
                                 </div>
                             </td>
                             {% endfor %}
-                            <td class="p-1  border-b border-border text-right font-mono bg-container">
+                            <td class="p-1 border-b border-border text-right font-mono bg-container">
                                 <div class="flex flex-col gap-0.5 items-end">
                                     <span class="text-title font-bold">${{ r.grand_total.old_target|default:0|floatformat:2|intcomma }}</span>
                                     <span class="text-[10px] text-muted">-</span>
@@ -198,20 +328,20 @@
         </div>
 
         <div class="flex flex-col gap-2">
-            <p class="text-title text-xs ">Objetivos Planificados (Objetivos finales con ajuste aplicado)</p>
+            <p class="text-title text-xs">Objetivos Planificados (Objetivos finales con ajuste aplicado)</p>
             <div class="w-full overflow-x-auto border border-border rounded bg-page shadow-xs">
                 <table class="w-max min-w-full text-left border-separate border-spacing-0 text-xs">
                     <thead>
                         <tr class="border-b border-border bg-page">
-                            <th class="sticky left-0 z-20 p-1 bg-page border-r border-b border-border text-title  min-w-[150px]">
+                            <th class="sticky left-0 z-20 p-1 bg-page border-r border-b border-border text-title min-w-[150px]">
                                 Clase de producto
                             </th>
                             {% for m in r.classes.0.months %}
-                                <th class="p-1 border-r border-b border-border text-center text-title  bg-container min-w-[110px]">
+                                <th class="p-1 border-r border-b border-border text-center text-title bg-container min-w-[110px]">
                                     {{ m.date|date:"M Y"|title }}
                                 </th>
                             {% endfor %}
-                            <th class="p-1 border-b border-border text-center text-title  bg-page min-w-[130px]">
+                            <th class="p-1 border-b border-border text-center text-title bg-page min-w-[130px]">
                                 Total Anual
                             </th>
                         </tr>
@@ -224,31 +354,31 @@
                             </td>
                             {% for m in cls.months %}
                             <td class="p-1 border-r border-b border-border text-right font-mono">
-                                <span class="{% if m.new_target > m.old_target %}text-green-600 {% elif m.new_target < m.old_target %}text-red-500 {% else %}text-body{% endif %}">
+                                <span class="{% if m.new_target > m.old_target %}text-green-600{% elif m.new_target < m.old_target %}text-red-500{% else %}text-body{% endif %}">
                                     ${{ m.new_target|default:0|floatformat:2|intcomma }}
                                 </span>
                             </td>
                             {% endfor %}
                             <td class="p-1 border-b border-border text-right font-mono bg-container/40">
-                                <span class=" {% if cls.totals.new_target > cls.totals.old_target %}text-green-600{% elif cls.totals.new_target < cls.totals.old_target %}text-red-500{% else %}text-title{% endif %}">
+                                <span class="{% if cls.totals.new_target > cls.totals.old_target %}text-green-600{% elif cls.totals.new_target < cls.totals.old_target %}text-red-500{% else %}text-title{% endif %}">
                                     ${{ cls.totals.new_target|default:0|floatformat:2|intcomma }}
                                 </span>
                             </td>
                         </tr>
                         {% endfor %}
 
-                        <tr class="bg-container ">
-                            <td class="sticky left-0 z-10 p-1 bg-container border-r  border-b border-border text-title font-bold">
+                        <tr class="bg-container">
+                            <td class="sticky left-0 z-10 p-1 bg-container border-r border-b border-border text-title font-bold">
                                 Total ruta
                             </td>
                             {% for mt in r.month_totals %}
-                            <td class="p-1 border-r  border-b border-border text-right font-mono">
+                            <td class="p-1 border-r border-b border-border text-right font-mono">
                                 <span class="font-bold {% if mt.new_target > mt.old_target %}text-green-600{% elif mt.new_target < mt.old_target %}text-red-500{% else %}text-title{% endif %}">
                                     ${{ mt.new_target|default:0|floatformat:2|intcomma }}
                                 </span>
                             </td>
                             {% endfor %}
-                            <td class="p-1  border-b border-border text-right font-mono bg-container">
+                            <td class="p-1 border-b border-border text-right font-mono bg-container">
                                 <span class="font-bold {% if r.grand_total.new_target > r.grand_total.old_target %}text-green-600{% elif r.grand_total.new_target < r.grand_total.old_target %}text-red-500{% else %}text-title{% endif %}">
                                     ${{ r.grand_total.new_target|default:0|floatformat:2|intcomma }}
                                 </span>
@@ -258,6 +388,7 @@
                 </table>
             </div>
         </div>
+        {% endif %}
 
     </div>
     {% endif %}
@@ -265,4 +396,216 @@
     {% endfor %}
 
 </div>
+
+<script>
+    function formatCurrency(num) {
+        if (isNaN(num)) num = 0;
+        return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatPct(num) {
+        if (isNaN(num)) num = 0;
+        const sign = num > 0 ? '▲+' : (num < 0 ? '▼' : '');
+        return sign + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+    }
+
+    function updateGrowthBadge(elem, pct) {
+        if (!elem) return;
+        elem.textContent = formatPct(pct);
+        elem.className = 'class-annual-growth text-xs px-1.5 py-0.5 rounded border font-mono ';
+        if (pct > 0) {
+            elem.className += 'bg-green-500/10 text-green-600 border-green-500/30';
+        } else if (pct < 0) {
+            elem.className += 'bg-red-500/10 text-red-500 border-red-500/30';
+        } else {
+            elem.className += 'text-muted border-border';
+        }
+    }
+
+    function handleGrowthChange(input) {
+        const classId = input.dataset.classId;
+        const monthNum = parseInt(input.dataset.month);
+        const table = document.getElementById('dynamic-target-table');
+        if (!table) return;
+        const effMonth = parseInt(table.dataset.effMonth) || 1;
+
+        const row = document.querySelector(`.class-row[data-class-id="${classId}"]`);
+        if (!row) return;
+
+        for (let m = monthNum; m <= 12; m++) {
+            let prevVal = 0;
+            if (m - 1 === effMonth) {
+                const baseInp = row.querySelector(`.base-amount-input`);
+                prevVal = baseInp ? parseFloat(baseInp.value) || 0 : 0;
+            } else if (m - 1 > effMonth) {
+                const prevTargetInp = row.querySelector(`.target-amount-input[data-month="${m - 1}"]`);
+                prevVal = prevTargetInp ? parseFloat(prevTargetInp.value) || 0 : 0;
+            }
+
+            const gInp = row.querySelector(`.growth-pct-input[data-month="${m}"]`);
+            const gPct = gInp ? parseFloat(gInp.value) || 0 : 0;
+            const newVal = prevVal * (1 + (gPct / 100));
+
+            const targetInp = row.querySelector(`.target-amount-input[data-month="${m}"]`);
+            if (targetInp) {
+                targetInp.value = newVal.toFixed(2);
+            }
+        }
+
+        recalculateDynamicTotals();
+    }
+
+    function handleTargetAmountChange(input) {
+        const classId = input.dataset.classId;
+        const monthNum = parseInt(input.dataset.month);
+        const table = document.getElementById('dynamic-target-table');
+        if (!table) return;
+        const effMonth = parseInt(table.dataset.effMonth) || 1;
+
+        const row = document.querySelector(`.class-row[data-class-id="${classId}"]`);
+        if (!row) return;
+
+        let prevVal = 0;
+        if (monthNum - 1 === effMonth) {
+            const baseInp = row.querySelector(`.base-amount-input`);
+            prevVal = baseInp ? parseFloat(baseInp.value) || 0 : 0;
+        } else if (monthNum - 1 > effMonth) {
+            const prevTargetInp = row.querySelector(`.target-amount-input[data-month="${monthNum - 1}"]`);
+            prevVal = prevTargetInp ? parseFloat(prevTargetInp.value) || 0 : 0;
+        }
+
+        const curVal = parseFloat(input.value) || 0;
+        const gInp = row.querySelector(`.growth-pct-input[data-month="${monthNum}"]`);
+        if (gInp) {
+            if (prevVal > 0) {
+                const gPct = ((curVal - prevVal) / prevVal) * 100;
+                gInp.value = gPct.toFixed(1);
+            } else {
+                gInp.value = '0.0';
+            }
+        }
+
+        for (let m = monthNum + 1; m <= 12; m++) {
+            const prevTargetInp = row.querySelector(`.target-amount-input[data-month="${m - 1}"]`);
+            const pVal = prevTargetInp ? parseFloat(prevTargetInp.value) || 0 : 0;
+
+            const nextGInp = row.querySelector(`.growth-pct-input[data-month="${m}"]`);
+            const gPct = nextGInp ? parseFloat(nextGInp.value) || 0 : 0;
+            const newVal = pVal * (1 + (gPct / 100));
+
+            const targetInp = row.querySelector(`.target-amount-input[data-month="${m}"]`);
+            if (targetInp) {
+                targetInp.value = newVal.toFixed(2);
+            }
+        }
+
+        recalculateDynamicTotals();
+    }
+
+    function handleBaseAmountChange(input) {
+        const classId = input.dataset.classId;
+        const effMonth = parseInt(input.dataset.effMonth) || 1;
+        const row = document.querySelector(`.class-row[data-class-id="${classId}"]`);
+        if (!row) return;
+
+        const baseVal = parseFloat(input.value) || 0;
+
+        let prevVal = baseVal;
+        for (let m = effMonth + 1; m <= 12; m++) {
+            const gInp = row.querySelector(`.growth-pct-input[data-month="${m}"]`);
+            const gPct = gInp ? parseFloat(gInp.value) || 0 : 0;
+            const newVal = prevVal * (1 + (gPct / 100));
+
+            const targetInp = row.querySelector(`.target-amount-input[data-month="${m}"]`);
+            if (targetInp) {
+                targetInp.value = newVal.toFixed(2);
+            }
+            prevVal = newVal;
+        }
+
+        recalculateDynamicTotals();
+    }
+
+    function recalculateDynamicTotals() {
+        const table = document.getElementById('dynamic-target-table');
+        if (!table) return;
+        const effMonth = parseInt(table.dataset.effMonth) || 1;
+        const applicableMonths = Math.max(1, 12 - effMonth + 1);
+
+        let grandTotal = 0;
+        let grandBaseAnnual = 0;
+        const monthSums = {};
+        for (let m = 1; m <= 12; m++) monthSums[m] = 0;
+
+        document.querySelectorAll('.class-row').forEach(row => {
+            const classId = row.dataset.classId;
+            const baseInp = row.querySelector('.base-amount-input');
+            const baseAmount = baseInp ? parseFloat(baseInp.value) || 0 : 0;
+            const baseAnnual = baseAmount * applicableMonths;
+            grandBaseAnnual += baseAnnual;
+
+            let classSum = 0;
+            for (let m = 1; m <= 12; m++) {
+                let mVal = 0;
+                if (m === effMonth) {
+                    mVal = baseAmount;
+                } else if (m > effMonth) {
+                    const tInp = row.querySelector(`.target-amount-input[data-month="${m}"]`);
+                    mVal = tInp ? parseFloat(tInp.value) || 0 : 0;
+                }
+                classSum += mVal;
+                monthSums[m] += mVal;
+            }
+
+            const totalElem = row.querySelector(`.class-total-target[data-class-id="${classId}"]`);
+            if (totalElem) totalElem.textContent = formatCurrency(classSum);
+
+            let annualGrowth = 0;
+            if (baseAnnual > 0) {
+                annualGrowth = ((classSum - baseAnnual) / baseAnnual) * 100;
+            } else if (classSum > 0) {
+                annualGrowth = 100.0;
+            }
+            const growthBadge = row.querySelector(`.class-annual-growth[data-class-id="${classId}"]`);
+            updateGrowthBadge(growthBadge, annualGrowth);
+
+            grandTotal += classSum;
+        });
+
+        for (let m = 1; m <= 12; m++) {
+            const mTotElem = document.querySelector(`.month-total-target[data-month="${m}"]`);
+            if (mTotElem) mTotElem.textContent = formatCurrency(monthSums[m]);
+
+            const mGrowthElem = document.querySelector(`.month-total-growth[data-month="${m}"]`);
+            if (mGrowthElem && m > effMonth) {
+                const prevM = monthSums[m - 1] || 0;
+                const mGrowth = prevM > 0 ? ((monthSums[m] - prevM) / prevM) * 100 : 0;
+                mGrowthElem.textContent = formatPct(mGrowth);
+                mGrowthElem.className = 'month-total-growth text-[10px] ' + (mGrowth > 0 ? 'text-green-600' : (mGrowth < 0 ? 'text-red-500' : 'text-muted'));
+            }
+        }
+
+        const grandTotElem = document.getElementById('grand-total-target');
+        if (grandTotElem) grandTotElem.textContent = formatCurrency(grandTotal);
+
+        let grandAnnualGrowth = 0;
+        if (grandBaseAnnual > 0) {
+            grandAnnualGrowth = ((grandTotal - grandBaseAnnual) / grandBaseAnnual) * 100;
+        } else if (grandTotal > 0) {
+            grandAnnualGrowth = 100.0;
+        }
+        const grandGrowthElem = document.getElementById('grand-annual-growth');
+        if (grandGrowthElem) {
+            grandGrowthElem.textContent = formatPct(grandAnnualGrowth);
+            grandGrowthElem.className = 'text-xs px-1.5 py-0.5 rounded border font-bold font-mono ';
+            if (grandAnnualGrowth > 0) {
+                grandGrowthElem.className += 'bg-green-500/10 text-green-600 border-green-500/30';
+            } else if (grandAnnualGrowth < 0) {
+                grandGrowthElem.className += 'bg-red-500/10 text-red-500 border-red-500/30';
+            } else {
+                grandGrowthElem.className += 'text-muted border-border';
+            }
+        }
+    }
+</script>
 {% endif %}

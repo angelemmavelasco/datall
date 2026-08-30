@@ -1,7 +1,7 @@
 import io
 import calendar
 import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from dataclasses import dataclass, field
 from typing import ClassVar, Optional, Any
 from collections import defaultdict
@@ -219,10 +219,85 @@ class ContributionStrategy(BaseTargetCalculationStrategy):
         return computed_origin, computed_dest
 
 
+class CreateNewStrategy(BaseTargetCalculationStrategy):
+    """
+    calculates targets from scratch based on average historical monthly sales of selected customers,
+    allowing monthly interactive percentage growths.
+    """
+    name: str = 'create_new'
+
+    def calculate_deltas(
+        self,
+        *,
+        product_classes: QuerySet,
+        customer_ids: list[str],
+        origin_route_id: str,
+        destination_route_id: Optional[str],
+        eff_date: datetime.date,
+        target_year: int,
+        origin_targets: dict,
+        dest_targets: dict,
+        eval_params: dict,
+    ) -> tuple[dict, dict]:
+        c_start = eval_params.get('c_start')
+        c_end = eval_params.get('c_end')
+        custom_growths = eval_params.get('custom_growths') or {}
+        custom_bases = eval_params.get('custom_bases') or {}
+
+        months_count = (c_end.year - c_start.year) * 12 + (c_end.month - c_start.month) + 1
+        if months_count <= 0:
+            months_count = 1
+
+        sales_qs = SaleTransaction.objects.filter(
+            customer_id__in=customer_ids,
+            product_class__in=product_classes,
+            sale_date__gte=c_start,
+            sale_date__lte=c_end
+        ).values('product_class_id').annotate(total=Sum('net_amount'))
+        sales_map = {item['product_class_id']: item['total'] for item in sales_qs}
+
+        base_amounts = {}
+        for pc in product_classes:
+            pc_str = str(pc.id)
+            if pc_str in custom_bases and custom_bases[pc_str] is not None:
+                base_amounts[pc.id] = Decimal(str(custom_bases[pc_str]))
+            elif pc.id in custom_bases and custom_bases[pc.id] is not None:
+                base_amounts[pc.id] = Decimal(str(custom_bases[pc.id]))
+            else:
+                total_sales = sales_map.get(pc.id, Decimal('0.00')) or Decimal('0.00')
+                base_amounts[pc.id] = total_sales / Decimal(months_count)
+
+        cdeltas = {}
+        for pc in product_classes:
+            cdeltas[pc.id] = {}
+            current_target = Decimal('0.00')
+            pc_str = str(pc.id)
+            pc_growths = custom_growths.get(pc_str) or custom_growths.get(pc.id) or {}
+
+            for m in range(1, 13):
+                if m < eff_date.month:
+                    cdeltas[pc.id][m] = Decimal('0.00')
+                elif m == eff_date.month:
+                    current_target = base_amounts.get(pc.id, Decimal('0.00'))
+                    cdeltas[pc.id][m] = current_target
+                else:
+                    g_val = pc_growths.get(m)
+                    if g_val is None:
+                        g_val = pc_growths.get(str(m))
+                    if g_val is None:
+                        g_val = Decimal('0.00')
+                    growth_factor = Decimal('1.00') + (Decimal(str(g_val)) / Decimal('100.00'))
+                    current_target = current_target * growth_factor
+                    cdeltas[pc.id][m] = current_target
+
+        return cdeltas, {}
+
+
 # strategy registry for extensible plugandplay calculations
 CALCULATION_STRATEGIES: dict[str, type[BaseTargetCalculationStrategy]] = {
     'average': AverageMonthlyStrategy,
     'contribution': ContributionStrategy,
+    'create_new': CreateNewStrategy,
 }
 
 @dataclass
@@ -325,7 +400,7 @@ class SaleTargetCalculatorService(UsersService):
         self,
         *,
         mode: str,
-        calc_method: str,
+        calc_method: str = 'average',
         origin_route_id: str,
         destination_route_id: Optional[str] = None,
         customer_ids: list[str],
@@ -338,13 +413,14 @@ class SaleTargetCalculatorService(UsersService):
         eval_route_start: Optional[str] = None,
         eval_route_end: Optional[str] = None,
         product_class_ids: list[str],
+        custom_growths: Optional[dict] = None,
+        custom_bases: Optional[dict] = None,
     ) -> dict:
         """
         Runs the full target simulation and returns structured results for templates and export.
         """
-        errors = []
         if not origin_route_id:
-            raise TargetCalculatorError("Debes seleccionar una ruta origen.")
+            raise TargetCalculatorError("Debes seleccionar una ruta.")
         if not customer_ids:
             raise TargetCalculatorError("Debes seleccionar al menos un cliente para el cálculo.")
 
@@ -362,7 +438,7 @@ class SaleTargetCalculatorService(UsersService):
             raise TargetCalculatorError("Las fechas ingresadas no tienen un formato válido (YYYY-MM).")
 
         r_start, r_end_last = None, None
-        if calc_method == 'contribution':
+        if mode != 'create_new' and calc_method == 'contribution':
             r_start, _ = self.parse_month_bounds(eval_route_start)
             _, r_end_last = self.parse_month_bounds(eval_route_end)
             if not r_start or not r_end_last:
@@ -382,7 +458,7 @@ class SaleTargetCalculatorService(UsersService):
 
         origin_route = Route.objects.filter(id=origin_route_id).first()
         if not origin_route:
-            raise TargetCalculatorError("La ruta origen especificada no existe.")
+            raise TargetCalculatorError("La ruta especificada no existe.")
 
         dest_route = None
         if mode == 'transfer':
@@ -394,13 +470,17 @@ class SaleTargetCalculatorService(UsersService):
         if mode == 'transfer' and destination_route_id:
             routes_to_fetch.append(destination_route_id)
 
-        targets = self.get_route_targets(routes_to_fetch, target_year, product_classes)
+        targets = self.get_route_targets(routes_to_fetch, target_year, product_classes) if mode != 'create_new' else {}
         origin_targets = targets.get(origin_route_id, {})
         dest_targets = targets.get(destination_route_id, {}) if destination_route_id else {}
 
-        strategy_cls = CALCULATION_STRATEGIES.get(calc_method)
-        if not strategy_cls:
-            raise TargetCalculatorError(f"Método de cálculo desconocido: '{calc_method}'.")
+        if mode == 'create_new':
+            calc_method = 'create_new'
+            strategy_cls = CreateNewStrategy
+        else:
+            strategy_cls = CALCULATION_STRATEGIES.get(calc_method)
+            if not strategy_cls:
+                raise TargetCalculatorError(f"Método de cálculo desconocido: '{calc_method}'.")
 
         strategy = strategy_cls()
         eval_params = {
@@ -410,6 +490,8 @@ class SaleTargetCalculatorService(UsersService):
             'r_end': r_end_last,
             'transfer_growth_rule': transfer_growth_rule,
             'mode': mode,
+            'custom_growths': custom_growths or {},
+            'custom_bases': custom_bases or {},
         }
 
         computed_origin, computed_dest = strategy.calculate_deltas(
@@ -434,7 +516,9 @@ class SaleTargetCalculatorService(UsersService):
             months=months,
             mode=mode,
             adjustment_direction=adjustment_direction,
-            is_origin=True
+            is_origin=True,
+            eff_date=eff_start,
+            custom_growths=custom_growths,
         )
 
         dest_result = None
@@ -447,7 +531,8 @@ class SaleTargetCalculatorService(UsersService):
                 months=months,
                 mode=mode,
                 adjustment_direction=adjustment_direction,
-                is_origin=False
+                is_origin=False,
+                eff_date=eff_start,
             )
 
         customer_summary = self._calculate_customer_summary(
@@ -481,7 +566,9 @@ class SaleTargetCalculatorService(UsersService):
         months: list[datetime.date],
         mode: str,
         adjustment_direction: str,
-        is_origin: bool
+        is_origin: bool,
+        eff_date: Optional[datetime.date] = None,
+        custom_growths: Optional[dict] = None,
     ) -> dict:
         """
         builds matrix breakdown of targets, deltas, and projected values per product class and month
@@ -490,9 +577,134 @@ class SaleTargetCalculatorService(UsersService):
         if route.business_unit:
             route_display += f" ({route.business_unit.name.title()})"
 
+        eff_month = eff_date.month if eff_date else 1
+        applicable_months_count = max(1, 12 - eff_month + 1)
+
+        if mode == 'create_new':
+            result = {
+                'route_id': route.id,
+                'route_name': route_display,
+                'is_create_new': True,
+                'effective_month_num': eff_month,
+                'applicable_months_count': applicable_months_count,
+                'classes': [],
+                'month_totals': [
+                    {
+                        'date': m,
+                        'old_target': Decimal('0.00'),
+                        'growth': Decimal('0.00'),
+                        'delta': Decimal('0.00'),
+                        'new_target': Decimal('0.00'),
+                        'is_active': m.month >= eff_month,
+                        'is_base': m.month == eff_month,
+                    }
+                    for m in months
+                ],
+                'grand_total': {
+                    'old_target': Decimal('0.00'),
+                    'delta': Decimal('0.00'),
+                    'new_target': Decimal('0.00'),
+                    'base_annual': Decimal('0.00'),
+                    'annual_growth_pct': Decimal('0.00'),
+                }
+            }
+
+            for pc in product_classes:
+                base_amount = computed_deltas.get(pc.id, {}).get(eff_month, Decimal('0.00'))
+                base_annual = base_amount * Decimal(applicable_months_count)
+
+                pc_data = {
+                    'class_id': pc.id,
+                    'class_name': pc.name.title(),
+                    'base_amount': base_amount,
+                    'base_annual': base_annual,
+                    'months': [],
+                    'totals': {
+                        'old_target': Decimal('0.00'),
+                        'delta': Decimal('0.00'),
+                        'new_target': Decimal('0.00'),
+                        'base_annual': base_annual,
+                        'annual_growth_pct': Decimal('0.00'),
+                    }
+                }
+
+                for idx, m in enumerate(months):
+                    target_val = computed_deltas.get(pc.id, {}).get(m.month, Decimal('0.00'))
+                    is_active = (m.month >= eff_month)
+                    is_base = (m.month == eff_month)
+                    growth_val = Decimal('0.00')
+
+                    if m.month > eff_month:
+                        pc_str = str(pc.id)
+                        pc_growths = (custom_growths or {}).get(pc_str) or (custom_growths or {}).get(pc.id) or {}
+                        g_raw = pc_growths.get(m.month)
+                        if g_raw is None:
+                            g_raw = pc_growths.get(str(m.month))
+                        if g_raw is not None:
+                            try:
+                                growth_val = Decimal(str(g_raw))
+                            except (InvalidOperation, TypeError, ValueError):
+                                growth_val = Decimal('0.00')
+                        else:
+                            prev = computed_deltas.get(pc.id, {}).get(m.month - 1, Decimal('0.00'))
+                            if prev > 0:
+                                growth_val = ((target_val - prev) / prev) * Decimal('100.00')
+                            else:
+                                growth_val = Decimal('0.00')
+
+                    pc_data['months'].append({
+                        'date': m,
+                        'month_num': m.month,
+                        'old_target': Decimal('0.00'),
+                        'growth': growth_val,
+                        'delta': target_val,
+                        'new_target': target_val,
+                        'is_active': is_active,
+                        'is_base': is_base,
+                    })
+
+                    pc_data['totals']['new_target'] += target_val
+
+                if base_annual > 0:
+                    pc_data['totals']['annual_growth_pct'] = ((pc_data['totals']['new_target'] - base_annual) / base_annual) * Decimal('100.00')
+                elif pc_data['totals']['new_target'] > 0:
+                    pc_data['totals']['annual_growth_pct'] = Decimal('100.00')
+                else:
+                    pc_data['totals']['annual_growth_pct'] = Decimal('0.00')
+
+                result['classes'].append(pc_data)
+                result['grand_total']['new_target'] += pc_data['totals']['new_target']
+                result['grand_total']['base_annual'] += base_annual
+
+            for idx, mt in enumerate(result['month_totals']):
+                m_num = mt['date'].month
+                tot_m = sum(pc['months'][idx]['new_target'] for pc in result['classes'])
+                mt['new_target'] = tot_m
+                if m_num > eff_month:
+                    prev_m = result['month_totals'][idx - 1]['new_target']
+                    if prev_m > 0:
+                        mt['growth'] = ((tot_m - prev_m) / prev_m) * Decimal('100.00')
+                    else:
+                        mt['growth'] = Decimal('0.00')
+                else:
+                    mt['growth'] = Decimal('0.00')
+
+            tot_target = result['grand_total']['new_target']
+            tot_base = result['grand_total']['base_annual']
+            if tot_base > 0:
+                result['grand_total']['annual_growth_pct'] = ((tot_target - tot_base) / tot_base) * Decimal('100.00')
+            elif tot_target > 0:
+                result['grand_total']['annual_growth_pct'] = Decimal('100.00')
+            else:
+                result['grand_total']['annual_growth_pct'] = Decimal('0.00')
+
+            return result
+
+        # Standard calculation for transfer and adjustment
         result = {
             'route_id': route.id,
             'route_name': route_display,
+            'is_create_new': False,
             'classes': [],
             'month_totals': [
                 {'date': m, 'old_target': Decimal('0.00'), 'growth': Decimal('0.00'), 'delta': Decimal('0.00'), 'new_target': Decimal('0.00')}
@@ -544,6 +756,7 @@ class SaleTargetCalculatorService(UsersService):
 
                 pc_data['months'].append({
                     'date': m,
+                    'month_num': m.month,
                     'old_target': old_target,
                     'growth': growth,
                     'delta': delta_val,
@@ -602,7 +815,14 @@ class SaleTargetCalculatorService(UsersService):
 
         summary = {}
 
-        if mode == 'transfer' and destination_route_id:
+        if mode == 'create_new':
+            summary['origin'] = {
+                'current': origin_current,
+                'affected': total_selected,
+                'is_addition': True,
+                'final': total_selected
+            }
+        elif mode == 'transfer' and destination_route_id:
             dest_current = _get_active_count(destination_route_id)
             customers_in_dest = _get_selected_in_route_count(destination_route_id)
 
@@ -701,181 +921,276 @@ class SaleTargetCalculatorExports:
             cell.border = cell_border
             return cell
 
-        routes_keys = [('origin', 'Origen')]
-        if results.get('mode') == 'transfer' and results.get('destination'):
-            routes_keys.append(('destination', 'Destino'))
-
         now_str = timezone.localtime().strftime('%Y-%m-%d %H:%M')
 
-        for key, role_label in routes_keys:
-            r = results.get(key)
-            if not r:
-                continue
+        # handle Create New Mode
+        if results.get('mode') == 'create_new':
+            r = results.get('origin')
+            if r:
+                clean_route = r['route_name'].replace('/', '-').translate(str.maketrans('', '', '\\/*?:[]'))
+                sheet_title = f"Presupuesto - {clean_route}"[:31]
+                ws = wb.create_sheet(title=sheet_title)
+                ws.views.sheetView[0].showGridLines = True
 
-            clean_route = r['route_name'].replace('/', '-').translate(str.maketrans('', '', '\\/*?:[]'))
-            sheet_title = f"{role_label} - {clean_route}"[:31]
-            ws = wb.create_sheet(title=sheet_title)
-            ws.views.sheetView[0].showGridLines = True
-
-            # title
-            ws.append([f"SIMULACIÓN DE OBJETIVOS DE VENTA: {r['route_name'].upper()} ({role_label.upper()})"])
-            ws.cell(row=ws.max_row, column=1).font = title_font
-            ws.append([f"Generado el: {now_str} | Método: {results.get('calc_method', '').title()} | Modo: {results.get('mode', '').title()} | Año: {results.get('target_year')}"])
-            ws.cell(row=ws.max_row, column=1).font = subtitle_font
-            ws.append([])
-
-            # customer portfolio summary
-            summary = results.get('customer_summary', {}).get(key, {})
-            if summary:
-                ws.append(["Resumen de Cartera de Clientes"])
-                ws.cell(row=ws.max_row, column=1).font = section_font
-                ws.append(["Cartera actual:", f"{summary.get('current', 0)} clientes"])
-                affected_label = "Nuevos clientes a integrar:" if summary.get('is_addition') else "Clientes a transferir/remover:"
-                affected_sign = "+" if summary.get('is_addition') else "-"
-                ws.append([affected_label, f"{affected_sign}{summary.get('affected', 0)} clientes"])
-                ws.append(["Cartera proyectada:", f"{summary.get('final', 0)} clientes"])
+                # title
+                ws.append([f"PRESUPUESTACIÓN DE OBJETIVOS DE VENTA: {r['route_name'].upper()}"])
+                ws.cell(row=ws.max_row, column=1).font = title_font
+                ws.append([f"Generado el: {now_str} | Modo: Cálculo Desde Cero | Año: {results.get('target_year')} | Mes Inicio: {results.get('effective_month')}"])
+                ws.cell(row=ws.max_row, column=1).font = subtitle_font
                 ws.append([])
 
-            # breakdown table
-            ws.append(["Desglose de Cálculo (Objetivo Original, Crecimiento %, Ajuste Delta)"])
-            ws.cell(row=ws.max_row, column=1).font = section_font
-            ws.append([])
+                # summary
+                summary = results.get('customer_summary', {}).get('origin', {})
+                if summary:
+                    ws.append(["Resumen de Cartera de Clientes Asignada"])
+                    ws.cell(row=ws.max_row, column=1).font = section_font
+                    ws.append(["Clientes seleccionados para el cálculo:", f"{summary.get('affected', 0)} clientes"])
+                    ws.append([])
 
-            if not r['classes']:
-                ws.append(["No hay clases de producto seleccionadas"])
-                continue
+                # table
+                ws.append(["Presupuesto Planificado (Objetivo Mensual y Crecimiento %)"])
+                ws.cell(row=ws.max_row, column=1).font = section_font
+                ws.append([])
 
-            months = r['classes'][0]['months']
+                months = r['classes'][0]['months'] if r['classes'] else []
+                h_row1 = ws.max_row + 1
+                style_cell(ws.cell(row=h_row1, column=1, value="Clase de Producto"), fill=header_fill, font=white_bold, alignment=center_align)
+                ws.merge_cells(start_row=h_row1, start_column=1, end_row=h_row1 + 1, end_column=1)
 
-            h_row1 = ws.max_row + 1
-            style_cell(ws.cell(row=h_row1, column=1, value="Clase de Producto"), fill=header_fill, font=white_bold, alignment=center_align)
-            ws.merge_cells(start_row=h_row1, start_column=1, end_row=h_row1 + 1, end_column=1)
+                col_idx = 2
+                for m in months:
+                    month_label = m['date'].strftime('%b %Y').upper()
+                    cell = ws.cell(row=h_row1, column=col_idx, value=month_label)
+                    style_cell(cell, fill=header_fill, font=white_bold, alignment=center_align)
+                    style_cell(ws.cell(row=h_row1, column=col_idx + 1), fill=header_fill)
+                    ws.merge_cells(start_row=h_row1, start_column=col_idx, end_row=h_row1, end_column=col_idx + 1)
+                    col_idx += 2
 
-            col_idx = 2
-            for m in months:
-                month_label = m['date'].strftime('%b %Y').upper()
-                cell = ws.cell(row=h_row1, column=col_idx, value=month_label)
+                cell = ws.cell(row=h_row1, column=col_idx, value="TOTAL ANUAL")
+                style_cell(cell, fill=header_fill, font=white_bold, alignment=center_align)
+                style_cell(ws.cell(row=h_row1, column=col_idx + 1), fill=header_fill)
+                ws.merge_cells(start_row=h_row1, start_column=col_idx, end_row=h_row1, end_column=col_idx + 1)
+
+                h_row2 = h_row1 + 1
+                col_idx = 2
+                for m in months:
+                    style_cell(ws.cell(row=h_row2, column=col_idx, value="Objetivo"), fill=subheader_fill, font=white_bold, alignment=center_align)
+                    style_cell(ws.cell(row=h_row2, column=col_idx + 1, value="Crec %"), fill=subheader_fill, font=white_bold, alignment=center_align)
+                    col_idx += 2
+                style_cell(ws.cell(row=h_row2, column=col_idx, value="Total"), fill=subheader_fill, font=white_bold, alignment=center_align)
+                style_cell(ws.cell(row=h_row2, column=col_idx + 1, value="Crec Anual %"), fill=subheader_fill, font=white_bold, alignment=center_align)
+
+                for cls in r['classes']:
+                    cur_row = ws.max_row + 1
+                    style_cell(ws.cell(row=cur_row, column=1, value=cls['class_name']), font=black_bold, alignment=left_align)
+                    col_idx = 2
+                    for m in cls['months']:
+                        style_cell(ws.cell(row=cur_row, column=col_idx, value=m['new_target']), font=black_reg, alignment=right_align, number_format=currency_format)
+                        col_idx += 1
+                        g_val = float(m['growth']) / 100.0 if m['growth'] else 0.0
+                        g_font = green_font if g_val > 0 else (red_font if g_val < 0 else black_reg)
+                        style_cell(ws.cell(row=cur_row, column=col_idx, value=g_val), font=g_font, alignment=right_align, number_format=pct_format)
+                        col_idx += 1
+
+                    t = cls['totals']
+                    style_cell(ws.cell(row=cur_row, column=col_idx, value=t['new_target']), fill=total_fill, font=black_bold, alignment=right_align, number_format=currency_format)
+                    col_idx += 1
+                    ag_val = float(t['annual_growth_pct']) / 100.0 if t['annual_growth_pct'] else 0.0
+                    ag_font = green_font if ag_val > 0 else (red_font if ag_val < 0 else black_bold)
+                    style_cell(ws.cell(row=cur_row, column=col_idx, value=ag_val), fill=total_fill, font=ag_font, alignment=right_align, number_format=pct_format)
+
+                tot_row = ws.max_row + 1
+                style_cell(ws.cell(row=tot_row, column=1, value="TOTAL RUTA"), fill=total_fill, font=black_bold, alignment=left_align)
+                col_idx = 2
+                for mt in r['month_totals']:
+                    style_cell(ws.cell(row=tot_row, column=col_idx, value=mt['new_target']), fill=total_fill, font=black_bold, alignment=right_align, number_format=currency_format)
+                    col_idx += 1
+                    g_val = float(mt['growth']) / 100.0 if mt['growth'] else 0.0
+                    g_font = green_font if g_val > 0 else (red_font if g_val < 0 else black_bold)
+                    style_cell(ws.cell(row=tot_row, column=col_idx, value=g_val), fill=total_fill, font=g_font, alignment=right_align, number_format=pct_format)
+                    col_idx += 1
+
+                gt = r['grand_total']
+                style_cell(ws.cell(row=tot_row, column=col_idx, value=gt['new_target']), fill=grand_total_fill, font=black_bold, alignment=right_align, number_format=currency_format)
+                col_idx += 1
+                gag_val = float(gt['annual_growth_pct']) / 100.0 if gt['annual_growth_pct'] else 0.0
+                gag_font = green_font if gag_val > 0 else (red_font if gag_val < 0 else black_bold)
+                style_cell(ws.cell(row=tot_row, column=col_idx, value=gag_val), fill=grand_total_fill, font=gag_font, alignment=right_align, number_format=pct_format)
+
+        else:
+            routes_keys = [('origin', 'Origen')]
+            if results.get('mode') == 'transfer' and results.get('destination'):
+                routes_keys.append(('destination', 'Destino'))
+
+            for key, role_label in routes_keys:
+                r = results.get(key)
+                if not r:
+                    continue
+
+                clean_route = r['route_name'].replace('/', '-').translate(str.maketrans('', '', '\\/*?:[]'))
+                sheet_title = f"{role_label} - {clean_route}"[:31]
+                ws = wb.create_sheet(title=sheet_title)
+                ws.views.sheetView[0].showGridLines = True
+
+                # title
+                ws.append([f"SIMULACIÓN DE OBJETIVOS DE VENTA: {r['route_name'].upper()} ({role_label.upper()})"])
+                ws.cell(row=ws.max_row, column=1).font = title_font
+                ws.append([f"Generado el: {now_str} | Método: {results.get('calc_method', '').title()} | Modo: {results.get('mode', '').title()} | Año: {results.get('target_year')}"])
+                ws.cell(row=ws.max_row, column=1).font = subtitle_font
+                ws.append([])
+
+                # customer portfolio summary
+                summary = results.get('customer_summary', {}).get(key, {})
+                if summary:
+                    ws.append(["Resumen de Cartera de Clientes"])
+                    ws.cell(row=ws.max_row, column=1).font = section_font
+                    ws.append(["Cartera actual:", f"{summary.get('current', 0)} clientes"])
+                    affected_label = "Nuevos clientes a integrar:" if summary.get('is_addition') else "Clientes a transferir/remover:"
+                    affected_sign = "+" if summary.get('is_addition') else "-"
+                    ws.append([affected_label, f"{affected_sign}{summary.get('affected', 0)} clientes"])
+                    ws.append(["Cartera proyectada:", f"{summary.get('final', 0)} clientes"])
+                    ws.append([])
+
+                # breakdown table
+                ws.append(["Desglose de Cálculo (Objetivo Original, Crecimiento %, Ajuste Delta)"])
+                ws.cell(row=ws.max_row, column=1).font = section_font
+                ws.append([])
+
+                if not r['classes']:
+                    ws.append(["No hay clases de producto seleccionadas"])
+                    continue
+
+                months = r['classes'][0]['months']
+
+                h_row1 = ws.max_row + 1
+                style_cell(ws.cell(row=h_row1, column=1, value="Clase de Producto"), fill=header_fill, font=white_bold, alignment=center_align)
+                ws.merge_cells(start_row=h_row1, start_column=1, end_row=h_row1 + 1, end_column=1)
+
+                col_idx = 2
+                for m in months:
+                    month_label = m['date'].strftime('%b %Y').upper()
+                    cell = ws.cell(row=h_row1, column=col_idx, value=month_label)
+                    style_cell(cell, fill=header_fill, font=white_bold, alignment=center_align)
+                    for c in range(col_idx, col_idx + 3):
+                        style_cell(ws.cell(row=h_row1, column=c), fill=header_fill)
+                    ws.merge_cells(start_row=h_row1, start_column=col_idx, end_row=h_row1, end_column=col_idx + 2)
+                    col_idx += 3
+
+                cell = ws.cell(row=h_row1, column=col_idx, value="TOTAL ANUAL")
                 style_cell(cell, fill=header_fill, font=white_bold, alignment=center_align)
                 for c in range(col_idx, col_idx + 3):
                     style_cell(ws.cell(row=h_row1, column=c), fill=header_fill)
                 ws.merge_cells(start_row=h_row1, start_column=col_idx, end_row=h_row1, end_column=col_idx + 2)
-                col_idx += 3
 
-            cell = ws.cell(row=h_row1, column=col_idx, value="TOTAL ANUAL")
-            style_cell(cell, fill=header_fill, font=white_bold, alignment=center_align)
-            for c in range(col_idx, col_idx + 3):
-                style_cell(ws.cell(row=h_row1, column=c), fill=header_fill)
-            ws.merge_cells(start_row=h_row1, start_column=col_idx, end_row=h_row1, end_column=col_idx + 2)
-
-            h_row2 = h_row1 + 1
-            col_idx = 2
-            sub_headers = ["Obj. Orig", "Crec %", "Ajuste"]
-            for m in months:
+                h_row2 = h_row1 + 1
+                col_idx = 2
+                sub_headers = ["Obj. Orig", "Crec %", "Ajuste"]
+                for m in months:
+                    for sh in sub_headers:
+                        style_cell(ws.cell(row=h_row2, column=col_idx, value=sh), fill=subheader_fill, font=white_bold, alignment=center_align)
+                        col_idx += 1
                 for sh in sub_headers:
                     style_cell(ws.cell(row=h_row2, column=col_idx, value=sh), fill=subheader_fill, font=white_bold, alignment=center_align)
                     col_idx += 1
-            for sh in sub_headers:
-                style_cell(ws.cell(row=h_row2, column=col_idx, value=sh), fill=subheader_fill, font=white_bold, alignment=center_align)
-                col_idx += 1
 
-            for cls in r['classes']:
-                cur_row = ws.max_row + 1
-                style_cell(ws.cell(row=cur_row, column=1, value=cls['class_name']), font=black_bold, alignment=left_align)
+                for cls in r['classes']:
+                    cur_row = ws.max_row + 1
+                    style_cell(ws.cell(row=cur_row, column=1, value=cls['class_name']), font=black_bold, alignment=left_align)
+
+                    col_idx = 2
+                    for m in cls['months']:
+                        style_cell(ws.cell(row=cur_row, column=col_idx, value=m['old_target']), font=black_reg, alignment=right_align, number_format=currency_format)
+                        col_idx += 1
+
+                        g_val = float(m['growth']) / 100.0 if m['growth'] else 0.0
+                        g_font = green_font if g_val > 0 else (red_font if g_val < 0 else black_reg)
+                        style_cell(ws.cell(row=cur_row, column=col_idx, value=g_val), font=g_font, alignment=right_align, number_format=pct_format)
+                        col_idx += 1
+
+                        d_val = m['delta']
+                        d_font = green_font if d_val > 0 else (red_font if d_val < 0 else black_reg)
+                        style_cell(ws.cell(row=cur_row, column=col_idx, value=d_val), font=d_font, alignment=right_align, number_format=currency_format)
+                        col_idx += 1
+
+                    t = cls['totals']
+                    style_cell(ws.cell(row=cur_row, column=col_idx, value=t['old_target']), fill=total_fill, font=black_bold, alignment=right_align, number_format=currency_format)
+                    col_idx += 1
+                    style_cell(ws.cell(row=cur_row, column=col_idx, value="-"), fill=total_fill, font=black_reg, alignment=center_align)
+                    col_idx += 1
+                    d_font = green_font if t['delta'] > 0 else (red_font if t['delta'] < 0 else black_bold)
+                    style_cell(ws.cell(row=cur_row, column=col_idx, value=t['delta']), fill=total_fill, font=d_font, alignment=right_align, number_format=currency_format)
+                    col_idx += 1
+
+                tot_row = ws.max_row + 1
+                style_cell(ws.cell(row=tot_row, column=1, value="TOTAL RUTA"), fill=total_fill, font=black_bold, alignment=left_align)
 
                 col_idx = 2
-                for m in cls['months']:
-                    style_cell(ws.cell(row=cur_row, column=col_idx, value=m['old_target']), font=black_reg, alignment=right_align, number_format=currency_format)
+                for mt in r['month_totals']:
+                    style_cell(ws.cell(row=tot_row, column=col_idx, value=mt['old_target']), fill=total_fill, font=black_bold, alignment=right_align, number_format=currency_format)
                     col_idx += 1
 
-                    g_val = float(m['growth']) / 100.0 if m['growth'] else 0.0
-                    g_font = green_font if g_val > 0 else (red_font if g_val < 0 else black_reg)
-                    style_cell(ws.cell(row=cur_row, column=col_idx, value=g_val), font=g_font, alignment=right_align, number_format=pct_format)
+                    g_val = float(mt['growth']) / 100.0 if mt['growth'] else 0.0
+                    g_font = green_font if g_val > 0 else (red_font if g_val < 0 else black_bold)
+                    style_cell(ws.cell(row=tot_row, column=col_idx, value=g_val), fill=total_fill, font=g_font, alignment=right_align, number_format=pct_format)
                     col_idx += 1
 
-                    d_val = m['delta']
-                    d_font = green_font if d_val > 0 else (red_font if d_val < 0 else black_reg)
-                    style_cell(ws.cell(row=cur_row, column=col_idx, value=d_val), font=d_font, alignment=right_align, number_format=currency_format)
+                    d_val = mt['delta']
+                    d_font = green_font if d_val > 0 else (red_font if d_val < 0 else black_bold)
+                    style_cell(ws.cell(row=tot_row, column=col_idx, value=d_val), fill=total_fill, font=d_font, alignment=right_align, number_format=currency_format)
                     col_idx += 1
 
-                t = cls['totals']
-                style_cell(ws.cell(row=cur_row, column=col_idx, value=t['old_target']), fill=total_fill, font=black_bold, alignment=right_align, number_format=currency_format)
+                gt = r['grand_total']
+                style_cell(ws.cell(row=tot_row, column=col_idx, value=gt['old_target']), fill=grand_total_fill, font=black_bold, alignment=right_align, number_format=currency_format)
                 col_idx += 1
-                style_cell(ws.cell(row=cur_row, column=col_idx, value="-"), fill=total_fill, font=black_reg, alignment=center_align)
+                style_cell(ws.cell(row=tot_row, column=col_idx, value="-"), fill=grand_total_fill, font=black_reg, alignment=center_align)
                 col_idx += 1
-                d_font = green_font if t['delta'] > 0 else (red_font if t['delta'] < 0 else black_bold)
-                style_cell(ws.cell(row=cur_row, column=col_idx, value=t['delta']), fill=total_fill, font=d_font, alignment=right_align, number_format=currency_format)
-                col_idx += 1
-
-            tot_row = ws.max_row + 1
-            style_cell(ws.cell(row=tot_row, column=1, value="TOTAL RUTA"), fill=total_fill, font=black_bold, alignment=left_align)
-
-            col_idx = 2
-            for mt in r['month_totals']:
-                style_cell(ws.cell(row=tot_row, column=col_idx, value=mt['old_target']), fill=total_fill, font=black_bold, alignment=right_align, number_format=currency_format)
+                d_font = green_font if gt['delta'] > 0 else (red_font if gt['delta'] < 0 else black_bold)
+                style_cell(ws.cell(row=tot_row, column=col_idx, value=gt['delta']), fill=grand_total_fill, font=d_font, alignment=right_align, number_format=currency_format)
                 col_idx += 1
 
-                g_val = float(mt['growth']) / 100.0 if mt['growth'] else 0.0
-                g_font = green_font if g_val > 0 else (red_font if g_val < 0 else black_bold)
-                style_cell(ws.cell(row=tot_row, column=col_idx, value=g_val), fill=total_fill, font=g_font, alignment=right_align, number_format=pct_format)
-                col_idx += 1
+                ws.append([])
+                ws.append([])
+                ws.append(["Objetivos Planificados (Objetivos Finales con Ajuste Aplicado)"])
+                ws.cell(row=ws.max_row, column=1).font = section_font
+                ws.append([])
 
-                d_val = mt['delta']
-                d_font = green_font if d_val > 0 else (red_font if d_val < 0 else black_bold)
-                style_cell(ws.cell(row=tot_row, column=col_idx, value=d_val), fill=total_fill, font=d_font, alignment=right_align, number_format=currency_format)
-                col_idx += 1
-
-            gt = r['grand_total']
-            style_cell(ws.cell(row=tot_row, column=col_idx, value=gt['old_target']), fill=grand_total_fill, font=black_bold, alignment=right_align, number_format=currency_format)
-            col_idx += 1
-            style_cell(ws.cell(row=tot_row, column=col_idx, value="-"), fill=grand_total_fill, font=black_reg, alignment=center_align)
-            col_idx += 1
-            d_font = green_font if gt['delta'] > 0 else (red_font if gt['delta'] < 0 else black_bold)
-            style_cell(ws.cell(row=tot_row, column=col_idx, value=gt['delta']), fill=grand_total_fill, font=d_font, alignment=right_align, number_format=currency_format)
-            col_idx += 1
-
-            ws.append([])
-            ws.append([])
-            ws.append(["Objetivos Planificados (Objetivos Finales con Ajuste Aplicado)"])
-            ws.cell(row=ws.max_row, column=1).font = section_font
-            ws.append([])
-
-            h_row3 = ws.max_row + 1
-            style_cell(ws.cell(row=h_row3, column=1, value="Clase de Producto"), fill=header_fill, font=white_bold, alignment=center_align)
-
-            col_idx = 2
-            for m in months:
-                month_label = m['date'].strftime('%b %Y').upper()
-                style_cell(ws.cell(row=h_row3, column=col_idx, value=month_label), fill=header_fill, font=white_bold, alignment=center_align)
-                col_idx += 1
-
-            style_cell(ws.cell(row=h_row3, column=col_idx, value="TOTAL ANUAL"), fill=header_fill, font=white_bold, alignment=center_align)
-
-            for cls in r['classes']:
-                cur_row = ws.max_row + 1
-                style_cell(ws.cell(row=cur_row, column=1, value=cls['class_name']), font=black_bold, alignment=left_align)
+                h_row3 = ws.max_row + 1
+                style_cell(ws.cell(row=h_row3, column=1, value="Clase de Producto"), fill=header_fill, font=white_bold, alignment=center_align)
 
                 col_idx = 2
-                for m in cls['months']:
-                    c_font = green_font if m['new_target'] > m['old_target'] else (red_font if m['new_target'] < m['old_target'] else black_reg)
-                    style_cell(ws.cell(row=cur_row, column=col_idx, value=m['new_target']), font=c_font, alignment=right_align, number_format=currency_format)
+                for m in months:
+                    month_label = m['date'].strftime('%b %Y').upper()
+                    style_cell(ws.cell(row=h_row3, column=col_idx, value=month_label), fill=header_fill, font=white_bold, alignment=center_align)
                     col_idx += 1
 
-                t = cls['totals']
-                c_font = green_font if t['new_target'] > t['old_target'] else (red_font if t['new_target'] < t['old_target'] else black_bold)
-                style_cell(ws.cell(row=cur_row, column=col_idx, value=t['new_target']), fill=total_fill, font=c_font, alignment=right_align, number_format=currency_format)
+                style_cell(ws.cell(row=h_row3, column=col_idx, value="TOTAL ANUAL"), fill=header_fill, font=white_bold, alignment=center_align)
 
-            tot_row2 = ws.max_row + 1
-            style_cell(ws.cell(row=tot_row2, column=1, value="TOTAL RUTA"), fill=total_fill, font=black_bold, alignment=left_align)
+                for cls in r['classes']:
+                    cur_row = ws.max_row + 1
+                    style_cell(ws.cell(row=cur_row, column=1, value=cls['class_name']), font=black_bold, alignment=left_align)
 
-            col_idx = 2
-            for mt in r['month_totals']:
-                c_font = green_font if mt['new_target'] > mt['old_target'] else (red_font if mt['new_target'] < mt['old_target'] else black_bold)
-                style_cell(ws.cell(row=tot_row2, column=col_idx, value=mt['new_target']), fill=total_fill, font=c_font, alignment=right_align, number_format=currency_format)
-                col_idx += 1
+                    col_idx = 2
+                    for m in cls['months']:
+                        c_font = green_font if m['new_target'] > m['old_target'] else (red_font if m['new_target'] < m['old_target'] else black_reg)
+                        style_cell(ws.cell(row=cur_row, column=col_idx, value=m['new_target']), font=c_font, alignment=right_align, number_format=currency_format)
+                        col_idx += 1
 
-            gt = r['grand_total']
-            c_font = green_font if gt['new_target'] > gt['old_target'] else (red_font if gt['new_target'] < gt['old_target'] else black_bold)
-            style_cell(ws.cell(row=tot_row2, column=col_idx, value=gt['new_target']), fill=grand_total_fill, font=c_font, alignment=right_align, number_format=currency_format)
+                    t = cls['totals']
+                    c_font = green_font if t['new_target'] > t['old_target'] else (red_font if t['new_target'] < t['old_target'] else black_bold)
+                    style_cell(ws.cell(row=cur_row, column=col_idx, value=t['new_target']), fill=total_fill, font=c_font, alignment=right_align, number_format=currency_format)
+
+                tot_row2 = ws.max_row + 1
+                style_cell(ws.cell(row=tot_row2, column=1, value="TOTAL RUTA"), fill=total_fill, font=black_bold, alignment=left_align)
+
+                col_idx = 2
+                for mt in r['month_totals']:
+                    c_font = green_font if mt['new_target'] > mt['old_target'] else (red_font if mt['new_target'] < mt['old_target'] else black_bold)
+                    style_cell(ws.cell(row=tot_row2, column=col_idx, value=mt['new_target']), fill=total_fill, font=c_font, alignment=right_align, number_format=currency_format)
+                    col_idx += 1
+
+                gt = r['grand_total']
+                c_font = green_font if gt['new_target'] > gt['old_target'] else (red_font if gt['new_target'] < gt['old_target'] else black_bold)
+                style_cell(ws.cell(row=tot_row2, column=col_idx, value=gt['new_target']), fill=grand_total_fill, font=c_font, alignment=right_align, number_format=currency_format)
 
         ws_cust = wb.create_sheet(title="Clientes Seleccionados")
         ws_cust.views.sheetView[0].showGridLines = True

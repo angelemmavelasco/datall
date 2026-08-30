@@ -33,9 +33,11 @@ Calculadora de objetivos de venta
                             hx-get="{% url 'sales:sale_target_calculator_view' %}?action=toggle_mode"
                             hx-target="#calculator-scenario-config"
                             hx-include="[name='mode'], [name='origin_route'], [name='destination_route']"
-                            hx-indicator="#scenario-loading-indicator">
+                            hx-indicator="#scenario-loading-indicator"
+                            onchange="toggleModeSettings()">
                         <option value="transfer" selected>Transferencia entre rutas (Afecta a ambas)</option>
                         <option value="adjustment">Ajuste a ruta única (Solo afecta una ruta)</option>
+                        <option value="create_new">Cálculo desde cero (Presupuestación de ruta)</option>
                     </select>
                 </div>
 
@@ -47,6 +49,7 @@ Calculadora de objetivos de venta
                             onchange="toggleRouteEvalInputs()">
                         <option value="average" selected>Por promedio mensual (Monto fijo para cada mes)</option>
                         <option value="contribution">Por contribución (Porcentaje sobre ruta)</option>
+                        <option value="create_new" style="display: none;">Histórico de clientes + Crecimientos mensuales</option>
                     </select>
                 </div>
             </div>
@@ -236,6 +239,32 @@ Calculadora de objetivos de venta
         });
     }
 
+    function toggleModeSettings() {
+        const modeSelect = document.getElementById('calculation-mode-select');
+        const methodSelect = document.getElementById('calculation-method-select');
+        if (!modeSelect || !methodSelect) return;
+
+        const isCreateNew = modeSelect.value === 'create_new';
+        const createNewOpt = methodSelect.querySelector('option[value="create_new"]');
+        const avgOpt = methodSelect.querySelector('option[value="average"]');
+        const contribOpt = methodSelect.querySelector('option[value="contribution"]');
+
+        if (isCreateNew) {
+            if (createNewOpt) createNewOpt.style.display = 'block';
+            if (avgOpt) avgOpt.style.display = 'none';
+            if (contribOpt) contribOpt.style.display = 'none';
+            methodSelect.value = 'create_new';
+        } else {
+            if (createNewOpt) createNewOpt.style.display = 'none';
+            if (avgOpt) avgOpt.style.display = 'block';
+            if (contribOpt) contribOpt.style.display = 'block';
+            if (methodSelect.value === 'create_new') {
+                methodSelect.value = 'average';
+            }
+        }
+        toggleRouteEvalInputs();
+    }
+
     function toggleRouteEvalInputs() {
         const methodSelect = document.getElementById('calculation-method-select');
         const label = document.getElementById('route-eval-label');
@@ -269,10 +298,16 @@ Calculadora de objetivos de venta
             }
         }
 
+        document.querySelectorAll('#calculator-results input[name^="growth_pc_"], #calculator-results input[name^="base_pc_"]').forEach(function(inp) {
+            searchParams.set(inp.name, inp.value);
+        });
+
         window.location.href = "{% url 'sales:export_sale_targets_calculator_data' %}?" + searchParams.toString();
     }
 
-    document.addEventListener('DOMContentLoaded', toggleRouteEvalInputs);
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleModeSettings();
+    });
 </script>
 
 {% endblock %}

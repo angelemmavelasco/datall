@@ -34,6 +34,32 @@ def generate_sale_targets_calculator_report_task(user_id: int, req_data: dict | 
         product_classes_selected = q_data.getlist('product_classes') if hasattr(q_data, 'getlist') else q_data.get('product_classes', [])
         selected_customers = q_data.getlist('selected_customers') if hasattr(q_data, 'getlist') else q_data.get('selected_customers', [])
 
+        custom_growths = {}
+        custom_bases = {}
+        for key in (q_data.keys() if hasattr(q_data, 'keys') else []):
+            if key.startswith('growth_pc_'):
+                parts = key.split('_')
+                if len(parts) == 4:
+                    _, _, pc_id, m_num = parts
+                    if pc_id not in custom_growths:
+                        custom_growths[pc_id] = {}
+                    val = q_data.get(key)
+                    if val != '' and val is not None:
+                        try:
+                            custom_growths[pc_id][int(m_num)] = float(val)
+                        except (ValueError, TypeError):
+                            pass
+            elif key.startswith('base_pc_'):
+                parts = key.split('_')
+                if len(parts) == 3:
+                    _, _, pc_id = parts
+                    val = q_data.get(key)
+                    if val != '' and val is not None:
+                        try:
+                            custom_bases[pc_id] = float(val)
+                        except (ValueError, TypeError):
+                            pass
+
         results = calculator_service.calculate_simulation(
             mode=mode,
             calc_method=calc_method,
@@ -49,6 +75,8 @@ def generate_sale_targets_calculator_report_task(user_id: int, req_data: dict | 
             eval_route_start=eval_route_start,
             eval_route_end=eval_route_end,
             product_class_ids=product_classes_selected,
+            custom_growths=custom_growths,
+            custom_bases=custom_bases,
         )
 
         exports_service = SaleTargetCalculatorExports(calculator_service=calculator_service)
