@@ -26,6 +26,7 @@ from .sale_targets import (
 )
 from .sale_targets_calculator import (
     SaleTargetCalculatorService,
+    SaleTargetCalculatorExports,
     TargetCalculatorError,
 )
 
@@ -49,5 +50,6 @@ __all__ = [
     'SaleTargetServiceError',
     'SaleTargetPermissionsError',
     'SaleTargetCalculatorService',
+    'SaleTargetCalculatorExports',
     'TargetCalculatorError',
 ]

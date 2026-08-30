@@ -8,6 +8,8 @@ from django.db.models import Q
 from dateutil.relativedelta import relativedelta
 import datetime
 
+from .exports import *
+
 from .services.warehouses import (
     WarehousesService,
     WarehouseNotFound,
@@ -720,52 +722,3 @@ def sale_target_calculator_view(request):
         'default_eval_route_end': past_end.strftime('%Y-%m'),
     }
     return render(request, template, context)
-
-@login_required
-def export_sale_targets_calculator_data(request):
-    calculator_service = SaleTargetCalculatorService(user=request.user)
-
-    mode = request.GET.get('mode', 'transfer')
-    calc_method = request.GET.get('calc_method', 'average')
-    origin_route_id = request.GET.get('origin_route')
-    destination_route_id = request.GET.get('destination_route')
-    adjustment_direction = request.GET.get('adjustment_direction', 'remove')
-    transfer_growth_rule = request.GET.get('transfer_growth_rule', 'exact')
-    target_year = request.GET.get('target_year')
-    effective_month = request.GET.get('effective_month')
-    eval_customer_start = request.GET.get('eval_customer_start')
-    eval_customer_end = request.GET.get('eval_customer_end')
-    eval_route_start = request.GET.get('eval_route_start')
-    eval_route_end = request.GET.get('eval_route_end')
-    product_classes_selected = request.GET.getlist('product_classes')
-    selected_customers = request.GET.getlist('selected_customers')
-
-    try:
-        results = calculator_service.calculate_simulation(
-            mode=mode,
-            calc_method=calc_method,
-            origin_route_id=origin_route_id,
-            destination_route_id=destination_route_id,
-            customer_ids=selected_customers,
-            adjustment_direction=adjustment_direction,
-            transfer_growth_rule=transfer_growth_rule,
-            target_year=int(target_year) if target_year else timezone.localdate().year,
-            effective_month=effective_month,
-            eval_customer_start=eval_customer_start,
-            eval_customer_end=eval_customer_end,
-            eval_route_start=eval_route_start,
-            eval_route_end=eval_route_end,
-            product_class_ids=product_classes_selected,
-        )
-        excel_buffer = calculator_service.export_simulation_excel(results)
-
-        response = HttpResponse(
-            excel_buffer.getvalue(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        filename = f"simulacion_objetivos_{origin_route_id}_{target_year}.xlsx"
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
-    except Exception as e:
-        messages.error(request, f"Error al exportar la simulación: {str(e)}")
-        return redirect('sales:sale_target_calculator_view')

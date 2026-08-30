@@ -645,6 +645,15 @@ class SaleTargetCalculatorService(UsersService):
         """
         Generates multi-sheet Excel report matching Datall's export styling standards.
         """
+        exporter = SaleTargetCalculatorExports(calculator_service=self)
+        return exporter.export_simulation_report(results)
+
+
+@dataclass
+class SaleTargetCalculatorExports:
+    calculator_service: SaleTargetCalculatorService
+
+    def export_simulation_report(self, results: dict) -> io.BytesIO:
         import openpyxl
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
         from openpyxl.utils import get_column_letter
@@ -653,30 +662,32 @@ class SaleTargetCalculatorService(UsersService):
         if wb.worksheets:
             wb.remove(wb.active)
 
-        HEADER_FILL = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid") # slate-800
-        SUBHEADER_FILL = PatternFill(start_color="334155", end_color="334155", fill_type="solid") # slate-700
-        TOTAL_FILL = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid") # slate-100
-        GRAND_TOTAL_FILL = PatternFill(start_color="E2E8F0", end_color="E2E8F0", fill_type="solid") # slate-200
+        # Style palette consistent with Datall reports
+        header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
+        subheader_fill = PatternFill(start_color="334155", end_color="334155", fill_type="solid")
+        total_fill = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
+        grand_total_fill = PatternFill(start_color="E2E8F0", end_color="E2E8F0", fill_type="solid")
 
-        WHITE_BOLD = Font(color="FFFFFF", bold=True, size=10)
-        BLACK_BOLD = Font(color="000000", bold=True, size=10)
-        BLACK_REG = Font(color="000000", size=10)
-        TITLE_FONT = Font(color="0F172A", bold=True, size=13)
-        SECTION_FONT = Font(color="1E293B", bold=True, size=11)
+        white_bold = Font(name="Calibri", color="FFFFFF", bold=True, size=10)
+        black_bold = Font(name="Calibri", color="0F172A", bold=True, size=10)
+        black_reg = Font(name="Calibri", color="0F172A", size=10)
+        title_font = Font(name="Calibri", color="0F172A", bold=True, size=14)
+        subtitle_font = Font(name="Calibri", color="64748B", italic=True, size=9)
+        section_font = Font(name="Calibri", color="1E293B", bold=True, size=11)
 
-        GREEN_FONT = Font(color="15803D", bold=True, size=10)
-        RED_FONT = Font(color="B91C1C", bold=True, size=10)
+        green_font = Font(name="Calibri", color="15803D", bold=True, size=10)
+        red_font = Font(name="Calibri", color="B91C1C", bold=True, size=10)
 
-        CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        LEFT = Alignment(horizontal="left", vertical="center")
-        RIGHT = Alignment(horizontal="right", vertical="center")
+        center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        left_align = Alignment(horizontal="left", vertical="center")
+        right_align = Alignment(horizontal="right", vertical="center")
 
-        THIN_BORDER = Border(
-            left=Side(style='thin', color='CBD5E1'),
-            right=Side(style='thin', color='CBD5E1'),
-            top=Side(style='thin', color='CBD5E1'),
-            bottom=Side(style='thin', color='CBD5E1')
-        )
+        thin_border_side = Side(style='thin', color='CBD5E1')
+        cell_border = Border(left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side)
+
+        currency_format = '"$"#,##0.00'
+        pct_format = '0.00%'
+        int_format = '#,##0'
 
         def style_cell(cell, fill=None, font=None, alignment=None, number_format=None):
             if fill:
@@ -687,12 +698,14 @@ class SaleTargetCalculatorService(UsersService):
                 cell.alignment = alignment
             if number_format:
                 cell.number_format = number_format
-            cell.border = THIN_BORDER
+            cell.border = cell_border
             return cell
 
         routes_keys = [('origin', 'Origen')]
         if results.get('mode') == 'transfer' and results.get('destination'):
             routes_keys.append(('destination', 'Destino'))
+
+        now_str = timezone.localtime().strftime('%Y-%m-%d %H:%M')
 
         for key, role_label in routes_keys:
             r = results.get(key)
@@ -702,17 +715,20 @@ class SaleTargetCalculatorService(UsersService):
             clean_route = r['route_name'].replace('/', '-').translate(str.maketrans('', '', '\\/*?:[]'))
             sheet_title = f"{role_label} - {clean_route}"[:31]
             ws = wb.create_sheet(title=sheet_title)
+            ws.views.sheetView[0].showGridLines = True
 
             # title
-            ws.append([f"Simulación de Objetivos de Venta: {r['route_name']} ({role_label})"])
-            ws.cell(row=ws.max_row, column=1).font = TITLE_FONT
+            ws.append([f"SIMULACIÓN DE OBJETIVOS DE VENTA: {r['route_name'].upper()} ({role_label.upper()})"])
+            ws.cell(row=ws.max_row, column=1).font = title_font
+            ws.append([f"Generado el: {now_str} | Método: {results.get('calc_method', '').title()} | Modo: {results.get('mode', '').title()} | Año: {results.get('target_year')}"])
+            ws.cell(row=ws.max_row, column=1).font = subtitle_font
             ws.append([])
 
             # customer portfolio summary
             summary = results.get('customer_summary', {}).get(key, {})
             if summary:
                 ws.append(["Resumen de Cartera de Clientes"])
-                ws.cell(row=ws.max_row, column=1).font = SECTION_FONT
+                ws.cell(row=ws.max_row, column=1).font = section_font
                 ws.append(["Cartera actual:", f"{summary.get('current', 0)} clientes"])
                 affected_label = "Nuevos clientes a integrar:" if summary.get('is_addition') else "Clientes a transferir/remover:"
                 affected_sign = "+" if summary.get('is_addition') else "-"
@@ -722,7 +738,7 @@ class SaleTargetCalculatorService(UsersService):
 
             # breakdown table
             ws.append(["Desglose de Cálculo (Objetivo Original, Crecimiento %, Ajuste Delta)"])
-            ws.cell(row=ws.max_row, column=1).font = SECTION_FONT
+            ws.cell(row=ws.max_row, column=1).font = section_font
             ws.append([])
 
             if not r['classes']:
@@ -732,23 +748,23 @@ class SaleTargetCalculatorService(UsersService):
             months = r['classes'][0]['months']
 
             h_row1 = ws.max_row + 1
-            style_cell(ws.cell(row=h_row1, column=1, value="Clase de Producto"), fill=HEADER_FILL, font=WHITE_BOLD, alignment=CENTER)
+            style_cell(ws.cell(row=h_row1, column=1, value="Clase de Producto"), fill=header_fill, font=white_bold, alignment=center_align)
             ws.merge_cells(start_row=h_row1, start_column=1, end_row=h_row1 + 1, end_column=1)
 
             col_idx = 2
             for m in months:
                 month_label = m['date'].strftime('%b %Y').upper()
                 cell = ws.cell(row=h_row1, column=col_idx, value=month_label)
-                style_cell(cell, fill=HEADER_FILL, font=WHITE_BOLD, alignment=CENTER)
+                style_cell(cell, fill=header_fill, font=white_bold, alignment=center_align)
                 for c in range(col_idx, col_idx + 3):
-                    style_cell(ws.cell(row=h_row1, column=c), fill=HEADER_FILL)
+                    style_cell(ws.cell(row=h_row1, column=c), fill=header_fill)
                 ws.merge_cells(start_row=h_row1, start_column=col_idx, end_row=h_row1, end_column=col_idx + 2)
                 col_idx += 3
 
             cell = ws.cell(row=h_row1, column=col_idx, value="TOTAL ANUAL")
-            style_cell(cell, fill=HEADER_FILL, font=WHITE_BOLD, alignment=CENTER)
+            style_cell(cell, fill=header_fill, font=white_bold, alignment=center_align)
             for c in range(col_idx, col_idx + 3):
-                style_cell(ws.cell(row=h_row1, column=c), fill=HEADER_FILL)
+                style_cell(ws.cell(row=h_row1, column=c), fill=header_fill)
             ws.merge_cells(start_row=h_row1, start_column=col_idx, end_row=h_row1, end_column=col_idx + 2)
 
             h_row2 = h_row1 + 1
@@ -756,143 +772,146 @@ class SaleTargetCalculatorService(UsersService):
             sub_headers = ["Obj. Orig", "Crec %", "Ajuste"]
             for m in months:
                 for sh in sub_headers:
-                    style_cell(ws.cell(row=h_row2, column=col_idx, value=sh), fill=SUBHEADER_FILL, font=WHITE_BOLD, alignment=CENTER)
+                    style_cell(ws.cell(row=h_row2, column=col_idx, value=sh), fill=subheader_fill, font=white_bold, alignment=center_align)
                     col_idx += 1
             for sh in sub_headers:
-                style_cell(ws.cell(row=h_row2, column=col_idx, value=sh), fill=SUBHEADER_FILL, font=WHITE_BOLD, alignment=CENTER)
+                style_cell(ws.cell(row=h_row2, column=col_idx, value=sh), fill=subheader_fill, font=white_bold, alignment=center_align)
                 col_idx += 1
 
             for cls in r['classes']:
                 cur_row = ws.max_row + 1
-                style_cell(ws.cell(row=cur_row, column=1, value=cls['class_name']), font=BLACK_BOLD, alignment=LEFT)
+                style_cell(ws.cell(row=cur_row, column=1, value=cls['class_name']), font=black_bold, alignment=left_align)
 
                 col_idx = 2
                 for m in cls['months']:
-                    style_cell(ws.cell(row=cur_row, column=col_idx, value=m['old_target']), font=BLACK_REG, alignment=RIGHT, number_format='"$"#,##0.00')
+                    style_cell(ws.cell(row=cur_row, column=col_idx, value=m['old_target']), font=black_reg, alignment=right_align, number_format=currency_format)
                     col_idx += 1
 
                     g_val = float(m['growth']) / 100.0 if m['growth'] else 0.0
-                    g_font = GREEN_FONT if g_val > 0 else (RED_FONT if g_val < 0 else BLACK_REG)
-                    style_cell(ws.cell(row=cur_row, column=col_idx, value=g_val), font=g_font, alignment=RIGHT, number_format='0.0%')
+                    g_font = green_font if g_val > 0 else (red_font if g_val < 0 else black_reg)
+                    style_cell(ws.cell(row=cur_row, column=col_idx, value=g_val), font=g_font, alignment=right_align, number_format=pct_format)
                     col_idx += 1
 
                     d_val = m['delta']
-                    d_font = GREEN_FONT if d_val > 0 else (RED_FONT if d_val < 0 else BLACK_REG)
-                    style_cell(ws.cell(row=cur_row, column=col_idx, value=d_val), font=d_font, alignment=RIGHT, number_format='"$"#,##0.00')
+                    d_font = green_font if d_val > 0 else (red_font if d_val < 0 else black_reg)
+                    style_cell(ws.cell(row=cur_row, column=col_idx, value=d_val), font=d_font, alignment=right_align, number_format=currency_format)
                     col_idx += 1
 
                 t = cls['totals']
-                style_cell(ws.cell(row=cur_row, column=col_idx, value=t['old_target']), fill=TOTAL_FILL, font=BLACK_BOLD, alignment=RIGHT, number_format='"$"#,##0.00')
+                style_cell(ws.cell(row=cur_row, column=col_idx, value=t['old_target']), fill=total_fill, font=black_bold, alignment=right_align, number_format=currency_format)
                 col_idx += 1
-                style_cell(ws.cell(row=cur_row, column=col_idx, value="-"), fill=TOTAL_FILL, font=BLACK_REG, alignment=CENTER)
+                style_cell(ws.cell(row=cur_row, column=col_idx, value="-"), fill=total_fill, font=black_reg, alignment=center_align)
                 col_idx += 1
-                d_font = GREEN_FONT if t['delta'] > 0 else (RED_FONT if t['delta'] < 0 else BLACK_BOLD)
-                style_cell(ws.cell(row=cur_row, column=col_idx, value=t['delta']), fill=TOTAL_FILL, font=d_font, alignment=RIGHT, number_format='"$"#,##0.00')
+                d_font = green_font if t['delta'] > 0 else (red_font if t['delta'] < 0 else black_bold)
+                style_cell(ws.cell(row=cur_row, column=col_idx, value=t['delta']), fill=total_fill, font=d_font, alignment=right_align, number_format=currency_format)
                 col_idx += 1
 
             tot_row = ws.max_row + 1
-            style_cell(ws.cell(row=tot_row, column=1, value="TOTAL RUTA"), fill=TOTAL_FILL, font=BLACK_BOLD, alignment=LEFT)
+            style_cell(ws.cell(row=tot_row, column=1, value="TOTAL RUTA"), fill=total_fill, font=black_bold, alignment=left_align)
 
             col_idx = 2
             for mt in r['month_totals']:
-                style_cell(ws.cell(row=tot_row, column=col_idx, value=mt['old_target']), fill=TOTAL_FILL, font=BLACK_BOLD, alignment=RIGHT, number_format='"$"#,##0.00')
+                style_cell(ws.cell(row=tot_row, column=col_idx, value=mt['old_target']), fill=total_fill, font=black_bold, alignment=right_align, number_format=currency_format)
                 col_idx += 1
 
                 g_val = float(mt['growth']) / 100.0 if mt['growth'] else 0.0
-                g_font = GREEN_FONT if g_val > 0 else (RED_FONT if g_val < 0 else BLACK_BOLD)
-                style_cell(ws.cell(row=tot_row, column=col_idx, value=g_val), fill=TOTAL_FILL, font=g_font, alignment=RIGHT, number_format='0.0%')
+                g_font = green_font if g_val > 0 else (red_font if g_val < 0 else black_bold)
+                style_cell(ws.cell(row=tot_row, column=col_idx, value=g_val), fill=total_fill, font=g_font, alignment=right_align, number_format=pct_format)
                 col_idx += 1
 
                 d_val = mt['delta']
-                d_font = GREEN_FONT if d_val > 0 else (RED_FONT if d_val < 0 else BLACK_BOLD)
-                style_cell(ws.cell(row=tot_row, column=col_idx, value=d_val), fill=TOTAL_FILL, font=d_font, alignment=RIGHT, number_format='"$"#,##0.00')
+                d_font = green_font if d_val > 0 else (red_font if d_val < 0 else black_bold)
+                style_cell(ws.cell(row=tot_row, column=col_idx, value=d_val), fill=total_fill, font=d_font, alignment=right_align, number_format=currency_format)
                 col_idx += 1
 
             gt = r['grand_total']
-            style_cell(ws.cell(row=tot_row, column=col_idx, value=gt['old_target']), fill=GRAND_TOTAL_FILL, font=BLACK_BOLD, alignment=RIGHT, number_format='"$"#,##0.00')
+            style_cell(ws.cell(row=tot_row, column=col_idx, value=gt['old_target']), fill=grand_total_fill, font=black_bold, alignment=right_align, number_format=currency_format)
             col_idx += 1
-            style_cell(ws.cell(row=tot_row, column=col_idx, value="-"), fill=GRAND_TOTAL_FILL, font=BLACK_REG, alignment=CENTER)
+            style_cell(ws.cell(row=tot_row, column=col_idx, value="-"), fill=grand_total_fill, font=black_reg, alignment=center_align)
             col_idx += 1
-            d_font = GREEN_FONT if gt['delta'] > 0 else (RED_FONT if gt['delta'] < 0 else BLACK_BOLD)
-            style_cell(ws.cell(row=tot_row, column=col_idx, value=gt['delta']), fill=GRAND_TOTAL_FILL, font=d_font, alignment=RIGHT, number_format='"$"#,##0.00')
+            d_font = green_font if gt['delta'] > 0 else (red_font if gt['delta'] < 0 else black_bold)
+            style_cell(ws.cell(row=tot_row, column=col_idx, value=gt['delta']), fill=grand_total_fill, font=d_font, alignment=right_align, number_format=currency_format)
             col_idx += 1
 
             ws.append([])
             ws.append([])
             ws.append(["Objetivos Planificados (Objetivos Finales con Ajuste Aplicado)"])
-            ws.cell(row=ws.max_row, column=1).font = SECTION_FONT
+            ws.cell(row=ws.max_row, column=1).font = section_font
             ws.append([])
 
             h_row3 = ws.max_row + 1
-            style_cell(ws.cell(row=h_row3, column=1, value="Clase de Producto"), fill=HEADER_FILL, font=WHITE_BOLD, alignment=CENTER)
+            style_cell(ws.cell(row=h_row3, column=1, value="Clase de Producto"), fill=header_fill, font=white_bold, alignment=center_align)
 
             col_idx = 2
             for m in months:
                 month_label = m['date'].strftime('%b %Y').upper()
-                style_cell(ws.cell(row=h_row3, column=col_idx, value=month_label), fill=HEADER_FILL, font=WHITE_BOLD, alignment=CENTER)
+                style_cell(ws.cell(row=h_row3, column=col_idx, value=month_label), fill=header_fill, font=white_bold, alignment=center_align)
                 col_idx += 1
 
-            style_cell(ws.cell(row=h_row3, column=col_idx, value="TOTAL ANUAL"), fill=HEADER_FILL, font=WHITE_BOLD, alignment=CENTER)
+            style_cell(ws.cell(row=h_row3, column=col_idx, value="TOTAL ANUAL"), fill=header_fill, font=white_bold, alignment=center_align)
 
             for cls in r['classes']:
                 cur_row = ws.max_row + 1
-                style_cell(ws.cell(row=cur_row, column=1, value=cls['class_name']), font=BLACK_BOLD, alignment=LEFT)
+                style_cell(ws.cell(row=cur_row, column=1, value=cls['class_name']), font=black_bold, alignment=left_align)
 
                 col_idx = 2
                 for m in cls['months']:
-                    c_font = GREEN_FONT if m['new_target'] > m['old_target'] else (RED_FONT if m['new_target'] < m['old_target'] else BLACK_REG)
-                    style_cell(ws.cell(row=cur_row, column=col_idx, value=m['new_target']), font=c_font, alignment=RIGHT, number_format='"$"#,##0.00')
+                    c_font = green_font if m['new_target'] > m['old_target'] else (red_font if m['new_target'] < m['old_target'] else black_reg)
+                    style_cell(ws.cell(row=cur_row, column=col_idx, value=m['new_target']), font=c_font, alignment=right_align, number_format=currency_format)
                     col_idx += 1
 
                 t = cls['totals']
-                c_font = GREEN_FONT if t['new_target'] > t['old_target'] else (RED_FONT if t['new_target'] < t['old_target'] else BLACK_BOLD)
-                style_cell(ws.cell(row=cur_row, column=col_idx, value=t['new_target']), fill=TOTAL_FILL, font=c_font, alignment=RIGHT, number_format='"$"#,##0.00')
+                c_font = green_font if t['new_target'] > t['old_target'] else (red_font if t['new_target'] < t['old_target'] else black_bold)
+                style_cell(ws.cell(row=cur_row, column=col_idx, value=t['new_target']), fill=total_fill, font=c_font, alignment=right_align, number_format=currency_format)
 
             tot_row2 = ws.max_row + 1
-            style_cell(ws.cell(row=tot_row2, column=1, value="TOTAL RUTA"), fill=TOTAL_FILL, font=BLACK_BOLD, alignment=LEFT)
+            style_cell(ws.cell(row=tot_row2, column=1, value="TOTAL RUTA"), fill=total_fill, font=black_bold, alignment=left_align)
 
             col_idx = 2
             for mt in r['month_totals']:
-                c_font = GREEN_FONT if mt['new_target'] > mt['old_target'] else (RED_FONT if mt['new_target'] < mt['old_target'] else BLACK_BOLD)
-                style_cell(ws.cell(row=tot_row2, column=col_idx, value=mt['new_target']), fill=TOTAL_FILL, font=c_font, alignment=RIGHT, number_format='"$"#,##0.00')
+                c_font = green_font if mt['new_target'] > mt['old_target'] else (red_font if mt['new_target'] < mt['old_target'] else black_bold)
+                style_cell(ws.cell(row=tot_row2, column=col_idx, value=mt['new_target']), fill=total_fill, font=c_font, alignment=right_align, number_format=currency_format)
                 col_idx += 1
 
             gt = r['grand_total']
-            c_font = GREEN_FONT if gt['new_target'] > gt['old_target'] else (RED_FONT if gt['new_target'] < gt['old_target'] else BLACK_BOLD)
-            style_cell(ws.cell(row=tot_row2, column=col_idx, value=gt['new_target']), fill=GRAND_TOTAL_FILL, font=c_font, alignment=RIGHT, number_format='"$"#,##0.00')
-
-            ws.column_dimensions['A'].width = 28
-            for c in range(2, ws.max_column + 1):
-                ws.column_dimensions[get_column_letter(c)].width = 16
+            c_font = green_font if gt['new_target'] > gt['old_target'] else (red_font if gt['new_target'] < gt['old_target'] else black_bold)
+            style_cell(ws.cell(row=tot_row2, column=col_idx, value=gt['new_target']), fill=grand_total_fill, font=c_font, alignment=right_align, number_format=currency_format)
 
         ws_cust = wb.create_sheet(title="Clientes Seleccionados")
-        ws_cust.append(["Clientes Considerados en la Simulación"])
-        ws_cust.cell(row=ws_cust.max_row, column=1).font = TITLE_FONT
+        ws_cust.views.sheetView[0].showGridLines = True
+        ws_cust.append(["Clientes considerados en la simulación"])
+        ws_cust.cell(row=ws_cust.max_row, column=1).font = title_font
         ws_cust.append([])
 
         h_row_c = ws_cust.max_row + 1
         headers_cust = ["ID Cliente", "Nombre / Razón Social", "Tipo de Cliente", "Límite de Crédito", "Días Crédito", "Líder Opinión"]
         for c_idx, h_text in enumerate(headers_cust, 1):
-            style_cell(ws_cust.cell(row=h_row_c, column=c_idx, value=h_text), fill=HEADER_FILL, font=WHITE_BOLD, alignment=CENTER)
+            style_cell(ws_cust.cell(row=h_row_c, column=c_idx, value=h_text), fill=header_fill, font=white_bold, alignment=center_align)
 
         considered_customers = Customer.objects.filter(id__in=results.get('customer_ids', [])).select_related('customer_type').order_by('name')
         for cust in considered_customers:
             cur_row = ws_cust.max_row + 1
-            style_cell(ws_cust.cell(row=cur_row, column=1, value=cust.id.upper()), font=BLACK_REG, alignment=CENTER)
-            style_cell(ws_cust.cell(row=cur_row, column=2, value=cust.name.title()), font=BLACK_BOLD, alignment=LEFT)
-            style_cell(ws_cust.cell(row=cur_row, column=3, value=cust.customer_type.name.title() if cust.customer_type else "-"), font=BLACK_REG, alignment=LEFT)
-            style_cell(ws_cust.cell(row=cur_row, column=4, value=cust.credit_limit), font=BLACK_REG, alignment=RIGHT, number_format='"$"#,##0.00')
-            style_cell(ws_cust.cell(row=cur_row, column=5, value=cust.credit_days), font=BLACK_REG, alignment=CENTER)
-            style_cell(ws_cust.cell(row=cur_row, column=6, value="Sí" if cust.opinion_leader else "No"), font=BLACK_REG, alignment=CENTER)
+            style_cell(ws_cust.cell(row=cur_row, column=1, value=cust.id.upper()), font=black_reg, alignment=center_align)
+            style_cell(ws_cust.cell(row=cur_row, column=2, value=cust.name.title()), font=black_bold, alignment=left_align)
+            style_cell(ws_cust.cell(row=cur_row, column=3, value=cust.customer_type.name.title() if cust.customer_type else "-"), font=black_reg, alignment=left_align)
+            style_cell(ws_cust.cell(row=cur_row, column=4, value=cust.credit_limit), font=black_reg, alignment=right_align, number_format=currency_format)
+            style_cell(ws_cust.cell(row=cur_row, column=5, value=cust.credit_days), font=black_reg, alignment=center_align, number_format=int_format)
+            style_cell(ws_cust.cell(row=cur_row, column=6, value="Sí" if cust.opinion_leader else "No"), font=black_reg, alignment=center_align)
 
-        ws_cust.column_dimensions['A'].width = 18
-        ws_cust.column_dimensions['B'].width = 40
-        ws_cust.column_dimensions['C'].width = 24
-        ws_cust.column_dimensions['D'].width = 18
-        ws_cust.column_dimensions['E'].width = 15
-        ws_cust.column_dimensions['F'].width = 15
+        # autofit columns across all worksheets
+        for ws in wb.worksheets:
+            for col in ws.columns:
+                max_len = 0
+                col_letter = get_column_letter(col[0].column)
+                for cell in col:
+                    val_str = str(cell.value or '')
+                    if '\n' in val_str:
+                        val_str = max(val_str.split('\n'), key=len)
+                    if len(val_str) > max_len:
+                        max_len = len(val_str)
+                ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
 
-        output = io.BytesIO()
-        wb.save(output)
-        output.seek(0)
-        return output
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        return buffer
