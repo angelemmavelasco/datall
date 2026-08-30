@@ -175,15 +175,12 @@ else:
             }
         },
         "staticfiles": {
-            "BACKEND": "storages.backends.s3.S3Storage",
-            "OPTIONS": {
-                "location": "v2_static",
-            }
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
 
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/v2_media/'
-    STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/v2_static/'
+    STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
