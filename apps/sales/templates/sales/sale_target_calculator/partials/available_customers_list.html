@@ -1,0 +1,23 @@
+{% for c in customers %}
+<label class="flex items-center justify-between cursor-pointer hover:bg-container p-1.5 rounded transition-colors customer-item group" data-id="{{ c.id|lower }}">
+    <div class="flex items-center gap-2 overflow-hidden">
+        <input type="checkbox" 
+               name="selected_customers" 
+               value="{{ c.id }}" 
+               class="customer-checkbox accent-primary" 
+               onchange="moveCustomer(this)">
+        <div class="flex flex-col truncate">
+            <span class="searchable-text text-xs text-title font-medium truncate">
+                <span class="font-mono text-muted mr-1">{{ c.id|upper }}</span> {{ c.name|title }}
+            </span>
+            {% if filter_type == 'all' and c.active_assignments %}
+                <span class="text-[10px] text-muted">Ruta actual: {{ c.active_assignments.0.route.id|upper }} {{ c.active_assignments.0.route.name|title }}</span>
+            {% endif %}
+        </div>
+    </div>
+</label>
+{% empty %}
+<div class="flex flex-col items-center justify-center h-full text-muted text-xs p-4 text-center">
+    <span>No se encontraron clientes disponibles.</span>
+</div>
+{% endfor %}

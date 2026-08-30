@@ -1,0 +1,268 @@
+{% load humanize %}
+
+{% if errors %}
+<div class="bg-red-500/10 border border-red-500/30 rounded p-4 mb-4 flex items-start gap-3">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+    <div class="flex flex-col gap-1">
+        <p class="text-red-600  text-xs">Se encontraron problemas al calcular la simulación:</p>
+        <ul class="list-disc pl-4 text-xs text-red-500 flex flex-col gap-0.5">
+            {% for error in errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+{% if results %}
+<div class="flex flex-col gap-6 mt-4">
+
+    <div class="pb-2 border-b border-border flex items-center justify-between">
+        <p class="text-title">Resultados del cálculo</p>
+        <button type="button" 
+                onclick="exportarCalculo()" 
+                class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-spreadsheet text-green-600"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>
+            <span>Exportar</span>
+        </button>
+    </div>
+
+
+    {% if results.customer_summary %}
+    <div class="flex flex-col gap-2">
+        <p class="text-title text-xs ">Resumen de cartera de clientes</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            
+            <div class="bg-container border border-border rounded p-3 flex flex-col gap-2 shadow-xs">
+                <div class="flex items-center justify-between border-b border-border pb-1.5">
+                    <span class="text-title text-xs ">Ruta Origen</span>
+                    <span class="text-[11px] text-muted font-mono">{{ results.origin.route_name }}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <span class="text-muted">Cartera actual:</span>
+                    <span class="text-right font-mono text-body">{{ results.customer_summary.origin.current|default:0|intcomma }} clientes</span>
+                    
+                    <span class="text-muted">
+                        {% if results.customer_summary.origin.is_addition %}Nuevos clientes a integrar:{% else %}Clientes a transferir/remover:{% endif %}
+                    </span>
+                    <span class="text-right font-mono {% if results.customer_summary.origin.is_addition %}text-green-600{% else %}text-red-500{% endif %}">
+                        {% if results.customer_summary.origin.is_addition %}+{% else %}-{% endif %}{{ results.customer_summary.origin.affected|default:0|intcomma }} clientes
+                    </span>
+                    
+                    <span class="text-title pt-1 border-t border-border">Cartera proyectada:</span>
+                    <span class="text-right font-mono font-bold text-title pt-1 border-t border-border">{{ results.customer_summary.origin.final|default:0|intcomma }} clientes</span>
+                </div>
+            </div>
+
+            <!-- Destino (Si es Transferencia) -->
+            {% if results.customer_summary.destination %}
+            <div class="bg-container border border-border rounded p-3 flex flex-col gap-2 shadow-xs">
+                <div class="flex items-center justify-between border-b border-border pb-1.5">
+                    <span class="text-title text-xs ">Ruta Destino</span>
+                    <span class="text-[11px] text-muted font-mono">{{ results.destination.route_name }}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <span class="text-muted">Cartera actual:</span>
+                    <span class="text-right font-mono text-body">{{ results.customer_summary.destination.current|default:0|intcomma }} clientes</span>
+                    
+                    <span class="text-muted">Nuevos clientes a integrar:</span>
+                    <span class="text-right font-mono text-green-600">
+                        +{{ results.customer_summary.destination.affected|default:0|intcomma }} clientes
+                    </span>
+                    
+                    <span class="text-title pt-1 border-t border-border">Cartera proyectada:</span>
+                    <span class="text-right font-mono font-bold text-title pt-1 border-t border-border">{{ results.customer_summary.destination.final|default:0|intcomma }} clientes</span>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tablas por Ruta -->
+    {% for role, r in results.items %}
+    {% if role == 'origin' or role == 'destination' %}
+    {% if r %}
+    <div class="bg-container border border-border rounded p-4 flex flex-col gap-5 shadow-xs">
+        
+        <!-- Título de la Ruta -->
+        <div class="flex items-center justify-between border-b border-border pb-2">
+            <span class="text-title   flex items-center gap-2">
+                <span class="p-1 rounded text-[11px] font-mono {% if role == 'origin' %}bg-amber-500/10 text-amber-600 border border-amber-500/30{% else %}bg-blue-500/10 text-blue-600 border border-blue-500/30{% endif %}">
+                    {% if role == 'origin' %}Ruta origen{% else %}Ruta destino{% endif %}
+                </span>
+                <span>{{ r.route_name }}</span>
+            </span>
+        </div>
+
+        <!-- 1. Tabla de Desglose de Cálculo -->
+        <div class="flex flex-col gap-2">
+            <p class="text-title text-xs ">Desglose de cálculo (Objetivo actual, Crecimiento %, Ajuste)</p>
+            <div class="w-full overflow-x-auto border border-border rounded bg-page shadow-xs">
+                <table class="w-max min-w-full text-left border-separate border-spacing-0 text-xs">
+                    <thead>
+                        <tr class="border-b border-border bg-page">
+                            <th class="sticky left-0 z-20 p-1 bg-page border-r border-b border-border text-title  min-w-[150px]">
+                                Clase de producto
+                            </th>
+                            {% for m in r.classes.0.months %}
+                                <th class="p-1 border-r border-b border-border text-center text-title  bg-container min-w-[110px]">
+                                    {{ m.date|date:"M Y"|title }}
+                                </th>
+                            {% endfor %}
+                            <th class="p-1 border-b border-border text-center text-title  bg-page min-w-[130px]">
+                                Total Anual
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cls in r.classes %}
+                        <tr class="hover:bg-container/60 transition-colors">
+                            <td class="sticky left-0 z-10 p-1 bg-page border-r border-b border-border text-title">
+                                {{ cls.class_name }}
+                            </td>
+                            {% for m in cls.months %}
+                            <td class="p-1 border-r border-b border-border text-right font-mono">
+                                <div class="flex flex-col gap-0.5 items-end">
+                                    <span class="text-title" title="Objetivo original">${{ m.old_target|default:0|floatformat:2|intcomma }}</span>
+                                    
+                                    <span class="text-[10px] {% if m.growth > 0 %}text-green-600{% elif m.growth < 0 %}text-red-500{% else %}text-muted{% endif %}" title="Crecimiento respecto al mes anterior">
+                                        {% if m.growth > 0 %}▲+{% elif m.growth < 0 %}▼{% endif %}{{ m.growth|default:0|floatformat:6|intcomma }}%
+                                    </span>
+
+                                    {% if m.delta != 0 %}
+                                        <span class="text-[10px] px-1 py-0.2 rounded border {% if m.delta > 0 %}bg-green-500/10 text-green-600 border-green-500/30{% else %}bg-red-500/10 text-red-500 border-red-500/30{% endif %}" title="Ajuste calculado">
+                                            {% if m.delta > 0 %}+{% endif %}${{ m.delta|default:0|floatformat:2|intcomma }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-[10px] text-muted">-</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            {% endfor %}
+                            <td class="p-1 border-b border-border text-right font-mono bg-container/40">
+                                <div class="flex flex-col gap-0.5 items-end">
+                                    <span class="text-title ">${{ cls.totals.old_target|default:0|floatformat:2|intcomma }}</span>
+                                    <span class="text-[10px] text-muted">-</span>
+                                    {% if cls.totals.delta != 0 %}
+                                        <span class="text-[10px] px-1 py-0.2 rounded border  {% if cls.totals.delta > 0 %}bg-green-500/10 text-green-600 border-green-500/30{% else %}bg-red-500/10 text-red-500 border-red-500/30{% endif %}">
+                                            {% if cls.totals.delta > 0 %}+{% endif %}${{ cls.totals.delta|default:0|floatformat:2|intcomma }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-[10px] text-muted">-</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        <tr class="bg-container ">
+                            <td class="sticky left-0 z-10 p-1 bg-container border-r  border-b border-border text-title">
+                                Total ruta
+                            </td>
+                            {% for mt in r.month_totals %}
+                            <td class="p-1 border-r  border-b border-border text-right font-mono">
+                                <div class="flex flex-col gap-0.5 items-end">
+                                    <span class="text-title font-bold">${{ mt.old_target|default:0|floatformat:2|intcomma }}</span>
+                                    <span class="text-[10px] {% if mt.growth > 0 %}text-green-600{% elif mt.growth < 0 %}text-red-500{% else %}text-muted{% endif %}">
+                                        {% if mt.growth > 0 %}▲+{% elif mt.growth < 0 %}▼{% endif %}{{ mt.growth|default:0|floatformat:6|intcomma }}%
+                                    </span>
+                                    {% if mt.delta != 0 %}
+                                        <span class="text-[10px] px-1 py-0.2 rounded border font-bold {% if mt.delta > 0 %}bg-green-500/10 text-green-600 border-green-500/30{% else %}bg-red-500/10 text-red-500 border-red-500/30{% endif %}">
+                                            {% if mt.delta > 0 %}+{% endif %}${{ mt.delta|default:0|floatformat:2|intcomma }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-[10px] text-muted">-</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            {% endfor %}
+                            <td class="p-1  border-b border-border text-right font-mono bg-container">
+                                <div class="flex flex-col gap-0.5 items-end">
+                                    <span class="text-title font-bold">${{ r.grand_total.old_target|default:0|floatformat:2|intcomma }}</span>
+                                    <span class="text-[10px] text-muted">-</span>
+                                    {% if r.grand_total.delta != 0 %}
+                                        <span class="text-[10px] px-1 py-0.2 rounded border font-bold {% if r.grand_total.delta > 0 %}bg-green-500/10 text-green-600 border-green-500/30{% else %}bg-red-500/10 text-red-500 border-red-500/30{% endif %}">
+                                            {% if r.grand_total.delta > 0 %}+{% endif %}${{ r.grand_total.delta|default:0|floatformat:2|intcomma }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-[10px] text-muted">-</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <p class="text-title text-xs ">Objetivos Planificados (Objetivos finales con ajuste aplicado)</p>
+            <div class="w-full overflow-x-auto border border-border rounded bg-page shadow-xs">
+                <table class="w-max min-w-full text-left border-separate border-spacing-0 text-xs">
+                    <thead>
+                        <tr class="border-b border-border bg-page">
+                            <th class="sticky left-0 z-20 p-1 bg-page border-r border-b border-border text-title  min-w-[150px]">
+                                Clase de producto
+                            </th>
+                            {% for m in r.classes.0.months %}
+                                <th class="p-1 border-r border-b border-border text-center text-title  bg-container min-w-[110px]">
+                                    {{ m.date|date:"M Y"|title }}
+                                </th>
+                            {% endfor %}
+                            <th class="p-1 border-b border-border text-center text-title  bg-page min-w-[130px]">
+                                Total Anual
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cls in r.classes %}
+                        <tr class="hover:bg-container/60 transition-colors">
+                            <td class="sticky left-0 z-10 p-1 bg-page border-r border-b border-border text-title">
+                                {{ cls.class_name }}
+                            </td>
+                            {% for m in cls.months %}
+                            <td class="p-1 border-r border-b border-border text-right font-mono">
+                                <span class="{% if m.new_target > m.old_target %}text-green-600 {% elif m.new_target < m.old_target %}text-red-500 {% else %}text-body{% endif %}">
+                                    ${{ m.new_target|default:0|floatformat:2|intcomma }}
+                                </span>
+                            </td>
+                            {% endfor %}
+                            <td class="p-1 border-b border-border text-right font-mono bg-container/40">
+                                <span class=" {% if cls.totals.new_target > cls.totals.old_target %}text-green-600{% elif cls.totals.new_target < cls.totals.old_target %}text-red-500{% else %}text-title{% endif %}">
+                                    ${{ cls.totals.new_target|default:0|floatformat:2|intcomma }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        <tr class="bg-container ">
+                            <td class="sticky left-0 z-10 p-1 bg-container border-r  border-b border-border text-title font-bold">
+                                Total ruta
+                            </td>
+                            {% for mt in r.month_totals %}
+                            <td class="p-1 border-r  border-b border-border text-right font-mono">
+                                <span class="font-bold {% if mt.new_target > mt.old_target %}text-green-600{% elif mt.new_target < mt.old_target %}text-red-500{% else %}text-title{% endif %}">
+                                    ${{ mt.new_target|default:0|floatformat:2|intcomma }}
+                                </span>
+                            </td>
+                            {% endfor %}
+                            <td class="p-1  border-b border-border text-right font-mono bg-container">
+                                <span class="font-bold {% if r.grand_total.new_target > r.grand_total.old_target %}text-green-600{% elif r.grand_total.new_target < r.grand_total.old_target %}text-red-500{% else %}text-title{% endif %}">
+                                    ${{ r.grand_total.new_target|default:0|floatformat:2|intcomma }}
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+    {% endif %}
+    {% endif %}
+    {% endfor %}
+
+</div>
+{% endif %}

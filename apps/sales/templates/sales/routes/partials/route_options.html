@@ -1,0 +1,16 @@
+{% for r in routes %}
+    <div data-field-name="{{ field_name }}"
+         data-option-id="{{ r.id }}"
+         data-option-label="{{ r.id|upper }} {{ r.name|title }}{% if r.business_unit %} - {{ r.business_unit.name|title }}{% endif %}"
+         onclick="selectDropdownOption(this)"
+         class="option-item flex items-center justify-between p-1.5 rounded cursor-pointer hover:bg-hover transition-colors text-xs text-title {% if r.id|stringformat:'s' == selected_id|stringformat:'s' %}bg-muted/10 font-medium{% endif %}">
+        <span class="truncate font-mono" title="{{ r.id|upper }} {{ r.name|title }}{% if r.business_unit %} - {{ r.business_unit.name|title }}{% endif %}">
+            <span class="font-bold text-title">{{ r.id|upper }}</span> {{ r.name|title }} {% if r.business_unit %}<span class="text-muted text-[10px]">({{ r.business_unit.name|title }})</span>{% endif %}
+        </span>
+        {% if r.id|stringformat:"s" == selected_id|stringformat:"s" %}
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500 shrink-0 ml-1"><polyline points="20 6 9 17 4 12"/></svg>
+        {% endif %}
+    </div>
+{% empty %}
+    <div class="text-center py-3 text-secondary italic text-xs">No se encontraron rutas</div>
+{% endfor %}

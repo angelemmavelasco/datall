@@ -24,6 +24,10 @@ from .sale_targets import (
     ServiceError as SaleTargetServiceError,
     PermissionsError as SaleTargetPermissionsError,
 )
+from .sale_targets_calculator import (
+    SaleTargetCalculatorService,
+    TargetCalculatorError,
+)
 
 __all__ = [
     'WarehousesService',
@@ -44,4 +48,6 @@ __all__ = [
     'SaleTargetNotFound',
     'SaleTargetServiceError',
     'SaleTargetPermissionsError',
+    'SaleTargetCalculatorService',
+    'TargetCalculatorError',
 ]

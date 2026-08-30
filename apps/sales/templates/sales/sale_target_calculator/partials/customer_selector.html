@@ -1,0 +1,220 @@
+{% if origin_route_id %}
+<div class="flex flex-col gap-4 w-full">
+
+    <div class="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between bg-container border border-border rounded p-2.5">
+        <div class="flex items-center gap-2">
+            <span class="text-title text-xs ">Origen de cartera:</span>
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1.5 cursor-pointer text-xs text-body hover:text-hover transition-colors">
+                    <input type="radio" name="customer_filter" value="assigned" 
+                           {% if filter_type != 'all' %}checked{% endif %}
+                           class="accent-primary"
+                           hx-get="{% url 'sales:sale_target_calculator_view' %}?action=load_customers&origin_route={{ origin_route_id }}&filter_type=assigned" 
+                           hx-target="#customer-selector-container"
+                           hx-indicator="#customer-loading-indicator">
+                    <span>Asignados actualmente a la ruta</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer text-xs text-body hover:text-hover transition-colors">
+                    <input type="radio" name="customer_filter" value="all" 
+                           {% if filter_type == 'all' %}checked{% endif %}
+                           class="accent-primary"
+                           hx-get="{% url 'sales:sale_target_calculator_view' %}?action=load_customers&origin_route={{ origin_route_id }}&filter_type=all" 
+                           hx-target="#customer-selector-container"
+                           hx-indicator="#customer-loading-indicator">
+                    <span>Todos los clientes disponibles</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="text-xs text-muted">
+            <span id="selected-count-badge" class="font-mono  text-title">0</span> clientes seleccionados
+        </div>
+    </div>
+
+    <details class="bg-container border border-border rounded p-2.5 group">
+        <summary class="text-title text-xs  cursor-pointer list-none flex items-center justify-between select-none">
+            <span class="flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-list"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>
+                <span>Pegar lista de códigos de clientes (Selección masiva)</span>
+            </span>
+            <span class=" group-open:rotate-180 transition-transform">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down-icon lucide-circle-chevron-down"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg>
+            </span>
+        </summary>
+        <div class="pt-3 flex flex-col gap-2">
+            <textarea id="bulk-customer-input" 
+                      rows="3"
+                      class="w-full border border-border rounded p-2 bg-page text-body text-xs font-mono outline-none focus:border-hover" 
+                      placeholder="Pega aquí los IDs de clientes separados por comas, espacios o saltos de línea (ej: CLI001, CLI002, CLI003)..."></textarea>
+            <div class="flex justify-end">
+                <button type="button" 
+                        onclick="bulkSelectCustomers()" 
+                        class="bg-container border border-border hover:bg-hover text-title text-xs  px-3 py-1.5 rounded transition-colors cursor-pointer flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/></svg>
+                    <span>Seleccionar códigos ingresados</span>
+                </button>
+            </div>
+        </div>
+    </details>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <div class="border border-border rounded bg-page flex flex-col h-80 shadow-xs">
+            <div class="bg-container border-b border-border p-2 flex items-center justify-between">
+                <span class="text-title text-xs ">
+                    Clientes disponibles {% if filter_type == 'all' %}(Todos){% else %}(En ruta){% endif %}
+                </span>
+                <button type="button" 
+                        onclick="toggleSelectAll(true)" 
+                        class="text-xs text-body hover:underline cursor-pointer flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-check-big-icon lucide-square-check-big"><path d="M21 10.656V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.344"/><path d="m9 11 3 3L22 4"/></svg>
+                    <span>Seleccionar todo</span>
+                </button>
+            </div>
+            <div class="p-2 border-b border-border bg-page">
+                <div class="flex items-center gap-2 bg-container border border-border rounded px-2 py-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <input type="text" 
+                           name="q_customer"
+                           placeholder="Buscar por ID o nombre..." 
+                           class="w-full bg-transparent outline-none text-xs text-body" 
+                           hx-get="{% url 'sales:sale_target_calculator_view' %}?action=search_available_customers&origin_route={{ origin_route_id }}"
+                           hx-trigger="input delay:250ms"
+                           hx-target="#available-customers"
+                           hx-include="[name='customer_filter'], [name='selected_customers']"
+                           autocomplete="off">
+                </div>
+            </div>
+            <div id="available-customers" class="overflow-y-auto p-2 flex flex-col gap-1 flex-grow divide-y divide-border/50">
+                {% include 'sales/sale_target_calculator/partials/available_customers_list.html' with customers=customers filter_type=filter_type %}
+            </div>
+        </div>
+
+        <div class="border border-border rounded bg-page flex flex-col h-80 shadow-xs">
+            <div class="bg-container border-b border-border p-2 flex items-center justify-between">
+                <span class="text-title text-xs ">
+                    Clientes seleccionados para el cálculo
+                </span>
+                <button type="button" 
+                        onclick="toggleSelectAll(false)" 
+                        class="text-xs text-body hover:underline cursor-pointer flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-icon lucide-square"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                    <span>Desmarcar todo</span>
+                </button>
+            </div>
+            <div class="p-2 border-b border-border bg-page">
+                <div class="flex items-center gap-2 bg-container border border-border rounded px-2 py-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <input type="text" 
+                           placeholder="Buscar entre los seleccionados..." 
+                           class="w-full bg-transparent outline-none text-xs text-body" 
+                           onkeyup="filterCustomers(this, 'selected-customers')">
+                </div>
+            </div>
+            <div id="selected-customers" class="overflow-y-auto p-2 flex flex-col gap-1 flex-grow divide-y divide-border/50">
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    function updateSelectedCount() {
+        const selectedContainer = document.getElementById('selected-customers');
+        const count = selectedContainer ? selectedContainer.querySelectorAll('.customer-item').length : 0;
+        const badge = document.getElementById('selected-count-badge');
+        if (badge) {
+            badge.textContent = count;
+        }
+    }
+
+    function moveCustomer(checkbox) {
+        const item = checkbox.closest('.customer-item');
+        if (!item) return;
+
+        if (checkbox.checked) {
+            document.getElementById('selected-customers').appendChild(item);
+        } else {
+            document.getElementById('available-customers').appendChild(item);
+        }
+        updateSelectedCount();
+    }
+
+    function toggleSelectAll(select) {
+        const sourceContainer = select ? document.getElementById('available-customers') : document.getElementById('selected-customers');
+        const targetContainer = select ? document.getElementById('selected-customers') : document.getElementById('available-customers');
+
+        if (!sourceContainer || !targetContainer) return;
+
+        const items = Array.from(sourceContainer.querySelectorAll('.customer-item'));
+        items.forEach(item => {
+            if (item.style.display !== 'none') {
+                const cb = item.querySelector('.customer-checkbox');
+                if (cb) {
+                    cb.checked = select;
+                    targetContainer.appendChild(item);
+                }
+            }
+        });
+        updateSelectedCount();
+    }
+
+    function filterCustomers(input, containerId) {
+        const filter = input.value.toLowerCase().trim();
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const items = container.getElementsByClassName('customer-item');
+
+        for (let i = 0; i < items.length; i++) {
+            const text = items[i].textContent || items[i].innerText;
+            if (text.toLowerCase().indexOf(filter) > -1) {
+                items[i].style.display = "";
+            } else {
+                items[i].style.display = "none";
+            }
+        }
+    }
+
+    function bulkSelectCustomers() {
+        const textarea = document.getElementById('bulk-customer-input');
+        if (!textarea) return;
+
+        const rawText = textarea.value;
+        if (!rawText.trim()) return;
+
+        const inputIds = rawText.split(/[\n,\t\r\s]+/).map(id => id.trim().toLowerCase()).filter(id => id);
+        const availableContainer = document.getElementById('available-customers');
+        const selectedContainer = document.getElementById('selected-customers');
+
+        const allCheckboxes = Array.from(document.querySelectorAll('.customer-checkbox'));
+        let foundCount = 0;
+
+        inputIds.forEach(inputId => {
+            const cb = allCheckboxes.find(c => c.value.trim().toLowerCase() === inputId);
+            if (cb) {
+                foundCount++;
+                if (!cb.checked) {
+                    cb.checked = true;
+                    moveCustomer(cb);
+                }
+            }
+        });
+
+        if (foundCount < inputIds.length) {
+            const notFound = inputIds.length - foundCount;
+            alert(`Se procesaron ${inputIds.length} IDs.\nSe seleccionaron ${foundCount} clientes.\nNo se encontraron ${notFound} clientes en la lista cargada actual.`);
+        }
+
+        textarea.value = '';
+    }
+
+
+    updateSelectedCount();
+</script>
+{% else %}
+<div class="flex flex-col items-center justify-center p-6 text-center text-muted text-xs bg-container rounded border border-border">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-2 opacity-50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <p class="text-title ">Selecciona una ruta origen arriba para cargar los clientes disponibles</p>
+</div>
+{% endif %}

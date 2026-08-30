@@ -3,6 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.utils import timezone
+from django.http import HttpResponse
+from django.db.models import Q
+from dateutil.relativedelta import relativedelta
+import datetime
+
 from .services.warehouses import (
     WarehousesService,
     WarehouseNotFound,
@@ -29,8 +34,13 @@ from .services.sale_targets import (
     ServiceError as SaleTargetServiceError,
     PermissionsError as SaleTargetPermissionsError,
 )
+from .services.sale_targets_calculator import (
+    SaleTargetCalculatorService,
+    TargetCalculatorError,
+)
 from apps.customers.services.customers import CustomersService
 from apps.products.services.products import ProductsService
+from apps.products.models import ProductClass
 from apps.human_resources.services.employees import EmployeesService
 from apps.core.models import User
 from .filters import WarehouseFilter, RouteFilter, SaleTransactionFilter, SaleTargetFilter
@@ -347,6 +357,37 @@ def route_update_view(request, pk: str):
     return render(request, template, context)
 
 @login_required
+def route_options_view(request):
+    """
+    Returns HTML option items for searchable route dropdowns via HTMX.
+    """
+    q = request.GET.get('q_route', request.GET.get('q', '')).strip()
+    field_name = request.GET.get('field_name', 'route')
+    selected_id = request.GET.get('selected_id', '')
+
+    service = RoutesService(user=request.user)
+    base_qs = service.get_allowed_routes(can_view=True).filter(is_active=True)
+
+    if q:
+        base_qs = base_qs.filter(
+            Q(id__icontains=q) |
+            Q(name__icontains=q) |
+            Q(business_unit__name__icontains=q)
+        )
+
+    routes = base_qs.select_related('business_unit')[:30]
+
+    return render(
+        request,
+        'sales/routes/partials/route_options.html',
+        {
+            'routes': routes,
+            'field_name': field_name,
+            'selected_id': selected_id,
+        }
+    )
+
+@login_required
 def sale_transaction_list_view(request):
     template = 'sales/sale_transactions/sale_transaction_list.html'
     service = SaleTransactionsService(user=request.user)
@@ -541,3 +582,190 @@ def sale_target_update_view(request, pk: int):
         'updating': target_instance,
     }
     return render(request, template, context)
+
+@login_required
+def sale_target_calculator_view(request):
+    template = 'sales/sale_target_calculator/sale_target_calculator.html'
+    calculator_service = SaleTargetCalculatorService(user=request.user)
+
+    routes = calculator_service.get_allowed_routes_qs()
+    product_classes = ProductClass.objects.all().order_by('name')
+    today = timezone.localdate()
+
+    if request.htmx:
+        action = request.GET.get('action') or request.POST.get('action')
+
+        if action == 'toggle_mode':
+            mode = request.GET.get('mode', 'transfer')
+            origin_route_id = request.GET.get('origin_route', '')
+            destination_route_id = request.GET.get('destination_route', '')
+
+            origin_route_obj = routes.filter(id=origin_route_id).first() if origin_route_id else None
+            dest_route_obj = routes.filter(id=destination_route_id).first() if destination_route_id else None
+
+            context = {
+                'mode': mode,
+                'routes': routes,
+                'origin_route_id': origin_route_id,
+                'destination_route_id': destination_route_id,
+                'origin_route_obj': origin_route_obj,
+                'destination_route_obj': dest_route_obj,
+            }
+            return render(request, 'sales/sale_target_calculator/partials/scenario_config.html', context)
+
+        if action == 'load_customers':
+            origin_route_id = request.GET.get('origin_route', '')
+            filter_type = request.GET.get('filter_type', 'assigned')
+            search_query = request.GET.get('search', '').strip().lower()
+
+            customers = []
+            if origin_route_id:
+                customers_qs = calculator_service.get_route_customers(origin_route_id, filter_type=filter_type)
+                if search_query:
+                    customers_qs = customers_qs.filter(
+                        Q(id__icontains=search_query) | Q(name__icontains=search_query)
+                    )
+                customers = list(customers_qs)
+
+            context = {
+                'customers': customers,
+                'filter_type': filter_type,
+                'origin_route_id': origin_route_id,
+            }
+            return render(request, 'sales/sale_target_calculator/partials/customer_selector.html', context)
+
+        if action == 'search_available_customers':
+            origin_route_id = request.GET.get('origin_route', '')
+            filter_type = request.GET.get('customer_filter', request.GET.get('filter_type', 'assigned'))
+            search_query = request.GET.get('q_customer', request.GET.get('search', '')).strip().lower()
+            selected_ids = request.GET.getlist('selected_customers')
+
+            customers = []
+            if origin_route_id:
+                customers_qs = calculator_service.get_route_customers(origin_route_id, filter_type=filter_type)
+                if selected_ids:
+                    customers_qs = customers_qs.exclude(id__in=selected_ids)
+                if search_query:
+                    customers_qs = customers_qs.filter(
+                        Q(id__icontains=search_query) | Q(name__icontains=search_query)
+                    )
+                customers = list(customers_qs[:50] if filter_type == 'all' and not search_query else customers_qs)
+
+            context = {
+                'customers': customers,
+                'filter_type': filter_type,
+            }
+            return render(request, 'sales/sale_target_calculator/partials/available_customers_list.html', context)
+
+        if action == 'calculate':
+            mode = request.POST.get('mode', 'transfer')
+            calc_method = request.POST.get('calc_method', 'average')
+            origin_route_id = request.POST.get('origin_route')
+            destination_route_id = request.POST.get('destination_route')
+            adjustment_direction = request.POST.get('adjustment_direction', 'remove')
+            transfer_growth_rule = request.POST.get('transfer_growth_rule', 'exact')
+            target_year = request.POST.get('target_year')
+            effective_month = request.POST.get('effective_month')
+            eval_customer_start = request.POST.get('eval_customer_start')
+            eval_customer_end = request.POST.get('eval_customer_end')
+            eval_route_start = request.POST.get('eval_route_start')
+            eval_route_end = request.POST.get('eval_route_end')
+            product_classes_selected = request.POST.getlist('product_classes')
+            selected_customers = request.POST.getlist('selected_customers')
+
+            try:
+                results = calculator_service.calculate_simulation(
+                    mode=mode,
+                    calc_method=calc_method,
+                    origin_route_id=origin_route_id,
+                    destination_route_id=destination_route_id,
+                    customer_ids=selected_customers,
+                    adjustment_direction=adjustment_direction,
+                    transfer_growth_rule=transfer_growth_rule,
+                    target_year=int(target_year) if target_year else today.year,
+                    effective_month=effective_month,
+                    eval_customer_start=eval_customer_start,
+                    eval_customer_end=eval_customer_end,
+                    eval_route_start=eval_route_start,
+                    eval_route_end=eval_route_end,
+                    product_class_ids=product_classes_selected,
+                )
+                context = {
+                    'results': results,
+                    'errors': [],
+                }
+            except Exception as e:
+                context = {
+                    'results': None,
+                    'errors': [str(e)],
+                }
+
+            return render(request, 'sales/sale_target_calculator/partials/calculator_results.html', context)
+
+    default_year = today.year
+    default_eff_month = f"{default_year}-{today.month:02d}"
+
+    first_curr_month = today.replace(day=1)
+    past_end = first_curr_month - datetime.timedelta(days=1)
+    past_start = (past_end.replace(day=1)) - relativedelta(months=2)
+
+    context = {
+        'routes': routes,
+        'product_classes': product_classes,
+        'default_year': default_year,
+        'default_eff_month': default_eff_month,
+        'default_eval_cust_start': past_start.strftime('%Y-%m'),
+        'default_eval_cust_end': past_end.strftime('%Y-%m'),
+        'default_eval_route_start': past_start.strftime('%Y-%m'),
+        'default_eval_route_end': past_end.strftime('%Y-%m'),
+    }
+    return render(request, template, context)
+
+@login_required
+def export_sale_targets_calculator_data(request):
+    calculator_service = SaleTargetCalculatorService(user=request.user)
+
+    mode = request.GET.get('mode', 'transfer')
+    calc_method = request.GET.get('calc_method', 'average')
+    origin_route_id = request.GET.get('origin_route')
+    destination_route_id = request.GET.get('destination_route')
+    adjustment_direction = request.GET.get('adjustment_direction', 'remove')
+    transfer_growth_rule = request.GET.get('transfer_growth_rule', 'exact')
+    target_year = request.GET.get('target_year')
+    effective_month = request.GET.get('effective_month')
+    eval_customer_start = request.GET.get('eval_customer_start')
+    eval_customer_end = request.GET.get('eval_customer_end')
+    eval_route_start = request.GET.get('eval_route_start')
+    eval_route_end = request.GET.get('eval_route_end')
+    product_classes_selected = request.GET.getlist('product_classes')
+    selected_customers = request.GET.getlist('selected_customers')
+
+    try:
+        results = calculator_service.calculate_simulation(
+            mode=mode,
+            calc_method=calc_method,
+            origin_route_id=origin_route_id,
+            destination_route_id=destination_route_id,
+            customer_ids=selected_customers,
+            adjustment_direction=adjustment_direction,
+            transfer_growth_rule=transfer_growth_rule,
+            target_year=int(target_year) if target_year else timezone.localdate().year,
+            effective_month=effective_month,
+            eval_customer_start=eval_customer_start,
+            eval_customer_end=eval_customer_end,
+            eval_route_start=eval_route_start,
+            eval_route_end=eval_route_end,
+            product_class_ids=product_classes_selected,
+        )
+        excel_buffer = calculator_service.export_simulation_excel(results)
+
+        response = HttpResponse(
+            excel_buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        filename = f"simulacion_objetivos_{origin_route_id}_{target_year}.xlsx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except Exception as e:
+        messages.error(request, f"Error al exportar la simulación: {str(e)}")
+        return redirect('sales:sale_target_calculator_view')
