@@ -175,10 +175,11 @@ else:
             }
         },
         "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
         },
     }
 
+    WHITENOISE_MANIFEST_STRICT = False
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/v2_media/'
     STATIC_URL = '/static/'
 
