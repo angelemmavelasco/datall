@@ -1,0 +1,150 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-xs cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Qué es la Calculadora de Objetivos y cómo funciona la configuración?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2 space-y-3 text-xs text-body">
+        <div>
+            <p class="text-title mb-1.5">
+                ¿Qué es este módulo y para qué sirve?:
+            </p>
+            <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+                <li>
+                    <span>Es una herramienta de planeación y simulación comercial que permite recalcular, presupuestar y ajustar metas y cuotas de venta mensuales de manera precisa y sin alterar la base de datos oficial.</span>
+                </li>
+                <li>
+                    <span>Sirve para evaluar el impacto financiero del movimiento de clientes (reasignación territorial, división de carteras o altas y bajas de cuentas) o para construir presupuestos anuales completos desde cero basados en el historial real de compra.</span>
+                </li>
+                <li>
+                    <span>Modela el volumen de venta por clase de producto y las tasas de crecimiento, permitiendo realizar simulaciones interactivas en tiempo real y exportarlas a hojas de cálculo.</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="pt-2 border-t border-border/60">
+            <p class="text-title mb-1.5">
+                Tipos de cálculo y escenarios de uso:
+            </p>
+            <ul class="space-y-2 list-disc list-inside pl-1 text-xs">
+                <li>
+                    <span class="text-blue-500">Transferencia entre rutas (Afecta a ambas):</span>
+                    <span>
+                        Traspasa clientes y su volumen de ventas histórico proporcional desde una Ruta Origen hacia una Ruta Destino. 
+                        Resta de forma automática la cuota calculada en la ruta origen y se la suma a la ruta destino.
+                    </span>
+                    <ul class="list-disc list-inside pl-4 pt-1 space-y-0.5 text-muted">
+                        <li>Idóneo en: Reestructuración de zonas comerciales, balanceo de carga de trabajo entre vendedores o división de una ruta saturada.</li>
+                        <li>No usar en: Compras nuevas que nunca antes habían existido o bajas definitivas del negocio (en su lugar se usa Ajuste a ruta única).</li>
+                        <li>Regla de transferencia exacta: Mantiene la curva y porcentaje de crecimiento que los clientes traían en la ruta origen.</li>
+                        <li>Regla de transferencia dinámica: Modela el volumen transferido adaptándolo a la curva de crecimiento y estacionalidad propia de la ruta destino.</li>
+                    </ul>
+                </li>
+
+                <li>
+                    <span class="text-amber-500">Ajuste a ruta única (Solo afecta una ruta):</span>
+                    <span>
+                        Modifica los objetivos de una sola ruta sin involucrar a otras rutas del sistema.
+                    </span>
+                    <ul class="list-disc list-inside pl-4 pt-1 space-y-0.5 text-muted">
+                        <li>Operación Sumar (+): Suma objetivos por nuevos clientes ganados, reactivaciones o cuentas clave que se incorporan a la ruta.</li>
+                        <li>Operación Restar (-): Reduce objetivos por pérdida definitiva de clientes o cierre de cuentas.</li>
+                        <li>Idóneo en: Ajustes puntuales por bajas o altas de clientes sin traspaso a otro vendedor.</li>
+                    </ul>
+                </li>
+
+                <li>
+                    <span class="text-emerald-500">Cálculo desde cero (Presupuestación de ruta):</span>
+                    <span>
+                        Diseña y presupuesta los objetivos anuales de una ruta desde cero a partir del promedio de compras de los clientes seleccionados, 
+                        otorgando libertad total para definir porcentajes de crecimiento e importes mes a mes con recálculo dinámico en tiempo real.
+                    </span>
+                    <ul class="list-disc list-inside pl-4 pt-1 space-y-0.5 text-muted">
+                        <li>Idóneo en: Planeación anual de objetivos, creación o apertura de rutas nuevas, reingeniería completa de cuotas o estrategias comerciales con estacionalidad personalizada.</li>
+                        <li>No usar en: Cuando solo se busca transferir un par de clientes entre rutas que ya tienen su presupuesto anual cargado.</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        <div class="pt-2 border-t border-border/60">
+            <p class="text-title mb-1.5">
+                Métodos de cálculo:
+            </p>
+            <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+                <li>
+                    <span class="text-title">Por promedio mensual (Monto fijo base):</span>
+                    <span>
+                        Suma las ventas netas del cliente en el periodo evaluado y las divide entre el número de meses. Ese monto base se proyecta mes a mes siguiendo la curva de crecimiento existente de la ruta. Idóneo cuando el cliente tiene un consumo recurrente y parejo.
+                    </span>
+                </li>
+                <li>
+                    <span class="text-title">Por contribución (Porcentaje sobre ruta):</span>
+                    <span>
+                        Calcula el porcentaje exacto que representó el cliente sobre el total de ventas de la ruta en el periodo de evaluación de ruta. Ese porcentaje se aplica mes con mes sobre la cuota mensual oficial de la ruta. Idóneo cuando el negocio tiene estacionalidad marcada ya contemplada en la meta de la ruta.
+                    </span>
+                </li>
+                <li>
+                    <span class="text-title">Histórico con crecimientos mensuales interactivos:</span>
+                    <span>
+                        Utilizado en el cálculo desde cero. Toma la base promedio histórica y permite ajustar porcentajes de crecimiento específicos para cada mes calendario.
+                    </span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="pt-2 border-t border-border/60">
+            <p class="text-title mb-1.5">
+                Rutas según el escenario:
+            </p>
+            <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+                <li>
+                    <span class="text-title">Ruta Origen o Ruta a Presupuestar:</span>
+                    <span>Es la ruta de donde provienen los clientes y cuyos objetivos actuales se toman como base para restar o presupuestar.</span>
+                </li>
+                <li>
+                    <span class="text-title">Ruta Destino:</span>
+                    <span>La ruta que recibirá los clientes transferidos y a la que se le incrementarán los objetivos de venta correspondientes.</span>
+                </li>
+                <li>
+                    <span class="text-title">Ruta a ajustar:</span>
+                    <span>La única ruta a la que se le sumará o restará cuota sin afectar a ninguna otra ruta.</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="pt-2 border-t border-border/60">
+            <p class="text-title mb-1.5">
+                Periodos de evaluación y temporalidad:
+            </p>
+            <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+                <li>
+                    <span class="text-title">Año objetivo:</span>
+                    <span>El año calendario en el que se aplicarán los nuevos objetivos.</span>
+                </li>
+                <li>
+                    <span class="text-title">Mes de aplicación:</span>
+                    <span>El mes exacto en el que surte efecto el movimiento. Los meses anteriores no sufren alteraciones y conservan sus cuotas originales.</span>
+                </li>
+                <li>
+                    <span class="text-title">Periodo de evaluación cliente (Inicio - Fin):</span>
+                    <span>Rango de meses históricos utilizados para promediar las compras reales del cliente. Aparece en todos los métodos.</span>
+                </li>
+                <li>
+                    <span class="text-title">Periodo de evaluación ruta origen (Inicio - Fin):</span>
+                    <span>Rango histórico donde se evalúa el total de la ruta para calcular la participación porcentual del cliente. Solo se requiere cuando el método es por contribución.</span>
+                </li>
+                <li>
+                    <span class="text-title">Clases de producto afectadas:</span>
+                    <span>Permite elegir selectivamente qué familias de productos participan en el cálculo activando o desactivando líneas con los botones de selección rápida.</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</details>

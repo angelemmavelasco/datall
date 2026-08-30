@@ -24,6 +24,8 @@ Calculadora de objetivos de venta
 
             <p class="text-title pb-1 border-b border-border">Configuración general</p>
 
+            {% include 'sales/sale_target_calculator/partials/info/_info_calculator_general.html' %}
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
                 <span class="text-title flex items-center gap-1">Tipo de cálculo</span>
                 <div>
@@ -152,6 +154,8 @@ Calculadora de objetivos de venta
                     <span>Cargando clientes de la ruta...</span>
                 </div>
             </div>
+
+            {% include 'sales/sale_target_calculator/partials/info/_info_customer_portfolio.html' %}
 
             <div id="customer-selector-container">
                 {% include 'sales/sale_target_calculator/partials/customer_selector.html' %}

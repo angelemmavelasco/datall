@@ -1,0 +1,68 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-xs cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo seleccionar clientes y utilizar el pegado masivo desde Excel?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2 space-y-3 text-xs text-body">
+        <div>
+            <p class="text-title mb-1.5">
+                Filtros de cartera disponibles:
+            </p>
+            <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+                <li>
+                    <span class="text-blue-500">Asignados actualmente a la ruta:</span>
+                    <span>
+                        Muestra únicamente los clientes con asignación vigente en la ruta seleccionada. Es idóneo para transferencias de clientes entre rutas o ajustes de resta por pérdida de cuentas.
+                    </span>
+                </li>
+                <li>
+                    <span class="text-emerald-500">Todos los clientes permitidos:</span>
+                    <span>
+                        Permite buscar en todo el catálogo de clientes del sistema. Es idóneo para presupuestación desde cero con clientes de varias zonas, asignación de cuentas nuevas o reactivación de clientes inactivos.
+                    </span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="pt-2 border-t border-border/60">
+            <p class="text-title mb-1.5">
+                Pegado masivo de clientes desde Excel:
+            </p>
+            <p class="mb-1 text-muted">
+                Para evitar buscar clientes uno por uno, se puede copiar directamente una lista desde una hoja de cálculo:
+            </p>
+            <ul class="space-y-1 list-disc list-inside pl-1 text-xs">
+                <li>
+                    <span>Copia la columna de IDs de clientes desde el archivo de Excel, CSV u hojas de cálculo.</span>
+                </li>
+                <li>
+                    <span>Pega la lista directamente en el campo de búsqueda o cuadro de pegado masivo (los IDs pueden venir separados por saltos de línea, comas o espacios).</span>
+                </li>
+                <li>
+                    <span>El sistema buscará los clientes correspondientes y los marcará de forma automática en la lista de seleccionados.</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="pt-2 border-t border-border/60">
+            <p class="text-title mb-1.5">
+                Acciones de selección rápida:
+            </p>
+            <ul class="space-y-1 list-disc list-inside pl-1 text-xs">
+                <li>
+                    <span>El botón Seleccionar todo agrega la totalidad de los clientes visibles de la ruta en un solo clic.</span>
+                </li>
+                <li>
+                    <span>El botón Desmarcar todo remueve la selección actual para iniciar una nueva búsqueda.</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</details>

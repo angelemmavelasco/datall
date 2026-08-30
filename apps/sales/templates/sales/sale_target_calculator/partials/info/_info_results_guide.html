@@ -1,0 +1,125 @@
+<details class="group p-1 bg-container border border-border rounded mb-4">
+    <summary class="text-title flex items-center justify-between gap-1 text-xs cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-1">
+            {% include 'layouts/datall_pet.html' %}
+            <span>¿Cómo interpretar los resultados y controlar la presupuestación interactiva?</span>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down transition-transform duration-200 group-open:rotate-180 shrink-0">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="m16 10-4 4-4-4"/>
+        </svg>
+    </summary>
+
+    <div class="pt-3 border-t border-border mt-2 space-y-3 text-xs text-body">
+        <div>
+            <p class="text-title mb-1.5">
+                Resumen de cartera de clientes proyectada:
+            </p>
+            <ul class="space-y-1 list-disc list-inside pl-1 text-xs">
+                <li><span class="text-title">Cartera actual:</span> Número de clientes asignados activamente en la ruta antes del movimiento.</li>
+                <li><span class="text-green-600">Clientes a integrar (+):</span> Clientes que se incorporan a la ruta en la simulación.</li>
+                <li><span class="text-red-500">Clientes a transferir o remover (-):</span> Clientes que salen de la ruta hacia otra o por baja definitiva.</li>
+                <li><span class="text-title">Cartera proyectada:</span> Número final resultante de clientes con los que operará la ruta.</li>
+            </ul>
+        </div>
+
+        {% if results.mode == 'create_new' %}
+        <div class="pt-2 border-t border-border/60">
+            <p class="text-title mb-1.5">
+                Campos e inputs en la tabla de presupuestación:
+            </p>
+            <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+                <li>
+                    <span class="text-amber-500">Monto base (primer mes activo):</span>
+                    <span>Es el punto de partida mensual. Se calcula automáticamente con el promedio de ventas históricas, pero puedes escribir cualquier cantidad si la base inicia en cero o si deseas definir otra meta de arranque.</span>
+                </li>
+                <li>
+                    <span class="text-emerald-500">Crecimiento mensual (%):</span>
+                    <span>Casilla para definir el porcentaje de incremento o decremento que esperas alcanzar respecto al mes inmediato anterior.</span>
+                </li>
+                <li>
+                    <span class="text-blue-500">Monto objetivo ($):</span>
+                    <span>Muestra la meta monetaria resultante para ese mes tras aplicar el porcentaje de crecimiento al mes anterior. También puedes escribir directamente el monto en dinero si tienes una cifra objetivo exacta.</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="pt-2 border-t border-border/60">
+            <p class="text-title mb-1.5">
+                Funcionamiento del cálculo matemático y reactividad:
+            </p>
+            <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+                <li>
+                    <span class="text-title">Cálculo de la base promedio:</span>
+                    <span>Se suman las ventas netas de los clientes seleccionados en el periodo evaluado y se divide entre el número de meses evaluados.</span>
+                </li>
+                <li>
+                    <span class="text-title">Proyección mes a mes:</span>
+                    <span>Objetivo del mes actual = Objetivo del mes anterior multiplicado por (1 + porcentaje de crecimiento / 100).</span>
+                </li>
+                <li>
+                    <span class="text-title">Cálculo inverso automático:</span>
+                    <span>Si modificas directamente la casilla de Monto objetivo ($), el sistema calcula al instante qué porcentaje de crecimiento representa respecto al mes previo: ((monto actual - monto anterior) / monto anterior) * 100.</span>
+                </li>
+                <li>
+                    <span class="text-title">Efecto cascada en tiempo real:</span>
+                    <span>Cualquier cambio de porcentaje o monto en un mes recalcula de inmediato todos los meses posteriores de esa fila sin alterar los porcentajes de crecimiento configurados en los meses siguientes.</span>
+                </li>
+                <li>
+                    <span class="text-title">Total anual por clase de producto:</span>
+                    <span>Suma acumulada de las metas monetarias de todos los meses del año para cada familia de producto.</span>
+                </li>
+                <li>
+                    <span class="text-title">Indicador de Crecimiento Anual Total (%):</span>
+                    <span>Compara el total anual planificado contra la base supuesta anualizada: ((Total Anual Planificado - (Monto Base * Meses Activos)) / (Monto Base * Meses Activos)) * 100%. Indica en verde si la estrategia anual representa un crecimiento positivo respecto al histórico o en rojo si representa una reducción.</span>
+                </li>
+                <li>
+                    <span class="text-title">Fila Total ruta:</span>
+                    <span>Suma vertical de todas las clases de producto en cada mes, mostrando el crecimiento mensual global de la ruta, el gran total anual y el porcentaje de crecimiento anual consolidado.</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="pt-2 border-t border-border/60">
+            <p class="text-title mb-1.5">
+                Consejos para el manejo de los campos:
+            </p>
+            <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+                <li>
+                    <span>Si una clase de producto no tuvo ventas históricas (base en $0.00), ingresa directamente la meta del primer mes en la casilla de Monto base para activar el cálculo de los meses siguientes.</span>
+                </li>
+                <li>
+                    <span>Puedes ingresar porcentajes negativos (ejemplo: -5.0%) en los meses donde la demanda disminuya por efecto de estacionalidad.</span>
+                </li>
+                <li>
+                    <span>Al dar clic en el botón Exportar, todas las modificaciones de montos y crecimientos que hayas realizado en la tabla se incluirán de forma idéntica en el archivo descargable.</span>
+                </li>
+            </ul>
+        </div>
+        {% else %}
+        <div class="pt-2 border-t border-border/60">
+            <p class="text-title mb-1.5">
+                Lectura de tablas de transferencia y ajuste:
+            </p>
+            <ul class="space-y-1.5 list-disc list-inside pl-1 text-xs">
+                <li>
+                    <span class="text-title">Objetivo original ($):</span>
+                    <span>La cuota que tenía registrada la ruta antes de aplicar la simulación.</span>
+                </li>
+                <li>
+                    <span class="text-title">Crecimiento (%):</span>
+                    <span>La variación porcentual entre el objetivo del mes actual y el mes anterior.</span>
+                </li>
+                <li>
+                    <span class="text-title">Ajuste o Delta ($):</span>
+                    <span>El importe monetario que se suma (en verde) o resta (en rojo) cada mes como impacto de los clientes seleccionados.</span>
+                </li>
+                <li>
+                    <span class="text-title">Objetivos Planificados ($):</span>
+                    <span>El valor final consolidado de la cuota mensual después de aplicar el ajuste (Objetivo Original + Ajuste).</span>
+                </li>
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</details>
