@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.safestring import mark_safe
-from .models import User, Module, Submodule, Reference
+from .models import User, Module, Submodule, Reference, AppVersion
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
@@ -90,3 +90,11 @@ class ReferenceAdmin(admin.ModelAdmin):
     list_filter = ('submodule', 'content_type', 'context')
     search_fields = ('context', 'key', 'value', 'submodule__name')
     list_select_related = ('submodule', 'content_type')
+
+
+@admin.register(AppVersion)
+class AppVersionAdmin(admin.ModelAdmin):
+    list_display = ('version_number', 'title', 'release_type', 'release_date', 'is_published')
+    list_filter = ('release_type', 'is_published', 'release_date')
+    search_fields = ('version_number', 'title', 'description')
+    list_editable = ('is_published',)

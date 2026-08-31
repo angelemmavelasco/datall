@@ -105,6 +105,7 @@ class ThemedAdminSite(admin.AdminSite):
                     'Module',
                     'Submodule',
                     'Reference',
+                    'AppVersion',
                     'User',
                     'Group',
                 ]
