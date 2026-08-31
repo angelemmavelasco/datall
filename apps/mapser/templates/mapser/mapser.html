@@ -6,17 +6,14 @@
 {% endblock %}
 
 {% block extra_head %}
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* Ajuste de Z-Index para controles de Leaflet dentro del layout de Datall */
         .leaflet-pane {
             z-index: 10 !important;
         }
         .leaflet-top, .leaflet-bottom {
             z-index: 20 !important;
         }
-        /* Personalización de Popups para tema oscuro / claro */
         .dark .leaflet-popup-content-wrapper,
         .dark .leaflet-popup-tip {
             background-color: #18181b !important;
@@ -41,96 +38,217 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-locate-fixed"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg>
         <span>Centrar</span>
     </button>
-
-    <button type="button" onclick="toggleFilters()" class="hover:text-hover transition-colors cursor-pointer shrink-0 flex items-center gap-1">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal"><path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></svg>
-        <span>Filtrar</span>
-    </button>
 {% endblock %}
 
 {% block content %}
+
 <div class="flex flex-col w-full gap-4">
-    <!-- Header / Resumen -->
-    <div class="flex items-center justify-between pb-1 border-b border-border">
-        <p class="text-title">
-            Cobertura Comercial vs Universo DENUE (INEGI)
-        </p>
-        <div class="flex items-center gap-3 text-xs">
-            <span class="inline-flex items-center gap-1.5 text-body">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                Clientes actuales
+    <p class="text-title pb-1 border-b border-border">
+        Resumen general
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Universo de clientes
+            </span><br>
+            <span class="text-xl text-blue-500 font-mono font-medium">
+                {{ kpis.denue_total|default:0|intcomma }}
             </span>
-            <span class="inline-flex items-center gap-1.5 text-body">
-                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Clientes actuales
+            </span><br>
+            <span class="text-xl text-emerald-500 font-mono font-medium">
+                {{ kpis.customers_total|default:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Penetración de mercado
+            </span><br>
+            <span class="text-xl text-violet-500 font-mono font-medium">
+                {{ kpis.market_share_percentage|default:"0.0" }}%
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Oportunidades
+            </span><br>
+            <span class="text-xl text-amber-500 font-mono font-medium">
+                {{ kpis.untapped_opportunities|default:0|intcomma }}
+            </span>
+        </a>
+    </div>
+
+    <p class="text-title pb-1 border-b border-border flex items-center justify-between">
+        <span>Mapa de distribución y prospección</span>
+        <span class="flex items-center gap-3 text-xs font-normal text-body">
+            <span class="inline-flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Clientes GPS exacto
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-violet-500"></span>
+                Agrupados por CP
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
                 Potencial DENUE
             </span>
-        </div>
+        </span>
+    </p>
+
+    <div class="relative w-full h-[600px] border border-border rounded bg-container">
+        <div id="map" class="w-full h-full rounded"></div>
     </div>
 
-    <!-- KPIs Rápidos de Penetración -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="border border-border rounded bg-container p-3 transition-colors">
-            <span class="text-xs text-muted">Universo DENUE (TAM)</span>
-            <div class="text-lg font-semibold text-title mt-0.5">
-                {{ kpis.denue_total|default:0|intcomma }}
-            </div>
-            <span class="text-[10px] text-muted">Unidades económicas</span>
-        </div>
-
-        <div class="border border-border rounded bg-container p-3 transition-colors">
-            <span class="text-xs text-muted">Clientes Actuales</span>
-            <div class="text-lg font-semibold text-emerald-500 mt-0.5">
-                {{ kpis.customers_total|default:0|intcomma }}
-            </div>
-            <span class="text-[10px] text-muted">{{ kpis.geocoded_customers|default:0 }} geolocalizados</span>
-        </div>
-
-        <div class="border border-border rounded bg-container p-3 transition-colors">
-            <span class="text-xs text-muted">Penetración de Mercado</span>
-            <div class="text-lg font-semibold text-blue-500 mt-0.5">
-                {{ kpis.market_share_percentage|default:"0.0" }}%
-            </div>
-            <span class="text-[10px] text-muted">Porción del pastel</span>
-        </div>
-
-        <div class="border border-border rounded bg-container p-3 transition-colors">
-            <span class="text-xs text-muted">Oportunidades (Gap)</span>
-            <div class="text-lg font-semibold text-amber-500 mt-0.5">
-                {{ kpis.untapped_opportunities|default:0|intcomma }}
-            </div>
-            <span class="text-[10px] text-muted">Prospectos sin atender</span>
-        </div>
-    </div>
-
-    <!-- Contenedor del Mapa -->
-    <div class="relative w-full h-[600px] border border-border rounded-lg overflow-hidden bg-container shadow-sm">
-        <div id="map" class="w-full h-full"></div>
-    </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
         let map;
         let tileLayer;
-        let customersLayer;
+        let exactCustomersLayer;
+        let postalGroupLayer;
         let denueLayer;
 
-        const defaultCenter = [20.5888, -100.3899]; // Centro (ej. Querétaro)
-        const defaultZoom = 12;
+        const defaultCenter = {{ default_center|default:"[20.6597, -103.3496]" }};
+        const defaultZoom = 11;
 
-        // URLs de CartoDB Basemaps
-        const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-        const lightTileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-        const tileAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+        const osmTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+        const tileAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-        function getActiveTileUrl() {
-            const isDark = document.documentElement.classList.contains('dark') || 
-                           localStorage.getItem('theme') === 'dark';
-            return isDark ? darkTileUrl : lightTileUrl;
+        const geoData = {{ geo_data_json|default:"{}"|safe }};
+        const denuePoints = {{ denue_points_json|default:"[]"|safe }};
+
+        function renderMapLayers() {
+            if (!exactCustomersLayer || !postalGroupLayer || !denueLayer) return;
+
+            exactCustomersLayer.clearLayers();
+            postalGroupLayer.clearLayers();
+            denueLayer.clearLayers();
+
+            const allBoundsMarkers = [];
+
+            const exactPoints = geoData.exact_points || [];
+            exactPoints.forEach(c => {
+                const marker = L.circleMarker([c.lat, c.lng], {
+                    radius: 8,
+                    fillColor: '#10b981',
+                    color: '#ffffff',
+                    weight: 2,
+                    opacity: 0.9,
+                    fillOpacity: 0.85
+                });
+
+                const popupContent = `
+                    <div class="p-1 space-y-1.5 min-w-[200px]">
+                        <div class="flex items-center justify-between gap-2 border-b border-border pb-1">
+                            <span class="font-bold text-title text-xs tracking-wide">${c.customer_id}</span>
+                            <span class="text-[10px] p-1 rounded font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                GPS Exacto
+                            </span>
+                        </div>
+                        <p class="font-medium text-xs text-body">${c.customer_name}</p>
+                        ${c.street_address ? `<p class="text-[11px] text-muted leading-tight">${c.street_address}</p>` : ''}
+                        <div class="flex items-center justify-between text-[11px] text-muted pt-1">
+                            <span>CP: <strong class="text-body font-mono">${c.zip_code}</strong></span>
+                            <span>${c.municipality}</span>
+                        </div>
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent);
+                exactCustomersLayer.addLayer(marker);
+                allBoundsMarkers.push(marker);
+            });
+
+            const postalGroups = geoData.postal_code_groups || [];
+            postalGroups.forEach(g => {
+                const radiusSize = Math.min(30, Math.max(12, 10 + g.total_customers * 3));
+                const groupMarker = L.circleMarker([g.lat, g.lng], {
+                    radius: radiusSize,
+                    fillColor: '#8b5cf6',
+                    color: '#ffffff',
+                    weight: 2,
+                    opacity: 0.85,
+                    fillOpacity: 0.65
+                });
+
+                const clientsListHtml = g.customers.map(c => `
+                    <li class="flex items-center justify-between text-[11px] py-0.5 border-b border-border/50">
+                        <span class="font-mono font-medium text-title">${c.customer_id}</span>
+                        <span class="text-body truncate max-w-[140px]">${c.customer_name}</span>
+                    </li>
+                `).join('');
+
+                const popupContent = `
+                    <div class="p-1 space-y-1.5 min-w-[220px] max-w-[280px]">
+                        <div class="flex items-center justify-between gap-2 border-b border-border pb-1">
+                            <span class="font-bold text-title text-xs">CP ${g.zip_code}</span>
+                            <span class="text-[10px] p-1 rounded font-mono bg-violet-500/20 text-violet-400 border border-violet-500/30">
+                                ${g.total_customers} ${g.total_customers === 1 ? 'Cliente' : 'Clientes'}
+                            </span>
+                        </div>
+                        <p class="text-[10px] text-muted">Ubicación estimada por densidad DENUE en este CP.</p>
+                        <div class="max-h-36 overflow-y-auto pr-1">
+                            <ul class="divide-y divide-border/30">
+                                ${clientsListHtml}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+
+                groupMarker.bindPopup(popupContent);
+                postalGroupLayer.addLayer(groupMarker);
+                allBoundsMarkers.push(groupMarker);
+            });
+
+            denuePoints.forEach(d => {
+                const marker = L.circleMarker([d.lat, d.lng], {
+                    radius: 5,
+                    fillColor: '#f59e0b',
+                    color: '#ffffff',
+                    weight: 1,
+                    opacity: 0.8,
+                    fillOpacity: 0.7
+                });
+
+                const popupContent = `
+                    <div class="p-1 space-y-1.5 min-w-[220px]">
+                        <div class="flex items-center justify-between gap-2 border-b border-border pb-1">
+                            <span class="font-bold text-title text-xs tracking-wide">${d.id}</span>
+                            <span class="text-[10px] p-1 rounded font-mono bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                Potencial DENUE
+                            </span>
+                        </div>
+                        <p class="font-medium text-xs text-body">${d.unit_name}</p>
+                        <p class="text-[10px] text-muted">${d.scian_name}</p>
+                        <div class="flex items-center justify-between text-[11px] text-muted pt-1">
+                            <span>CP: <strong class="text-body font-mono">${d.zip_code}</strong></span>
+                            <span>${d.personal_occupied_stratum}</span>
+                        </div>
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent);
+                denueLayer.addLayer(marker);
+            });
+
+            if (allBoundsMarkers.length > 0) {
+                const group = L.featureGroup(allBoundsMarkers);
+                map.fitBounds(group.getBounds().pad(0.15));
+            } else {
+                map.setView(defaultCenter, defaultZoom);
+            }
         }
 
         function initMap() {
@@ -139,33 +257,24 @@
                 preferCanvas: true
             }).setView(defaultCenter, defaultZoom);
 
-            // Capa Base CartoDB responsiva al tema
-            tileLayer = L.tileLayer(getActiveTileUrl(), {
+            tileLayer = L.tileLayer(osmTileUrl, {
                 attribution: tileAttribution,
-                subdomains: 'abcd',
-                maxZoom: 20
+                maxZoom: 19
             }).addTo(map);
 
-            // Grupos de capas para Clientes y DENUE
-            customersLayer = L.layerGroup().addTo(map);
+            exactCustomersLayer = L.layerGroup().addTo(map);
+            postalGroupLayer = L.layerGroup().addTo(map);
             denueLayer = L.layerGroup().addTo(map);
 
-            // Control de Capas
             const overlayMaps = {
-                '<span class="text-xs text-emerald-500 font-medium">Clientes Actuales</span>': customersLayer,
+                '<span class="text-xs text-emerald-500 font-medium">Clientes GPS Exacto</span>': exactCustomersLayer,
+                '<span class="text-xs text-violet-500 font-medium">Agrupados por CP</span>': postalGroupLayer,
                 '<span class="text-xs text-amber-500 font-medium">Potencial DENUE</span>': denueLayer
             };
             L.control.layers(null, overlayMaps, { position: 'topright', collapsed: false }).addTo(map);
 
-            // Observer para cambios de tema en caliente (Dark / Light)
-            const observer = new MutationObserver(() => {
-                if (tileLayer) {
-                    tileLayer.setUrl(getActiveTileUrl());
-                }
-            });
-            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+            renderMapLayers();
 
-            // Fix para cálculo correcto del tamaño de contenedor al renderizar
             setTimeout(() => {
                 map.invalidateSize();
             }, 250);
@@ -173,12 +282,10 @@
 
         function recenterMap() {
             if (map) {
-                map.setView(defaultCenter, defaultZoom);
+                renderMapLayers();
             }
         }
 
         document.addEventListener('DOMContentLoaded', initMap);
     </script>
 {% endblock %}
-
-
