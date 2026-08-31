@@ -75,6 +75,7 @@ TEMPLATES = [
                 'apps.core.context_processors.navigation_modules',
                 'apps.core.context_processors.user_reports_indicators',
                 'apps.core.context_processors.last_update_indicator',
+                'apps.core.context_processors.get_app_version',
             ],
         },
     },

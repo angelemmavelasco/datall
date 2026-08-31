@@ -506,7 +506,11 @@
     <footer class="bg-container border-t border-border mt-auto w-full">
         <ul class="flex flex-col md:flex-row items-center justify-center gap-4 p-2 text-title">
             <li>Soporte</li>
+            {% if app_version %}
+            <li>Versión {{ app_version.version_number }}</li>
+            {% else %}
             <li>Versión 1.0</li>
+            {% endif %}
             <li>Datall 2026. Todos los derechos reservados</li>
         </ul>
     </footer>
