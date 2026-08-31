@@ -50,7 +50,7 @@ class BaseETLHelper:
     base utility helper for extracting, validating, and preparing tabular data from files.
     """
     ALLOWED_EXTENSIONS = ('.csv', '.xlsx', '.xls')
-    CSV_ENCODINGS = ('utf-8-sig', 'utf-8', 'latin-1', 'cp1252', 'iso-8859-1')
+    CSV_ENCODINGS = ('utf-8-sig', 'utf-8', 'latin-1', 'cp1252', 'iso-8859-1', 'cp850', 'mac_roman', 'utf-16')
 
     @classmethod
     def validate_file(cls, file_obj) -> tuple[bool, str]:
@@ -84,6 +84,7 @@ class BaseETLHelper:
     def read_file_to_dataframe(cls, file_obj) -> tuple[bool, Optional[object] | str]:
         """
         reads a CSV or Excel file safely into a pandas DataFrame with string dtypes to preserve raw values.
+        supports automatic delimiter detection and encoding fallback with error replacement.
         """
         if pd is None:
             return False, "La librería 'pandas' no está instalada en el entorno."
@@ -103,18 +104,66 @@ class BaseETLHelper:
                 df = pd.read_excel(file_obj, dtype=str)
             else:
                 df = None
-                read_errors = []
+                separators = [',', '\t', ';', '|', None]
+
                 for encoding in cls.CSV_ENCODINGS:
-                    try:
-                        if hasattr(file_obj, 'seek'):
-                            file_obj.seek(0)
-                        df = pd.read_csv(file_obj, dtype=str, encoding=encoding)
+                    for sep in separators:
+                        try:
+                            if hasattr(file_obj, 'seek'):
+                                file_obj.seek(0)
+                            if sep is None:
+                                temp_df = pd.read_csv(file_obj, dtype=str, encoding=encoding, sep=None, engine='python')
+                            else:
+                                temp_df = pd.read_csv(file_obj, dtype=str, encoding=encoding, sep=sep)
+
+                            if temp_df is not None and not temp_df.empty and len(temp_df.columns) > 1:
+                                df = temp_df
+                                break
+                            elif temp_df is not None and not temp_df.empty and df is None:
+                                df = temp_df
+                        except Exception:
+                            continue
+                    if df is not None and len(df.columns) > 1:
                         break
-                    except (UnicodeDecodeError, pd.errors.ParserError) as err:
-                        read_errors.append(f"{encoding}: {str(err)}")
+
+                if df is None or len(df.columns) <= 1:
+                    for encoding in cls.CSV_ENCODINGS:
+                        for sep in separators:
+                            try:
+                                if hasattr(file_obj, 'seek'):
+                                    file_obj.seek(0)
+                                if sep is None:
+                                    temp_df = pd.read_csv(
+                                        file_obj,
+                                        dtype=str,
+                                        encoding=encoding,
+                                        encoding_errors='replace',
+                                        sep=None,
+                                        engine='python',
+                                        on_bad_lines='skip'
+                                    )
+                                else:
+                                    temp_df = pd.read_csv(
+                                        file_obj,
+                                        dtype=str,
+                                        encoding=encoding,
+                                        encoding_errors='replace',
+                                        sep=sep,
+                                        on_bad_lines='skip'
+                                    )
+
+                                if temp_df is not None and not temp_df.empty and len(temp_df.columns) > 1:
+                                    df = temp_df
+                                    break
+                                elif temp_df is not None and not temp_df.empty and df is None:
+                                    df = temp_df
+                            except Exception:
+                                continue
+                        if df is not None and len(df.columns) > 1:
+                            break
 
                 if df is None:
-                    return False, f"No se pudo decodificar el archivo CSV. Verifique la codificación (UTF-8, Latin-1)."
+                    return False, "No se pudo decodificar el archivo CSV. Verifique el formato o la integridad del archivo."
 
             if df.empty:
                 return False, "El archivo no contiene filas de datos."
@@ -426,6 +475,16 @@ class UploadsService(UsersService):
             service = StocksService(user=self.user)
             if hasattr(service, 'bulk_create_stocks'):
                 importers['stock'] = service.bulk_create_stocks
+        except (ImportError, AttributeError):
+            pass
+
+        # DENUE INEGI
+        try:
+            from apps.mapser.services.importer import DenueImportService
+            service = DenueImportService(user=self.user)
+            if hasattr(service, 'bulk_create_denues'):
+                importers['denueinegi'] = service.bulk_create_denues
+                importers['denue'] = service.bulk_create_denues
         except (ImportError, AttributeError):
             pass
 

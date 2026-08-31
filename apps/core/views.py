@@ -370,6 +370,8 @@ def upload_options_list_view(request):
             'saletransaction': 'Transacciones de Venta',
             'accountsreceivable': 'Cuentas por Cobrar',
             'stock': 'Existencias (Stock)',
+            'denueinegi': 'Directorio DENUE (INEGI)',
+            'denue': 'Directorio DENUE (INEGI)',
         }
         title_label = catalog_titles.get(model_key, model_key.title())
 
@@ -441,6 +443,15 @@ def upload_options_list_view(request):
             'description': 'Carga masiva de existencias físicas por centro de distribución, números de lote y fechas de caducidad.',
             'icon': 'warehouse',
             'tags': ['CSV / Excel', 'Por Almacén', 'Control de Lotes'],
+        },
+        {
+            'key': 'denueinegi',
+            'title': 'Directorio DENUE (INEGI)',
+            'model_name': 'DenueInegi',
+            'app_label': 'Mapser / Prospección',
+            'description': 'Directorio Estadístico Nacional de Unidades Económicas para prospección geográfica y análisis de penetración de mercado.',
+            'icon': 'map-pin',
+            'tags': ['CSV / Excel', 'INEGI', 'Georreferenciación', 'Alto Volumen'],
         },
     ]
 

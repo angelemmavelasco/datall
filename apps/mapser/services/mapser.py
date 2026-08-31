@@ -17,8 +17,9 @@ class MapserService:
     main service for geospatial and commercial coverage analysis in mapser
     '''
     user: Any
+    customers_qs: QuerySet | None = None
     cleaned_data: dict[str, Any] | None = None
-    default_center: tuple[float, float] = (20.6597, -103.3496) #gdl
+    default_center: tuple[float, float] = (23.6345, -102.5528)
 
     today: Any = field(init=False)
     allowed_routes_qs: QuerySet = field(init=False)
@@ -36,8 +37,11 @@ class MapserService:
 
     def _get_allowed_customers_qs(self) -> QuerySet:
         '''
-        returns active customers currently assigned to user allowed routes
+        returns active customers currently assigned to user allowed routes or provided queryset
         '''
+        if self.customers_qs is not None:
+            return self.customers_qs
+
         active_customer_ids = (
             CustomerAssignment.objects
             .filter(route__in=self.allowed_routes_qs)
@@ -138,9 +142,9 @@ class MapserService:
             'total_geolocated': len(exact_points) + sum(g['total_customers'] for g in postal_code_groups),
         }
 
-    def read_denues(self, limit: int = 1500) -> list[dict[str, Any]]:
+    def _get_filtered_denue_qs(self) -> QuerySet:
         '''
-        returns potential customers from denue inegi
+        returns filtered denue queryset based on cleaned_data parameters
         '''
         denue_qs = DenueInegi.objects.filter(
             latitude__isnull=False,
@@ -148,8 +152,15 @@ class MapserService:
         )
 
         if self.cleaned_data:
-            if self.cleaned_data.get('state_code'):
-                denue_qs = denue_qs.filter(state_code=self.cleaned_data['state_code'])
+            state_filter = self.cleaned_data.get('state') or self.cleaned_data.get('state_code')
+            if state_filter:
+                if isinstance(state_filter, (list, tuple, set)):
+                    state_codes = [str(v).zfill(2) for v in state_filter if v]
+                    if state_codes:
+                        denue_qs = denue_qs.filter(state_code__in=state_codes)
+                else:
+                    denue_qs = denue_qs.filter(state_code=str(state_filter).zfill(2))
+
             if self.cleaned_data.get('municipality_code'):
                 denue_qs = denue_qs.filter(municipality_code=self.cleaned_data['municipality_code'])
             if self.cleaned_data.get('scian_code'):
@@ -157,26 +168,37 @@ class MapserService:
             if self.cleaned_data.get('zip_code'):
                 denue_qs = denue_qs.filter(zip_code=self.cleaned_data['zip_code'])
 
-        denue_qs = denue_qs.only(
+        return denue_qs
+
+    def read_denues(self, limit: int | None = None) -> list[dict[str, Any]]:
+        '''
+        returns potential customers from denue inegi
+        '''
+        denue_qs = self._get_filtered_denue_qs()
+
+        if limit:
+            denue_qs = denue_qs[:limit]
+
+        denue_values = denue_qs.values(
             'id', 'unit_name', 'tax_name', 'scian_code', 'scian_name',
             'personal_occupied_stratum', 'zip_code', 'municipality_name',
             'settlement_name', 'latitude', 'longitude'
-        )[:limit]
+        )
 
         points = []
-        for item in denue_qs:
+        for item in denue_values:
             points.append({
-                'id': item.id,
-                'unit_name': item.unit_name,
-                'tax_name': item.tax_name,
-                'scian_code': item.scian_code,
-                'scian_name': item.scian_name,
-                'personal_occupied_stratum': item.personal_occupied_stratum,
-                'zip_code': item.zip_code,
-                'municipality': item.municipality_name,
-                'neighborhood': item.settlement_name,
-                'lat': float(item.latitude),
-                'lng': float(item.longitude),
+                'id': item['id'],
+                'unit_name': item['unit_name'],
+                'tax_name': item['tax_name'],
+                'scian_code': item['scian_code'],
+                'scian_name': item['scian_name'],
+                'personal_occupied_stratum': item['personal_occupied_stratum'],
+                'zip_code': item['zip_code'],
+                'municipality': item['municipality_name'],
+                'neighborhood': item['settlement_name'],
+                'lat': float(item['latitude']),
+                'lng': float(item['longitude']),
             })
 
         return points
@@ -185,7 +207,7 @@ class MapserService:
         '''
         returns high-level market metrics for the current user
         '''
-        denue_total = DenueInegi.objects.count()
+        denue_total = self._get_filtered_denue_qs().count()
         allowed_customers_count = self._get_allowed_customers_qs().count()
 
         geo_data = self.read_geo_profiles()
