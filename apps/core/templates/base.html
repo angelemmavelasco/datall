@@ -30,6 +30,8 @@
             echarts.registerTransform(ecStat.transform.clustering);
         }
     </script>
+
+    {% block extra_head %}{% endblock %}
 </head>
 
 <body class="min-h-dvh bg-page text-body font-sans text-xs flex flex-col transition-colors overflow-x-hidden">
@@ -680,5 +682,6 @@
         }
     });
 </script>
+{% block extra_scripts %}{% endblock %}
 </body>
 </html>
