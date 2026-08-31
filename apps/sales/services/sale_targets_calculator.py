@@ -13,7 +13,7 @@ from django.core.exceptions import ValidationError
 from apps.core.services.users import UsersService
 from apps.sales.models import SaleTarget, SaleTransaction, Route, RouteAssignment
 from apps.customers.models import Customer, CustomerAssignment
-from apps.customers.services import CustomersService
+from apps.customers.services.customers import CustomersService
 from apps.products.models import ProductClass
 from apps.sales.services.routes import RoutesService
 

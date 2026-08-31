@@ -151,16 +151,7 @@ class MapserFilter(django_filters.FilterSet):
             self.filters['state'].extra['choices'] = merged_choices
 
     def filter_state(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
-        if not value:
-            return queryset
-        state_codes = [str(v).zfill(2) for v in value]
-        state_names = [dict(MEXICO_STATES).get(c) for c in state_codes if dict(MEXICO_STATES).get(c)]
-
-        q_filter = Q(geo_profile__matched_denue__state_code__in=state_codes)
-        for s_name in state_names:
-            if s_name:
-                q_filter |= Q(geo_profile__state__icontains=s_name)
-        return queryset.filter(q_filter).distinct()
+        return queryset
 
     def filter_route(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
         if not value:

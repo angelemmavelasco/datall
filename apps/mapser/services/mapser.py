@@ -1,14 +1,18 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
+import statistics
 from typing import Any
 
-from django.db.models import Avg, Count, Q, QuerySet
+from dateutil.relativedelta import relativedelta
+from django.db.models import Avg, Count, Q, QuerySet, Sum
 from django.utils import timezone
 
 from apps.customers.models import Customer, CustomerAssignment
 from apps.mapser.models import CustomerGeoProfile, DenueInegi
 from apps.sales.services.routes import RoutesService
+
 
 
 @dataclass
@@ -203,32 +207,106 @@ class MapserService:
 
         return points
 
+    def _calculate_period_avg(self, total_sales: Decimal | float, start_date: date, end_date: date, reg_date: date | None) -> float:
+        if not total_sales or total_sales <= 0:
+            return 0.0
+        if not reg_date or reg_date <= start_date:
+            months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month) + 1
+        elif reg_date > end_date:
+            return 0.0
+        else:
+            months = (end_date.year - reg_date.year) * 12 + (end_date.month - reg_date.month) + 1
+        months = max(months, 1)
+        return float(total_sales) / months
+
+    def _get_customers_quarter_consumption_averages(self) -> list[float]:
+        first_day_current_month = self.today.replace(day=1)
+        last_day_q = first_day_current_month - relativedelta(days=1)
+        first_day_q = last_day_q.replace(day=1) - relativedelta(months=2)
+
+        allowed_customers_qs = self._get_allowed_customers_qs()
+        customers_dict = {
+            c['id']: c['registration_date']
+            for c in allowed_customers_qs.values('id', 'registration_date')
+        }
+
+        if not customers_dict:
+            return []
+
+        from apps.sales.services.sale_transactions import SaleTransactionsService
+        tx_service = SaleTransactionsService(user=self.user)
+        sales_qs = (
+            tx_service.read_transactions()
+            .filter(
+                customer_id__in=list(customers_dict.keys()),
+                sale_date__gte=first_day_q,
+                sale_date__lte=last_day_q,
+            )
+            .order_by()
+            .values('customer_id')
+            .annotate(total_net=Sum('net_amount'))
+            .filter(total_net__gt=0)
+        )
+
+        averages = []
+        for row in sales_qs:
+            cid = row['customer_id']
+            tot = row['total_net']
+            reg_date = customers_dict.get(cid)
+            avg = self._calculate_period_avg(tot, first_day_q, last_day_q, reg_date)
+            if avg > 0:
+                averages.append(avg)
+
+        return averages
+
     def get_stats(self) -> dict[str, Any]:
-        '''
-        returns high-level market metrics for the current user
-        '''
         denue_total = self._get_filtered_denue_qs().count()
         allowed_customers_count = self._get_allowed_customers_qs().count()
 
         geo_data = self.read_geo_profiles()
         geolocated_count = geo_data['total_geolocated']
 
+        client_averages = self._get_customers_quarter_consumption_averages()
+        active_customers_count = len(client_averages)
+
         if denue_total > 0:
-            market_share = round((allowed_customers_count / denue_total) * 100, 2)
-            untapped = max(0, denue_total - allowed_customers_count)
+            market_share = round((active_customers_count / denue_total) * 100, 2)
+            untapped = max(0, denue_total - active_customers_count)
         else:
             market_share = 0.0
             untapped = 0
 
+        portfolio_coverage = round((active_customers_count / allowed_customers_count) * 100, 2) if allowed_customers_count > 0 else 0.0
+
+        if client_averages:
+            client_median = float(statistics.median(client_averages))
+            client_mean = float(statistics.mean(client_averages))
+        else:
+            client_median = 0.0
+            client_mean = 0.0
+
+        potential_market_median = untapped * client_median
+        potential_market_mean = untapped * client_mean
+
         return {
             'denue_total': denue_total,
             'customers_total': allowed_customers_count,
+            'registered_customers': allowed_customers_count,
+            'customers_with_consumption': active_customers_count,
+            'active_customers_count': active_customers_count,
+            'portfolio_coverage': portfolio_coverage,
             'geocoded_customers': geolocated_count,
             'market_share_percentage': market_share,
             'untapped_opportunities': untapped,
             'exact_count': len(geo_data['exact_points']),
             'postal_code_groups_count': len(geo_data['postal_code_groups']),
             'unresolved_count': len(geo_data['unresolved_clients']),
+            'client_monthly_avg_median': round(client_median, 2),
+            'client_monthly_avg_mean': round(client_mean, 2),
+            'potential_market_median': round(potential_market_median, 2),
+            'potential_market_mean': round(potential_market_mean, 2),
+            'potential_market_base': round(potential_market_median, 2),
+            'potential_market_optimistic': round(potential_market_mean, 2),
         }
 
     get_kpis = get_stats
