@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'apps.customers',
     'apps.products',
     'apps.analytics',
+    'apps.mapser'
 ]
 
 MIDDLEWARE = [
