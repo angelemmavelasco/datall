@@ -369,16 +369,24 @@ class CustomersService(UsersService):
             raise ServiceError(f"Error al eliminar el cliente: {str(e)}")
 
     def _clean_customers(self, file_obj) -> tuple[bool, str | object]:
+        import traceback
+        print(f"\n[CUSTOMERS-ETL] ===== Iniciando proceso de limpieza de clientes =====", flush=True)
+
         try:
             import pandas as pd
         except ImportError:
-            return False, "La librería 'pandas' no está instalada en el entorno."
+            err = "La librería 'pandas' no está instalada en el entorno."
+            print(f"[CUSTOMERS-ETL ERROR] {err}", flush=True)
+            return False, err
 
         is_valid, df_or_err = BaseETLHelper.read_file_to_dataframe(file_obj)
         if not is_valid:
+            print(f"[CUSTOMERS-ETL ERROR] Falló la lectura del DataFrame: {df_or_err}", flush=True)
             return False, df_or_err
 
         df = df_or_err
+        print(f"[CUSTOMERS-ETL] Columnas originales leídas del archivo: {list(df.columns)}", flush=True)
+
         df = BaseETLHelper.apply_reference_column_mappings(
             df,
             self.customer_model,
@@ -386,19 +394,24 @@ class CustomersService(UsersService):
             context='columna'
         )
         df = BaseETLHelper.resolve_foreign_key_columns(df, self.customer_model)
+        print(f"[CUSTOMERS-ETL] Columnas tras mapeo de Referencias y claves foráneas: {list(df.columns)}", flush=True)
 
         if 'route' in df.columns and 'route_id' not in df.columns:
             df.rename(columns={'route': 'route_id'}, inplace=True)
 
         is_req_valid, req_msg = BaseETLHelper.validate_required_columns(df, {'id': 'Identificador de Cliente'})
         if not is_req_valid:
+            print(f"[CUSTOMERS-ETL ERROR] Validación de columnas requeridas falló: {req_msg}", flush=True)
             return False, req_msg
 
         if not self.customer_type_model.objects.exists():
-            return False, "No existen registros en el catálogo de Tipos de Cliente. Debes crear al menos un Tipo de Cliente antes de importar clientes."
+            err = "No existen registros en el catálogo de Tipos de Cliente. Debes crear al menos un Tipo de Cliente antes de importar clientes."
+            print(f"[CUSTOMERS-ETL ERROR] {err}", flush=True)
+            return False, err
 
         valid_types_dict = {str(t.id).strip().lower(): t.id for t in self.customer_type_model.objects.all()}
         default_type = valid_types_dict.get('otr') or next(iter(valid_types_dict.values()))
+        print(f"[CUSTOMERS-ETL] Tipos de cliente válidos en BD: {list(valid_types_dict.keys())} (Tipo por defecto: '{default_type}')", flush=True)
 
         if 'customer_type_id' in df.columns:
             df = BaseETLHelper.apply_reference_value_mappings(
@@ -418,14 +431,22 @@ class CustomersService(UsersService):
         #universal Foreign Key validation for customer model
         is_fk_valid, fk_msg = BaseETLHelper.validate_foreign_keys(df, self.customer_model)
         if not is_fk_valid:
+            print(f"[CUSTOMERS-ETL ERROR] Validación FK de Cliente falló: {fk_msg}", flush=True)
             return False, fk_msg
 
         #if route_id is provided, validate against route table
         if 'route_id' in df.columns:
+            # normalize route_id casing against existing routes in DB
+            valid_routes_db = {str(r).strip().lower(): r for r in Route.objects.values_list('id', flat=True)}
+            df['route_id'] = df['route_id'].apply(
+                lambda x: valid_routes_db.get(str(x).strip().lower(), str(x).strip()) if x not in (None, 'None', 'nan', '') else None
+            )
+
             is_route_fk_valid, route_fk_msg = BaseETLHelper.validate_foreign_keys(
                 df, self.customer_assignment_model, fields=['route_id']
             )
             if not is_route_fk_valid:
+                print(f"[CUSTOMERS-ETL ERROR] Validación FK de Rutas falló: {route_fk_msg}", flush=True)
                 return False, route_fk_msg
 
         if 'registration_date' in df.columns:
@@ -449,22 +470,41 @@ class CustomersService(UsersService):
         df['id'] = df['id'].astype(str).str.strip()
         if 'name' in df.columns:
             df['name'] = df['name'].astype(str).str.strip()
+            df['name'] = df['name'].replace({'nan': None, 'NaN': None, 'None': None, '': None}).fillna(df['id'])
+        else:
+            df['name'] = df['id']
+
+        #discard invalid / empty IDs
+        df = df[df['id'].notnull() & ~df['id'].str.lower().isin(['none', 'nan', 'null', ''])]
+        
+        #deduplicate by customer id keeping last occurrence
+        initial_len = len(df)
+        df = df.drop_duplicates(subset=['id'], keep='last')
+        if len(df) < initial_len:
+            print(f"[CUSTOMERS-ETL] Se eliminaron {initial_len - len(df)} registros con ID duplicado en el archivo.", flush=True)
 
         df = df.where(pd.notnull(df), None)
+        print(f"[CUSTOMERS-ETL SUCCESS] Limpieza completada. {len(df)} clientes listos para procesar.\n", flush=True)
 
         return True, df
 
 
     def bulk_create_customers(self, file_obj) -> object:
+        import traceback
         from apps.core.services.uploads import ImportResult, PermissionsError, BaseETLHelper
         from apps.sales.models import Route
         from django.db import transaction
 
+        print(f"\n[CUSTOMERS-BULK] ===== Iniciando bulk_create_customers =====", flush=True)
+
         if not self.has_full_access:
-            raise PermissionsError('No tienes permisos suficientes para realizar cargas masivas de clientes.')
+            err_msg = 'No tienes permisos suficientes para realizar cargas masivas de clientes.'
+            print(f"[CUSTOMERS-BULK PERMISSIONS ERROR] {err_msg}", flush=True)
+            raise PermissionsError(err_msg)
 
         is_valid, df_or_err = self._clean_customers(file_obj)
         if not is_valid:
+            print(f"[CUSTOMERS-BULK VALIDATION ERROR] {df_or_err}", flush=True)
             return ImportResult(success=False, message=df_or_err)
 
         df = df_or_err
@@ -477,9 +517,11 @@ class CustomersService(UsersService):
         model_fields.extend([f.attname for f in self.customer_model._meta.get_fields() if f.is_relation and hasattr(f, 'attname')])
         
         valid_columns = [col for col in df.columns if col in model_fields and col != 'opinion_leader']
+        print(f"[CUSTOMERS-BULK] Columnas válidas que se guardarán en Customer: {valid_columns}", flush=True)
 
         ids_in_df = df['id'].dropna().astype(str).tolist()
         existing_customers = self.customer_model.objects.in_bulk(ids_in_df)
+        print(f"[CUSTOMERS-BULK] Total IDs en archivo: {len(ids_in_df)} | Clientes existentes en BD: {len(existing_customers)}", flush=True)
 
         today = timezone.now().date()
         yesterday = today - timezone.timedelta(days=1)
@@ -491,6 +533,8 @@ class CustomersService(UsersService):
                 end_date__isnull=True
             )
         }
+        print(f"[CUSTOMERS-BULK] Asignaciones de ruta activas encontradas: {len(active_assignments)}", flush=True)
+
         valid_routes = set(Route.objects.values_list('id', flat=True))
         valid_routes_map = {str(r).strip().lower(): r for r in valid_routes}
 
@@ -498,11 +542,16 @@ class CustomersService(UsersService):
         customers_to_update = []
         assignments_to_update = []
         assignments_to_create = []
+        seen_customer_ids = set()
 
-        for _, row in df.iterrows():
+        for idx, row in df.iterrows():
             cid = str(row.get('id')).strip()
-            if not cid or cid in ('None', 'nan', 'null', ''):
+            if not cid or cid.lower() in ('none', 'nan', 'null', ''):
                 continue
+
+            if cid in seen_customer_ids:
+                continue
+            seen_customer_ids.add(cid)
 
             data = {}
             for col in valid_columns:
@@ -531,16 +580,19 @@ class CustomersService(UsersService):
                     current_assignment = active_assignments.get(cid)
                     if current_assignment:
                         if str(current_assignment.route_id) != str(route_id):
-                            current_assignment.end_date = yesterday
-                            assignments_to_update.append(current_assignment)
-                            
-                            assignments_to_create.append(
-                                self.customer_assignment_model(
-                                    customer_id=cid,
-                                    route_id=route_id,
-                                    start_date=today
+                            if current_assignment.start_date and current_assignment.start_date >= today:
+                                current_assignment.route_id = route_id
+                                assignments_to_update.append(current_assignment)
+                            else:
+                                current_assignment.end_date = yesterday
+                                assignments_to_update.append(current_assignment)
+                                assignments_to_create.append(
+                                    self.customer_assignment_model(
+                                        customer_id=cid,
+                                        route_id=route_id,
+                                        start_date=today
+                                    )
                                 )
-                            )
                     else:
                         assignments_to_create.append(
                             self.customer_assignment_model(
@@ -563,31 +615,48 @@ class CustomersService(UsersService):
                         )
                     )
 
+        print(
+            f"[CUSTOMERS-BULK PLAN] Nuevos: {len(customers_to_create)} | "
+            f"A actualizar: {len(customers_to_update)} | "
+            f"Asignaciones a actualizar: {len(assignments_to_update)} | "
+            f"Nuevas asignaciones: {len(assignments_to_create)}",
+            flush=True
+        )
+
         try:
             with transaction.atomic():
                 if customers_to_create:
+                    print(f"[CUSTOMERS-BULK DB] Creando {len(customers_to_create)} clientes...", flush=True)
                     self.customer_model.objects.bulk_create(customers_to_create, batch_size=500)
                 
                 if customers_to_update:
                     update_fields = [col for col in valid_columns if col != 'id' and col != 'opinion_leader']
                     if update_fields:
+                        print(f"[CUSTOMERS-BULK DB] Actualizando {len(customers_to_update)} clientes con campos {update_fields}...", flush=True)
                         self.customer_model.objects.bulk_update(customers_to_update, update_fields, batch_size=500)
                 
                 if assignments_to_update:
-                    self.customer_assignment_model.objects.bulk_update(assignments_to_update, ['end_date'], batch_size=500)
+                    print(f"[CUSTOMERS-BULK DB] Actualizando {len(assignments_to_update)} asignaciones de ruta...", flush=True)
+                    self.customer_assignment_model.objects.bulk_update(assignments_to_update, ['route_id', 'end_date'], batch_size=500)
                 
                 if assignments_to_create:
+                    print(f"[CUSTOMERS-BULK DB] Creando {len(assignments_to_create)} asignaciones de ruta...", flush=True)
                     self.customer_assignment_model.objects.bulk_create(assignments_to_create, batch_size=500)
             
+            success_msg = f"Importación exitosa. Se crearon {created_count} clientes y se actualizaron {updated_count}."
+            print(f"[CUSTOMERS-BULK SUCCESS] {success_msg}\n", flush=True)
             return ImportResult(
                 success=True,
-                message=f"Importación exitosa. Se crearon {created_count} clientes y se actualizaron {updated_count}.",
+                message=success_msg,
                 total_processed=total_processed,
                 created_count=created_count,
                 updated_count=updated_count
             )
         except Exception as e:
+            print(f"\n[CUSTOMERS-BULK DATABASE EXCEPTION] Error al ejecutar transacción en base de datos: {str(e)}", flush=True)
+            traceback.print_exc()
             humanized_msg = BaseETLHelper.humanize_database_error(e)
+            print(f"[CUSTOMERS-BULK HUMANIZED MESSAGE] {humanized_msg}\n", flush=True)
             return ImportResult(
                 success=False,
                 message=humanized_msg,

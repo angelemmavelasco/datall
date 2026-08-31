@@ -86,38 +86,58 @@ class BaseETLHelper:
         reads a CSV or Excel file safely into a pandas DataFrame with string dtypes to preserve raw values.
         supports automatic delimiter detection and encoding fallback with error replacement.
         """
+        import traceback
+
         if pd is None:
-            return False, "La librería 'pandas' no está instalada en el entorno."
+            err = "La librería 'pandas' no está instalada en el entorno."
+            print(f"[ETL-READ ERROR] {err}", flush=True)
+            return False, err
 
         is_valid, validation_msg = cls.validate_file(file_obj)
         if not is_valid:
+            print(f"[ETL-READ VALIDATION FAILED] {validation_msg}", flush=True)
             return False, validation_msg
 
         filename = getattr(file_obj, 'name', '') or ''
         filename_lower = filename.lower()
+        print(f"[ETL-READ] Iniciando lectura de archivo: '{filename}'", flush=True)
 
         try:
             if hasattr(file_obj, 'seek'):
                 file_obj.seek(0)
 
+            raw_content = file_obj.read()
+            if isinstance(raw_content, str):
+                raw_content = raw_content.encode('utf-8')
+
+            print(f"[ETL-READ] Bytes leídos en memoria: {len(raw_content)} bytes", flush=True)
+            if not raw_content:
+                err = "El archivo proporcionado se encuentra vacío o no contiene datos."
+                print(f"[ETL-READ ERROR] {err}", flush=True)
+                return False, err
+
+            buffer = io.BytesIO(raw_content)
+
             if filename_lower.endswith(('.xlsx', '.xls')):
-                df = pd.read_excel(file_obj, dtype=str)
+                print(f"[ETL-READ] Procesando como Excel (.xlsx/.xls)...", flush=True)
+                df = pd.read_excel(buffer, dtype=str)
             else:
+                print(f"[ETL-READ] Procesando como CSV...", flush=True)
                 df = None
                 separators = [',', '\t', ';', '|', None]
 
                 for encoding in cls.CSV_ENCODINGS:
                     for sep in separators:
                         try:
-                            if hasattr(file_obj, 'seek'):
-                                file_obj.seek(0)
+                            buffer.seek(0)
                             if sep is None:
-                                temp_df = pd.read_csv(file_obj, dtype=str, encoding=encoding, sep=None, engine='python')
+                                temp_df = pd.read_csv(buffer, dtype=str, encoding=encoding, sep=None, engine='python')
                             else:
-                                temp_df = pd.read_csv(file_obj, dtype=str, encoding=encoding, sep=sep)
+                                temp_df = pd.read_csv(buffer, dtype=str, encoding=encoding, sep=sep)
 
                             if temp_df is not None and not temp_df.empty and len(temp_df.columns) > 1:
                                 df = temp_df
+                                print(f"[ETL-READ CSV] Éxito con encoding='{encoding}', sep='{sep}' -> {len(df)} filas, {len(df.columns)} columnas", flush=True)
                                 break
                             elif temp_df is not None and not temp_df.empty and df is None:
                                 df = temp_df
@@ -127,14 +147,14 @@ class BaseETLHelper:
                         break
 
                 if df is None or len(df.columns) <= 1:
+                    print(f"[ETL-READ CSV] Intentando fallback con encoding_errors='replace' y on_bad_lines='skip'...", flush=True)
                     for encoding in cls.CSV_ENCODINGS:
                         for sep in separators:
                             try:
-                                if hasattr(file_obj, 'seek'):
-                                    file_obj.seek(0)
+                                buffer.seek(0)
                                 if sep is None:
                                     temp_df = pd.read_csv(
-                                        file_obj,
+                                        buffer,
                                         dtype=str,
                                         encoding=encoding,
                                         encoding_errors='replace',
@@ -144,7 +164,7 @@ class BaseETLHelper:
                                     )
                                 else:
                                     temp_df = pd.read_csv(
-                                        file_obj,
+                                        buffer,
                                         dtype=str,
                                         encoding=encoding,
                                         encoding_errors='replace',
@@ -154,6 +174,7 @@ class BaseETLHelper:
 
                                 if temp_df is not None and not temp_df.empty and len(temp_df.columns) > 1:
                                     df = temp_df
+                                    print(f"[ETL-READ CSV FALLBACK] Éxito con encoding='{encoding}', sep='{sep}' -> {len(df)} filas", flush=True)
                                     break
                                 elif temp_df is not None and not temp_df.empty and df is None:
                                     df = temp_df
@@ -163,15 +184,22 @@ class BaseETLHelper:
                             break
 
                 if df is None:
-                    return False, "No se pudo decodificar el archivo CSV. Verifique el formato o la integridad del archivo."
+                    err = "No se pudo decodificar el archivo CSV. Verifique el formato o la integridad del archivo."
+                    print(f"[ETL-READ ERROR] {err}", flush=True)
+                    return False, err
 
             if df.empty:
-                return False, "El archivo no contiene filas de datos."
-            df = cls.clean_dataframe(df)
+                err = "El archivo no contiene filas de datos."
+                print(f"[ETL-READ ERROR] {err}", flush=True)
+                return False, err
 
+            df = cls.clean_dataframe(df)
+            print(f"[ETL-READ SUCCESS] DataFrame cargado: {len(df)} filas, Columnas detectadas: {list(df.columns)}", flush=True)
             return True, df
 
         except Exception as e:
+            print(f"[ETL-READ EXCEPTION] Error al leer archivo '{filename}': {str(e)}", flush=True)
+            traceback.print_exc()
             return False, f"Error al leer el archivo tabular: {str(e)}"
 
     @classmethod
@@ -494,17 +522,24 @@ class UploadsService(UsersService):
         """
         validates permissions, verifies file integrity, and dispatches to the corresponding domain service.
         """
+        import traceback
+
+        print(f"[UPLOADS-SERVICE] Validando permisos y despachando modelo: '{model_key}'...", flush=True)
         try:
             self.validate_permission()
         except PermissionsError as e:
+            print(f"[UPLOADS-SERVICE PERMISSION ERROR] {str(e)}", flush=True)
             return ImportResult(success=False, message=str(e))
 
         if not model_key:
-            return ImportResult(success=False, message="No se especificó la entidad o catálogo a importar.")
+            err = "No se especificó la entidad o catálogo a importar."
+            print(f"[UPLOADS-SERVICE ERROR] {err}", flush=True)
+            return ImportResult(success=False, message=err)
 
         # validation
         is_valid, validation_msg = BaseETLHelper.validate_file(file_obj)
         if not is_valid:
+            print(f"[UPLOADS-SERVICE VALIDATION ERROR] {validation_msg}", flush=True)
             return ImportResult(success=False, message=validation_msg)
 
         # registry lookup
@@ -513,15 +548,22 @@ class UploadsService(UsersService):
         importer = importers.get(normalized_key)
 
         if not importer:
+            err = f'No se encontró un procesador de importación registrado para la entidad "{model_key}".'
+            print(f"[UPLOADS-SERVICE ERROR] {err}. Registrados: {list(importers.keys())}", flush=True)
             return ImportResult(
                 success=False,
-                message=f'No se encontró un procesador de importación registrado para la entidad "{model_key}".'
+                message=err
             )
 
         # exec
+        print(f"[UPLOADS-SERVICE] Ejecutando importador para '{normalized_key}'...", flush=True)
         try:
-            return importer(file_obj)
+            res = importer(file_obj)
+            print(f"[UPLOADS-SERVICE] Importador '{normalized_key}' finalizó. Success={res.success}, mensaje='{res.message}'", flush=True)
+            return res
         except Exception as e:
+            print(f"[UPLOADS-SERVICE EXCEPTION] Excepción no controlada en importador '{normalized_key}': {str(e)}", flush=True)
+            traceback.print_exc()
             return ImportResult(
                 success=False,
                 message=f'Ocurrió un error durante la ejecución de la importación: {str(e)}',
