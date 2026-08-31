@@ -74,5 +74,59 @@ class DenueInegi(models.Model):
     def __str__(self):
         return f'{self.id} - {self.unit_name} ({self.municipality_name})'
 
+class CustomerGeoProfile(models.Model):
+    """
+    perfil geográfico y espacial del cliente para analítica en mapser
+    """
+    class GeocodingSource(models.TextChoices):
+        EXACT = 'exact', 'Coordenadas GPS directas'
+        POSTAL_CODE = 'postal_code', 'Centroide de Código Postal'
+        MANUAL = 'manual', 'Ajuste manual en mapa'
+        UNRESOLVED = 'unresolved', 'Sin resolver'
 
-    
+    customer = models.OneToOneField(
+        'customers.Customer',
+        on_delete=models.CASCADE,
+        related_name='geo_profile',
+        help_text='Cliente vinculado a este perfil geográfico'
+    )
+
+    #address and location data
+    street_address = models.CharField(max_length=255, blank=True, default='', help_text='Calle y número exterior/interior')
+    neighborhood = models.CharField(max_length=150, blank=True, default='', help_text='Colonia o asentamiento')
+    municipality = models.CharField(max_length=150, blank=True, default='', help_text='Municipio o alcaldía')
+    state = models.CharField(max_length=100, blank=True, default='', help_text='Entidad federativa')
+    zip_code = models.CharField(max_length=10, blank=True, default='', db_index=True, help_text='Código Postal')
+
+    #geographical coordinates
+    latitude = models.DecimalField(max_digits=12, decimal_places=9, null=True, blank=True, db_index=True, help_text='Latitud')
+    longitude = models.DecimalField(max_digits=12, decimal_places=9, null=True, blank=True, db_index=True, help_text='Longitud')
+
+    #geocoding source
+    geocoding_source = models.CharField(max_length=20, choices=GeocodingSource.choices, default=GeocodingSource.UNRESOLVED, db_index=True, help_text='Fuente / método utilizado para determinar las coordenadas')
+    is_verified = models.BooleanField(default=False, help_text='Indica si la ubicación fue verificada manualmente')
+    last_geocoded_at = models.DateTimeField(null=True, blank=True, help_text='Fecha y hora del último procesamiento geográfico')
+
+    #denue inegi matched
+    matched_denue = models.ForeignKey('DenueInegi', on_delete=models.SET_NULL, null=True, blank=True, related_name='matched_customer_profiles', help_text='Unidad económica del DENUE correspondiente a este cliente')
+
+    class Meta:
+        verbose_name = 'Perfil Geográfico de Cliente'
+        verbose_name_plural = 'Perfiles Geográficos de Clientes'
+        indexes = [
+            models.Index(fields=['latitude', 'longitude']),
+            models.Index(fields=['zip_code', 'geocoding_source']),
+        ]
+
+    def __str__(self):
+        return f'GeoProfile: {self.customer.id.upper()} - {self.customer.name.title()} ({self.geocoding_source})'
+
+    @property
+    def has_coordinates(self) -> bool:
+        return self.latitude is not None and self.longitude is not None
+
+    @property
+    def coordinates(self):
+        if self.has_coordinates:
+            return (float(self.latitude), float(self.longitude))
+        return None
