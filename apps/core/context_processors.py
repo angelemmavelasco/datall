@@ -80,12 +80,14 @@ def last_update_indicator(request):
     }
 
 def get_app_version(request):
-    
+    try:
+        version = AppVersion.objects.filter(
+            is_published=True
+        ).order_by('-release_date', '-id').first()
+    except Exception:
+        version = None
 
-    version = AppVersion.objects.filter(
-        is_published=True
-    ).order_by('-release_date', '-version_number').first()
     return {
-        'app_version': version.version_number if version else None
+        'app_version': version
     }
 
