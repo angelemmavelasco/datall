@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks has_group %}
+
+{% block title %}
+    Mapser: Análisis Geográfico y Penetración de Mercado
+{% endblock %}
+
+{% block extra_head %}
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* Ajuste de Z-Index para controles de Leaflet dentro del layout de Datall */
+        .leaflet-pane {
+            z-index: 10 !important;
+        }
+        .leaflet-top, .leaflet-bottom {
+            z-index: 20 !important;
+        }
+        /* Personalización de Popups para tema oscuro / claro */
+        .dark .leaflet-popup-content-wrapper,
+        .dark .leaflet-popup-tip {
+            background-color: #18181b !important;
+            color: #f4f4f5 !important;
+            border: 1px solid #27272a !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+        }
+        .leaflet-popup-content-wrapper {
+            border-radius: 0.5rem !important;
+            font-family: inherit !important;
+            font-size: 11px !important;
+        }
+    </style>
+{% endblock %}
+
+{% block module_name %}
+    Mapser
+{% endblock %}
+
+{% block module_actions %}
+    <button type="button" onclick="recenterMap()" class="hover:text-hover transition-colors cursor-pointer shrink-0 flex items-center gap-1" title="Centrar mapa">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-locate-fixed"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>Centrar</span>
+    </button>
+
+    <button type="button" onclick="toggleFilters()" class="hover:text-hover transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal"><path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></svg>
+        <span>Filtrar</span>
+    </button>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-4">
+    <!-- Header / Resumen -->
+    <div class="flex items-center justify-between pb-1 border-b border-border">
+        <p class="text-title">
+            Cobertura Comercial vs Universo DENUE (INEGI)
+        </p>
+        <div class="flex items-center gap-3 text-xs">
+            <span class="inline-flex items-center gap-1.5 text-body">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                Clientes actuales
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-body">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                Potencial DENUE
+            </span>
+        </div>
+    </div>
+
+    <!-- KPIs Rápidos de Penetración -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="border border-border rounded bg-container p-3 transition-colors">
+            <span class="text-xs text-muted">Universo DENUE (TAM)</span>
+            <div class="text-lg font-semibold text-title mt-0.5">
+                {{ kpis.denue_total|default:0|intcomma }}
+            </div>
+            <span class="text-[10px] text-muted">Unidades económicas</span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-3 transition-colors">
+            <span class="text-xs text-muted">Clientes Actuales</span>
+            <div class="text-lg font-semibold text-emerald-500 mt-0.5">
+                {{ kpis.customers_total|default:0|intcomma }}
+            </div>
+            <span class="text-[10px] text-muted">{{ kpis.geocoded_customers|default:0 }} geolocalizados</span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-3 transition-colors">
+            <span class="text-xs text-muted">Penetración de Mercado</span>
+            <div class="text-lg font-semibold text-blue-500 mt-0.5">
+                {{ kpis.market_share_percentage|default:"0.0" }}%
+            </div>
+            <span class="text-[10px] text-muted">Porción del pastel</span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-3 transition-colors">
+            <span class="text-xs text-muted">Oportunidades (Gap)</span>
+            <div class="text-lg font-semibold text-amber-500 mt-0.5">
+                {{ kpis.untapped_opportunities|default:0|intcomma }}
+            </div>
+            <span class="text-[10px] text-muted">Prospectos sin atender</span>
+        </div>
+    </div>
+
+    <!-- Contenedor del Mapa -->
+    <div class="relative w-full h-[600px] border border-border rounded-lg overflow-hidden bg-container shadow-sm">
+        <div id="map" class="w-full h-full"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        let map;
+        let tileLayer;
+        let customersLayer;
+        let denueLayer;
+
+        const defaultCenter = [20.5888, -100.3899]; // Centro (ej. Querétaro)
+        const defaultZoom = 12;
+
+        // URLs de CartoDB Basemaps
+        const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+        const lightTileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        const tileAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+        function getActiveTileUrl() {
+            const isDark = document.documentElement.classList.contains('dark') || 
+                           localStorage.getItem('theme') === 'dark';
+            return isDark ? darkTileUrl : lightTileUrl;
+        }
+
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: true,
+                preferCanvas: true
+            }).setView(defaultCenter, defaultZoom);
+
+            // Capa Base CartoDB responsiva al tema
+            tileLayer = L.tileLayer(getActiveTileUrl(), {
+                attribution: tileAttribution,
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
+
+            // Grupos de capas para Clientes y DENUE
+            customersLayer = L.layerGroup().addTo(map);
+            denueLayer = L.layerGroup().addTo(map);
+
+            // Control de Capas
+            const overlayMaps = {
+                '<span class="text-xs text-emerald-500 font-medium">Clientes Actuales</span>': customersLayer,
+                '<span class="text-xs text-amber-500 font-medium">Potencial DENUE</span>': denueLayer
+            };
+            L.control.layers(null, overlayMaps, { position: 'topright', collapsed: false }).addTo(map);
+
+            // Observer para cambios de tema en caliente (Dark / Light)
+            const observer = new MutationObserver(() => {
+                if (tileLayer) {
+                    tileLayer.setUrl(getActiveTileUrl());
+                }
+            });
+            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+            // Fix para cálculo correcto del tamaño de contenedor al renderizar
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 250);
+        }
+
+        function recenterMap() {
+            if (map) {
+                map.setView(defaultCenter, defaultZoom);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initMap);
+    </script>
+{% endblock %}
+
+
