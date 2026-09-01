@@ -1,4 +1,4 @@
-{% load humanize %}
+{% load humanize has_group %}
 
 {% for customer_key, customer_data in pivot_data.items %}
     {% with c_id=forloop.counter %}
@@ -28,7 +28,18 @@
                     </span>
                     <div class="text-right">
                         <span class="text-title font-medium text-xs">$ {{ total.net|default:0|floatformat:2|intcomma }}</span><br>
-                        <span class="text-muted italic text-[10px]">Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%</span>
+                        {% if request.user|has_group:"vendedor" %}
+                            <span class="italic text-[10px] font-medium {% if total.margin >= 43 %}text-emerald-600{% elif total.margin >= 40 %}text-emerald-500{% elif total.margin >= 37 %}text-yellow-500{% elif total.margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                                Mrg: {% if total.margin >= 43 %}Excelente{% elif total.margin >= 40 %}Óptimo{% elif total.margin >= 37 %}Regular{% elif total.margin >= 35 %}Malo{% else %}Muy malo{% endif %}
+                            </span>
+                        {% else %}
+                            <span class="text-muted italic text-[10px]">
+                                Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%
+                                <span class="text-[9px] {% if total.margin >= 43 %}text-emerald-600{% elif total.margin >= 40 %}text-emerald-500{% elif total.margin >= 37 %}text-yellow-500{% elif total.margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                                    {% if total.margin >= 43 %}Excelente{% elif total.margin >= 40 %}Óptimo{% elif total.margin >= 37 %}Regular{% elif total.margin >= 35 %}Malo{% else %}Muy malo{% endif %}
+                                </span>
+                            </span>
+                        {% endif %}
                     </div>
                 </div>
             </td>
@@ -61,7 +72,18 @@
                         </span>
                         <div class="text-right">
                             <span class="text-title font-medium text-xs">$ {{ total.net|default:0|floatformat:2|intcomma }}</span><br>
-                            <span class="text-muted italic text-[10px]">Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%</span>
+                            {% if request.user|has_group:"vendedor" %}
+                                <span class="italic text-[10px] font-medium {% if total.margin >= 43 %}text-emerald-600{% elif total.margin >= 40 %}text-emerald-500{% elif total.margin >= 37 %}text-yellow-500{% elif total.margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                                    Mrg: {% if total.margin >= 43 %}Excelente{% elif total.margin >= 40 %}Óptimo{% elif total.margin >= 37 %}Regular{% elif total.margin >= 35 %}Malo{% else %}Muy malo{% endif %}
+                                </span>
+                            {% else %}
+                                <span class="text-muted italic text-[10px]">
+                                    Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%
+                                    <span class="text-[9px] {% if total.margin >= 43 %}text-emerald-600{% elif total.margin >= 40 %}text-emerald-500{% elif total.margin >= 37 %}text-yellow-500{% elif total.margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                                        {% if total.margin >= 43 %}Excelente{% elif total.margin >= 40 %}Óptimo{% elif total.margin >= 37 %}Regular{% elif total.margin >= 35 %}Malo{% else %}Muy malo{% endif %}
+                                    </span>
+                                </span>
+                            {% endif %}
                         </div>
                     </div>
                 </td>
@@ -94,7 +116,18 @@
                             </span>
                             <div class="text-right">
                                 <span class="text-title font-medium text-xs">$ {{ total.net|default:0|floatformat:2|intcomma }}</span><br>
-                                <span class="text-muted italic text-[10px]">Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%</span>
+                                {% if request.user|has_group:"vendedor" %}
+                                    <span class="italic text-[10px] font-medium {% if total.margin >= 43 %}text-emerald-600{% elif total.margin >= 40 %}text-emerald-500{% elif total.margin >= 37 %}text-yellow-500{% elif total.margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                                        Mrg: {% if total.margin >= 43 %}Excelente{% elif total.margin >= 40 %}Óptimo{% elif total.margin >= 37 %}Regular{% elif total.margin >= 35 %}Malo{% else %}Muy malo{% endif %}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted italic text-[10px]">
+                                        Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%
+                                        <span class="text-[9px] {% if total.margin >= 43 %}text-emerald-600{% elif total.margin >= 40 %}text-emerald-500{% elif total.margin >= 37 %}text-yellow-500{% elif total.margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                                            {% if total.margin >= 43 %}Excelente{% elif total.margin >= 40 %}Óptimo{% elif total.margin >= 37 %}Regular{% elif total.margin >= 35 %}Malo{% else %}Muy malo{% endif %}
+                                        </span>
+                                    </span>
+                                {% endif %}
                             </div>
                         </div>
                     </td>
