@@ -524,7 +524,6 @@ class CustomersService(UsersService):
         print(f"[CUSTOMERS-BULK] Total IDs en archivo: {len(ids_in_df)} | Clientes existentes en BD: {len(existing_customers)}", flush=True)
 
         today = timezone.now().date()
-        yesterday = today - timezone.timedelta(days=1)
 
         active_assignments = {
             assign.customer_id: assign
@@ -584,7 +583,7 @@ class CustomersService(UsersService):
                                 current_assignment.route_id = route_id
                                 assignments_to_update.append(current_assignment)
                             else:
-                                current_assignment.end_date = yesterday
+                                current_assignment.end_date = today
                                 assignments_to_update.append(current_assignment)
                                 assignments_to_create.append(
                                     self.customer_assignment_model(
