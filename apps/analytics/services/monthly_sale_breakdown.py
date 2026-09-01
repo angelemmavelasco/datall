@@ -40,6 +40,30 @@ class MonthlySaleBreakdownService:
         self.year = self.year_int
         self._apply_cleaned_data_filters()
 
+    @property
+    def is_vendor(self) -> bool:
+        """
+        returns true if user belongs to vendedor group.
+        """
+        if not self.user or not hasattr(self.user, 'groups'):
+            return False
+        return self.user.groups.filter(name='vendedor').exists()
+
+    def _get_margin_status(self, margin: Decimal | float) -> str:
+        """
+        evaluates qualitative margin status based on percentage threshold.
+        """
+        if margin >= 43:
+            return 'Excelente'
+        elif margin >= 40:
+            return 'Óptimo'
+        elif margin >= 37:
+            return 'Regular'
+        elif margin >= 35:
+            return 'Malo'
+        else:
+            return 'Muy malo'
+
     def _apply_cleaned_data_filters(self):
         """
         applies filter criteria from cleaned_data to secondary querysets (targets, routes, customers, ars).
@@ -368,9 +392,13 @@ class MonthlySaleBreakdownService:
                     temp_res = {'name': res_name, 'monthly_data': []}
                     for month in range(1, 13):
                         val_display = "0"
+                        item_margin = 0.0
+                        item_status = ""
                         if res_name == 'margen':
                             m_data = margins.get((route_id, month), {'margin': Decimal('0.00'), 'profit': Decimal('0.00'), 'net': Decimal('0.00')})
                             val_display = f"{m_data['margin']:,.2f} %"
+                            item_margin = float(m_data['margin'])
+                            item_status = self._get_margin_status(m_data['margin'])
                             bu_margin_acc[month]['profit'] += m_data['profit']
                             bu_margin_acc[month]['net'] += m_data['net']
                         elif res_name == 'clientes nuevos':
@@ -394,7 +422,11 @@ class MonthlySaleBreakdownService:
                             val_display = str(c_cnt)
                             bu_results_data[res_name][month] += c_cnt
 
-                        temp_res['monthly_data'].append({'value': val_display})
+                        data_entry = {'value': val_display}
+                        if res_name == 'margen':
+                            data_entry['margin'] = item_margin
+                            data_entry['status'] = item_status
+                        temp_res['monthly_data'].append(data_entry)
                     temp_route['results'].append(temp_res)
 
                 temp_bu['routes'].append(temp_route)
@@ -437,6 +469,8 @@ class MonthlySaleBreakdownService:
             for res_name in results_names:
                 temp_res = {'name': res_name, 'monthly_data': []}
                 for month in range(1, 13):
+                    item_margin = 0.0
+                    item_status = ""
                     if res_name == 'margen':
                         t_profit = bu_margin_acc[month]['profit']
                         t_net = bu_margin_acc[month]['net']
@@ -445,6 +479,8 @@ class MonthlySaleBreakdownService:
                         else:
                             margin = Decimal('0.00')
                         val_display = f"{margin:,.2f} %"
+                        item_margin = float(margin)
+                        item_status = self._get_margin_status(margin)
                     elif res_name == 'clientes nuevos':
                         val_display = str(bu_results_data[res_name][month])
                     elif res_name == 'cuentas por cobrar':
@@ -455,7 +491,12 @@ class MonthlySaleBreakdownService:
                         val_display = f"$ {bu_results_data[res_name][month]:,.2f}"
                     elif res_name == 'convenios':
                         val_display = str(bu_results_data[res_name][month])
-                    temp_res['monthly_data'].append({'value': val_display})
+
+                    data_entry = {'value': val_display}
+                    if res_name == 'margen':
+                        data_entry['margin'] = item_margin
+                        data_entry['status'] = item_status
+                    temp_res['monthly_data'].append(data_entry)
                 bu_summary['results'].append(temp_res)
 
             temp_bu['routes'].insert(0, bu_summary)
@@ -493,6 +534,10 @@ class MonthlySaleBreakdownExports:
         WHITE_BOLD = Font(color="FFFFFF", bold=True)
         BLACK_BOLD = Font(color="000000", bold=True)
         BLACK = Font(color="000000")
+        EXCELLENT_FONT = Font(color="059669", bold=True)
+        OPTIMAL_FONT = Font(color="10B981", bold=True)
+        REGULAR_FONT = Font(color="D97706", bold=True)
+        BAD_FONT = Font(color="EF4444", bold=True)
         CENTER = Alignment(horizontal="center", vertical="center")
         LEFT = Alignment(horizontal="left", vertical="center")
 
@@ -597,24 +642,40 @@ class MonthlySaleBreakdownExports:
 
                     col = 3
                     for m_data in res.get('monthly_data', []):
-                        val_str = str(m_data.get('value', '0')).replace('$', '').replace('%', '').replace(',', '').strip()
-                        try:
-                            val = float(val_str)
-                        except ValueError:
-                            val = 0.0
-
                         res_name = res.get('name', '').lower()
-                        num_format = '0'
-                        if 'margen' in res_name:
-                            num_format = '0.00%'
-                            val = val / 100
-                        elif '$' in res_name or 'promociones' in res_name:
-                            num_format = '"$"#,##0.00'
-
                         ws.merge_cells(start_row=current_row, start_column=col, end_row=current_row, end_column=col + 3)
 
-                        c_val = ws.cell(row=current_row, column=col, value=val)
-                        style_cell(c_val, fill_color, BLACK_BOLD, CENTER, num_format)
+                        if 'margen' in res_name:
+                            margin_val = m_data.get('margin', 0.0)
+                            if self.monthly_sale_breakdown_service.is_vendor:
+                                status_str = m_data.get('status') or 'Regular'
+                                if margin_val >= 43:
+                                    status_font = EXCELLENT_FONT
+                                elif margin_val >= 40:
+                                    status_font = OPTIMAL_FONT
+                                elif margin_val >= 37:
+                                    status_font = REGULAR_FONT
+                                else:
+                                    status_font = BAD_FONT
+                                c_val = ws.cell(row=current_row, column=col, value=status_str)
+                                style_cell(c_val, fill_color, status_font, CENTER)
+                            else:
+                                val = float(margin_val) / 100.0 if margin_val is not None else 0.0
+                                c_val = ws.cell(row=current_row, column=col, value=val)
+                                style_cell(c_val, fill_color, BLACK_BOLD, CENTER, '0.00%')
+                        else:
+                            val_str = str(m_data.get('value', '0')).replace('$', '').replace('%', '').replace(',', '').strip()
+                            try:
+                                val = float(val_str)
+                            except ValueError:
+                                val = 0.0
+
+                            num_format = '0'
+                            if '$' in res_name or 'promociones' in res_name:
+                                num_format = '"$"#,##0.00'
+
+                            c_val = ws.cell(row=current_row, column=col, value=val)
+                            style_cell(c_val, fill_color, BLACK_BOLD, CENTER, num_format)
 
                         # outline
                         style_cell(ws.cell(row=current_row, column=col + 1), fill_color)

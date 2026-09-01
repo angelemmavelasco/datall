@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize widget_tweaks %}
+{% load humanize widget_tweaks has_group %}
 
 {% block title %}
     Desglose mensual de ventas
@@ -146,8 +146,21 @@
                                     </td>
 
                                     {% for month_data in result.monthly_data %}
-                                        <td colspan="4" class="p-1 text-center border-r border-b border-border text-title">
-                                            {{ month_data.value }}
+                                        <td colspan="4" class="p-1 text-center border-r border-b border-border text-title font-medium">
+                                            {% if result.name == 'margen' %}
+                                                {% if request.user|has_group:"vendedor" %}
+                                                    <span class="italic font-medium {% if month_data.margin >= 43 %}text-emerald-600{% elif month_data.margin >= 40 %}text-emerald-500{% elif month_data.margin >= 37 %}text-yellow-500{% elif month_data.margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                                                        {{ month_data.status }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-title font-medium">{{ month_data.value }}</span>
+                                                    <span class="text-[10px] ml-1 {% if month_data.margin >= 43 %}text-emerald-600{% elif month_data.margin >= 40 %}text-emerald-500{% elif month_data.margin >= 37 %}text-yellow-500{% elif month_data.margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                                                        {{ month_data.status }}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                {{ month_data.value }}
+                                            {% endif %}
                                         </td>
                                     {% endfor %}
                                 </tr>
