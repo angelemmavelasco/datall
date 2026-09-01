@@ -141,6 +141,8 @@ def customer_kpis_view(request):
     filter_set = CustomerKpisFilter(req_data, queryset=customer_qs, request=request)
     filtered_customers_qs = filter_set.qs
     cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+    if request.user.groups.filter(name='vendedor').exists():
+        cleaned_data['order_contrib'] = 'net_amount'
 
     #set main service
     customer_kpis_service = CustomerKpisService(user=request.user, 

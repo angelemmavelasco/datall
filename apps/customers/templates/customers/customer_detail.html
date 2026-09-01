@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize widget_tweaks %}
+{% load humanize widget_tweaks has_group %}
 
 {% block module_name %}
 Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
@@ -149,6 +149,7 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
         </ul>
     </div>
 
+    {% if not request.user|has_group:"vendedor" %}
     <p class="text-title  pb-2 border-b border-border">Márgenes mínimos por clase de producto</p>
 
     <div class="w-full overflow-auto border border-border rounded bg-container max-h-[60vh] relative @container">
@@ -192,6 +193,7 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
             </tbody>
         </table>
     </div>
+    {% endif %}
 
     <!-- Categorías por consumo y Métricas de comportamiento -->
     {% include 'analytics/customer_kpis/partials/_customer_categories.html' %}

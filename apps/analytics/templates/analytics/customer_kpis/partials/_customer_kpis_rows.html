@@ -1,4 +1,4 @@
-{% load humanize %}
+{% load humanize has_group %}
 {% for customer in customers %}
 <tr class="">
 
@@ -119,6 +119,7 @@
                 $ {{ customer.performance_net_amount|default:0|floatformat:2|intcomma }}
             </span>
         </div>
+        {% if not request.user|has_group:"vendedor" %}
         <div class="flex items-center justify-between gap-2">
             <span class="text-green-600">
                 Utilidad
@@ -127,6 +128,7 @@
                 $ {{ customer.performance_profit|default:0|floatformat:2|intcomma }}
             </span>
         </div>
+        {% endif %}
     </td>
     <td class="p-2 text-title border-r border-border">
         <div class="flex items-center justify-between gap-2">
@@ -137,6 +139,7 @@
                 {{ customer.net_amount|default:0|floatformat:2|intcomma }} %
             </span>
         </div>
+        {% if not request.user|has_group:"vendedor" %}
         <div class="flex items-center justify-between gap-2">
             <span class="text-green-600">
                 Utilidad
@@ -145,6 +148,7 @@
                 {{ customer.profit|default:0|floatformat:2|intcomma }} %
             </span>
         </div>
+        {% endif %}
     </td>
 
     <td class="p-2 text-title border-r border-border">

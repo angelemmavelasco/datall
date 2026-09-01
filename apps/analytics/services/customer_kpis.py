@@ -77,10 +77,21 @@ class CustomerKpisService:
                     continue
         return None
 
+    @property
+    def is_vendor(self) -> bool:
+        """
+        returns true if user belongs to vendedor group.
+        """
+        if not self.user or not hasattr(self.user, 'groups'):
+            return False
+        return self.user.groups.filter(name='vendedor').exists()
+
     def _init_config(self) -> None:
         """init config vars from cleaned_data."""
         config = self.cleaned_data or {}
         self.order_by = config.get('order_contrib') or 'net_amount'
+        if self.is_vendor:
+            self.order_by = 'net_amount'
         self._init_categories()
         self._init_frequency_categories()
         self._init_relevant_classes()
@@ -696,14 +707,16 @@ class CustomerKpisExports:
             cell.alignment = Alignment(horizontal="center" if col_num > 1 else "left")
             cell.border = cell_border
 
+        is_vendor = self.customer_kpis_service.is_vendor
         net_s = float(kpis.get('net_amount') or kpis.get('net_sales') or 0)
         prof_s = float(kpis.get('profit') or 0)
         marg_s = float(kpis.get('margin') or 0) / 100.0
 
         perf_rows = [
             ("Venta Neta", net_s, None),
-            ("Utilidad Bruta", prof_s, marg_s),
         ]
+        if not is_vendor:
+            perf_rows.append(("Utilidad Bruta", prof_s, marg_s))
 
         for idx, (lbl, amt, marg) in enumerate(perf_rows, start_row_perf + 2):
             c_l = ws_summary.cell(row=idx, column=1, value=lbl)
@@ -728,14 +741,40 @@ class CustomerKpisExports:
         ws_customers.views.sheetView[0].showGridLines = True
 
         #superheaders
-        superheaders = [
-            ("Identificación", 1, 4),# Cols 1-4 (A-D)
-            ("Segmentación", 5, 9), # Cols 5-9 (E-I)
-            ("Cobranza", 10, 14),   # Cols 10-14 (J-N)
-            ("Métricas de Consumo", 15, 19), # Cols 15-19 (O-S)
-            (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 20, 26),  # Cols 20-26 (T-Z)
-            (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 27, 38), # Cols 27-38 (AA-AL)
-        ]
+        if is_vendor:
+            superheaders = [
+                ("Identificación", 1, 4),# Cols 1-4 (A-D)
+                ("Segmentación", 5, 9), # Cols 5-9 (E-I)
+                ("Cobranza", 10, 14),   # Cols 10-14 (J-N)
+                ("Métricas de Consumo", 15, 19), # Cols 15-19 (O-S)
+                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 20, 24),  # Cols 20-24 (T-X)
+                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 25, 36), # Cols 25-36 (Y-AJ)
+            ]
+            contrib_headers = [
+                "Venta Neta Periodo",
+                "% Contribución Venta Neta",
+                "% Contribución Acumulada",
+                "Clientes Acumulados",
+                "% Cartera Acumulada",
+            ]
+        else:
+            superheaders = [
+                ("Identificación", 1, 4),# Cols 1-4 (A-D)
+                ("Segmentación", 5, 9), # Cols 5-9 (E-I)
+                ("Cobranza", 10, 14),   # Cols 10-14 (J-N)
+                ("Métricas de Consumo", 15, 19), # Cols 15-19 (O-S)
+                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 20, 26),  # Cols 20-26 (T-Z)
+                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 27, 38), # Cols 27-38 (AA-AL)
+            ]
+            contrib_headers = [
+                "Venta Neta Periodo",
+                "Utilidad Periodo",
+                "% Contribución Venta Neta",
+                "% Contribución Utilidad",
+                "% Contribución Acumulada",
+                "Clientes Acumulados",
+                "% Cartera Acumulada",
+            ]
 
         for title, start_col, end_col in superheaders:
             if start_col == end_col:
@@ -780,15 +819,9 @@ class CustomerKpisExports:
             "Promedio Mensual Año Previo",
             "Promedio Mensual Año Actual",
             "Promedio Último Trimestre",
-            # contrib (20-26)
-            "Venta Neta Periodo",
-            "Utilidad Periodo",
-            "% Contribución Venta Neta",
-            "% Contribución Utilidad",
-            "% Contribución Acumulada",
-            "Clientes Acumulados",
-            "% Cartera Acumulada",
-            # monthly (27-38)
+            # contrib
+            *contrib_headers,
+            # monthly
             *[f"Venta {m}" for m in month_names]
         ]
 
@@ -841,6 +874,25 @@ class CustomerKpisExports:
             for m_num in range(1, 13):
                 monthly_sales.append(m_dict.get(m_num, 0.0))
 
+            if is_vendor:
+                contrib_values = [
+                    (perf_net, currency_format, "right"),
+                    (contrib_net_pct, pct_format, "right"),
+                    (cumuled_contrib, pct_format, "right"),
+                    (cumuled_count, int_format, "right"),
+                    (cumuled_pct, pct_format, "right"),
+                ]
+            else:
+                contrib_values = [
+                    (perf_net, currency_format, "right"),
+                    (perf_profit, currency_format, "right"),
+                    (contrib_net_pct, pct_format, "right"),
+                    (contrib_profit_pct, pct_format, "right"),
+                    (cumuled_contrib, pct_format, "right"),
+                    (cumuled_count, int_format, "right"),
+                    (cumuled_pct, pct_format, "right"),
+                ]
+
             row_values = [
                 # ids
                 (cid, '@', "center"),
@@ -866,13 +918,7 @@ class CustomerKpisExports:
                 (curr_y_avg, currency_format, "right"),
                 (prev_q_avg, currency_format, "right"),
                 # contrib
-                (perf_net, currency_format, "right"),
-                (perf_profit, currency_format, "right"),
-                (contrib_net_pct, pct_format, "right"),
-                (contrib_profit_pct, pct_format, "right"),
-                (cumuled_contrib, pct_format, "right"),
-                (cumuled_count, int_format, "right"),
-                (cumuled_pct, pct_format, "right"),
+                *contrib_values,
                 # monthly
                 *[(m_sale, currency_format, "right") for m_sale in monthly_sales]
             ]

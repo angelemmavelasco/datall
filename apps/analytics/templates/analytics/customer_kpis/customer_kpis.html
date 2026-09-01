@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize widget_tweaks %}
+{% load humanize widget_tweaks has_group %}
 
 {% block title %}
 KPIs por Clientes
@@ -84,10 +84,10 @@ KPIs por Clientes
 
             <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
                 <span class="text-sm text-title">
-                    {% if order_contrib == 'profit' %}Utilidad{% else %}Venta neta{% endif %}
+                    {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}Utilidad{% else %}Venta neta{% endif %}
                 </span><br>
-                <span class="text-xl {% if order_contrib == 'profit' %}text-emerald-500{% else %}text-blue-500{% endif %}">
-                    $ {% if order_contrib == 'profit' %}{{ kpis.profit|default:0|floatformat:2|intcomma }}{% else %}{{ kpis.net_amount|default:0|floatformat:2|intcomma }}{% endif %}
+                <span class="text-xl {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}text-emerald-500{% else %}text-blue-500{% endif %}">
+                    $ {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}{{ kpis.profit|default:0|floatformat:2|intcomma }}{% else %}{{ kpis.net_amount|default:0|floatformat:2|intcomma }}{% endif %}
                 </span>
             </a>
 
@@ -146,6 +146,7 @@ KPIs por Clientes
                                             <span class="text-[10px] text-muted font-mono">Criterio & Periodo</span>
                                         </div>
 
+                                        {% if not request.user|has_group:"vendedor" %}
                                         <div class="flex flex-col gap-1">
                                             <label class="text-[11px] font-semibold text-title">Ordenar y evaluar por:</label>
                                             <div class="grid grid-cols-2 gap-2">
@@ -159,6 +160,9 @@ KPIs por Clientes
                                                 </label>
                                             </div>
                                         </div>
+                                        {% else %}
+                                        <input type="hidden" name="order_contrib" value="net_amount">
+                                        {% endif %}
 
                                         <div class="flex flex-col gap-1">
                                             <label class="text-[11px] font-semibold text-title">Periodo de análisis:</label>
