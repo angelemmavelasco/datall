@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize %}
-{% load widget_tweaks %}
+{% load humanize widget_tweaks has_group %}
 
 {% block title %}
 {% if updating %}
@@ -217,7 +216,8 @@ Nuevo cliente
         {% endfor %}
     </div>
 
-    <!-- Customer Class Margins Formset -->
+    {% if not request.user|has_group:"vendedor" %}
+    <!-- custoemr margins -->
     <div class="flex justify-between items-center mt-4">
         <p class="text-title text-sm">Márgenes por clase de producto</p>
         <button type="button" onclick="addForm('class_margins')" class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer">
@@ -277,6 +277,7 @@ Nuevo cliente
             </div>
         {% endfor %}
     </div>
+    {% endif %}
 
     <div class="flex flex-col gap-2 mt-4">
         <button type="submit"
@@ -319,6 +320,7 @@ Nuevo cliente
     </div>
 </template>
 
+{% if not request.user|has_group:"vendedor" %}
 <template id="class_margins-empty-form">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-start bg-container p-2 rounded border border-border mt-4">
         {{ class_margins_formset.empty_form.id }}
@@ -336,6 +338,7 @@ Nuevo cliente
         </div>
     </div>
 </template>
+{% endif %}
 
 <script>
 function addForm(prefix) {

@@ -50,7 +50,7 @@ def product_list_view(request):
         'page_obj': page_obj,
         'available_actions': available_actions,
         'filter': product_filter,
-        'can_view_cost': service.has_full_access,
+        'can_view_cost': service.has_full_access and not request.user.groups.filter(name='vendedor').exists(),
     }
 
     if request.htmx:
@@ -82,7 +82,7 @@ def product_detail_view(request, pk: str):
 
     context = {
         'product': product,
-        'can_view_cost': service.has_full_access,
+        'can_view_cost': service.has_full_access and not request.user.groups.filter(name='vendedor').exists(),
         'available_actions': available_actions,
     }
     return render(request, template, context)
