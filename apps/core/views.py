@@ -375,27 +375,31 @@ def upload_options_list_view(request):
         }
         title_label = catalog_titles.get(model_key, model_key.title())
 
-        report = GeneratedReport.objects.create(
-            user=request.user,
-            title=f"Importación: {title_label}",
-            module_name="uploads",
-            file=file_obj,
-            file_size=file_obj.size,
-            status=GeneratedReport.Status.PENDING,
-            filters={'model_key': model_key, 'filename': getattr(file_obj, 'name', '')},
-        )
+        try:
+            report = GeneratedReport.objects.create(
+                user=request.user,
+                title=f"Importación: {title_label}",
+                module_name="uploads",
+                file=file_obj,
+                file_size=file_obj.size,
+                status=GeneratedReport.Status.PENDING,
+                filters={'model_key': model_key, 'filename': getattr(file_obj, 'name', '')},
+            )
 
-        async_task(
-            'apps.core.tasks.process_bulk_upload_task',
-            report.id,
-            model_key,
-            request.user.id,
-        )
+            async_task(
+                'apps.core.tasks.process_bulk_upload_task',
+                report.id,
+                model_key,
+                request.user.id,
+            )
 
-        messages.info(
-            request,
-            f"El archivo para {title_label} se ha cargado correctamente y se está procesando en segundo plano. Puedes consultar el progreso y los resultados en 'Mis Archivos'."
-        )
+            messages.info(
+                request,
+                f"El archivo para {title_label} se ha cargado correctamente y se está procesando en segundo plano. Puedes consultar el progreso y los resultados en 'Mis Archivos'."
+            )
+        except Exception as e:
+            messages.error(request, f"Error al iniciar el procesamiento del archivo: {str(e)}")
+
         return redirect('core:upload_options_list_view')
 
     upload_options = [
