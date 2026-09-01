@@ -15,12 +15,11 @@
                         Venta neta</th>
                     <th class="w-30 p-2 text-center sticky top-0  border-b border-border z-10 bg-container">
                         Venta total</th>
-                    <th class="w-20 p-2 text-center sticky top-0  border-b border-border z-10 bg-container">
+                    <th class="w-24 p-2 text-center sticky top-0  border-b border-border z-10 bg-container">
                         Margen</th>
                 </tr>
             </thead>
 
-            <tbody>
             <tbody>
                 {% for product in product_table %}
                 <tr>
@@ -28,27 +27,36 @@
                     <td class="p-2 text-right">{{ product.total_units|floatformat:0|intcomma }}</td>
                     <td class="p-2 text-right">$ {{ product.total_net_sale|floatformat:2|intcomma }}</td>
                     <td class="p-2 text-right">$ {{ product.total_gross_sale|floatformat:2|intcomma }}</td>
-                    <td class="p-2 flex justify-center items-center font-medium
-                        {% if product.total_margin >= 43 %}
-                        text-emerald-600
-                        {% elif product.total_margin >= 40 %}
-                        text-emerald-400
-                        {% elif product.total_margin >= 37 %}
-                        text-yellow-500
-                        {% elif product.total_margin >= 35 %}
-                        text-orange-500
-                        {% else %}
-                        text-red-500
-                        {% endif %}
-                        ">
+                    <td class="p-2 text-center whitespace-nowrap font-medium">
                         {% if request.user|has_group:"vendedor" %}
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                            stroke-linejoin="round" class="lucide lucide-circle-icon lucide-circle">
-                            <circle cx="12" cy="12" r="10" />
-                        </svg>
+                            {% if product.total_margin >= 43 %}
+                                <span class="text-emerald-600">Excelente</span>
+                            {% elif product.total_margin >= 40 %}
+                                <span class="text-emerald-500">Óptimo</span>
+                            {% elif product.total_margin >= 37 %}
+                                <span class="text-yellow-500">Regular</span>
+                            {% elif product.total_margin >= 35 %}
+                                <span class="text-red-500">Malo</span>
+                            {% else %}
+                                <span class="text-red-500">Muy malo</span>
+                            {% endif %}
                         {% else %}
-                        {{ product.total_margin|floatformat:2|intcomma }}%
+                            <span class="text-title">
+                                {{ product.total_margin|floatformat:2|intcomma }}%
+                                <span class="text-[11px] block">
+                                    {% if product.total_margin >= 43 %}
+                                        <span class="text-emerald-600">Excelente</span>
+                                    {% elif product.total_margin >= 40 %}
+                                        <span class="text-emerald-500">Óptimo</span>
+                                    {% elif product.total_margin >= 37 %}
+                                        <span class="text-yellow-500">Regular</span>
+                                    {% elif product.total_margin >= 35 %}
+                                        <span class="text-red-500">Malo</span>
+                                    {% else %}
+                                        <span class="text-red-500">Muy malo</span>
+                                    {% endif %}
+                                </span>
+                            </span>
                         {% endif %}
                     </td>
 
