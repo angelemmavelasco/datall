@@ -50,6 +50,9 @@ urlpatterns = [
     path('reports/indicator/', reports_indicator_view, name='reports_indicator_view'),
     path('reports/<int:pk>/download/', report_download_view, name='report_download_view'),
 
+    # App Versions / Changelog
+    path('versions/', app_version_list_view, name='app_version_list_view'),
+
     # Error preview routes
     path('403/', error_403_view, name='error_403'),
     path('404/', error_404_view, name='error_404'),

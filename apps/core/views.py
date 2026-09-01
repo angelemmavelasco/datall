@@ -13,7 +13,7 @@ from django.utils import timezone
 from django_q.tasks import async_task
 from .filters import UserFilter
 from .forms import UserForm
-from .models import User, GeneratedReport, Reference
+from .models import User, GeneratedReport, Reference, AppVersion
 
 from .services.users import UsersService, UsersKPIsService, ServiceError, UserNotFoundError, UserPermissionError
 
@@ -570,4 +570,13 @@ def user_options_view(request):
         }
     )
 
+@login_required
+def app_version_list_view(request):
+    template = 'core/app_versions/app_version_list.html'
+    if request.user.is_staff or request.user.is_superuser:
+        versions_qs = AppVersion.objects.all()
+    else:
+        versions_qs = AppVersion.objects.filter(is_published=True)
 
+    app_versions = versions_qs.order_by('-release_date', '-id')
+    return render(request, template, {'app_versions': app_versions})

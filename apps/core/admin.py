@@ -1,7 +1,11 @@
-from django.contrib import admin
+import logging
+import traceback
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.utils.safestring import mark_safe
 from .models import User, Module, Submodule, Reference, AppVersion
+
+logger = logging.getLogger(__name__)
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
@@ -98,3 +102,29 @@ class AppVersionAdmin(admin.ModelAdmin):
     list_filter = ('release_type', 'is_published', 'release_date')
     search_fields = ('version_number', 'title', 'description')
     list_editable = ('is_published',)
+
+    def save_model(self, request, obj, form, change):
+        try:
+            super().save_model(request, obj, form, change)
+        except Exception as e:
+            tb = traceback.format_exc()
+            logger.critical("Error in AppVersion save_model:\n%s", tb)
+            print(f"\n[DATALL APP_VERSION SAVE ERROR]\n{tb}\n", flush=True)
+            messages.error(request, f"Error en save_model: {type(e).__name__} - {str(e)}")
+            raise
+
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        try:
+            return super().changeform_view(request, object_id, form_url, extra_context)
+        except Exception as e:
+            tb = traceback.format_exc()
+            logger.critical("Error in AppVersion changeform_view:\n%s", tb)
+            print(f"\n[DATALL APP_VERSION CHANGEFORM ERROR]\n{tb}\n", flush=True)
+            messages.error(request, f"Error al procesar versión: {type(e).__name__}: {str(e)}")
+            if request.method == 'POST':
+                try:
+                    request.method = 'GET'
+                    return super().changeform_view(request, object_id, form_url, extra_context)
+                except Exception:
+                    pass
+            raise

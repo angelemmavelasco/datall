@@ -507,9 +507,17 @@
         <ul class="flex flex-col md:flex-row items-center justify-center gap-4 p-2 text-title">
             <li>Soporte</li>
             {% if app_version %}
-            <li>Versión {{ app_version.version_number }}</li>
+            <li>
+                <a href="{% url 'core:app_version_list_view' %}" class="hover:text-hover underline transition-colors" title="Ver historial de versiones">
+                    Versión {{ app_version.version_number }}
+                </a>
+            </li>
             {% else %}
-            <li>Versión 1.0</li>
+            <li>
+                <a href="{% url 'core:app_version_list_view' %}" class="hover:text-hover underline transition-colors" title="Ver historial de versiones">
+                    Versiones
+                </a>
+            </li>
             {% endif %}
             <li>Datall 2026. Todos los derechos reservados</li>
         </ul>
