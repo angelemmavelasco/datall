@@ -332,4 +332,9 @@ class SaleTransactionsStats:
         agg['total_profit'] = agg['total_profit'] or Decimal('0.00')
         agg['avg_ticket'] = agg['avg_ticket'] or Decimal('0.00')
 
+        if agg['total_net_amount'] > 0:
+            agg['total_margin'] = (agg['total_profit'] / agg['total_net_amount']) * Decimal('100.00')
+        else:
+            agg['total_margin'] = Decimal('0.00')
+
         return agg

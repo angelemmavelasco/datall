@@ -435,7 +435,7 @@ def sale_transaction_list_view(request):
         'selected_customer_ids': selected_customer_ids,
         'initial_products': initial_products,
         'selected_product_ids': selected_product_ids,
-        'can_view_cost': service.has_full_access,
+        'can_view_cost': service.has_full_access and not request.user.groups.filter(name='vendedor').exists(),
     }
 
     if request.htmx:
@@ -462,7 +462,7 @@ def sale_transaction_detail_view(request, pk: str):
 
     context = {
         'transaction': transaction_obj,
-        'can_view_cost': service.has_full_access,
+        'can_view_cost': service.has_full_access and not request.user.groups.filter(name='vendedor').exists(),
     }
     return render(request, template, context)
 

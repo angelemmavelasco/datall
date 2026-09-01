@@ -1,4 +1,4 @@
-{% load humanize %}
+{% load humanize has_group %}
 
 <div class="flex flex-col w-full gap-4" id="sale-transaction-list-content">
     <p class="text-title pb-1 border-b border-border">
@@ -52,6 +52,24 @@
                 </span>
             </a>
         {% endif %}
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Margen
+            </span><br>
+            {% if request.user|has_group:"vendedor" %}
+                <span class="text-xl font-medium {% if kpis.total_margin >= 43 %}text-emerald-600{% elif kpis.total_margin >= 40 %}text-emerald-500{% elif kpis.total_margin >= 37 %}text-yellow-500{% elif kpis.total_margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                    {% if kpis.total_margin >= 43 %}Excelente{% elif kpis.total_margin >= 40 %}Óptimo{% elif kpis.total_margin >= 37 %}Regular{% elif kpis.total_margin >= 35 %}Malo{% else %}Muy malo{% endif %}
+                </span>
+            {% else %}
+                <span class="text-xl font-medium {% if kpis.total_margin >= 43 %}text-emerald-600{% elif kpis.total_margin >= 40 %}text-emerald-500{% elif kpis.total_margin >= 37 %}text-yellow-500{% elif kpis.total_margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                    {{ kpis.total_margin|default:0|floatformat:2|intcomma }}%
+                </span>
+                <span class="text-xs ml-1 font-medium {% if kpis.total_margin >= 43 %}text-emerald-600{% elif kpis.total_margin >= 40 %}text-emerald-500{% elif kpis.total_margin >= 37 %}text-yellow-500{% elif kpis.total_margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                    {% if kpis.total_margin >= 43 %}Excelente{% elif kpis.total_margin >= 40 %}Óptimo{% elif kpis.total_margin >= 37 %}Regular{% elif kpis.total_margin >= 35 %}Malo{% else %}Muy malo{% endif %}
+                </span>
+            {% endif %}
+        </a>
 
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
             <span class="text-sm text-title">
@@ -117,6 +135,10 @@
                             Utilidad
                         </th>
                     {% endif %}
+
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Margen
+                    </th>
                 </tr>
             </thead>
 

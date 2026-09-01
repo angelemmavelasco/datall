@@ -141,6 +141,15 @@ class SaleTransaction(models.Model):
             f"Cedis: {self.warehouse_id} | Ruta: {self.route_id}"
         )
 
+    @property
+    def margin(self) -> Decimal:
+        """
+        calculates margin percentage.
+        """
+        if self.net_amount and self.net_amount > 0:
+            return (self.profit / self.net_amount) * Decimal('100.00')
+        return Decimal('0.00')
+
 
 class SaleTarget(models.Model):
     period = models.DateField()

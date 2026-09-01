@@ -1,4 +1,4 @@
-{% load humanize %}
+{% load humanize has_group %}
 
 {% for transaction in transactions %}
     <tr>
@@ -57,10 +57,23 @@
         </td>
 
         {% if can_view_cost %}
-            <td class="p-2 truncate text-right font-mono text-xs font-medium text-emerald-500">
+            <td class="p-2 truncate text-right font-mono text-xs font-medium text-teal-500">
                 ${{ transaction.profit|default:0|floatformat:2|intcomma }}
             </td>
         {% endif %}
+
+        <td class="p-2 truncate text-center text-xs font-medium">
+            {% if request.user|has_group:"vendedor" %}
+                <span class="italic font-medium {% if transaction.margin >= 43 %}text-emerald-600{% elif transaction.margin >= 40 %}text-emerald-500{% elif transaction.margin >= 37 %}text-yellow-500{% elif transaction.margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                    {% if transaction.margin >= 43 %}Excelente{% elif transaction.margin >= 40 %}Óptimo{% elif transaction.margin >= 37 %}Regular{% elif transaction.margin >= 35 %}Malo{% else %}Muy malo{% endif %}
+                </span>
+            {% else %}
+                <span class="font-mono">{{ transaction.margin|default:0|floatformat:2 }}%</span>
+                <span class="text-[10px] ml-1 {% if transaction.margin >= 43 %}text-emerald-600{% elif transaction.margin >= 40 %}text-emerald-500{% elif transaction.margin >= 37 %}text-yellow-500{% elif transaction.margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                    {% if transaction.margin >= 43 %}Excelente{% elif transaction.margin >= 40 %}Óptimo{% elif transaction.margin >= 37 %}Regular{% elif transaction.margin >= 35 %}Malo{% else %}Muy malo{% endif %}
+                </span>
+            {% endif %}
+        </td>
     </tr>
 {% empty %}
     <tr>

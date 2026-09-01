@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize %}
+{% load humanize has_group %}
 
 {% block module_name %}
 Transacción: {{ transaction.doc_id|upper }} ({{ transaction.sale_date|date:'d M Y' }})
@@ -125,6 +125,20 @@ Transacción: {{ transaction.doc_id|upper }}
                 ${{ transaction.profit|default:0|floatformat:2|intcomma }}
             </div>
         {% endif %}
+
+        <span class="text-title">Margen</span>
+        <div class="w-full text-body flex items-center font-medium">
+            {% if request.user|has_group:"vendedor" %}
+                <span class="italic font-medium {% if transaction.margin >= 43 %}text-emerald-600{% elif transaction.margin >= 40 %}text-emerald-500{% elif transaction.margin >= 37 %}text-yellow-500{% elif transaction.margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                    {% if transaction.margin >= 43 %}Excelente{% elif transaction.margin >= 40 %}Óptimo{% elif transaction.margin >= 37 %}Regular{% elif transaction.margin >= 35 %}Malo{% else %}Muy malo{% endif %}
+                </span>
+            {% else %}
+                <span class="font-mono mr-2">{{ transaction.margin|default:0|floatformat:2 }}%</span>
+                <span class="text-xs {% if transaction.margin >= 43 %}text-emerald-600{% elif transaction.margin >= 40 %}text-emerald-500{% elif transaction.margin >= 37 %}text-yellow-500{% elif transaction.margin >= 35 %}text-red-500{% else %}text-red-500{% endif %}">
+                    {% if transaction.margin >= 43 %}Excelente{% elif transaction.margin >= 40 %}Óptimo{% elif transaction.margin >= 37 %}Regular{% elif transaction.margin >= 35 %}Malo{% else %}Muy malo{% endif %}
+                </span>
+            {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}
