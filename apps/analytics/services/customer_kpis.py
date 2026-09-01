@@ -658,7 +658,7 @@ class CustomerKpisExports:
         ws_summary.cell(row=2, column=1, value=f"Generado el: {now_str} | Periodo de análisis: {d_start_str} al {d_end_str} | Criterio de evaluación: {criterio_str}").font = subtitle_font
 
         #sect 1, gen indicators
-        ws_summary.cell(row=4, column=1, value="1. Indicadores Generales de Cartera").font = section_font
+        ws_summary.cell(row=4, column=1, value="Indicadores Generales de Cartera").font = section_font
         general_headers = ["Indicador", "Clientes", "% de Cartera"]
         for col_num, h_text in enumerate(general_headers, 1):
             cell = ws_summary.cell(row=5, column=col_num, value=h_text)
@@ -698,7 +698,7 @@ class CustomerKpisExports:
 
         #gen 2, performance, net and profit 
         start_row_perf = 11
-        ws_summary.cell(row=start_row_perf, column=1, value=f"2. Rendimiento del Periodo ({d_start_str} al {d_end_str})").font = section_font
+        ws_summary.cell(row=start_row_perf, column=1, value=f"Rendimiento del Periodo ({d_start_str} al {d_end_str})").font = section_font
         perf_headers = ["Concepto", "Monto Total", "% Margen"]
         for col_num, h_text in enumerate(perf_headers, 1):
             cell = ws_summary.cell(row=start_row_perf + 1, column=col_num, value=h_text)
