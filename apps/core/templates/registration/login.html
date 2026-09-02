@@ -245,8 +245,11 @@
         </div>
 
 
-        <form id="login-form" class="flex flex-col gap-4 w-3/4 items-center justify-center" method="POST" action="{% url 'core:login' %}">
+        <form id="login-form" class="flex flex-col gap-4 w-3/4 items-center justify-center" method="POST" action="{% url 'core:login' %}{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}">
             {% csrf_token %}
+            {% if next or request.GET.next %}
+            <input type="hidden" name="next" value="{{ next|default:request.GET.next }}">
+            {% endif %}
 
             {% if messages %}
             <div class="w-full flex flex-col gap-2">
