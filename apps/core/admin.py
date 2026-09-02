@@ -3,7 +3,7 @@ import traceback
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.utils.safestring import mark_safe
-from .models import User, Module, Submodule, Reference, AppVersion, SupportCategory, SupportArticle
+from .models import User, Module, Submodule, Reference, AppVersion, SupportCategory, SupportArticle, ActivityLog
 
 logger = logging.getLogger(__name__)
 
@@ -148,3 +148,15 @@ class SupportArticleAdmin(admin.ModelAdmin):
     list_editable = ('order', 'is_published', 'is_highlighted')
     search_fields = ('title', 'content', 'category__name')
     list_select_related = ('category',)
+
+
+@admin.register(ActivityLog)
+class ActivityLogAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'user', 'action', 'view_name', 'path', 'http_method', 'status_code', 'result', 'duration_ms', 'ip_address')
+    list_filter = ('action', 'result', 'http_method', 'status_code', 'created_at')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'view_name', 'path', 'ip_address')
+    readonly_fields = ('user', 'path', 'view_name', 'http_method', 'submodule', 'action', 'result', 'status_code', 'content_type', 'object_id', 'params', 'changes', 'ip_address', 'user_agent', 'duration_ms', 'created_at')
+    ordering = ('-created_at',)
+
+    def has_add_permission(self, request):
+        return False

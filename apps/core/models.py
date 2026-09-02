@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, Group
 from django.core.validators import RegexValidator
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey
 from dateutil.relativedelta import relativedelta
 from datetime import date
 
@@ -277,3 +278,56 @@ class SupportArticle(models.Model):
 
     def __str__(self):
         return f"{self.category.name} - {self.title}"
+
+
+class ActivityLog(models.Model):
+    class Action(models.TextChoices):
+        VIEW = 'view', 'Visualización'
+        FILTER = 'filter', 'Filtrado / Búsqueda'
+        CREATE = 'create', 'Creación'
+        UPDATE = 'update', 'Actualización'
+        DELETE = 'delete', 'Eliminación'
+        EXPORT = 'export', 'Exportación'
+        IMPORT = 'import', 'Importación'
+        LOGIN = 'login', 'Inicio de sesión'
+        LOGOUT = 'logout', 'Cierre de sesión'
+
+    class Result(models.TextChoices):
+        SUCCESS = 'success', 'Éxito'
+        WARNING = 'warning', 'Advertencia'
+        ERROR = 'error', 'Error'
+
+    user = models.ForeignKey('User',on_delete=models.SET_NULL,null=True,blank=True,related_name='activity_logs',help_text="Usuario que realizó la acción")
+    path = models.CharField(max_length=500, help_text="Ruta URL solicitada (ej: /analytics/target-achievement/)")
+    view_name = models.CharField(max_length=200, blank=True, default='', help_text="Nombre de la ruta/vista Django (ej: analytics:target_achievement_view)")
+    http_method = models.CharField(max_length=10, default='GET', help_text="Método HTTP (GET, POST, etc.)")
+    submodule = models.ForeignKey('Submodule', on_delete=models.SET_NULL, null=True, blank=True, related_name='activity_logs')
+    action = models.CharField(max_length=50, choices=Action.choices, default=Action.VIEW)
+    result = models.CharField(max_length=20, choices=Result.choices, default=Result.SUCCESS)
+    status_code = models.IntegerField(null=True, blank=True, help_text="Código de respuesta HTTP (ej: 200, 302, 500)")
+    # description = models.CharField(max_length=500, blank=True, default='', help_text="Descripción legible de la acción")
+    content_type = models.ForeignKey(ContentType, on_delete=models.SET_NULL, null=True, blank=True)
+    object_id = models.CharField(max_length=255, null=True, blank=True)
+    content_object = GenericForeignKey('content_type', 'object_id')
+    params = models.JSONField(default=dict, blank=True, help_text="Filtros GET o parámetros de búsqueda aplicados")
+    changes = models.JSONField(default=dict, blank=True, help_text="Valores anteriores vs nuevos o detalles del error")
+    ip_address = models.GenericIPAddressField(null=True, blank=True, help_text="Dirección IP del cliente")
+    user_agent = models.TextField(blank=True, default='', help_text="Navegador o dispositivo")
+    duration_ms = models.IntegerField(null=True, blank=True, help_text="Tiempo de respuesta en milisegundos")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Registro de Actividad'
+        verbose_name_plural = 'Registros de Actividad'
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['view_name', '-created_at']),
+            models.Index(fields=['action', '-created_at']),
+            models.Index(fields=['content_type', 'object_id']),
+        ]
+
+    def __str__(self):
+        user_str = self.user.username if self.user else "Anónimo"
+        return f"[{self.get_action_display()}] {user_str} en {self.view_name or self.path} ({self.created_at.strftime('%Y-%m-%d %H:%M')})"
+
