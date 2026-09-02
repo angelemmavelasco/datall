@@ -493,6 +493,12 @@
   .ml-auto {
     margin-left: auto;
   }
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
   .block {
     display: block;
   }
@@ -1473,6 +1479,9 @@
       background-color: color-mix(in oklab, var(--theme-page) 80%, transparent);
     }
   }
+  .bg-purple-500 {
+    background-color: var(--color-purple-500);
+  }
   .bg-purple-500\/10 {
     background-color: color-mix(in srgb, oklch(62.7% 0.265 303.9) 10%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -2119,10 +2128,25 @@
   .\[content-visibility\:auto\] {
     content-visibility: auto;
   }
+  .group-open\:block:is(:where(.group):is([open], :popover-open, :open) *) {
+    display: block;
+  }
+  .group-open\:hidden:is(:where(.group):is([open], :popover-open, :open) *) {
+    display: none;
+  }
+  .group-open\:inline:is(:where(.group):is([open], :popover-open, :open) *) {
+    display: inline;
+  }
   .group-open\:rotate-180:is(:where(.group):is([open], :popover-open, :open) *) {
     rotate: 180deg;
   }
   @media (hover: hover) {
+    .group-hover\:scale-10:is(:where(.group):hover *) {
+      --tw-scale-x: 10%;
+      --tw-scale-y: 10%;
+      --tw-scale-z: 10%;
+      scale: var(--tw-scale-x) var(--tw-scale-y);
+    }
     .group-hover\:scale-105:is(:where(.group):hover *) {
       --tw-scale-x: 105%;
       --tw-scale-y: 105%;
@@ -2133,6 +2157,12 @@
       --tw-scale-x: 110%;
       --tw-scale-y: 110%;
       --tw-scale-z: 110%;
+      scale: var(--tw-scale-x) var(--tw-scale-y);
+    }
+    .group-hover\:scale-130:is(:where(.group):hover *) {
+      --tw-scale-x: 130%;
+      --tw-scale-y: 130%;
+      --tw-scale-z: 130%;
       scale: var(--tw-scale-x) var(--tw-scale-y);
     }
     .group-hover\:text-hover:is(:where(.group):hover *) {
