@@ -117,6 +117,25 @@ class User(AbstractUser):
     def __str__(self):
         return f"{self.first_name} {self.last_name} - {self.username}"
 
+    @property
+    def missing_profile_fields(self):
+        missing = []
+        if not self.first_name or not self.first_name.strip() or not self.last_name or not self.last_name.strip():
+            missing.append("Nombre y primer apellido")
+        if not self.email or not self.email.strip():
+            missing.append("Correo electrónico (para restablecer tu contraseña)")
+        if not self.gender:
+            missing.append("Sexo / Género")
+        if not self.birth_date:
+            missing.append("Fecha de nacimiento")
+        if not self.phone or not self.phone.strip():
+            missing.append("Teléfono de contacto")
+        return missing
+
+    @property
+    def is_profile_incomplete(self):
+        return len(self.missing_profile_fields) > 0
+
     class Meta:
         verbose_name = 'Usuario'
         verbose_name_plural = 'Usuarios'
