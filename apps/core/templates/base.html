@@ -505,7 +505,11 @@
 
     <footer class="bg-container border-t border-border mt-auto w-full">
         <ul class="flex flex-col md:flex-row items-center justify-center gap-4 p-2 text-title">
-            <li>Soporte</li>
+            <li>
+                <a href="{% url 'core:user_docs_view' %}" class="hover:text-hover underline transition-colors" title="Soporte y documentación">
+                    Soporte
+                </a>
+            </li>
             {% if app_version %}
             <li>
                 <a href="{% url 'core:app_version_list_view' %}" class="hover:text-hover underline transition-colors" title="Ver historial de versiones">

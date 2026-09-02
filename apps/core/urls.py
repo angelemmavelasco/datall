@@ -53,6 +53,9 @@ urlpatterns = [
     # App Versions / Changelog
     path('versions/', app_version_list_view, name='app_version_list_view'),
 
+    # User Docs / Support
+    path('docs/', user_docs_view, name='user_docs_view'),
+
     # Error preview routes
     path('403/', error_403_view, name='error_403'),
     path('404/', error_404_view, name='error_404'),

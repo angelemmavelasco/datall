@@ -1,0 +1,492 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks has_group %}
+
+{% block module_name %}
+Soporte y documentación
+{% endblock %}
+
+{% block title %}
+Soporte y documentación
+{% endblock %}
+
+{% block module_actions %}
+{% if request.user.is_staff %}
+<a href="{% url 'admin:core_supportcategory_changelist' %}" target="_blank"
+    class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1 text-xs">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings">
+        <path
+            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+        <circle cx="12" cy="12" r="3" />
+    </svg>
+    <span>Gestionar contenido</span>
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-4">
+
+    <div class="flex md:hidden items-center gap-1.5 overflow-x-auto pb-2 border-b border-border text-xs scrollbar-none">
+        <a href="#canales-contacto"
+            class="whitespace-nowrap px-2.5 py-1 rounded bg-container hover:bg-hover border border-border text-title flex items-center gap-1.5 transition-colors shrink-0">
+            <span>Canales de atención</span>
+        </a>
+
+        {% if highlighted_articles %}
+        <a href="#preguntas-frecuentes"
+            class="whitespace-nowrap px-2.5 py-1 rounded bg-container hover:bg-hover border border-border text-title flex items-center gap-1.5 transition-colors shrink-0">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+            <span>Destacadas</span>
+        </a>
+        {% endif %}
+
+        {% for category in categories %}
+        <a href="#cat-{{ category.id }}"
+            class="whitespace-nowrap px-2.5 py-1 rounded bg-container hover:bg-hover border border-border text-title flex items-center gap-1.5 transition-colors shrink-0">
+            <span>{{ category.name }}</span>
+            <span class="text-[10px] text-secondary ">({{ category.articles.count }})</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+
+        <aside class="hidden md:flex flex-col gap-3 md:sticky md:top-14 col-span-1">
+            <div class="bg-container border border-border rounded p-2 flex flex-col gap-2">
+                <p class="text-xs text-title pb-1 border-b border-border flex items-center gap-1.5 ">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="lucide lucide-list">
+                        <line x1="8" x2="21" y1="6" y2="6" />
+                        <line x1="8" x2="21" y1="12" y2="12" />
+                        <line x1="8" x2="21" y1="18" y2="18" />
+                        <line x1="3" x2="3.01" y1="6" y2="6" />
+                        <line x1="3" x2="3.01" y1="12" y2="12" />
+                        <line x1="3" x2="3.01" y1="18" y2="18" />
+                    </svg>
+                    <span>Índice de Ayuda</span>
+                </p>
+
+                <nav class="flex flex-col gap-0.5 text-xs">
+                    <a href="#canales-contacto"
+                        class="p-1 rounded hover:bg-hover text-title transition-colors flex items-center justify-between group">
+                        <span class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span>Canales de atención</span>
+                        </span>
+                    </a>
+
+                    {% if highlighted_articles %}
+                    <a href="#preguntas-frecuentes"
+                        class="p-1 rounded hover:bg-hover text-title transition-colors flex items-center justify-between group">
+                        <span class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            <span>Preguntas destacadas</span>
+                        </span>
+                        <span class="text-[10px] text-muted  shrink-0">
+                            {{ highlighted_articles|length }}
+                        </span>
+                    </a>
+                    {% endif %}
+
+                    {% for category in categories %}
+                    <a href="#cat-{{ category.id }}"
+                        class="p-1 rounded hover:bg-hover text-title transition-colors flex items-center justify-between group">
+                        <span class="flex items-center gap-2 truncate">
+                            <span
+                                class="w-1.5 h-1.5 rounded-full bg-border group-hover:bg-primary transition-colors"></span>
+                            <span class="truncate">{{ category.name }}</span>
+                        </span>
+                        <span class="text-[10px] text-muted  shrink-0">
+                            {{ category.articles.count }}
+                        </span>
+                    </a>
+                    {% empty %}
+                    <p class="text-[11px] text-muted italic p-1">Sin categorías aún</p>
+                    {% endfor %}
+                </nav>
+            </div>
+        </aside>
+
+        <main class="col-span-1 md:col-span-3 flex flex-col gap-6">
+
+            <div class="flex flex-col gap-1 w-full">
+                <input type="text" id="doc-search" placeholder="Buscar preguntas, palabras clave o soluciones..."
+                    oninput="filterDocs(this.value)"
+                    class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs">
+            </div>
+
+            <section id="canales-contacto" class="flex flex-col gap-4 scroll-mt-20">
+                <p class="text-title pb-1 border-b border-border">
+                    Canales de atención directa
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+
+                    <div class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors flex flex-col justify-between gap-2">
+                        <a href="https://wa.me/523313254445?text=Hola,%20solicito%20soporte%20en%20Datall%20(Usuario:%20{{ request.user.username }})" target="_blank" class="cursor-pointer">
+                            <span class="text-sm text-title">
+                                WhatsApp / Teléfono
+                            </span><br>
+                            <span class="text-xs text-emerald-500 ">
+                                33 1325 4445
+                            </span>
+                        </a>
+                        <div class="flex items-center justify-between text-xs pt-1 border-t border-border">
+                            <button type="button" onclick="copyToClipboard('3313254445', 'phone')"
+                                class="text-secondary hover:text-hover cursor-pointer flex items-center gap-1 transition-colors"
+                                title="Copiar teléfono">
+                                <svg id="icon-copy-phone" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                                <svg id="icon-check-phone" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check text-emerald-500 hidden"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span class="text-[11px]">Copiar</span>
+                            </button>
+                            <a href="https://wa.me/523313254445?text=Hola,%20solicito%20soporte%20en%20Datall%20(Usuario:%20{{ request.user.username }})"
+                                target="_blank"
+                                class="text-[11px] text-secondary hover:text-hover underline transition-colors">
+                                Enviar mensaje &rarr;
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors flex flex-col justify-between gap-2">
+                        <a href="mailto:angel.emma.velasco@gmail.com?subject=Soporte%20Datall%20-%20{{ request.user.username }}&body=Hola,%20necesito%20apoyo%20con%20lo%20siguiente:%0A%0A-%20Usuario:%20{{ request.user.username }}%0A-%20Correo:%20{{ request.user.email }}%0A-%20Detalle:%20" class="cursor-pointer">
+                            <span class="text-sm text-title">
+                                Correo Electrónico
+                            </span><br>
+                            <span class="text-xs text-blue-500 truncate block" title="angel.emma.velasco@gmail.com">
+                                angel.emma.velasco@gmail.com
+                            </span>
+                        </a>
+                        <div class="flex items-center justify-between text-xs pt-1 border-t border-border">
+                            <button type="button" onclick="copyToClipboard('angel.emma.velasco@gmail.com', 'email')"
+                                class="text-secondary hover:text-hover cursor-pointer flex items-center gap-1 transition-colors"
+                                title="Copiar correo">
+                                <svg id="icon-copy-email" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                                <svg id="icon-check-email" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check text-emerald-500 hidden"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span class="text-[11px]">Copiar</span>
+                            </button>
+                            <a href="mailto:angel.emma.velasco@gmail.com?subject=Soporte%20Datall%20-%20{{ request.user.username }}&body=Hola,%20necesito%20apoyo%20con%20lo%20siguiente:%0A%0A-%20Usuario:%20{{ request.user.username }}%0A-%20Correo:%20{{ request.user.email }}%0A-%20Detalle:%20"
+                                class="text-[11px] text-secondary hover:text-hover underline transition-colors">
+                                Escribir &rarr;
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors flex flex-col justify-between gap-2 sm:col-span-2 md:col-span-1">
+                        <div>
+                            <span class="text-sm text-title">
+                                Horario de Soporte
+                            </span><br>
+                            <span class="text-xs text-title ">
+                                08:00 - 18:00
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs pt-1 border-t border-border">
+                            <span class="text-xs text-secondary">Lunes a Viernes</span>
+                            <span class="text-xs text-emerald-500">Activo</span>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <div id="no-search-results"
+                class="hidden p-8 text-center bg-container border border-border rounded flex flex-col items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="lucide lucide-search-x text-muted">
+                    <path d="m13.5 8.5-5 5" />
+                    <path d="m8.5 8.5 5 5" />
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                </svg>
+                <p class="text-xs text-title ">No se encontraron resultados</p>
+                <p class="text-[11px] text-secondary">Prueba con otras palabras o contacta a soporte directamente.</p>
+            </div>
+
+            {% if highlighted_articles %}
+            <section id="preguntas-frecuentes" class="doc-category-section flex flex-col gap-3 scroll-mt-20">
+                <div class="flex items-center justify-between pb-1 border-b border-border">
+                    <p class="text-title  flex items-center gap-1.5">
+                        <span>Preguntas frecuentes destacadas</span>
+                    </p>
+                    <span class="text-[11px] text-secondary ">{{ highlighted_articles|length }}
+                        artículos</span>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    {% for article in highlighted_articles %}
+                    <details
+                        class="doc-article group bg-container border border-border rounded transition-all shadow-2xs">
+                        <summary
+                            class="cursor-pointer select-none p-2.5 flex items-center justify-between gap-3 hover:bg-hover transition-colors rounded">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span
+                                    class="w-1.5 h-1.5 rounded-full bg-blue-500 group-open:scale-125 transition-transform shrink-0"></span>
+                                <span class="text-xs  text-title article-title">{{ article.title }}</span>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <span
+                                    class="text-[10px] text-secondary bg-page px-1.5 py-0.5 rounded border border-border  hidden sm:inline-block">
+                                    {{ article.category.name }}
+                                </span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    class="lucide lucide-chevron-down text-secondary group-open:rotate-180 transition-transform">
+                                    <path d="m6 9 6 6 6-6" />
+                                </svg>
+                            </div>
+                        </summary>
+                        <div
+                            class="p-3 pt-2 border-t border-border mt-0.5 text-xs text-body leading-relaxed bg-page/30">
+                            <template class="raw-md">{{ article.content }}</template>
+                            <div class="markdown-content"></div>
+                            {% if request.user.is_staff %}
+                            <div class="flex justify-end pt-2 mt-2 border-t border-border/60">
+                                <a href="{% url 'admin:core_supportarticle_change' article.pk %}" target="_blank"
+                                    class="text-[10px] text-secondary hover:text-hover underline transition-colors flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="lucide lucide-pencil">
+                                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                        <path d="m15 5 4 4" />
+                                    </svg>
+                                    <span>Editar artículo</span>
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </details>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
+            {% for category in categories %}
+            <section id="cat-{{ category.id }}" class="doc-category-section flex flex-col gap-3 scroll-mt-20">
+                <div class="flex items-center justify-between pb-1 border-b border-border">
+                    <div class="flex items-center gap-2">
+                        <p class="text-title ">{{ category.name }}</p>
+                        {% if category.description %}
+                        <span class="text-[11px] text-secondary hidden sm:inline-block">— {{ category.description
+                            }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] text-secondary ">{{ category.articles.count }}
+                            artículos</span>
+                        {% if request.user.is_staff %}
+                        <a href="{% url 'admin:core_supportcategory_change' category.pk %}" target="_blank"
+                            class="text-[10px] text-secondary hover:text-hover underline transition-colors"
+                            title="Editar categoría">
+                            Editar
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    {% for article in category.articles.all %}
+                    <details
+                        class="doc-article group bg-container border border-border rounded transition-all shadow-2xs">
+                        <summary
+                            class="cursor-pointer select-none p-2.5 flex items-center justify-between gap-3 hover:bg-hover transition-colors rounded">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span
+                                    class="w-1.5 h-1.5 rounded-full bg-border group-open:bg-primary transition-colors shrink-0"></span>
+                                <span class="text-xs  text-title article-title">{{ article.title }}</span>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                {% if article.is_highlighted %}
+                                <span
+                                    class="text-[10px] text-blue-500 bg-blue-500/10 px-1 py-0.5 rounded border border-blue-500/20">
+                                    Destacada
+                                </span>
+                                {% endif %}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    class="lucide lucide-chevron-down text-secondary group-open:rotate-180 transition-transform">
+                                    <path d="m6 9 6 6 6-6" />
+                                </svg>
+                            </div>
+                        </summary>
+                        <div
+                            class="p-3 pt-2 border-t border-border mt-0.5 text-xs text-body leading-relaxed bg-page/30">
+                            <template class="raw-md">{{ article.content }}</template>
+                            <div class="markdown-content"></div>
+                            {% if request.user.is_staff %}
+                            <div class="flex justify-end pt-2 mt-2 border-t border-border/60">
+                                <a href="{% url 'admin:core_supportarticle_change' article.pk %}" target="_blank"
+                                    class="text-[10px] text-secondary hover:text-hover underline transition-colors flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="lucide lucide-pencil">
+                                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                        <path d="m15 5 4 4" />
+                                    </svg>
+                                    <span>Editar artículo</span>
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </details>
+                    {% empty %}
+                    <div class="p-4 bg-container border border-border rounded text-center text-xs text-muted italic">
+                        No hay artículos publicados en esta categoría.
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endfor %}
+
+        </main>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+    .markdown-content p {
+        margin-bottom: 0.5rem;
+    }
+
+    .markdown-content p:last-child {
+        margin-bottom: 0;
+    }
+
+    .markdown-content ul {
+        list-style-type: disc;
+        margin-left: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .markdown-content ol {
+        list-style-type: decimal;
+        margin-left: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .markdown-content li {
+        margin-bottom: 0.2rem;
+    }
+
+    .markdown-content strong {
+        font-weight: 600;
+        color: var(--color-title, inherit);
+    }
+
+    .markdown-content em {
+        font-style: italic;
+        color: var(--color-secondary, inherit);
+    }
+
+    .markdown-content blockquote {
+        border-left: 2px solid rgba(99, 102, 241, 0.6);
+        padding: 0.35rem 0.6rem;
+        margin: 0.5rem 0;
+        font-style: italic;
+        background-color: rgba(125, 125, 125, 0.05);
+        border-radius: 0 0.25rem 0.25rem 0;
+    }
+
+    .markdown-content code {
+        font-family: monospace;
+        font-size: 0.85em;
+        padding: 0.1rem 0.3rem;
+        border-radius: 0.25rem;
+        background-color: rgba(125, 125, 125, 0.15);
+        border: 1px solid rgba(125, 125, 125, 0.2);
+    }
+
+    .markdown-content a {
+        color: #3b82f6;
+        text-decoration: underline;
+    }
+
+    .markdown-content a:hover {
+        opacity: 0.8;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({
+                breaks: true,
+                gfm: true
+            });
+            document.querySelectorAll('.doc-article').forEach(art => {
+                const rawTpl = art.querySelector('.raw-md');
+                const targetEl = art.querySelector('.markdown-content');
+                if (rawTpl && targetEl) {
+                    targetEl.innerHTML = marked.parse(rawTpl.innerHTML.trim());
+                }
+            });
+        }
+    });
+
+    function copyToClipboard(text, id) {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(() => {
+                const copyIcon = document.getElementById('icon-copy-' + id);
+                const checkIcon = document.getElementById('icon-check-' + id);
+                if (copyIcon && checkIcon) {
+                    copyIcon.classList.add('hidden');
+                    checkIcon.classList.remove('hidden');
+                    setTimeout(() => {
+                        copyIcon.classList.remove('hidden');
+                        checkIcon.classList.add('hidden');
+                    }, 2000);
+                }
+            }).catch(err => {
+                console.error('Error al copiar al portapapeles:', err);
+            });
+        }
+    }
+
+    function filterDocs(query) {
+        const q = query.trim().toLowerCase();
+        const articles = document.querySelectorAll('.doc-article');
+        let matchedCount = 0;
+
+        articles.forEach(art => {
+            const title = (art.querySelector('.article-title')?.textContent || '').toLowerCase();
+            const content = (art.querySelector('.markdown-content')?.textContent || '').toLowerCase();
+            const matches = !q || title.includes(q) || content.includes(q);
+
+            if (matches) {
+                art.classList.remove('hidden');
+                if (q) art.open = true;
+                matchedCount++;
+            } else {
+                art.classList.add('hidden');
+                if (q) art.open = false;
+            }
+        });
+
+        document.querySelectorAll('.doc-category-section').forEach(cat => {
+            const visibleArticles = cat.querySelectorAll('.doc-article:not(.hidden)');
+            if (visibleArticles.length > 0) {
+                cat.classList.remove('hidden');
+            } else if (q) {
+                cat.classList.add('hidden');
+            } else {
+                cat.classList.remove('hidden');
+            }
+        });
+
+        const noResults = document.getElementById('no-search-results');
+        if (noResults) {
+            if (q && matchedCount === 0) {
+                noResults.classList.remove('hidden');
+            } else {
+                noResults.classList.add('hidden');
+            }
+        }
+    }
+</script>
+{% endblock %}

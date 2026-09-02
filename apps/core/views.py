@@ -16,6 +16,7 @@ from .forms import UserForm
 from .models import User, GeneratedReport, Reference, AppVersion
 
 from .services.users import UsersService, UsersKPIsService, ServiceError, UserNotFoundError, UserPermissionError
+from .services.user_docs import UserDocsService
 
 def custom_csrf_failure_view(request, reason=""):
     """
@@ -580,3 +581,10 @@ def app_version_list_view(request):
 
     app_versions = versions_qs.order_by('-release_date', '-id')
     return render(request, template, {'app_versions': app_versions})
+
+@login_required
+def user_docs_view(request):
+    template = 'core/user_docs/user_docs.html'
+    service = UserDocsService(user=request.user)
+    context = service.read_user_docs()
+    return render(request, template, context)
