@@ -18,6 +18,23 @@ from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter, Mon
 
 from time import perf_counter
 
+
+def _make_serializable(val):
+    if val is None or isinstance(val, (int, float, bool, str)):
+        return val
+    if isinstance(val, (date, timezone.datetime)):
+        return val.strftime('%Y-%m-%d')
+    if hasattr(val, 'pk'):
+        return val.pk
+    if hasattr(val, 'id'):
+        return val.id
+    if isinstance(val, dict):
+        return {k: _make_serializable(v) for k, v in val.items()}
+    if hasattr(val, '__iter__') and not isinstance(val, (str, bytes)):
+        return [_make_serializable(item) for item in val]
+    return str(val)
+
+
 @login_required
 def customer_kpis_export_view(request):
     start = perf_counter()
@@ -42,16 +59,7 @@ def customer_kpis_export_view(request):
     cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
 
     # serializable cleaned_data dict
-    serializable_cleaned_data = {}
-    for k, v in cleaned_data.items():
-        if isinstance(v, (date, timezone.datetime)):
-            serializable_cleaned_data[k] = v.strftime('%Y-%m-%d')
-        elif hasattr(v, 'id'):
-            serializable_cleaned_data[k] = v.id
-        elif isinstance(v, (str, int, float, bool, list, dict)) or v is None:
-            serializable_cleaned_data[k] = v
-        else:
-            serializable_cleaned_data[k] = str(v)
+    serializable_cleaned_data = {k: _make_serializable(v) for k, v in cleaned_data.items()}
 
     # create database record for user downloads
     report = GeneratedReport.objects.create(
@@ -109,16 +117,7 @@ def commercial_risk_export_view(request):
 
     selected_route = cleaned_data.get('route') or allowed_routes.filter(id=req_data.get('route')).first() or first_route
 
-    serializable_cleaned_data = {}
-    for k, v in cleaned_data.items():
-        if isinstance(v, (date, timezone.datetime)):
-            serializable_cleaned_data[k] = v.strftime('%Y-%m-%d')
-        elif hasattr(v, 'id'):
-            serializable_cleaned_data[k] = v.id
-        elif isinstance(v, (str, int, float, bool, list, dict)) or v is None:
-            serializable_cleaned_data[k] = v
-        else:
-            serializable_cleaned_data[k] = str(v)
+    serializable_cleaned_data = {k: _make_serializable(v) for k, v in cleaned_data.items()}
 
     route_name = f"Ruta {selected_route.id}" if selected_route else "General"
     if selected_route and hasattr(selected_route, 'name') and selected_route.name:
@@ -172,18 +171,7 @@ def monthly_sale_breakdown_export_view(request):
     cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
 
     # serializable cleaned_data dict
-    serializable_cleaned_data = {}
-    for k, v in cleaned_data.items():
-        if isinstance(v, (date, timezone.datetime)):
-            serializable_cleaned_data[k] = v.strftime('%Y-%m-%d')
-        elif hasattr(v, 'id'):
-            serializable_cleaned_data[k] = v.id
-        elif isinstance(v, (str, int, float, bool, list, dict)) or v is None:
-            serializable_cleaned_data[k] = v
-        elif hasattr(v, '__iter__'):
-            serializable_cleaned_data[k] = [item.id if hasattr(item, 'id') else str(item) for item in v]
-        else:
-            serializable_cleaned_data[k] = str(v)
+    serializable_cleaned_data = {k: _make_serializable(v) for k, v in cleaned_data.items()}
 
     # create database record for user downloads
     report = GeneratedReport.objects.create(
@@ -238,18 +226,7 @@ def target_achievement_export_view(request):
     filter_set = TargetAchievementFilter(req_data, queryset=base_targets_qs, request=request)
     cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
 
-    serializable_cleaned_data = {}
-    for k, v in cleaned_data.items():
-        if isinstance(v, (date, timezone.datetime)):
-            serializable_cleaned_data[k] = v.strftime('%Y-%m-%d')
-        elif hasattr(v, 'id'):
-            serializable_cleaned_data[k] = v.id
-        elif isinstance(v, (str, int, float, bool, list, dict)) or v is None:
-            serializable_cleaned_data[k] = v
-        elif hasattr(v, '__iter__'):
-            serializable_cleaned_data[k] = [item.id if hasattr(item, 'id') else str(item) for item in v]
-        else:
-            serializable_cleaned_data[k] = str(v)
+    serializable_cleaned_data = {k: _make_serializable(v) for k, v in cleaned_data.items()}
 
     report = GeneratedReport.objects.create(
         user=request.user,

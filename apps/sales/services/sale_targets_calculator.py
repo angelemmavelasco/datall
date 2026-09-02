@@ -13,7 +13,6 @@ from django.core.exceptions import ValidationError
 from apps.core.services.users import UsersService
 from apps.sales.models import SaleTarget, SaleTransaction, Route, RouteAssignment
 from apps.customers.models import Customer, CustomerAssignment
-from apps.customers.services.customers import CustomersService
 from apps.products.models import ProductClass
 from apps.sales.services.routes import RoutesService
 
@@ -330,6 +329,7 @@ class SaleTargetCalculatorService(UsersService):
             'assigned': customers with active assignment on route_id (start_date <= today, end_date is null or > today).
             'all': all customers permitted to the user.
         """
+        from apps.customers.services.customers import CustomersService
         today = timezone.localdate()
         customers_service = CustomersService(user=self.user)
         base_qs = customers_service.read_customers()
