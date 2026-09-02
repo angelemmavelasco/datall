@@ -3,7 +3,7 @@ import traceback
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.utils.safestring import mark_safe
-from .models import User, Module, Submodule, Reference, AppVersion
+from .models import User, Module, Submodule, Reference, AppVersion, SupportCategory, SupportArticle
 
 logger = logging.getLogger(__name__)
 
@@ -128,3 +128,23 @@ class AppVersionAdmin(admin.ModelAdmin):
                 except Exception:
                     pass
             raise
+
+@admin.register(SupportCategory)
+class SupportCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'order', 'icon', 'is_active', 'articles_count')
+    list_display_links = ('name',)
+    list_editable = ('order', 'is_active')
+    search_fields = ('name', 'description')
+
+    def articles_count(self, obj):
+        return obj.articles.count()
+    articles_count.short_description = "Artículos"
+
+@admin.register(SupportArticle)
+class SupportArticleAdmin(admin.ModelAdmin):
+    list_display = ('title', 'category', 'order', 'is_published', 'is_highlighted', 'updated_at')
+    list_display_links = ('title',)
+    list_filter = ('category', 'is_published', 'is_highlighted')
+    list_editable = ('order', 'is_published', 'is_highlighted')
+    search_fields = ('title', 'content', 'category__name')
+    list_select_related = ('category',)

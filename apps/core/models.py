@@ -242,3 +242,38 @@ class AppVersion(models.Model):
 
     def __str__(self):
         return f"v{self.version_number} ({self.release_date})"
+
+class SupportCategory(models.Model):
+    name = models.CharField(max_length=100, help_text="Nombre de categoría")
+    description = models.CharField(max_length=255, blank=True, default="", help_text="Descripción corta")
+    icon = models.CharField(max_length=50, default="help-circle", help_text="Nombre del ícono Lucide (ej: help-circle, key, shield, file-text, phone, sliders, database, user)")
+    order = models.PositiveIntegerField(default=0, help_text="Orden de visualización")
+    is_active = models.BooleanField(default=True, help_text="Activa")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', 'name']
+        verbose_name = "Categoría de Soporte"
+        verbose_name_plural = "Categorías de Soporte"
+
+    def __str__(self):
+        return self.name
+
+class SupportArticle(models.Model):
+    category = models.ForeignKey(SupportCategory, on_delete=models.CASCADE, related_name="articles", help_text="Categoría")
+    title = models.CharField(max_length=200, help_text="Título o Pregunta")
+    content = models.TextField(help_text="Describe la solución o guía. Puedes usar formato Markdown.")
+    order = models.PositiveIntegerField(default=0, help_text="Orden")
+    is_published = models.BooleanField(default=True, help_text="Publicado")
+    is_highlighted = models.BooleanField(default=False, help_text="Si se marca, se muestra en la sección de preguntas destacadas/frecuentes.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['category__order', 'order', 'title']
+        verbose_name = "Artículo / Pregunta"
+        verbose_name_plural = "Artículos y Preguntas"
+
+    def __str__(self):
+        return f"{self.category.name} - {self.title}"
