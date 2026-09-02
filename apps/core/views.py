@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib import messages
+from django.core.files.base import ContentFile
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -371,20 +372,31 @@ def upload_options_list_view(request):
             'saletransaction': 'Transacciones de Venta',
             'accountsreceivable': 'Cuentas por Cobrar',
             'stock': 'Existencias (Stock)',
+            'stocks': 'Existencias (Stock)',
+            'existencias': 'Existencias (Stock)',
             'denueinegi': 'Directorio DENUE (INEGI)',
             'denue': 'Directorio DENUE (INEGI)',
         }
         title_label = catalog_titles.get(model_key, model_key.title())
 
         try:
+            if hasattr(file_obj, 'seek'):
+                file_obj.seek(0)
+            file_bytes = file_obj.read()
+            if hasattr(file_obj, 'seek'):
+                file_obj.seek(0)
+
+            orig_filename = getattr(file_obj, 'name', '') or f"upload_{model_key}.xlsx"
+            content_file = ContentFile(file_bytes, name=orig_filename)
+
             report = GeneratedReport.objects.create(
                 user=request.user,
                 title=f"Importación: {title_label}",
                 module_name="uploads",
-                file=file_obj,
-                file_size=file_obj.size,
+                file=content_file,
+                file_size=len(file_bytes),
                 status=GeneratedReport.Status.PENDING,
-                filters={'model_key': model_key, 'filename': getattr(file_obj, 'name', '')},
+                filters={'model_key': model_key, 'filename': orig_filename},
             )
 
             async_task(
@@ -399,6 +411,8 @@ def upload_options_list_view(request):
                 f"El archivo para {title_label} se ha cargado correctamente y se está procesando en segundo plano. Puedes consultar el progreso y los resultados en 'Mis Archivos'."
             )
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             messages.error(request, f"Error al iniciar el procesamiento del archivo: {str(e)}")
 
         return redirect('core:upload_options_list_view')

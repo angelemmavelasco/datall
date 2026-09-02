@@ -503,6 +503,8 @@ class UploadsService(UsersService):
             service = StocksService(user=self.user)
             if hasattr(service, 'bulk_create_stocks'):
                 importers['stock'] = service.bulk_create_stocks
+                importers['stocks'] = service.bulk_create_stocks
+                importers['existencias'] = service.bulk_create_stocks
         except (ImportError, AttributeError):
             pass
 
