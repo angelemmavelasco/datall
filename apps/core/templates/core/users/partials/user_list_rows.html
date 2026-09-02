@@ -9,7 +9,7 @@
         </td>
         <td class="p-2 text-left truncate">{{ user.first_name|default:'--- '|title }} {{ user.last_name|default:'---'|title }} {% if user.second_last_name %} {{ user.second_last_name|title }} {% endif %}</td>
         <td class="p-2 text-left truncate max-w-0">{{ user.email|default:"--- ---" }}</td>
-        <td class="p-2 text-center ">{{ user.human_resources_employees.all|length }}</td>
+        <td class="p-2 text-center ">{{ user.employees.all|length }}</td>
         <td class="p-2 text-right ">{{ user.last_login|date:"d M Y H:i"|default:"--- ---" }}</td>
         <td class="p-2 text-center ">{{ user.groups.all|length }}</td>
         <td class="p-2 text-left 
