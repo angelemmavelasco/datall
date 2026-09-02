@@ -192,7 +192,7 @@ class UsersService:
                 if password:
                     user_to_update.set_password(password)
 
-                user_to_update.full_clean()
+                user_to_update.full_clean(exclude=['password'])
                 user_to_update.save()
 
                 if groups is not None:
@@ -201,6 +201,9 @@ class UsersService:
             return user_to_update
 
         except ValidationError as e:
+            if hasattr(e, 'message_dict'):
+                err_msgs = [f"{field}: {', '.join(msgs)}" for field, msgs in e.message_dict.items()]
+                raise ServiceError(f"Datos inválidos: {'; '.join(err_msgs)}")
             raise ServiceError(f"Datos inválidos: {', '.join(e.messages)}")
         except IntegrityError:
             raise ServiceError("Ya existe un usuario con esos datos únicos.")

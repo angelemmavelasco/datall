@@ -13,7 +13,7 @@ class UserForm(forms.ModelForm):
     class Meta:
         model = User
         fields = '__all__'
-        exclude = ('user_permissions', 'last_login', 'date_joined')
+        exclude = ('password', 'user_permissions', 'last_login', 'date_joined')
         widgets = {
             'groups': forms.CheckboxSelectMultiple(),
             'birth_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
@@ -53,4 +53,12 @@ class UserForm(forms.ModelForm):
         password = self.cleaned_data.get('password')
         if password:
             validate_password(password, user=self.instance)
-        return password
+            return password
+        return None
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if self.instance and self.instance.pk:
+            if not cleaned_data.get('password'):
+                cleaned_data.pop('password', None)
+        return cleaned_data

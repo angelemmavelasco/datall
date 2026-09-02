@@ -62,6 +62,15 @@ class ActivityTrackingMiddleware:
                 for k, v in request.GET.lists():
                     if k.lower() not in self.SENSITIVE_PARAMS:
                         params[k] = v[0] if len(v) == 1 else v
+            if request.method in ('POST', 'PUT', 'PATCH') and request.POST:
+                post_params = {}
+                for k, v in request.POST.lists():
+                    if k.lower() not in self.SENSITIVE_PARAMS:
+                        post_params[k] = v[0] if len(v) == 1 else v
+                if post_params:
+                    params['post_data'] = post_params
+            if request.FILES:
+                params['files'] = [f.name for f in request.FILES.values()]
             action = self._infer_action(request, view_name, params)
             status_code = response.status_code
             if status_code < 400:
@@ -98,7 +107,7 @@ class ActivityTrackingMiddleware:
                 duration_ms=duration_ms,
             )
         except Exception as e:
-            logger.warning(f"Error al registrar ActivityLog: {e}")
+            logger.warning(f"error recording activity log: {e}")
 
     def _infer_action(self, request, view_name: str, params: dict) -> str:
         path_lower = request.path.lower()
