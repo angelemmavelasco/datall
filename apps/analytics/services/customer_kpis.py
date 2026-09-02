@@ -968,11 +968,11 @@ class CustomerProfileService(CustomerKpisService):
 
         if self.transactions_qs is None:
             from apps.sales.services.sale_transactions import SaleTransactionsService
-            self.transactions_qs = SaleTransactionsService(user=self.user).read_transactions()
+            self.transactions_qs = SaleTransactionsService(user=self.user).read_transactions_by_allowed_customers()
 
         if self.ars_qs is None:
             from apps.customers.services.accounts_receivables import AccountsReceivablesService
-            self.ars_qs = AccountsReceivablesService(user=self.user).read_ars()
+            self.ars_qs = AccountsReceivablesService(user=self.user).read_ars_by_allowed_customers()
 
         super().__post_init__()
 
@@ -1005,7 +1005,7 @@ class CustomerProfileService(CustomerKpisService):
         • annual category (previous year average)
         '''
         from apps.sales.services.sale_transactions import SaleTransactionsService
-        base_txs = SaleTransactionsService(user=self.user).read_transactions().filter(customer=self.customer)
+        base_txs = SaleTransactionsService(user=self.user).read_transactions_by_allowed_customers().filter(customer=self.customer)
 
         #previous full month
         sales_prev_month = base_txs.filter(
@@ -1079,7 +1079,7 @@ class CustomerProfileService(CustomerKpisService):
 
         #most consumed class in previous quarter
         from apps.sales.services.sale_transactions import SaleTransactionsService
-        base_txs = SaleTransactionsService(user=self.user).read_transactions().filter(customer=self.customer)
+        base_txs = SaleTransactionsService(user=self.user).read_transactions_by_allowed_customers().filter(customer=self.customer)
         top_class = (
             base_txs.filter(
                 sale_date__gte=self.first_day_q,

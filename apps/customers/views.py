@@ -79,7 +79,7 @@ def customer_detail_view(request, pk: str):
         return redirect('customers:customer_list_view')
 
     tx_service = SaleTransactionsService(user=request.user)
-    base_txs = tx_service.read_transactions().filter(customer=customer)
+    base_txs = tx_service.read_transactions_by_allowed_customers().filter(customer=customer)
 
     today = timezone.localdate()
     get_data = request.GET.copy()
@@ -94,7 +94,7 @@ def customer_detail_view(request, pk: str):
     filtered_txs = profile_filter.qs
 
     ar_service = AccountsReceivablesService(user=request.user)
-    base_ars = ar_service.read_ars().filter(customer=customer)
+    base_ars = ar_service.read_ars_by_allowed_customers().filter(customer=customer)
 
     cleaned_data = profile_filter.form.cleaned_data if profile_filter.is_valid() else {}
 
