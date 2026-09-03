@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any
-from django.db.models import QuerySet, Sum
+from django.db.models import Max, Min, QuerySet, Sum
 
 from apps.customers.models import Customer
 from apps.human_resources.models import BusinessUnit
@@ -157,11 +157,14 @@ class YearlySaleBreakdownService:
         return self.dimension_config['l1_id']
 
     def _extract_sorted_years(self) -> list[int]:
-        years = (
-            self.queryset.values_list('sale_date__year', flat=True)
-            .distinct()
+        dates = self.queryset.aggregate(
+            min_date=Min('sale_date'),
+            max_date=Max('sale_date'),
         )
-        return sorted([int(y) for y in years if y is not None])
+        min_date, max_date = dates.get('min_date'), dates.get('max_date')
+        if not min_date or not max_date:
+            return []
+        return list(range(min_date.year, max_date.year + 1))
 
     def _init_annual_totals(self) -> dict[int, dict[str, float]]:
         return {y: {'net': 0.0, 'profit': 0.0} for y in self.sorted_years}
@@ -189,6 +192,31 @@ class YearlySaleBreakdownService:
             else:
                 growth = 0.0
 
+            #precomputed qualitative evaluation for margins
+            if margin >= 43:
+                margin_label = 'Excelente'
+                margin_class = 'text-emerald-600'
+            elif margin >= 40:
+                margin_label = 'Óptimo'
+                margin_class = 'text-emerald-500'
+            elif margin >= 37:
+                margin_label = 'Regular'
+                margin_class = 'text-yellow-500'
+            elif margin >= 35:
+                margin_label = 'Malo'
+                margin_class = 'text-red-500'
+            else:
+                margin_label = 'Muy malo'
+                margin_class = 'text-red-500'
+
+            #precomputed classes for growth badges
+            if growth > 0:
+                growth_badge_class = 'border border-emerald-500 text-emerald-500 bg-emerald-500/10'
+            elif growth < 0:
+                growth_badge_class = 'border border-red-500 text-red-500 bg-red-500/10'
+            else:
+                growth_badge_class = 'border border-border text-muted bg-page'
+
             result.append(
                 {
                     'year': y,
@@ -196,6 +224,9 @@ class YearlySaleBreakdownService:
                     'profit': round(profit, 2),
                     'margin': round(margin, 2),
                     'growth': round(growth, 2),
+                    'margin_label': margin_label,
+                    'margin_class': margin_class,
+                    'growth_badge_class': growth_badge_class,
                 }
             )
             prev_net = net

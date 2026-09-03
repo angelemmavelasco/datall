@@ -581,6 +581,11 @@ def yearly_sale_breakdown_view(request):
     
     print(f'yearly_sale_breakdown_view: {perf} seconds')
 
+    is_seller = (
+        request.user.is_authenticated
+        and request.user.groups.filter(name='vendedor').exists()
+    )
+
     context = {
         'filter': filter_set,
         'dimension': dimension,
@@ -591,6 +596,7 @@ def yearly_sale_breakdown_view(request):
         'page_obj': page_obj,
         'query_string': query_dict.urlencode(),
         'perf': perf,
+        'is_seller': is_seller,
     }
 
     if request.htmx:

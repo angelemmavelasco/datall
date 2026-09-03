@@ -6,4 +6,6 @@ register = template.Library()
 def has_group(user, group_name):
     if not user or not user.is_authenticated:
         return False
-    return user.groups.filter(name=group_name).exists()
+    if not hasattr(user, '_group_names_cache'):
+        user._group_names_cache = set(user.groups.values_list('name', flat=True))
+    return group_name in user._group_names_cache
