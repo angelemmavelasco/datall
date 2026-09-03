@@ -113,6 +113,7 @@ def sales_dashboard_view(request):
 
 @login_required
 def customer_kpis_view(request):
+    start_time = perf_counter()
     template = 'analytics/customer_kpis/customer_kpis.html'
 
     # base services
@@ -176,6 +177,10 @@ def customer_kpis_view(request):
         'query_string': query_dict.urlencode(),
         'month_headers': [date(today.year, m, 1) for m in range(1, 13)],
     }
+
+    end_time = perf_counter()
+    total_time = end_time - start_time
+    print(f">>>>>>>>>>>> Customer KPIs view execution time: {total_time} seconds")
 
     if request.htmx:
         return render(request, 'analytics/customer_kpis/partials/_customer_kpis_rows.html', context)

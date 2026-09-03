@@ -35,6 +35,8 @@ class CustomerKpisService:
     categories: list[tuple[str, Decimal]] = field(default_factory=list, init=False)
     frequency_categories: list[tuple[str, int]] = field(default_factory=list, init=False)
     relevant_classes: list[tuple[str, str]] = field(default_factory=list, init=False)
+    _cached_stats: dict[str, Any] | None = field(default=None, init=False)
+    _cached_target_customers: list[Any] | None = field(default=None, init=False)
 
     def __post_init__(self):
         self._init_dates()
@@ -92,9 +94,7 @@ class CustomerKpisService:
         self.order_by = config.get('order_contrib') or 'net_amount'
         if self.is_vendor:
             self.order_by = 'net_amount'
-        self._init_categories()
-        self._init_frequency_categories()
-        self._init_relevant_classes()
+        self._init_references()
 
     class CategoryObj:
         """aux obj to make categories accessible in template"""
@@ -103,34 +103,46 @@ class CustomerKpisService:
         def __str__(self):
             return self.name
 
-    def _init_categories(self) -> None:
-        refs = Reference.objects.filter(context='categoria_cliente_monto')
+    def _init_references(self) -> None:
+        refs = list(
+            Reference.objects.filter(
+                context__in=['categoria_cliente_monto', 'categoria_frecuencia_compra', 'clases_producto_relevantes']
+            )
+        )
+        cat_refs = [r for r in refs if r.context == 'categoria_cliente_monto']
         self.categories = sorted(
-            [(r.key.lower(), Decimal(r.value)) for r in refs],
+            [(r.key.lower(), Decimal(r.value)) for r in cat_refs],
             key=lambda x: x[1],
             reverse=True
         )
 
-    def _init_frequency_categories(self) -> None:
-        refs = Reference.objects.filter(context='categoria_frecuencia_compra')
-        parsed = []
-        for r in refs:
+        freq_refs = [r for r in refs if r.context == 'categoria_frecuencia_compra']
+        parsed_freq = []
+        for r in freq_refs:
             try:
-                parsed.append((r.key.strip().lower(), int(r.value)))
+                parsed_freq.append((r.key.strip().lower(), int(r.value)))
             except (ValueError, TypeError):
                 continue
-        if parsed:
-            self.frequency_categories = sorted(parsed, key=lambda x: x[1])
+        if parsed_freq:
+            self.frequency_categories = sorted(parsed_freq, key=lambda x: x[1])
         else:
             self.frequency_categories = [('regular', 30), ('irregular', 60)]
 
-    def _init_relevant_classes(self) -> None:
-        refs = Reference.objects.filter(context='clases_producto_relevantes')
-        classes = [r.key.strip().lower() for r in refs if r.key]
+        rel_refs = [r for r in refs if r.context == 'clases_producto_relevantes']
+        classes = [r.key.strip().lower() for r in rel_refs if r.key]
         if classes:
             self.relevant_classes = classes
         else:
             self.relevant_classes = ['dmd', 'nat', 'tow', 'care', 'msd', 'vtq', 'zts']
+
+    def _init_categories(self) -> None:
+        pass
+
+    def _init_frequency_categories(self) -> None:
+        pass
+
+    def _init_relevant_classes(self) -> None:
+        pass
 
     def _calculate_category(self, sales: Decimal | float | None = None) -> str:
         '''returns the category which the customer belongs given a sales amount'''
@@ -147,76 +159,74 @@ class CustomerKpisService:
         returns customers from self.customers_qs who were registered on or before self.date_end
         (or historical customers with no registration_date).
         """
-        return [
+        if self._cached_target_customers is not None:
+            return self._cached_target_customers
+
+        self._cached_target_customers = [
             c for c in self.customers_qs
             if not c.registration_date or c.registration_date <= self.date_end
         ]
+        return self._cached_target_customers
+
+    def _get_sales_metrics(self, customer_ids: list[Any]) -> dict[Any, dict[str, Any]]:
+        """
+        calculates all key sales amounts in a single aggregated query:
+        - previous year total
+        - previous quarter total
+        - previous month total
+        - current year total
+        - contribution period net amount and profit
+        - monthly net sales (m_1 .. m_12) for the current year
+        returns {customer_id: {'prev_year': Decimal, 'prev_q': Decimal, 'prev_m': Decimal, 'curr_y': Decimal, 'contrib_net': Decimal, 'contrib_profit': Decimal, 'm_1': Decimal, ...}}
+        """
+        if not customer_ids:
+            return {}
+
+        start_curr_y = date(self.current_year, 1, 1)
+        last_day_prev_month = self.today.replace(day=1) - timedelta(days=1)
+        first_day_prev_month = last_day_prev_month.replace(day=1)
+
+        annotations = {
+            'prev_year': Sum('net_amount', filter=Q(sale_date__year=self.previous_year)),
+            'prev_q': Sum('net_amount', filter=Q(sale_date__gte=self.first_day_q, sale_date__lte=self.last_day_q)),
+            'prev_m': Sum('net_amount', filter=Q(sale_date__gte=first_day_prev_month, sale_date__lte=last_day_prev_month)),
+            'curr_y': Sum('net_amount', filter=Q(sale_date__gte=start_curr_y, sale_date__lte=self.today)),
+            'contrib_net': Sum('net_amount', filter=Q(sale_date__gte=self.date_start, sale_date__lte=self.date_end)),
+            'contrib_profit': Sum('profit', filter=Q(sale_date__gte=self.date_start, sale_date__lte=self.date_end)),
+        }
+        for m in range(1, 13):
+            annotations[f'm_{m}'] = Sum('net_amount', filter=Q(sale_date__year=self.current_year, sale_date__month=m))
+
+        earliest_date = min(self.first_day_q, self.date_start, date(self.previous_year, 1, 1), first_day_prev_month)
+
+        clean_tx = self.transactions_qs.select_related(None).order_by()
+        sales = (
+            clean_tx
+            .filter(customer_id__in=customer_ids, sale_date__gte=earliest_date)
+            .values('customer_id')
+            .annotate(**annotations)
+        )
+        return {row['customer_id']: row for row in sales}
 
     def _get_prev_year_sales(self, customer_ids: list[Any]) -> dict[Any, Decimal]:
         """returns {customer_id: total_net_sales_prev_year}"""
-        if not customer_ids:
-            return {}
-        sales = (
-            self.transactions_qs
-            .filter(customer_id__in=customer_ids, sale_date__year=self.previous_year)
-            .order_by()
-            .values('customer_id')
-            .annotate(total=Sum('net_amount'))
-        )
-        return {row['customer_id']: row['total'] or Decimal('0.00') for row in sales}
+        metrics = self._get_sales_metrics(customer_ids)
+        return {cid: row.get('prev_year') or Decimal('0.00') for cid, row in metrics.items()}
 
     def _get_prev_quarter_sales(self, customer_ids: list[Any]) -> dict[Any, Decimal]:
         """returns {customer_id: total_net_sales_prev_quarter}"""
-        if not customer_ids:
-            return {}
-        sales = (
-            self.transactions_qs
-            .filter(
-                customer_id__in=customer_ids,
-                sale_date__gte=self.first_day_q,
-                sale_date__lte=self.last_day_q
-            )
-            .order_by()
-            .values('customer_id')
-            .annotate(total=Sum('net_amount'))
-        )
-        return {row['customer_id']: row['total'] or Decimal('0.00') for row in sales}
+        metrics = self._get_sales_metrics(customer_ids)
+        return {cid: row.get('prev_q') or Decimal('0.00') for cid, row in metrics.items()}
 
     def _get_prev_month_sales(self, customer_ids: list[Any]) -> dict[Any, Decimal]:
         """returns {customer_id: total_net_sales_prev_month}"""
-        if not customer_ids:
-            return {}
-        last_day_prev_month = self.today.replace(day=1) - timedelta(days=1)
-        first_day_prev_month = last_day_prev_month.replace(day=1)
-        sales = (
-            self.transactions_qs
-            .filter(
-                customer_id__in=customer_ids,
-                sale_date__gte=first_day_prev_month,
-                sale_date__lte=last_day_prev_month
-            )
-            .order_by()
-            .values('customer_id')
-            .annotate(total=Sum('net_amount'))
-        )
-        return {row['customer_id']: row['total'] or Decimal('0.00') for row in sales}
+        metrics = self._get_sales_metrics(customer_ids)
+        return {cid: row.get('prev_m') or Decimal('0.00') for cid, row in metrics.items()}
 
     def _get_curr_year_sales(self, customer_ids: list[Any]) -> dict[Any, Decimal]:
         """returns {customer_id: total_net_sales_current_year}"""
-        if not customer_ids:
-            return {}
-        sales = (
-            self.transactions_qs
-            .filter(
-                customer_id__in=customer_ids,
-                sale_date__gte=date(self.current_year, 1, 1),
-                sale_date__lte=self.today
-            )
-            .order_by()
-            .values('customer_id')
-            .annotate(total=Sum('net_amount'))
-        )
-        return {row['customer_id']: row['total'] or Decimal('0.00') for row in sales}
+        metrics = self._get_sales_metrics(customer_ids)
+        return {cid: row.get('curr_y') or Decimal('0.00') for cid, row in metrics.items()}
 
     def _calculate_period_avg(self, total_sales: Decimal | float, start_date: date, end_date: date, reg_date: date | None) -> Decimal:
         """calculates the monthly sales average for any period, respecting active months given registration date"""
@@ -235,14 +245,14 @@ class CustomerKpisService:
         """calculates purchase frequency per customer based on average days between purchases (> 0)"""
         if not customer_ids:
             return {}
+        clean_tx = self.transactions_qs.select_related(None).order_by()
         dates_qs = (
-            self.transactions_qs
+            clean_tx
             .filter(
                 customer_id__in=customer_ids,
                 sale_date__gte=date(self.previous_year, 1, 1),
                 net_amount__gt=0
             )
-            .order_by()
             .values('customer_id', 'sale_date')
             .distinct()
             .order_by('customer_id', 'sale_date')
@@ -280,8 +290,9 @@ class CustomerKpisService:
         if not customer_ids or not self.relevant_classes:
             return {}
 
+        clean_tx = self.transactions_qs.select_related(None).order_by()
         classes_qs = (
-            self.transactions_qs
+            clean_tx
             .filter(
                 customer_id__in=customer_ids,
                 sale_date__gte=self.first_day_q,
@@ -289,7 +300,6 @@ class CustomerKpisService:
                 net_amount__gt=0,
                 product_class_id__in=self.relevant_classes
             )
-            .order_by()
             .values('customer_id', 'product_class_id', 'product_class__name')
             .annotate(total=Sum('net_amount'))
         )
@@ -313,10 +323,10 @@ class CustomerKpisService:
         '''        
         if not customer_ids:
             return {}
+        clean_ar = self.ars_qs.select_related(None).order_by()
         ar_data = (
-            self.ars_qs
+            clean_ar
             .filter(customer_id__in=customer_ids)
-            .order_by()
             .values('customer_id')
             .annotate(
                 total_balance=Sum('total_balance'),
@@ -341,28 +351,13 @@ class CustomerKpisService:
         Returns contribution metrics strictly between date_start and date_end for target customers.
         {customer_id: {'net_amount': Decimal, 'profit': Decimal}}
         """
-        if not customer_ids:
-            return {}
-        sales = (
-            self.transactions_qs
-            .filter(
-                customer_id__in=customer_ids,
-                sale_date__gte=self.date_start,
-                sale_date__lte=self.date_end
-            )
-            .order_by()
-            .values('customer_id')
-            .annotate(
-                net_amount=Sum('net_amount'),
-                profit=Sum('profit')
-            )
-        )
+        metrics = self._get_sales_metrics(customer_ids)
         return {
-            row['customer_id']: {
-                'net_amount': row['net_amount'] or Decimal('0.00'),
-                'profit': row['profit'] or Decimal('0.00'),
+            cid: {
+                'net_amount': row.get('contrib_net') or Decimal('0.00'),
+                'profit': row.get('contrib_profit') or Decimal('0.00'),
             }
-            for row in sales
+            for cid, row in metrics.items()
         }
 
     def _get_customer_assignments_map(self, customer_ids: list[Any]) -> dict[Any, dict[str, str]]:
@@ -373,14 +368,13 @@ class CustomerKpisService:
             CustomerAssignment.objects
             .filter(customer_id__in=customer_ids)
             .filter(Q(end_date__isnull=True) | Q(end_date__gte=self.today))
-            .select_related('route', 'route__business_unit')
+            .values('customer_id', 'route_id', 'route__business_unit__name')
         )
         route_map = {}
         for a in assignments:
-            b_unit = a.route.business_unit.name if a.route and a.route.business_unit else ''
-            route_map[a.customer_id] = {
-                'route_id': a.route_id or '',
-                'business_unit': b_unit,
+            route_map[a['customer_id']] = {
+                'route_id': a['route_id'] or '',
+                'business_unit': a['route__business_unit__name'] or '',
             }
         return route_map
 
@@ -393,31 +387,15 @@ class CustomerKpisService:
         if not customer_ids:
             return {}
 
-        monthly_sales = (
-            self.transactions_qs
-            .filter(
-                customer_id__in=customer_ids,
-                sale_date__year=self.current_year,
-            )
-            .order_by()
-            .values('customer_id', 'sale_date__month')
-            .annotate(total=Sum('net_amount'))
-        )
-
-        sales_by_customer_month = defaultdict(dict)
-        for row in monthly_sales:
-            cid = row['customer_id']
-            month = row['sale_date__month']
-            sales_by_customer_month[cid][month] = row['total'] or Decimal('0.00')
-
+        metrics_map = self._get_sales_metrics(customer_ids)
         result = {}
         for cid in customer_ids:
+            c_metrics = metrics_map.get(cid, {})
             monthly_list = []
             prev_sale = Decimal('0.00')
-            c_sales = sales_by_customer_month.get(cid, {})
 
             for m in range(1, 13):
-                current_sale = c_sales.get(m, Decimal('0.00'))
+                current_sale = c_metrics.get(f'm_{m}') or Decimal('0.00')
 
                 if prev_sale > Decimal('0.00'):
                     growth = ((current_sale - prev_sale) / prev_sale) * Decimal('100.00')
@@ -441,64 +419,23 @@ class CustomerKpisService:
         returns high-level summary KPIs for the header cards in the template.
         only considers target customers registered on or before date_end.
         """
-        valid_customers = self._get_target_customers()
-        registered_customers = len(valid_customers)
-        customer_ids = [c.id for c in valid_customers]
+        if self._cached_stats is not None:
+            return self._cached_stats
 
-        contrib_map = self._get_contrib_metrics(customer_ids)
-
-        #only takes customers with profit and net_amount > 0
-        if self.order_by == 'profit':
-            customers_with_consumption = sum(
-                1 for c in valid_customers
-                if contrib_map.get(c.id, {}).get('profit', Decimal('0.00')) > Decimal('0.00')
-            )
-        else:
-            customers_with_consumption = sum(
-                1 for c in valid_customers
-                if contrib_map.get(c.id, {}).get('net_amount', Decimal('0.00')) > Decimal('0.00')
-            )
-        customers_without_consumption = max(registered_customers - customers_with_consumption, 0)
-
-        net_sales = sum(
-            (contrib_map.get(c.id, {}).get('net_amount', Decimal('0.00')) for c in valid_customers
-             if contrib_map.get(c.id, {}).get('net_amount', Decimal('0.00')) > Decimal('0.00')),
-            Decimal('0.00')
-        )
-        total_profit = sum(
-            (contrib_map.get(c.id, {}).get('profit', Decimal('0.00')) for c in valid_customers
-             if contrib_map.get(c.id, {}).get('profit', Decimal('0.00')) > Decimal('0.00')),
-            Decimal('0.00')
-        )
-
-        return {
-            'registered_customers': registered_customers,
-            'customers_with_consumption': customers_with_consumption,
-            'customers_with_consumption_pct': (Decimal(customers_with_consumption) / Decimal(registered_customers) * Decimal('100.00')) if registered_customers > 0 else Decimal('0.00'),
-            'customers_without_consumption': customers_without_consumption,
-            'customers_without_consumption_pct': (Decimal(customers_without_consumption) / Decimal(registered_customers) * Decimal('100.00')) if registered_customers > 0 else Decimal('0.00'),
-            'net_amount': net_sales,
-            'net_sales': net_sales,
-            'profit': total_profit,
-            'margin': (total_profit / net_sales * Decimal('100.00')) if net_sales > Decimal('0.00') else Decimal('0.00')
-        }
+        self.read_customer_kpis()
+        return self._cached_stats
 
     def read_customer_kpis(self) -> list:
         """Builds and returns fully enriched customer records sorted by Pareto criterion"""
         customers = self._get_target_customers()
         customer_ids = [c.id for c in customers]
 
-        # Consumption amounts and metrics
-        prev_year_sales_map = self._get_prev_year_sales(customer_ids)
-        prev_quarter_sales_map = self._get_prev_quarter_sales(customer_ids)
-        prev_month_sales_map = self._get_prev_month_sales(customer_ids)
-        curr_year_sales_map = self._get_curr_year_sales(customer_ids)
+        # Single consolidated sales metrics query + supporting queries
+        sales_metrics_map = self._get_sales_metrics(customer_ids)
         freq_sales_map = self._calculate_sale_frequency(customer_ids)
         classes_consumption_map = self._calculate_product_classes_consumption(customer_ids)
         collections_map = self._get_collections_info(customer_ids)
-        contrib_metrics_map = self._get_contrib_metrics(customer_ids)
         routes_map = self._get_customer_assignments_map(customer_ids)
-        monthly_consumption_map = self._get_monthly_consumption(customer_ids)
 
         # Period ranges
         start_prev_y = date(self.previous_year, 1, 1)
@@ -513,33 +450,34 @@ class CustomerKpisService:
             c_id = customer.id
             reg_date = customer.registration_date
 
-            #current route and business unit
+            # current route and business unit
             r_info = routes_map.get(c_id, {})
             customer.current_route_id = r_info.get('route_id', '-')
             customer.current_route_business_unit = r_info.get('business_unit', '-')
 
-            # Previous periods sales
-            customer.previous_year_total = prev_year_sales_map.get(c_id, Decimal('0.00'))
-            customer.previous_quarter_total = prev_quarter_sales_map.get(c_id, Decimal('0.00'))
-            customer.previous_month_total = prev_month_sales_map.get(c_id, Decimal('0.00'))
-            customer.current_year_total = curr_year_sales_map.get(c_id, Decimal('0.00'))
+            # Sales metrics from single consolidated query
+            c_metrics = sales_metrics_map.get(c_id, {})
+            customer.previous_year_total = c_metrics.get('prev_year') or Decimal('0.00')
+            customer.previous_quarter_total = c_metrics.get('prev_q') or Decimal('0.00')
+            customer.previous_month_total = c_metrics.get('prev_m') or Decimal('0.00')
+            customer.current_year_total = c_metrics.get('curr_y') or Decimal('0.00')
 
-            #prev sale avg
+            # prev sale avg
             customer.previous_year_avg = self._calculate_period_avg(customer.previous_year_total, start_prev_y, end_prev_y, reg_date)
             customer.previous_quarter_avg = self._calculate_period_avg(customer.previous_quarter_total, self.first_day_q, self.last_day_q, reg_date)
             customer.current_year_avg = self._calculate_period_avg(customer.current_year_total, start_curr_y, end_curr_y, reg_date)
 
-            #categories according to prev periods sales
+            # categories according to prev periods sales
             customer.category_prev_year = self.CategoryObj(self._calculate_category(customer.previous_year_avg))
             customer.category_prev_quarter = self.CategoryObj(self._calculate_category(customer.previous_quarter_avg))
             customer.category_prev_month = self.CategoryObj(self._calculate_category(customer.previous_month_total))
 
-            #sale freq
+            # sale freq
             c_freq = freq_sales_map.get(c_id, {'name': 'nula', 'days': 0})
             customer.frequency = c_freq['name']
             customer.frequency_days = c_freq['days']
 
-            #collections
+            # collections
             col_info = collections_map.get(c_id, {
                 'current_balance': Decimal('0.00'),
                 'overdue_balance': Decimal('0.00'),
@@ -555,26 +493,42 @@ class CustomerKpisService:
             else:
                 customer.credit_usage = Decimal('0.00')
 
-            #agreements
+            # agreements
             customer.active_agreements = 0
 
-            #classes consumption
+            # classes consumption
             customer.product_classes_consumed = classes_consumption_map.get(c_id, {})
             customer.product_classes_with_consumption = len(customer.product_classes_consumed)
 
-            #monthly consumption breakdown
-            customer.monthly_consumption = monthly_consumption_map.get(c_id, [])
+            # monthly consumption breakdown
+            monthly_list = []
+            prev_sale = Decimal('0.00')
+            for m in range(1, 13):
+                current_sale = c_metrics.get(f'm_{m}') or Decimal('0.00')
+                if prev_sale > Decimal('0.00'):
+                    growth = ((current_sale - prev_sale) / prev_sale) * Decimal('100.00')
+                else:
+                    growth = Decimal('100.00') if current_sale > Decimal('0.00') else Decimal('0.00')
 
-            #contrib metrics
-            c_contrib = contrib_metrics_map.get(c_id, {'net_amount': Decimal('0.00'), 'profit': Decimal('0.00')})
-            customer.performance_net_amount = c_contrib['net_amount']
-            customer.performance_profit = c_contrib['profit']
+                monthly_list.append({
+                    'month_number': m,
+                    'date': date(self.current_year, m, 1),
+                    'sale': current_sale,
+                    'growth_vs_previous_month': growth,
+                })
+                prev_sale = current_sale
+
+            customer.monthly_consumption = monthly_list
+
+            # contrib metrics
+            customer.performance_net_amount = c_metrics.get('contrib_net') or Decimal('0.00')
+            customer.performance_profit = c_metrics.get('contrib_profit') or Decimal('0.00')
             customer.selected_contrib_by = 'profit' if self.order_by == 'profit' else 'net_amount'
 
             global_net += customer.performance_net_amount
             global_profit += customer.performance_profit
 
-        #pareto sorting & accumulation based on selected criterion
+        # pareto sorting & accumulation based on selected criterion
         if self.order_by == 'profit':
             active_customers = [c for c in customers if c.performance_profit > Decimal('0.00')]
             active_customers.sort(key=lambda x: x.performance_profit, reverse=True)
@@ -614,6 +568,35 @@ class CustomerKpisService:
             customer.cumuled_contrib = Decimal('0.00')
             customer.cumuled_portafolio_count = 0
             customer.cumuled_portafolio_pct = Decimal('0.00')
+
+        # Cache stats so get_stats() returns immediately in O(1) without re-querying the database
+        registered_customers = len(customers)
+        if self.order_by == 'profit':
+            customers_with_consumption = sum(1 for c in customers if c.performance_profit > Decimal('0.00'))
+        else:
+            customers_with_consumption = sum(1 for c in customers if c.performance_net_amount > Decimal('0.00'))
+        customers_without_consumption = max(registered_customers - customers_with_consumption, 0)
+
+        net_sales = sum(
+            (c.performance_net_amount for c in customers if c.performance_net_amount > Decimal('0.00')),
+            Decimal('0.00')
+        )
+        total_profit = sum(
+            (c.performance_profit for c in customers if c.performance_profit > Decimal('0.00')),
+            Decimal('0.00')
+        )
+
+        self._cached_stats = {
+            'registered_customers': registered_customers,
+            'customers_with_consumption': customers_with_consumption,
+            'customers_with_consumption_pct': (Decimal(customers_with_consumption) / Decimal(registered_customers) * Decimal('100.00')) if registered_customers > 0 else Decimal('0.00'),
+            'customers_without_consumption': customers_without_consumption,
+            'customers_without_consumption_pct': (Decimal(customers_without_consumption) / Decimal(registered_customers) * Decimal('100.00')) if registered_customers > 0 else Decimal('0.00'),
+            'net_amount': net_sales,
+            'net_sales': net_sales,
+            'profit': total_profit,
+            'margin': (total_profit / net_sales * Decimal('100.00')) if net_sales > Decimal('0.00') else Decimal('0.00')
+        }
 
         return active_customers + inactive_customers
 
