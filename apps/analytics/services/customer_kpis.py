@@ -170,7 +170,7 @@ class CustomerKpisService:
 
     def _get_sales_metrics(self, customer_ids: list[Any]) -> dict[Any, dict[str, Any]]:
         """
-        calculates all key sales amounts in a single aggregated query:
+        calculates all key sales amounts using targeted date filtered queries:
         - previous year total
         - previous quarter total
         - previous month total
@@ -186,27 +186,35 @@ class CustomerKpisService:
         last_day_prev_month = self.today.replace(day=1) - timedelta(days=1)
         first_day_prev_month = last_day_prev_month.replace(day=1)
 
-        annotations = {
-            'prev_year': Sum('net_amount', filter=Q(sale_date__year=self.previous_year)),
-            'prev_q': Sum('net_amount', filter=Q(sale_date__gte=self.first_day_q, sale_date__lte=self.last_day_q)),
-            'prev_m': Sum('net_amount', filter=Q(sale_date__gte=first_day_prev_month, sale_date__lte=last_day_prev_month)),
-            'curr_y': Sum('net_amount', filter=Q(sale_date__gte=start_curr_y, sale_date__lte=self.today)),
-            'contrib_net': Sum('net_amount', filter=Q(sale_date__gte=self.date_start, sale_date__lte=self.date_end)),
-            'contrib_profit': Sum('profit', filter=Q(sale_date__gte=self.date_start, sale_date__lte=self.date_end)),
-        }
-        for m in range(1, 13):
-            annotations[f'm_{m}'] = Sum('net_amount', filter=Q(sale_date__year=self.current_year, sale_date__month=m))
-
-        earliest_date = min(self.first_day_q, self.date_start, date(self.previous_year, 1, 1), first_day_prev_month)
-
         clean_tx = self.transactions_qs.select_related(None).order_by()
-        sales = (
-            clean_tx
-            .filter(customer_id__in=customer_ids, sale_date__gte=earliest_date)
-            .values('customer_id')
-            .annotate(**annotations)
-        )
-        return {row['customer_id']: row for row in sales}
+        sales_metrics = defaultdict(dict)
+
+        #previous year
+        for r in clean_tx.filter(customer_id__in=customer_ids, sale_date__year=self.previous_year).values('customer_id').annotate(total=Sum('net_amount')):
+            sales_metrics[r['customer_id']]['prev_year'] = r['total']
+
+        #previous quarter
+        for r in clean_tx.filter(customer_id__in=customer_ids, sale_date__gte=self.first_day_q, sale_date__lte=self.last_day_q).values('customer_id').annotate(total=Sum('net_amount')):
+            sales_metrics[r['customer_id']]['prev_q'] = r['total']
+
+        #previous month
+        for r in clean_tx.filter(customer_id__in=customer_ids, sale_date__gte=first_day_prev_month, sale_date__lte=last_day_prev_month).values('customer_id').annotate(total=Sum('net_amount')):
+            sales_metrics[r['customer_id']]['prev_m'] = r['total']
+
+        #current year
+        for r in clean_tx.filter(customer_id__in=customer_ids, sale_date__gte=start_curr_y, sale_date__lte=self.today).values('customer_id').annotate(total=Sum('net_amount')):
+            sales_metrics[r['customer_id']]['curr_y'] = r['total']
+
+        #contribution period
+        for r in clean_tx.filter(customer_id__in=customer_ids, sale_date__gte=self.date_start, sale_date__lte=self.date_end).values('customer_id').annotate(net=Sum('net_amount'), profit=Sum('profit')):
+            sales_metrics[r['customer_id']]['contrib_net'] = r['net']
+            sales_metrics[r['customer_id']]['contrib_profit'] = r['profit']
+
+        #monthly breakdown for current year
+        for r in clean_tx.filter(customer_id__in=customer_ids, sale_date__year=self.current_year).values('customer_id', 'sale_date__month').annotate(total=Sum('net_amount')):
+            sales_metrics[r['customer_id']][f"m_{r['sale_date__month']}"] = r['total']
+
+        return sales_metrics
 
     def _get_prev_year_sales(self, customer_ids: list[Any]) -> dict[Any, Decimal]:
         """returns {customer_id: total_net_sales_prev_year}"""
@@ -263,8 +271,7 @@ class CustomerKpisService:
             customer_dates[row['customer_id']].append(row['sale_date'])
 
         freq_map = {}
-        for c_id in customer_ids:
-            dates = customer_dates.get(c_id, [])
+        for c_id, dates in customer_dates.items():
             if len(dates) < 2:
                 freq_map[c_id] = {'name': 'nula', 'days': 0}
                 continue
@@ -430,14 +437,16 @@ class CustomerKpisService:
         customers = self._get_target_customers()
         customer_ids = [c.id for c in customers]
 
-        # Single consolidated sales metrics query + supporting queries
+        #single consolidated sales metrics query + supporting queries
         sales_metrics_map = self._get_sales_metrics(customer_ids)
         freq_sales_map = self._calculate_sale_frequency(customer_ids)
         classes_consumption_map = self._calculate_product_classes_consumption(customer_ids)
         collections_map = self._get_collections_info(customer_ids)
-        routes_map = self._get_customer_assignments_map(customer_ids)
+        #routes map only if customers are not already annotated with current_route_id
+        needs_routes = not bool(customers and hasattr(customers[0], 'current_route_id') and customers[0].current_route_id is not None)
+        routes_map = self._get_customer_assignments_map(customer_ids) if needs_routes else {}
 
-        # Period ranges
+        #period ranges
         start_prev_y = date(self.previous_year, 1, 1)
         end_prev_y = date(self.previous_year, 12, 31)
         start_curr_y = date(self.current_year, 1, 1)
@@ -451,9 +460,13 @@ class CustomerKpisService:
             reg_date = customer.registration_date
 
             # current route and business unit
-            r_info = routes_map.get(c_id, {})
-            customer.current_route_id = r_info.get('route_id', '-')
-            customer.current_route_business_unit = r_info.get('business_unit', '-')
+            if getattr(customer, 'current_route_id', None) is not None:
+                customer.current_route_id = customer.current_route_id or '-'
+                customer.current_route_business_unit = getattr(customer, 'current_route_business_unit', None) or '-'
+            else:
+                r_info = routes_map.get(c_id, {})
+                customer.current_route_id = r_info.get('route_id', '-')
+                customer.current_route_business_unit = r_info.get('business_unit', '-')
 
             # Sales metrics from single consolidated query
             c_metrics = sales_metrics_map.get(c_id, {})
