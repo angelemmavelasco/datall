@@ -248,3 +248,9 @@ def product_filter_options_view(request):
             'selected_ids': selected_ids,
         }
     )
+
+@login_required
+def stock_transfers_view(request):
+    template = 'products/stock_transfers/stock_transfers.html'
+    
+    return render(request, template, {})

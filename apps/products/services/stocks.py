@@ -327,3 +327,6 @@ class StocksService(UsersService):
                 total_processed=total_processed,
                 errors=[str(e)]
             )
+
+    class StockTransfersService:
+        pass
