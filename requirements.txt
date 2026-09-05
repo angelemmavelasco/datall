@@ -22,3 +22,4 @@ whitenoise[brotli]
 pandas
 openpyxl
 django-q2==1.11.0
+redis==5.2.1

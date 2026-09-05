@@ -1,4 +1,11 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: datall_bi_redis
+    restart: always
+    ports:
+      - "6380:6379"
+
   web:
     build: .
     container_name: datall_bi_web
@@ -11,6 +18,8 @@ services:
       - /app/node_modules
     ports:
       - "8090:8000"
+    depends_on:
+      - redis
 
   qcluster:
     build: .
@@ -24,3 +33,4 @@ services:
       - /app/node_modules
     depends_on:
       - web
+      - redis

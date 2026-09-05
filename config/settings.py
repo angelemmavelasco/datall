@@ -219,7 +219,12 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
-#django q2 cluster config
+# django q2 cluster config with Redis broker
+REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
+REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
+REDIS_DB = int(os.getenv('REDIS_DB', 0))
+REDIS_PASSWORD = os.getenv('REDIS_PASSWORD') or None
+
 Q_CLUSTER = {
     'name': 'datall_q',
     'workers': 4,
@@ -228,5 +233,10 @@ Q_CLUSTER = {
     'retry': 360,
     'queue_limit': 50,
     'bulk': 10,
-    'orm': 'default',
+    'redis': {
+        'host': REDIS_HOST,
+        'port': REDIS_PORT,
+        'db': REDIS_DB,
+        'password': REDIS_PASSWORD,
+    }
 }

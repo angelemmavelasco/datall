@@ -19,6 +19,21 @@ services:
     volumes:
       - datall_bi_postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    container_name: datall_bi_redis
+    restart: always
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    ports:
+      - "6380:6379"
+    volumes:
+      - datall_bi_redis_data:/data
+
   web:
     build: .
     container_name: datall_bi_web
@@ -31,6 +46,8 @@ services:
       - datall_bi_media_data:/app/media
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   qcluster:
@@ -45,9 +62,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       web:
         condition: service_started
 
 volumes:
   datall_bi_postgres_data:
   datall_bi_media_data:
+  datall_bi_redis_data:
