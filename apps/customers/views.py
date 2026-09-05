@@ -16,8 +16,14 @@ from .services import (
     AccountsReceivablesStats,
     AccountsReceivableNotFound,
 )
+from apps.mapser.models import CustomerGeoProfile
 from .filters import CustomerFilter, AccountsReceivableFilter, CustomerProfileFilter
-from .forms import CustomerForm, CustomerAssignmentFormSet, CustomerClassMarginFormSet
+from .forms import (
+    CustomerForm,
+    CustomerAssignmentFormSet,
+    CustomerClassMarginFormSet,
+    CustomerGeoProfileForm,
+)
 from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.analytics.services.customer_kpis import CustomerProfileService
 
@@ -113,13 +119,16 @@ def customer_detail_view(request, pk: str):
     customer = profile_service.build_profile()
 
     available_actions = None
-    if service.has_full_access:
+    can_edit_geo = service.can_edit_customer_geo_profile(customer=customer)
+    if service.has_full_access or can_edit_geo:
         available_actions = 'customers/partials/customer_detail__actions.html'
 
     context = {
         'customer': customer,
         'filter': profile_filter,
         'available_actions': available_actions,
+        'can_edit_customer': service.has_full_access,
+        'can_edit_geo_profile': can_edit_geo,
     }
     return render(request, template, context)
 
@@ -136,15 +145,24 @@ def customer_create_view(request):
         form = CustomerForm(request.POST)
         assignments_formset = CustomerAssignmentFormSet(request.POST, prefix='assignments')
         class_margins_formset = CustomerClassMarginFormSet(request.POST, prefix='class_margins')
+        geo_form = CustomerGeoProfileForm(request.POST)
 
-        if form.is_valid() and assignments_formset.is_valid() and class_margins_formset.is_valid():
+        if (
+            form.is_valid()
+            and assignments_formset.is_valid()
+            and class_margins_formset.is_valid()
+            and geo_form.is_valid()
+        ):
             try:
                 assignments_data = [f.cleaned_data for f in assignments_formset if f.cleaned_data]
                 class_margins_data = [f.cleaned_data for f in class_margins_formset if f.cleaned_data]
+                geo_data = geo_form.cleaned_data if any(geo_form.cleaned_data.values()) else None
+
                 new_customer = service.create_customer(
                     customer_data=form.cleaned_data,
                     assignments_data=assignments_data,
                     class_margins_data=class_margins_data,
+                    geo_profile_data=geo_data,
                 )
                 messages.success(request, f'Cliente {new_customer.id} registrado correctamente.')
                 next_url = request.GET.get('next') or request.POST.get('next')
@@ -167,25 +185,24 @@ def customer_create_view(request):
         form = CustomerForm()
         assignments_formset = CustomerAssignmentFormSet(prefix='assignments')
         class_margins_formset = CustomerClassMarginFormSet(prefix='class_margins')
+        geo_form = CustomerGeoProfileForm()
 
     context = {
         'form': form,
         'assignments_formset': assignments_formset,
         'class_margins_formset': class_margins_formset,
+        'geo_form': geo_form,
         'can_update_access': service.has_full_access,
+        'can_edit_customer': True,
+        'can_edit_geo_profile': True,
         'updating': None,
     }
     return render(request, template, context)
-
 
 @login_required
 def customer_update_view(request, pk: str):
     template = 'customers/customer_form.html'
     service = CustomersService(user=request.user)
-
-    if not service.has_full_access:
-        messages.error(request, 'No tienes permisos para actualizar clientes.')
-        return redirect('customers:customer_detail_view', pk=pk)
 
     try:
         customer_instance = service.read_customer(pk=pk)
@@ -193,45 +210,90 @@ def customer_update_view(request, pk: str):
         messages.error(request, "El cliente solicitado no existe.")
         return redirect('customers:customer_list_view')
     except PermissionsError:
-        messages.error(request, "No tienes permisos para actualizar este cliente.")
+        messages.error(request, "No tienes permisos para acceder a este cliente.")
         return redirect('customers:customer_list_view')
     except Exception as e:
         messages.error(request, str(e))
         return redirect('customers:customer_list_view')
 
+    can_edit_full = service.has_full_access
+    can_edit_geo = service.can_edit_customer_geo_profile(customer=customer_instance)
+
+    if not can_edit_full and not can_edit_geo:
+        messages.error(request, "No tienes permisos para actualizar este cliente ni su perfil geográfico.")
+        return redirect('customers:customer_detail_view', pk=pk)
+
+    geo_profile_instance = getattr(customer_instance, 'geo_profile', None)
+    if not geo_profile_instance:
+        geo_profile_instance = CustomerGeoProfile.objects.filter(customer=customer_instance).first()
+
     if request.method == 'POST':
-        form = CustomerForm(request.POST, instance=customer_instance)
-        assignments_formset = CustomerAssignmentFormSet(
-            request.POST, instance=customer_instance, prefix='assignments'
-        )
-        class_margins_formset = CustomerClassMarginFormSet(
-            request.POST, instance=customer_instance, prefix='class_margins'
-        )
+        if not can_edit_full and can_edit_geo:
+            # seller with active route: can ONLY edit customer geo profile
+            geo_form = CustomerGeoProfileForm(request.POST, instance=geo_profile_instance)
+            if geo_form.is_valid():
+                try:
+                    service.update_or_create_geo_profile(
+                        customer=customer_instance,
+                        geo_data=geo_form.cleaned_data,
+                    )
+                    messages.success(request, f"Perfil geográfico del cliente {customer_instance.id} actualizado correctamente.")
+                    return redirect('customers:customer_detail_view', pk=customer_instance.pk)
+                except ServiceError as e:
+                    messages.error(request, str(e))
+                except Exception as e:
+                    messages.error(request, f"Ocurrió un error al actualizar el perfil geográfico: {str(e)}")
+            else:
+                messages.error(request, 'Por favor revisa los errores en el perfil geográfico.')
 
-        if form.is_valid() and assignments_formset.is_valid() and class_margins_formset.is_valid():
-            try:
-                assignments_data = [f.cleaned_data for f in assignments_formset if f.cleaned_data]
-                class_margins_data = [f.cleaned_data for f in class_margins_formset if f.cleaned_data]
-                updated_customer = service.update_customer(
-                    pk=pk,
-                    customer_data=form.cleaned_data,
-                    assignments_data=assignments_data,
-                    class_margins_data=class_margins_data,
-                )
-                messages.success(request, f"Cliente {updated_customer.id} actualizado correctamente.")
-                return redirect('customers:customer_detail_view', updated_customer.pk)
+            form = CustomerForm(instance=customer_instance)
+            assignments_formset = CustomerAssignmentFormSet(instance=customer_instance, prefix='assignments')
+            class_margins_formset = CustomerClassMarginFormSet(instance=customer_instance, prefix='class_margins')
 
-            except PermissionsError as e:
-                messages.error(request, str(e))
-                return redirect('customers:customer_list_view')
-
-            except ServiceError as e:
-                messages.error(request, str(e))
-
-            except Exception as e:
-                messages.error(request, f"Ocurrió un error inesperado al actualizar: {str(e)}")
         else:
-            messages.error(request, 'Por favor revisa los errores en el formulario.')
+            # full access: can edit customer, assignments, margins and geo profile
+            form = CustomerForm(request.POST, instance=customer_instance)
+            assignments_formset = CustomerAssignmentFormSet(
+                request.POST, instance=customer_instance, prefix='assignments'
+            )
+            class_margins_formset = CustomerClassMarginFormSet(
+                request.POST, instance=customer_instance, prefix='class_margins'
+            )
+            geo_form = CustomerGeoProfileForm(request.POST, instance=geo_profile_instance)
+
+            if (
+                form.is_valid()
+                and assignments_formset.is_valid()
+                and class_margins_formset.is_valid()
+                and geo_form.is_valid()
+            ):
+                try:
+                    assignments_data = [f.cleaned_data for f in assignments_formset if f.cleaned_data]
+                    class_margins_data = [f.cleaned_data for f in class_margins_formset if f.cleaned_data]
+                    geo_data = geo_form.cleaned_data
+
+                    updated_customer = service.update_customer(
+                        pk=pk,
+                        customer_data=form.cleaned_data,
+                        assignments_data=assignments_data,
+                        class_margins_data=class_margins_data,
+                        geo_profile_data=geo_data,
+                    )
+                    messages.success(request, f"Cliente {updated_customer.id} actualizado correctamente.")
+                    return redirect('customers:customer_detail_view', updated_customer.pk)
+
+                except PermissionsError as e:
+                    messages.error(request, str(e))
+                    return redirect('customers:customer_list_view')
+
+                except ServiceError as e:
+                    messages.error(request, str(e))
+
+                except Exception as e:
+                    messages.error(request, f"Ocurrió un error inesperado al actualizar: {str(e)}")
+            else:
+                messages.error(request, 'Por favor revisa los errores en el formulario.')
+
     else:
         form = CustomerForm(instance=customer_instance)
         assignments_formset = CustomerAssignmentFormSet(
@@ -240,13 +302,17 @@ def customer_update_view(request, pk: str):
         class_margins_formset = CustomerClassMarginFormSet(
             instance=customer_instance, prefix='class_margins'
         )
+        geo_form = CustomerGeoProfileForm(instance=geo_profile_instance)
 
     context = {
         'form': form,
         'assignments_formset': assignments_formset,
         'class_margins_formset': class_margins_formset,
+        'geo_form': geo_form,
         'updating': customer_instance,
-        'can_update_access': service.has_full_access,
+        'can_update_access': can_edit_full,
+        'can_edit_customer': can_edit_full,
+        'can_edit_geo_profile': can_edit_geo,
     }
     return render(request, template, context)
 

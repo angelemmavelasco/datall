@@ -81,7 +81,7 @@ class CustomersService(UsersService):
         if not can_view and not can_edit:
             raise ValueError('El filtro can_view y can_edit no pueden ser ambos falsos')
 
-        base_qs = self.customer_model.objects.select_related('customer_type')
+        base_qs = self.customer_model.objects.select_related('customer_type', 'geo_profile')
 
         if self.has_full_access:
             return base_qs.annotate(
@@ -193,11 +193,99 @@ class CustomersService(UsersService):
 
         raise CustomerNotFound(f'No se encontró ningún cliente con el ID "{pk}".')
 
+    def can_edit_customer_geo_profile(self, customer: Customer | str) -> bool:
+        """
+        determines if user can edit customer geo profile.
+        returns true if user has full access or has an active route assignment
+        matching the customer's current active route assignment.
+        """
+        if self.has_full_access:
+            return True
+
+        today = timezone.localdate()
+        from apps.sales.models import RouteAssignment
+        user_active_routes = RouteAssignment.objects.filter(
+            employee__user=self.user,
+            date_start__lte=today,
+        ).filter(
+            Q(date_end__isnull=True) | Q(date_end__gte=today)
+        ).values_list('route_id', flat=True)
+
+        if not user_active_routes:
+            return False
+
+        customer_id = customer.pk if hasattr(customer, 'pk') else customer
+        return self.customer_assignment_model.objects.filter(
+            customer_id=customer_id,
+            route_id__in=user_active_routes,
+            start_date__lte=today,
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=today)
+        ).exists()
+
+    def update_or_create_geo_profile(
+            self,
+            *,
+            customer: Customer | str,
+            geo_data: dict,
+        ):
+        """
+        creates or updates the customer geographic profile
+        """
+        from apps.mapser.models import CustomerGeoProfile
+
+        customer_obj = customer if isinstance(customer, Customer) else self.customer_model.objects.get(pk=customer)
+        geo_profile = getattr(customer_obj, 'geo_profile', None)
+        if not geo_profile:
+            geo_profile = CustomerGeoProfile.objects.filter(customer=customer_obj).first()
+        if not geo_profile:
+            geo_profile = CustomerGeoProfile(customer=customer_obj)
+
+        data = dict(geo_data or {})
+        data.pop('id', None)
+        data.pop('customer', None)
+
+        lat = data.get('latitude')
+        lng = data.get('longitude')
+        if lat is not None and str(lat).strip() != '':
+            lat = round(Decimal(str(lat).strip()), 9)
+            data['latitude'] = lat
+        else:
+            lat = None
+            data['latitude'] = None
+
+        if lng is not None and str(lng).strip() != '':
+            lng = round(Decimal(str(lng).strip()), 9)
+            data['longitude'] = lng
+        else:
+            lng = None
+            data['longitude'] = None
+
+        coords_changed = (geo_profile.latitude != lat or geo_profile.longitude != lng)
+        if lat is not None and lng is not None:
+            if coords_changed or geo_profile.geocoding_source in [
+                CustomerGeoProfile.GeocodingSource.UNRESOLVED,
+                CustomerGeoProfile.GeocodingSource.POSTAL_CODE,
+                '',
+            ]:
+                geo_profile.geocoding_source = CustomerGeoProfile.GeocodingSource.MANUAL
+            geo_profile.last_geocoded_at = timezone.now()
+        elif lat is None and lng is None:
+            geo_profile.geocoding_source = CustomerGeoProfile.GeocodingSource.UNRESOLVED
+
+        for key, value in data.items():
+            setattr(geo_profile, key, value)
+
+        geo_profile.full_clean()
+        geo_profile.save()
+        return geo_profile
+
     def create_customer(
         self,
         customer_data: dict = None,
         assignments_data: list = None,
         class_margins_data: list = None,
+        geo_profile_data: dict = None,
         **kwargs
     ) -> Customer:
         """
@@ -239,6 +327,12 @@ class CustomersService(UsersService):
                             margin.full_clean()
                             margin.save()
 
+                if geo_profile_data:
+                    self.update_or_create_geo_profile(
+                        customer=new_customer,
+                        geo_data=geo_profile_data,
+                    )
+
             return new_customer
 
         except ValidationError as e:
@@ -258,6 +352,7 @@ class CustomersService(UsersService):
         customer_data: dict = None,
         assignments_data: list = None,
         class_margins_data: list = None,
+        geo_profile_data: dict = None,
         **kwargs
     ) -> Customer:
         """
@@ -338,6 +433,12 @@ class CustomersService(UsersService):
                             new_margin = self.customer_class_margin_model(customer=customer_to_update, **margin_copy)
                             new_margin.full_clean()
                             new_margin.save()
+
+                if geo_profile_data is not None:
+                    self.update_or_create_geo_profile(
+                        customer=customer_to_update,
+                        geo_data=geo_profile_data,
+                    )
 
             return customer_to_update
 

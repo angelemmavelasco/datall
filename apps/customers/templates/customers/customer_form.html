@@ -3,17 +3,25 @@
 
 {% block title %}
 {% if updating %}
-Editar cliente {{ updating.id|upper }}
+    {% if not can_edit_customer %}
+        Editar perfil geográfico: {{ updating.id|upper }}
+    {% else %}
+        Editar cliente {{ updating.id|upper }}
+    {% endif %}
 {% else %}
-Nuevo cliente
+    Nuevo cliente
 {% endif %}
 {% endblock %}
 
 {% block module_name %}
 {% if updating %}
-Editar cliente {{ updating.id|upper }}
+    {% if not can_edit_customer %}
+        Editar perfil geográfico: {{ updating.id|upper }}
+    {% else %}
+        Editar cliente {{ updating.id|upper }}
+    {% endif %}
 {% else %}
-Nuevo cliente
+    Nuevo cliente
 {% endif %}
 {% endblock %}
 
@@ -22,268 +30,446 @@ Nuevo cliente
 <form method="POST" class="flex flex-col gap-4">
     {% csrf_token %}
 
+    {% if not can_edit_customer and updating %}
+        <div class="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 rounded text-xs">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 lucide lucide-map-pin"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+            <span><strong>Modo de actualización geográfica:</strong> Tu asignación de ruta activa te permite actualizar la ubicación y perfil geográfico de este cliente. Los datos generales y asignaciones son de solo lectura.</span>
+        </div>
+    {% endif %}
+
     <p class="text-title text-sm">Información general</p>
     <hr class="border-border border">
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
-        <span class="text-title flex items-center gap-1">Identificador
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
-                <path d="M12 6v12" />
-                <path d="M17.196 9 6.804 15" />
-                <path d="m6.804 9 10.392 6" />
-            </svg>
-        </span>
-        <div>
-            {% if updating %}
-                {% render_field form.id class='w-full bg-page border border-border rounded p-1 text-secondary cursor-not-allowed font-mono' readonly='readonly' %}
-            {% else %}
-                {% render_field form.id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='Ej: 12021, C-001' required='required' %}
-            {% endif %}
-            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
-                {% for error in form.id.errors %}
-                <span class="block">• {{ error }}</span>
-                {% endfor %}
-            </p>
-        </div>
+    {% if not can_edit_customer and updating %}
+        <!-- Read-only customer summary for sellers -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border text-xs">
+            <span class="text-title">Identificador</span>
+            <div class="font-mono text-secondary font-medium">{{ updating.id|upper }}</div>
 
-        <span class="text-title flex items-center gap-1">Nombre / Razón Social
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
-                <path d="M12 6v12" />
-                <path d="M17.196 9 6.804 15" />
-                <path d="m6.804 9 10.392 6" />
-            </svg>
-        </span>
-        <div>
-            {% render_field form.name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Nombre del cliente o encargado' required='required' %}
-            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
-                {% for error in form.name.errors %}
-                <span class="block">• {{ error }}</span>
-                {% endfor %}
-            </p>
-        </div>
+            <span class="text-title">Nombre / Razón Social</span>
+            <div class="text-title font-medium">{{ updating.name|title }}</div>
 
-        <span class="text-title flex items-center gap-1">Tipo de cliente
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
-                <path d="M12 6v12" />
-                <path d="M17.196 9 6.804 15" />
-                <path d="m6.804 9 10.392 6" />
-            </svg>
-        </span>
-        <div>
-            {% render_field form.customer_type class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title' required='required' %}
-            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
-                {% for error in form.customer_type.errors %}
-                <span class="block">• {{ error }}</span>
-                {% endfor %}
-            </p>
-        </div>
+            <span class="text-title">Tipo de cliente</span>
+            <div class="text-secondary">{{ updating.customer_type.name|default:"-"|title }}</div>
 
-        <span class="text-title flex items-center gap-1">Fecha de registro
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
-                <path d="M12 6v12" />
-                <path d="M17.196 9 6.804 15" />
-                <path d="m6.804 9 10.392 6" />
-            </svg>
-        </span>
-        <div>
-            {% render_field form.registration_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' required='required' %}
-            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
-                {% for error in form.registration_date.errors %}
-                <span class="block">• {{ error }}</span>
-                {% endfor %}
-            </p>
-        </div>
+            <span class="text-title">Fecha de registro</span>
+            <div class="font-mono text-secondary">{{ updating.registration_date|date:"d M Y"|default:"-" }}</div>
 
-        <span class="text-title flex items-center gap-1">Línea de crédito ($)</span>
-        <div>
-            {% render_field form.credit_limit class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0.00' %}
-            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
-                {% for error in form.credit_limit.errors %}
-                <span class="block">• {{ error }}</span>
-                {% endfor %}
-            </p>
-        </div>
+            <span class="text-title">Línea de crédito ($)</span>
+            <div class="font-mono text-secondary">${{ updating.credit_limit|default:0|floatformat:2|intcomma }}</div>
 
-        <span class="text-title flex items-center gap-1">Días de crédito</span>
-        <div>
-            {% render_field form.credit_days class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0' %}
-            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
-                {% for error in form.credit_days.errors %}
-                <span class="block">• {{ error }}</span>
-                {% endfor %}
-            </p>
-        </div>
+            <span class="text-title">Días de crédito</span>
+            <div class="font-mono text-secondary">{{ updating.credit_days|default:0 }} días</div>
 
-        <span class="text-title flex items-center gap-1">Líder de opinión</span>
-        <div class="flex items-center gap-2">
-            {% render_field form.opinion_leader class='rounded border-border focus:ring-strong' %}
-            <span class="text-xs text-secondary">Cliente destacado o influyente en el sector</span>
-            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
-                {% for error in form.opinion_leader.errors %}
-                <span class="block">• {{ error }}</span>
-                {% endfor %}
-            </p>
-        </div>
-    </div>
-
-    <!-- Customer Route Assignments Formset -->
-    <div class="flex justify-between items-center mt-4">
-        <p class="text-title text-sm">Asignaciones de ruta</p>
-        <button type="button" onclick="addForm('assignments')" class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-circle"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            Añadir asignación
-        </button>
-    </div>
-    <hr class="border-border border">
-
-    {{ assignments_formset.management_form }}
-
-    <div id="assignments-forms" class="flex flex-col gap-4">
-        {% for assignment_form in assignments_formset %}
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-start bg-container p-2 rounded border border-border">
-                {{ assignment_form.id }}
-
-                <div class="flex flex-col gap-1">
-                    <span class="text-title text-xs flex items-center gap-1">Ruta
-                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
-                    </span>
-                    {% render_field assignment_form.route class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
-                    <p class="text-red-500 text-xs mt-0.5">
-                        {% for error in assignment_form.route.errors %}
-                        <span class="block">• {{ error }}</span>
-                        {% endfor %}
-                    </p>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <span class="text-title text-xs flex items-center gap-1">Fecha inicio
-                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
-                    </span>
-                    {% render_field assignment_form.start_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
-                    <p class="text-red-500 text-xs mt-0.5">
-                        {% for error in assignment_form.start_date.errors %}
-                        <span class="block">• {{ error }}</span>
-                        {% endfor %}
-                    </p>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <span class="text-title text-xs">Fecha fin (opcional)</span>
-                    {% render_field assignment_form.end_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
-                    <p class="text-red-500 text-xs mt-0.5">
-                        {% for error in assignment_form.end_date.errors %}
-                        <span class="block">• {{ error }}</span>
-                        {% endfor %}
-                    </p>
-                </div>
-
-                <div class="flex flex-col gap-1 md:col-span-2">
-                    <span class="text-title text-xs">Notas sobre la asignación</span>
-                    {% render_field assignment_form.notes rows="1" class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Opcional: Detalles de la asignación...' %}
-                    <p class="text-red-500 text-xs mt-0.5">
-                        {% for error in assignment_form.notes.errors %}
-                        <span class="block">• {{ error }}</span>
-                        {% endfor %}
-                    </p>
-                </div>
-
-                {% if assignment_form.instance.pk %}
-                    <div class="flex flex-col gap-1 justify-center items-start md:items-end">
-                        <span class="text-title text-xs">Acción</span>
-                        <label class="flex items-center gap-1 text-red-500 cursor-pointer text-xs h-8">
-                            {% render_field assignment_form.DELETE class='rounded border-border text-red-500 focus:ring-red-500' %}
-                            <span>Eliminar asignación</span>
-                        </label>
-                    </div>
-                {% endif %}
-
-                {% if assignment_form.non_field_errors %}
-                    <div class="md:col-span-3 text-red-500 text-xs mt-1">
-                        {% for error in assignment_form.non_field_errors %}
-                            <span class="block">• {{ error }}</span>
-                        {% endfor %}
-                    </div>
+            <span class="text-title">Líder de opinión</span>
+            <div class="text-secondary">
+                {% if updating.opinion_leader %}
+                    <span class="text-violet-500 font-medium">Sí</span>
+                {% else %}
+                    <span>No</span>
                 {% endif %}
             </div>
-        {% endfor %}
-    </div>
-
-    {% if not request.user|has_group:"vendedor" %}
-    <!-- custoemr margins -->
-    <div class="flex justify-between items-center mt-4">
-        <p class="text-title text-sm">Márgenes por clase de producto</p>
-        <button type="button" onclick="addForm('class_margins')" class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-circle"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            Añadir margen por clase
-        </button>
-    </div>
-    <hr class="border-border border">
-
-    {{ class_margins_formset.management_form }}
-
-    <div id="class_margins-forms" class="flex flex-col gap-4">
-        {% for margin_form in class_margins_formset %}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-start bg-container p-2 rounded border border-border">
-                {{ margin_form.id }}
-
-                <div class="flex flex-col gap-1">
-                    <span class="text-title text-xs flex items-center gap-1">Clase de producto
-                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
-                    </span>
-                    {% render_field margin_form.product_class class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title' %}
-                    <p class="text-red-500 text-xs mt-0.5">
-                        {% for error in margin_form.product_class.errors %}
-                        <span class="block">• {{ error }}</span>
-                        {% endfor %}
-                    </p>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <span class="text-title text-xs flex items-center gap-1">Margen mínimo (%)
-                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
-                    </span>
-                    {% render_field margin_form.min_margin_percentage class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0.00' %}
-                    <p class="text-red-500 text-xs mt-0.5">
-                        {% for error in margin_form.min_margin_percentage.errors %}
-                        <span class="block">• {{ error }}</span>
-                        {% endfor %}
-                    </p>
-                </div>
-
-                {% if margin_form.instance.pk %}
-                    <div class="flex flex-col gap-1 justify-center items-start md:items-end md:col-span-2 pt-1 border-t border-border">
-                        <label class="flex items-center gap-1 text-red-500 cursor-pointer text-xs h-8">
-                            {% render_field margin_form.DELETE class='rounded border-border text-red-500 focus:ring-red-500' %}
-                            <span>Eliminar este margen</span>
-                        </label>
-                    </div>
+        </div>
+    {% else %}
+        <!-- Editable general info for full access admins -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+            <span class="text-title flex items-center gap-1">Identificador
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                    <path d="M12 6v12" />
+                    <path d="M17.196 9 6.804 15" />
+                    <path d="m6.804 9 10.392 6" />
+                </svg>
+            </span>
+            <div>
+                {% if updating %}
+                    {% render_field form.id class='w-full bg-page border border-border rounded p-1 text-secondary cursor-not-allowed font-mono' readonly='readonly' %}
+                {% else %}
+                    {% render_field form.id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='Ej: 12021, C-001' required='required' %}
                 {% endif %}
-
-                {% if margin_form.non_field_errors %}
-                    <div class="md:col-span-2 text-red-500 text-xs mt-1">
-                        {% for error in margin_form.non_field_errors %}
-                            <span class="block">• {{ error }}</span>
-                        {% endfor %}
-                    </div>
-                {% endif %}
+                <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                    {% for error in form.id.errors %}
+                    <span class="block">• {{ error }}</span>
+                    {% endfor %}
+                </p>
             </div>
-        {% endfor %}
-    </div>
+
+            <span class="text-title flex items-center gap-1">Nombre / Razón Social
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                    <path d="M12 6v12" />
+                    <path d="M17.196 9 6.804 15" />
+                    <path d="m6.804 9 10.392 6" />
+                </svg>
+            </span>
+            <div>
+                {% render_field form.name class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Nombre del cliente o encargado' required='required' %}
+                <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                    {% for error in form.name.errors %}
+                    <span class="block">• {{ error }}</span>
+                    {% endfor %}
+                </p>
+            </div>
+
+            <span class="text-title flex items-center gap-1">Tipo de cliente
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                    <path d="M12 6v12" />
+                    <path d="M17.196 9 6.804 15" />
+                    <path d="m6.804 9 10.392 6" />
+                </svg>
+            </span>
+            <div>
+                {% render_field form.customer_type class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title' required='required' %}
+                <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                    {% for error in form.customer_type.errors %}
+                    <span class="block">• {{ error }}</span>
+                    {% endfor %}
+                </p>
+            </div>
+
+            <span class="text-title flex items-center gap-1">Fecha de registro
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                    <path d="M12 6v12" />
+                    <path d="M17.196 9 6.804 15" />
+                    <path d="m6.804 9 10.392 6" />
+                </svg>
+            </span>
+            <div>
+                {% render_field form.registration_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' required='required' %}
+                <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                    {% for error in form.registration_date.errors %}
+                    <span class="block">• {{ error }}</span>
+                    {% endfor %}
+                </p>
+            </div>
+
+            <span class="text-title flex items-center gap-1">Línea de crédito ($)</span>
+            <div>
+                {% render_field form.credit_limit class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0.00' %}
+                <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                    {% for error in form.credit_limit.errors %}
+                    <span class="block">• {{ error }}</span>
+                    {% endfor %}
+                </p>
+            </div>
+
+            <span class="text-title flex items-center gap-1">Días de crédito</span>
+            <div>
+                {% render_field form.credit_days class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0' %}
+                <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                    {% for error in form.credit_days.errors %}
+                    <span class="block">• {{ error }}</span>
+                    {% endfor %}
+                </p>
+            </div>
+
+            <span class="text-title flex items-center gap-1">Líder de opinión</span>
+            <div class="flex items-center gap-2">
+                {% render_field form.opinion_leader class='rounded border-border focus:ring-strong' %}
+                <span class="text-xs text-secondary">Cliente destacado o influyente en el sector</span>
+                <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                    {% for error in form.opinion_leader.errors %}
+                    <span class="block">• {{ error }}</span>
+                    {% endfor %}
+                </p>
+            </div>
+        </div>
     {% endif %}
+
+    {% if can_edit_customer %}
+        <!-- Customer Route Assignments Formset -->
+        <div class="flex justify-between items-center mt-4">
+            <p class="text-title text-sm">Asignaciones de ruta</p>
+            <button type="button" onclick="addForm('assignments')" class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer text-xs">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-circle"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                Añadir asignación
+            </button>
+        </div>
+        <hr class="border-border border">
+
+        {{ assignments_formset.management_form }}
+
+        <div id="assignments-forms" class="flex flex-col gap-4">
+            {% for assignment_form in assignments_formset %}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-start bg-container p-2 rounded border border-border">
+                    {{ assignment_form.id }}
+
+                    <div class="flex flex-col gap-1">
+                        <span class="text-title text-xs flex items-center gap-1">Ruta
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
+                        </span>
+                        {% render_field assignment_form.route class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+                        <p class="text-red-500 text-xs mt-0.5">
+                            {% for error in assignment_form.route.errors %}
+                            <span class="block">• {{ error }}</span>
+                            {% endfor %}
+                        </p>
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <span class="text-title text-xs flex items-center gap-1">Fecha inicio
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
+                        </span>
+                        {% render_field assignment_form.start_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+                        <p class="text-red-500 text-xs mt-0.5">
+                            {% for error in assignment_form.start_date.errors %}
+                            <span class="block">• {{ error }}</span>
+                            {% endfor %}
+                        </p>
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <span class="text-title text-xs">Fecha fin (opcional)</span>
+                        {% render_field assignment_form.end_date class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' %}
+                        <p class="text-red-500 text-xs mt-0.5">
+                            {% for error in assignment_form.end_date.errors %}
+                            <span class="block">• {{ error }}</span>
+                            {% endfor %}
+                        </p>
+                    </div>
+
+                    <div class="flex flex-col gap-1 md:col-span-2">
+                        <span class="text-title text-xs">Notas sobre la asignación</span>
+                        {% render_field assignment_form.notes rows="1" class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Opcional: Detalles de la asignación...' %}
+                        <p class="text-red-500 text-xs mt-0.5">
+                            {% for error in assignment_form.notes.errors %}
+                            <span class="block">• {{ error }}</span>
+                            {% endfor %}
+                        </p>
+                    </div>
+
+                    {% if assignment_form.instance.pk %}
+                        <div class="flex flex-col gap-1 justify-center items-start md:items-end">
+                            <span class="text-title text-xs">Acción</span>
+                            <label class="flex items-center gap-1 text-red-500 cursor-pointer text-xs h-8">
+                                {% render_field assignment_form.DELETE class='rounded border-border text-red-500 focus:ring-red-500' %}
+                                <span>Eliminar asignación</span>
+                            </label>
+                        </div>
+                    {% endif %}
+
+                    {% if assignment_form.non_field_errors %}
+                        <div class="md:col-span-3 text-red-500 text-xs mt-1">
+                            {% for error in assignment_form.non_field_errors %}
+                                <span class="block">• {{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        {% if not request.user|has_group:"vendedor" %}
+    <!-- custoemr margins -->
+            <div class="flex justify-between items-center mt-4">
+                <p class="text-title text-sm">Márgenes por clase de producto</p>
+                <button type="button" onclick="addForm('class_margins')" class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer text-xs">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-circle"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    Añadir margen por clase
+                </button>
+            </div>
+            <hr class="border-border border">
+
+            {{ class_margins_formset.management_form }}
+
+            <div id="class_margins-forms" class="flex flex-col gap-4">
+                {% for margin_form in class_margins_formset %}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-start bg-container p-2 rounded border border-border">
+                        {{ margin_form.id }}
+
+                        <div class="flex flex-col gap-1">
+                            <span class="text-title text-xs flex items-center gap-1">Clase de producto
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
+                            </span>
+                            {% render_field margin_form.product_class class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title' %}
+                            <p class="text-red-500 text-xs mt-0.5">
+                                {% for error in margin_form.product_class.errors %}
+                                <span class="block">• {{ error }}</span>
+                                {% endfor %}
+                            </p>
+                        </div>
+
+                        <div class="flex flex-col gap-1">
+                            <span class="text-title text-xs flex items-center gap-1">Margen mínimo (%)
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk"><path d="M12 6v12" /><path d="M17.196 9 6.804 15" /><path d="m6.804 9 10.392 6" /></svg>
+                            </span>
+                            {% render_field margin_form.min_margin_percentage class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0.00' %}
+                            <p class="text-red-500 text-xs mt-0.5">
+                                {% for error in margin_form.min_margin_percentage.errors %}
+                                <span class="block">• {{ error }}</span>
+                                {% endfor %}
+                            </p>
+                        </div>
+
+                        {% if margin_form.instance.pk %}
+                            <div class="flex flex-col gap-1 justify-center items-start md:items-end md:col-span-2 pt-1 border-t border-border">
+                                <label class="flex items-center gap-1 text-red-500 cursor-pointer text-xs h-8">
+                                    {% render_field margin_form.DELETE class='rounded border-border text-red-500 focus:ring-red-500' %}
+                                    <span>Eliminar este margen</span>
+                                </label>
+                            </div>
+                        {% endif %}
+
+                        {% if margin_form.non_field_errors %}
+                            <div class="md:col-span-2 text-red-500 text-xs mt-1">
+                                {% for error in margin_form.non_field_errors %}
+                                    <span class="block">• {{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+    {% elif updating %}
+        <p class="text-title text-sm mt-4">Asignación actual de ruta</p>
+        <hr class="border-border border">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border text-xs">
+            <span class="text-title">Ruta asignada</span>
+            <div class="w-full text-title flex items-center font-medium">
+                {{ updating.current_route_id|default:updating.assignments.first.route.id|upper }} - {{ updating.current_route_name|default:updating.assignments.first.route.name|title }}
+            </div>
+            <span class="text-title">Gerencia / Unidad de negocio</span>
+            <div class="w-full text-secondary flex items-center">
+                {{ updating.current_route_business_unit|default:updating.assignments.first.route.business_unit.name|default:"-"|title }}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Perfil Geográfico y Ubicación -->
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center items-start gap-2 mt-4">
+        <div class="flex flex-wrap items-center gap-2">
+            <p class="text-title text-sm flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin text-hover"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+                Perfil geográfico y ubicación
+            </p>
+            {% if geo_form.instance.geocoding_source %}
+                <span class="text-[10px] p-1 rounded bg-page border border-border text-secondary font-mono">
+                    {{ geo_form.instance.get_geocoding_source_display }}
+                </span>
+            {% endif %}
+        </div>
+        <div class="flex flex-wrap items-center gap-4 sm:gap-6">
+            <button type="button" onclick="getGpsLocation()" class="hover:text-hover cursor-pointer flex items-center gap-1 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-locate"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/></svg>
+                <span>Usar GPS actual</span>
+            </button>
+            <button type="button" onclick="openGoogleMapsPreview()" class="hover:text-hover cursor-pointer flex items-center gap-1 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>
+                <span>Ver en Google Maps</span>
+            </button>
+        </div>
+    </div>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title flex items-center gap-1">Calle y número</span>
+        <div>
+            {% render_field geo_form.street_address class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Calle, número exterior e interior' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in geo_form.street_address.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Colonia / Asentamiento</span>
+        <div>
+            {% render_field geo_form.neighborhood class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Colonia o fraccionamiento' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in geo_form.neighborhood.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Municipio / Alcaldía</span>
+        <div>
+            {% render_field geo_form.municipality class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Municipio o delegación' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in geo_form.municipality.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Entidad Federativa (Estado)</span>
+        <div>
+            {% render_field geo_form.state class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1' placeholder='Estado (Ej: Jalisco, CDMX)' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in geo_form.state.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Código Postal</span>
+        <div>
+            {% render_field geo_form.zip_code class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='C.P. (5 dígitos)' maxlength='10' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in geo_form.zip_code.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+
+        <span class="text-title flex items-center gap-1">Latitud GPS</span>
+        <div>
+            {% render_field geo_form.latitude id='id_latitude' class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' step='any' placeholder='Ej. 19.432608' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in geo_form.latitude.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Longitud GPS</span>
+        <div>
+            {% render_field geo_form.longitude id='id_longitude' class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' step='any' placeholder='Ej. -99.133209' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in geo_form.longitude.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title flex items-center gap-1">Ubicación verificada</span>
+        <div class="flex items-center gap-2">
+            {% render_field geo_form.is_verified id='id_is_verified' class='rounded border-border focus:ring-strong' %}
+            <span class="text-xs text-secondary">Marca esta casilla si confirmaste las coordenadas en campo o mapa</span>
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in geo_form.is_verified.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        {% if geo_form.non_field_errors %}
+            <div class="md:col-span-2 text-red-500 text-xs mt-1">
+                {% for error in geo_form.non_field_errors %}
+                    <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
 
     <div class="flex flex-col gap-2 mt-4">
         <button type="submit"
             class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check-icon lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-            Confirmar
+            {% if can_edit_customer %}
+                Confirmar
+            {% else %}
+                Confirmar perfil geográfico
+            {% endif %}
         </button>
         <a href="{% if updating %}{% url 'customers:customer_detail_view' updating.pk %}{% else %}{% url 'customers:customer_list_view' %}{% endif %}"
             class="border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2">
@@ -293,7 +479,7 @@ Nuevo cliente
     </div>
 </form>
 
-
+{% if can_edit_customer %}
 <template id="assignments-empty-form">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-start bg-container p-2 rounded border border-border mt-4">
         {{ assignments_formset.empty_form.id }}
@@ -353,6 +539,41 @@ function addForm(prefix) {
     formsContainer.insertAdjacentHTML('beforeend', compiledHtml);
 
     totalFormsInput.value = currentCount + 1;
+}
+</script>
+{% endif %}
+
+<script>
+function getGpsLocation() {
+    if (!navigator.geolocation) {
+        alert('La geolocalización no es compatible con este navegador.');
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            const latInput = document.getElementById('id_latitude');
+            const lngInput = document.getElementById('id_longitude');
+            const verifiedCheck = document.getElementById('id_is_verified');
+            if (latInput) latInput.value = position.coords.latitude.toFixed(8);
+            if (lngInput) lngInput.value = position.coords.longitude.toFixed(8);
+            if (verifiedCheck) verifiedCheck.checked = true;
+        },
+        function(error) {
+            alert('No fue posible obtener la ubicación GPS: ' + error.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+}
+
+function openGoogleMapsPreview() {
+    const latInput = document.getElementById('id_latitude');
+    const lngInput = document.getElementById('id_longitude');
+    if (latInput && lngInput && latInput.value && lngInput.value) {
+        const url = `https://www.google.com/maps?q=${encodeURIComponent(latInput.value.trim())},${encodeURIComponent(lngInput.value.trim())}`;
+        window.open(url, '_blank');
+    } else {
+        alert('Por favor ingresa o captura latitud y longitud primero.');
+    }
 }
 </script>
 
