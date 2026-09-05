@@ -1,0 +1,146 @@
+{% load humanize %}
+
+{% if errors %}
+    <tr>
+        <td colspan="9" class="p-4 text-center border-b border-border">
+            <div class="bg-red-500/10 border border-red-500/30 rounded p-2 max-w-lg mx-auto flex flex-col items-center gap-1">
+                {% for error in errors %}
+                    <p class="text-red-500 text-xs font-medium">{{ error }}</p>
+                {% endfor %}
+            </div>
+        </td>
+    </tr>
+{% elif not results %}
+    <tr>
+        <td colspan="100%" class="py-50">
+            <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                {% include 'layouts/data_not_found.html' %}
+            </div>
+        </td>
+    </tr>
+{% else %}
+    {% for group in results %}
+        <tr class="bg-container border-b border-border">
+            <td colspan="9" class="p-1 border-r border-b border-border text-title font-bold text-xs bg-container sticky left-0 z-10">
+                <div class="flex items-center justify-between">
+                    <span class="px-1">{{ group.class_name }}</span>
+                    <span class="text-[11px] text-muted font-normal font-mono px-1">{{ group.products|length }} productos</span>
+                </div>
+            </td>
+        </tr>
+
+        {% for row in group.products %}
+            <tr class="hover:bg-hover transition-colors product-transfer-row">
+                <td class="w-[260px] p-1 border-r border-b border-border text-left">
+                    <div class="flex flex-col items-start gap-0.5">
+                        <span class="text-title text-xs truncate w-full font-medium" title="{{ row.product_id|upper }} {{ row.product_name }}">
+                            {{ row.product_id|upper }} {{ row.product_name }}
+                        </span>
+                        <div class="flex items-center gap-1">
+                            {% if row.rotation_name == 'Alta' %}
+                                <span class="text-[10px] px-1 rounded border bg-emerald-500/10 text-emerald-600 border-emerald-500/30">Rotación {{ row.rotation_name }}</span>
+                            {% elif row.rotation_name == 'Media' %}
+                                <span class="text-[10px] px-1 rounded border bg-amber-500/10 text-amber-600 border-amber-500/30">Rotación {{ row.rotation_name }}</span>
+                            {% else %}
+                                <span class="text-[10px] px-1 rounded border bg-rose-500/10 text-rose-600 border-rose-500/30">Rotación {{ row.rotation_name }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
+
+                <td class="w-[120px] p-1 border-r border-b border-border text-right font-mono text-xs text-secondary">
+                    {{ row.sold_qty|intcomma }}
+                </td>
+
+                <td class="w-[120px] p-1 border-r border-b border-border text-right font-mono text-xs text-secondary avg-monthly" data-value="{{ row.avg_monthly|stringformat:'f' }}">
+                    {{ row.avg_monthly|intcomma }}
+                </td>
+
+                <td class="w-[120px] p-1 border-r border-b border-border text-right font-mono text-xs text-body current-stock" data-value="{{ row.current_stock|stringformat:'f' }}">
+                    {{ row.current_stock|intcomma }}
+                </td>
+
+                <td class="w-[120px] p-1 border-r border-b border-border text-right font-mono text-xs text-body origin-stock" data-value="{{ row.origin_stock|stringformat:'f' }}">
+                    <div class="flex flex-col items-end">
+                        <span>{{ row.origin_stock|intcomma }}</span>
+                        <span class="origin-warning-badge text-[9px] text-amber-500 leading-tight {% if not row.is_origin_insufficient %}hidden{% endif %}" 
+                              title="El stock en origen es menor a la transferencia sugerida">
+                            Déficit origen
+                        </span>
+                    </div>
+                </td>
+
+                <td class="w-[100px] p-1 border-r border-b border-border text-right font-mono text-xs text-secondary in-transit" data-value="{{ row.in_transit|stringformat:'f' }}">
+                    {{ row.in_transit|intcomma }}
+                </td>
+
+                <td class="w-[120px] p-1 border-r border-b border-border text-right font-mono text-xs text-secondary current-coverage-cell">
+                    {{ row.initial_coverage|floatformat:1 }}%
+                </td>
+
+                <td class="w-[120px] p-1 border-r border-b border-border text-center align-middle">
+                    <div class="flex items-center justify-center gap-1">
+                        <input type="number" 
+                               step="0.1" 
+                               min="0" 
+                               value="1.0" 
+                               data-product-id="{{ row.product_id }}" 
+                               class="w-16 bg-page border border-border rounded text-center p-1 text-xs font-mono focus:border-strong focus:outline-none coverage-input" 
+                               oninput="calculateSuggestion(this)">
+                        <span class="text-[10px] text-muted">m</span>
+                    </div>
+                </td>
+
+                <td class="w-[120px] p-1 border-b border-border text-right font-mono text-xs font-bold text-title suggestion-cell">
+                    {{ row.initial_suggestion|intcomma }}
+                </td>
+            </tr>
+        {% endfor %}
+    {% endfor %}
+
+    <script>
+        function calculateSuggestion(inputElement) {
+            const tr = inputElement.closest('tr');
+            if (!tr) return;
+
+            const avgMonthly = parseFloat(tr.querySelector('.avg-monthly')?.dataset.value) || 0;
+            const currentStock = parseFloat(tr.querySelector('.current-stock')?.dataset.value) || 0;
+            const originStock = parseFloat(tr.querySelector('.origin-stock')?.dataset.value) || 0;
+            const inTransit = parseFloat(tr.querySelector('.in-transit')?.dataset.value) || 0;
+            const coverage = parseFloat(inputElement.value) || 0;
+
+            let suggestion = (avgMonthly * coverage) - currentStock - inTransit;
+            if (suggestion < 0) {
+                suggestion = 0;
+            }
+
+            const roundedSuggestion = Math.round(suggestion);
+            const suggestionCell = tr.querySelector('.suggestion-cell');
+            if (suggestionCell) {
+                suggestionCell.textContent = roundedSuggestion.toLocaleString('es-MX');
+            }
+
+            const warningBadge = tr.querySelector('.origin-warning-badge');
+            if (warningBadge) {
+                if (roundedSuggestion > originStock && roundedSuggestion > 0) {
+                    warningBadge.classList.remove('hidden');
+                } else {
+                    warningBadge.classList.add('hidden');
+                }
+            }
+        }
+
+        document.querySelectorAll('#transfer-results .coverage-input').forEach(input => {
+            calculateSuggestion(input);
+        });
+
+        (function() {
+            const btnDescargar = document.getElementById('btn-descargar');
+            if (btnDescargar) {
+                btnDescargar.disabled = false;
+                btnDescargar.classList.remove('opacity-40', 'cursor-not-allowed');
+                btnDescargar.classList.add('cursor-pointer');
+            }
+        })();
+    </script>
+{% endif %}

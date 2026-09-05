@@ -1,10 +1,298 @@
 {% extends 'base.html' %}
-{% load humanize widget_tweaks %}
+{% load humanize %}
 
 {% block title %}
-    Tranferencias de stock
+Transferencias de stock
 {% endblock %}
 
 {% block module_name %}
-    Tranferencias de stock
+Transferencias de stock
 {% endblock %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-4">
+
+    <p class="text-title pb-1 border-b border-border">Configuración de la transferencia</p>
+
+    <form id="transfer-form"
+          hx-post="{% url 'products:stock_transfers_view' %}" 
+          hx-target="#transfer-results" 
+          hx-indicator="#transfer-loading-indicator">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="calculate-transfer">
+
+        <div class="flex flex-col gap-4">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+                <span class="text-title flex items-center gap-1">Almacén origen</span>
+                <div>
+                    <select name="warehouse_origin" required class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body">
+                        <option value="">-- Selecciona almacén origen --</option>
+                        {% for w in warehouses %}
+                            <option value="{{ w.id }}">{{ w.name|title }} ({{ w.get_warehouse_type_display|title }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <span class="text-title flex items-center gap-1">Almacén destino</span>
+                <div>
+                    <select name="warehouse_destination" required class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body">
+                        <option value="">-- Selecciona almacén destino --</option>
+                        {% for w in warehouses %}
+                            <option value="{{ w.id }}">{{ w.name|title }} ({{ w.get_warehouse_type_display|title }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <span class="text-title flex items-center gap-1">Nivel de rotación</span>
+                <div>
+                    <select name="rotation_levels" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body">
+                        <option value="">Todos los niveles</option>
+                        <option value="1">Alta rotación (> 50 uds)</option>
+                        <option value="2">Media rotación (10 a 50 uds)</option>
+                        <option value="3">Baja rotación (&lt; 10 uds)</option>
+                    </select>
+                </div>
+
+                <span class="text-title flex items-center gap-1">Periodo de evaluación (Inicio - Fin)</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="month" 
+                           name="start_date" 
+                           id="start_date" 
+                           required 
+                           class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body font-mono">
+                    <input type="month" 
+                           name="end_date" 
+                           id="end_date" 
+                           required 
+                           class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body font-mono">
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pb-1 border-b border-border">
+                <p class="text-title">Clases de producto</p>
+                <div class="flex items-center gap-3 text-xs">
+                    <button type="button" 
+                            onclick="toggleAllProductClasses(true)" 
+                            class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer text-body">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-check-big"><path d="M21 10.656V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.344"/><path d="m9 11 3 3L22 4"/></svg>
+                        <span>Seleccionar todo</span>
+                    </button>
+                    <button type="button" 
+                            onclick="toggleAllProductClasses(false)" 
+                            class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer text-body">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                        <span>Desmarcar todo</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-container p-2 rounded border border-border">
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    {% for pc in product_classes %}
+                    <label class="flex items-center gap-2 bg-page border border-border p-1 rounded cursor-pointer hover:bg-hover transition-colors text-xs select-none">
+                        <input type="checkbox" name="product_classes" value="{{ pc.id }}" checked class="accent-primary product-class-checkbox">
+                        <span class="text-title truncate">{{ pc.name|title }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+                <div id="transfer-loading-indicator" class="htmx-indicator flex items-center gap-2 text-xs text-title">
+                    {% include 'layouts/loading_animation_icon.html' %}
+                    <span>Calculando sugerencias de transferencia... Por favor espera.</span>
+                </div>
+
+                <div class="flex items-center gap-2 ml-auto">
+                    <button type="submit" 
+                            class="hover:text-hover transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calculator"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
+                        <span>
+                            Calcular transferencia
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </form>
+
+    <div class="pb-2 border-b border-border flex items-center justify-between">
+        <p class="text-title">Resultados del cálculo</p>
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-1 text-xs">
+                <span class="text-muted">Cobertura base:</span>
+                <input type="number" 
+                       id="global-coverage" 
+                       step="0.1" 
+                       min="0" 
+                       value="1.0" 
+                       class="w-16 bg-page border border-border rounded text-center p-1 text-xs focus:border-strong focus:outline-none font-mono" 
+                       oninput="updateGlobalCoverage(this)">
+                <span class="text-muted">meses</span>
+            </div>
+
+            <button type="button"
+                    id="btn-descargar" 
+                    disabled 
+                    onclick="exportarCalculo()" 
+                    class="opacity-40 cursor-not-allowed hover:text-hover transition-colors flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-spreadsheet text-green-600"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>
+                <span>Exportar</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[75vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-[260px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Producto
+                    </th>
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Unidades vendidas
+                    </th>
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Promedio mensual
+                    </th>
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Stock destino
+                    </th>
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Stock origen
+                    </th>
+                    <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        En tránsito
+                    </th>
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Cobertura actual
+                    </th>
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Cobertura solicitada
+                    </th>
+                    <th class="w-[120px] p-1 text-center text-title border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Transferencia
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="transfer-results">
+                <tr>
+                    <td colspan="100%" class="py-50">
+                        <div class="sticky left-0 flex justify-center items-center gap-1 w-[100cqw]">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                            Configura los parámetros de la transferencia para mostrar el cálculo correspondiente.
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+    (function initDefaultDates() {
+        const now = new Date();
+        const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const startMonth = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+
+        const formatYM = (d) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            return `${year}-${month}`;
+        };
+
+        const startInp = document.getElementById('start_date');
+        const endInp = document.getElementById('end_date');
+        if (startInp && !startInp.value) startInp.value = formatYM(startMonth);
+        if (endInp && !endInp.value) endInp.value = formatYM(prevMonth);
+    })();
+
+    function toggleAllProductClasses(selectAll) {
+        document.querySelectorAll('.product-class-checkbox').forEach(function(cb) {
+            cb.checked = selectAll;
+        });
+    }
+
+    document.getElementById('transfer-form').addEventListener('submit', function() {
+        const btn = document.getElementById('btn-descargar');
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.add('opacity-40', 'cursor-not-allowed');
+            btn.classList.remove('cursor-pointer');
+        }
+    });
+
+    document.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id === 'transfer-results') {
+            const globalCoverageInput = document.getElementById('global-coverage');
+            if (globalCoverageInput && parseFloat(globalCoverageInput.value) !== 1.0) {
+                updateGlobalCoverage(globalCoverageInput);
+            } else {
+                document.querySelectorAll('#transfer-results .coverage-input').forEach(input => {
+                    if (typeof calculateSuggestion === 'function') {
+                        calculateSuggestion(input);
+                    }
+                });
+            }
+        }
+    });
+
+    function updateGlobalCoverage(inputElement) {
+        const val = inputElement.value;
+        const rowInputs = document.querySelectorAll('#transfer-results .coverage-input');
+        rowInputs.forEach(input => {
+            input.value = val;
+            if (typeof calculateSuggestion === 'function') {
+                calculateSuggestion(input);
+            }
+        });
+    }
+
+    function exportarCalculo() {
+        const filterForm = document.getElementById('transfer-form');
+        if (!filterForm) return;
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{% url 'products:export_stock_transfers_view' %}";
+        form.style.display = 'none';
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+
+        const formData = new FormData(filterForm);
+        for (const pair of formData.entries()) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = pair[0];
+            input.value = pair[1];
+            form.appendChild(input);
+        }
+
+        const coverageInputs = document.querySelectorAll('#transfer-results .coverage-input');
+        coverageInputs.forEach(input => {
+            const productId = input.dataset.productId;
+            if (productId) {
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = `coverage_${productId}`;
+                hiddenInput.value = input.value;
+                form.appendChild(hiddenInput);
+            }
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    }
+</script>
+{% endblock content %}

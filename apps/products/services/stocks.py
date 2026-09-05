@@ -2,6 +2,13 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import ClassVar
 import traceback
+import calendar
+import datetime
+import io
+from django.db.models import Q, Sum
+from django.db.models.functions import Coalesce
+from apps.products.models import ProductClass
+from apps.sales.models import SaleTransaction
 
 try:
     import pandas as pd
@@ -328,5 +335,370 @@ class StocksService(UsersService):
                 errors=[str(e)]
             )
 
-    class StockTransfersService:
-        pass
+@dataclass
+class StockTransfersService(UsersService):
+    stock_model: type = Stock
+    product_model: type = Product
+    warehouse_model: type = Warehouse
+    product_class_model: type = ProductClass
+    sale_transaction_model: type = SaleTransaction
+
+    ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
+        'acceso_total_inventario',
+        'inventario',
+        'acceso_total_productos',
+        'acceso_total_ventas',
+        'acceso_total',
+    )
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.errors = []
+        self.warnings = []
+
+    def _parse_month(self, ym_str: str) -> datetime.date | None:
+        if not ym_str:
+            return None
+        try:
+            return datetime.datetime.strptime(ym_str.strip(), '%Y-%m').date()
+        except (ValueError, TypeError):
+            return None
+
+    def _get_end_of_month(self, d: datetime.date) -> datetime.date:
+        last_day = calendar.monthrange(d.year, d.month)[1]
+        return datetime.date(d.year, d.month, last_day)
+
+    def _months_diff(self, start_date: datetime.date, end_date: datetime.date) -> int:
+        return (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month) + 1
+
+    def get_available_warehouses(self) -> QuerySet:
+        return self.warehouse_model.objects.all().order_by('name')
+
+    def get_available_product_classes(self) -> QuerySet:
+        return self.product_class_model.objects.all().order_by('name')
+
+    def _find_transit_warehouse(self, destination_warehouse_id: str) -> Warehouse | None:
+        if not destination_warehouse_id:
+            return None
+        dest_clean = destination_warehouse_id.strip().lower()
+        return self.warehouse_model.objects.filter(
+            Q(id=f"t_{dest_clean}") |
+            (Q(warehouse_type=self.warehouse_model.WarehouseTypeChoices.TRANSFER) &
+             (Q(id__icontains=dest_clean) | Q(name__icontains=dest_clean)))
+        ).first()
+
+    def calculate_transfer(
+        self,
+        origin_warehouse_id: str,
+        destination_warehouse_id: str,
+        start_date_str: str,
+        end_date_str: str,
+        product_class_ids: list[str] | None = None,
+        rotation_level_ids: list[str] | None = None
+    ) -> list[dict] | None:
+        """
+        calculates stock transfers between two warehouses
+        """
+        self.errors = []
+        self.warnings = []
+
+        if not origin_warehouse_id or not destination_warehouse_id:
+            self.errors.append("Falta seleccionar almacén de origen o destino.")
+            return None
+
+        if origin_warehouse_id == destination_warehouse_id:
+            self.errors.append("El almacén de origen y destino no pueden ser el mismo.")
+            return None
+
+        start_date = self._parse_month(start_date_str)
+        end_date = self._parse_month(end_date_str)
+
+        if not start_date or not end_date:
+            self.errors.append("Las fechas de evaluación no tienen un formato válido (YYYY-MM).")
+            return None
+
+        if start_date > end_date:
+            self.errors.append("La fecha de inicio debe ser anterior o igual a la fecha de fin.")
+            return None
+
+        end_date = self._get_end_of_month(end_date)
+        months_count = self._months_diff(start_date, end_date)
+        if months_count <= 0:
+            months_count = 1
+
+        products_qs = self.product_model.objects.select_related('product_class')
+        clean_class_ids = [pid for pid in (product_class_ids or []) if pid]
+        if clean_class_ids:
+            products_qs = products_qs.filter(product_class_id__in=clean_class_ids)
+
+        products = list(products_qs.order_by('name'))
+        product_ids = [p.id for p in products]
+
+        if not product_ids:
+            return []
+
+        sales_qs = self.sale_transaction_model.objects.filter(
+            warehouse_id=destination_warehouse_id,
+            product_id__in=product_ids,
+            sale_date__gte=start_date,
+            sale_date__lte=end_date
+        ).values('product_id').annotate(
+            total_qty=Coalesce(Sum('quantity'), Decimal('0.00'))
+        )
+        sales_map = {item['product_id']: item['total_qty'] for item in sales_qs}
+
+        dest_stock_qs = self.stock_model.objects.filter(
+            warehouse_id=destination_warehouse_id,
+            product_id__in=product_ids
+        ).values('product_id').annotate(
+            total_qty=Coalesce(Sum('quantity'), Decimal('0.00'))
+        )
+        dest_stock_map = {item['product_id']: item['total_qty'] for item in dest_stock_qs}
+
+        origin_stock_qs = self.stock_model.objects.filter(
+            warehouse_id=origin_warehouse_id,
+            product_id__in=product_ids
+        ).values('product_id').annotate(
+            total_qty=Coalesce(Sum('quantity'), Decimal('0.00'))
+        )
+        origin_stock_map = {item['product_id']: item['total_qty'] for item in origin_stock_qs}
+
+        transit_warehouse = self._find_transit_warehouse(destination_warehouse_id)
+        transit_stock_map = {}
+        if transit_warehouse:
+            transit_qs = self.stock_model.objects.filter(
+                warehouse=transit_warehouse,
+                product_id__in=product_ids
+            ).values('product_id').annotate(
+                total_qty=Coalesce(Sum('quantity'), Decimal('0.00'))
+            )
+            transit_stock_map = {item['product_id']: item['total_qty'] for item in transit_qs}
+
+        grouped_results = {}
+        valid_rotations = [str(r).strip() for r in (rotation_level_ids or []) if str(r).strip()]
+
+        for p in products:
+            sold_qty = sales_map.get(p.id, Decimal('0.00'))
+            current_stock = dest_stock_map.get(p.id, Decimal('0.00'))
+            origin_stock = origin_stock_map.get(p.id, Decimal('0.00'))
+            in_transit = transit_stock_map.get(p.id, Decimal('0.00'))
+
+            if sold_qty == 0 and current_stock == 0 and in_transit == 0:
+                continue
+
+            avg_monthly = sold_qty / Decimal(months_count)
+
+            if sold_qty > 50:
+                rotation_level = '1'
+                rotation_name = 'Alta'
+            elif sold_qty >= 10:
+                rotation_level = '2'
+                rotation_name = 'Media'
+            else:
+                rotation_level = '3'
+                rotation_name = 'Baja'
+
+            if valid_rotations and rotation_level not in valid_rotations:
+                continue
+
+            class_id = p.product_class_id if p.product_class_id else 'sin_clase'
+            class_name = p.product_class.name.title() if p.product_class and p.product_class.name else 'Sin Clase'
+
+            if class_id not in grouped_results:
+                grouped_results[class_id] = {
+                    'class_id': class_id,
+                    'class_name': class_name,
+                    'products': []
+                }
+
+            if avg_monthly > 0:
+                initial_coverage = (current_stock / avg_monthly) * Decimal('100.0')
+            elif current_stock > 0:
+                initial_coverage = Decimal('100.0')
+            else:
+                initial_coverage = Decimal('0.00')
+
+            target_stock = avg_monthly * Decimal('1.0')
+            initial_suggestion = max(target_stock - current_stock - in_transit, Decimal('0.00'))
+
+            is_origin_insufficient = initial_suggestion > origin_stock
+
+            grouped_results[class_id]['products'].append({
+                'product_id': p.id,
+                'product_name': (p.name or "").title(),
+                'sold_qty': round(sold_qty, 2),
+                'avg_monthly': round(avg_monthly, 2),
+                'current_stock': round(current_stock, 2),
+                'origin_stock': round(origin_stock, 2),
+                'in_transit': round(in_transit, 2),
+                'initial_coverage': round(initial_coverage, 2),
+                'initial_suggestion': round(initial_suggestion, 0),
+                'is_origin_insufficient': is_origin_insufficient,
+                'rotation_name': rotation_name,
+                'rotation_level': rotation_level,
+            })
+
+        final_results = []
+        for class_id, data in grouped_results.items():
+            data['products'].sort(key=lambda x: x['sold_qty'], reverse=True)
+            final_results.append(data)
+
+        final_results.sort(key=lambda x: x['class_name'])
+        return final_results
+
+
+class StockTransferExports:
+
+    @staticmethod
+    def export_excel(
+        results: list[dict],
+        start_date_str: str,
+        end_date_str: str,
+        origin_name: str,
+        destination_name: str,
+        coverages: dict | None = None
+    ) -> bytes | None:
+        if not results:
+            return None
+
+        if coverages is None:
+            coverages = {}
+
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Transferencias"
+
+        header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
+        subheader_fill = PatternFill(start_color="334155", end_color="334155", fill_type="solid")
+        class_fill = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
+
+        white_bold = Font(name="Calibri", color="FFFFFF", bold=True, size=10)
+        title_font = Font(name="Calibri", color="0F172A", bold=True, size=13)
+        bold_font = Font(name="Calibri", color="0F172A", bold=True, size=10)
+        regular_font = Font(name="Calibri", color="0F172A", size=10)
+        muted_font = Font(name="Calibri", color="64748B", size=9)
+
+        thin_side = Side(style='thin', color='CBD5E1')
+        thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+
+        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        period_str = f"{start_date_str} a {end_date_str}"
+
+        headers = [
+            "ID Producto",
+            "Producto",
+            "Unidades Vendidas",
+            "Promedio Mensual",
+            "Existencias Destino",
+            "Existencias Origen",
+            "En Tránsito",
+            "Cobertura Actual (%)",
+            "Cobertura Solicitada (%)",
+            "Transferencia Sugerida"
+        ]
+
+        ws.append([f"Reporte de Transferencias de Stock (Reposición)"])
+        ws.cell(row=ws.max_row, column=1).font = title_font
+        ws.append([f"Periodo Evaluado: {period_str} | Fecha de Cálculo: {current_time}"])
+        ws.cell(row=ws.max_row, column=1).font = muted_font
+        ws.append([f"CEDIS Origen: {origin_name}  ──>  CEDIS Destino: {destination_name}"])
+        ws.cell(row=ws.max_row, column=1).font = bold_font
+        ws.append([])
+
+        for group in results:
+            ws.append(["Clase de Producto:", group['class_name']])
+            ws.cell(row=ws.max_row, column=1).font = bold_font
+            ws.cell(row=ws.max_row, column=1).fill = class_fill
+            ws.cell(row=ws.max_row, column=2).font = bold_font
+            ws.cell(row=ws.max_row, column=2).fill = class_fill
+
+            rotations = {'Alta': [], 'Media': [], 'Baja': []}
+            for p in group['products']:
+                if p['rotation_name'] in rotations:
+                    rotations[p['rotation_name']].append(p)
+
+            for rot_name, prods in rotations.items():
+                if not prods:
+                    continue
+
+                ws.append([])
+                ws.append([f"Rotación {rot_name} ({len(prods)} productos)"])
+                rot_row = ws.max_row
+                ws.cell(row=rot_row, column=1).font = white_bold
+                ws.cell(row=rot_row, column=1).fill = subheader_fill
+
+                ws.append(headers)
+                h_row = ws.max_row
+                for col_num, h_text in enumerate(headers, 1):
+                    cell = ws.cell(row=h_row, column=col_num)
+                    cell.font = white_bold
+                    cell.fill = header_fill
+                    cell.border = thin_border
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+
+                for p in prods:
+                    prod_id_str = str(p['product_id'])
+                    cov = coverages.get(prod_id_str, 1.0)
+
+                    ws.append([
+                        p['product_id'],
+                        p['product_name'],
+                        p['sold_qty'],
+                        p['avg_monthly'],
+                        p['current_stock'],
+                        p['origin_stock'],
+                        p['in_transit'],
+                        0,
+                        cov,
+                        0
+                    ])
+                    d_row = ws.max_row
+
+                    # Col D: Promedio mensual
+                    # Col E: Existencias Destino
+                    # Col F: Existencias Origen
+                    # Col G: En Tránsito
+                    # Col H: Cobertura actual = IF(D>0, (E/D)*100, IF(E>0, 100, 0))
+                    # Col I: Cobertura solicitada
+                    # Col J: Transferencia = MAX((D*I)-E-G, 0)
+                    formula_cov = f"=IF(D{d_row}>0, (E{d_row}/D{d_row})*100, IF(E{d_row}>0, 100, 0))"
+                    formula_transfer = f"=MAX((D{d_row}*I{d_row})-E{d_row}-G{d_row}, 0)"
+
+                    ws.cell(row=d_row, column=8, value=formula_cov)
+                    ws.cell(row=d_row, column=10, value=formula_transfer)
+
+                    for c_num in range(1, len(headers) + 1):
+                        c = ws.cell(row=d_row, column=c_num)
+                        c.font = regular_font
+                        c.border = thin_border
+                        if c_num in (1, 2):
+                            c.alignment = Alignment(horizontal="left", vertical="center")
+                        elif c_num in (3, 4, 5, 6, 7):
+                            c.number_format = '#,##0.00'
+                            c.alignment = Alignment(horizontal="right", vertical="center")
+                        elif c_num == 8:
+                            c.number_format = '0.00"%"'
+                            c.alignment = Alignment(horizontal="right", vertical="center")
+                        elif c_num == 9:
+                            c.number_format = '0.0'
+                            c.alignment = Alignment(horizontal="right", vertical="center")
+                        elif c_num == 10:
+                            c.number_format = '#,##0'
+                            c.font = bold_font
+                            c.alignment = Alignment(horizontal="right", vertical="center")
+
+            ws.append([])
+
+        ws.column_dimensions['A'].width = 16
+        ws.column_dimensions['B'].width = 42
+        for col_letter in ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']:
+            ws.column_dimensions[col_letter].width = 18
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        return output.getvalue()

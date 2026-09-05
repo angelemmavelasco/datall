@@ -1,11 +1,14 @@
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect
+from django.http import HttpResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 
 from .services import (
     ProductsService,
     ProductsStats,
+    StockTransfersService,
+    StockTransferExports,
     ProductNotFound,
     PermissionsError,
     ServiceError,
@@ -251,6 +254,105 @@ def product_filter_options_view(request):
 
 @login_required
 def stock_transfers_view(request):
+    service = StockTransfersService(user=request.user)
+
+    if request.method == 'POST' and (request.htmx or request.headers.get('HX-Request')):
+        action = request.POST.get('action')
+        if action == 'calculate-transfer':
+            origin = request.POST.get('warehouse_origin')
+            destination = request.POST.get('warehouse_destination')
+            start_date = request.POST.get('start_date')
+            end_date = request.POST.get('end_date')
+
+            product_classes = request.POST.getlist('product_classes')
+            rotation_levels = request.POST.getlist('rotation_levels')
+
+            results = service.calculate_transfer(
+                origin_warehouse_id=origin,
+                destination_warehouse_id=destination,
+                start_date_str=start_date,
+                end_date_str=end_date,
+                product_class_ids=product_classes,
+                rotation_level_ids=rotation_levels
+            )
+
+            return render(
+                request,
+                'products/stock_transfers/partials/transfer_results.html',
+                {
+                    'results': results,
+                    'errors': service.errors,
+                    'warnings': service.warnings,
+                }
+            )
+
     template = 'products/stock_transfers/stock_transfers.html'
-    
-    return render(request, template, {})
+    warehouses = service.get_available_warehouses()
+    product_classes = service.get_available_product_classes()
+
+    context = {
+        'warehouses': warehouses,
+        'product_classes': product_classes,
+    }
+    return render(request, template, context)
+
+
+@login_required
+def export_stock_transfers_view(request):
+    req_data = request.POST if request.method == 'POST' else request.GET
+
+    origin = req_data.get('warehouse_origin')
+    destination = req_data.get('warehouse_destination')
+    start_date = req_data.get('start_date')
+    end_date = req_data.get('end_date')
+
+    product_classes = req_data.getlist('product_classes')
+    rotation_levels = req_data.getlist('rotation_levels')
+
+    coverages = {}
+    for key, value in req_data.items():
+        if key.startswith('coverage_'):
+            prod_id = key.replace('coverage_', '')
+            try:
+                coverages[prod_id] = float(value)
+            except (ValueError, TypeError):
+                coverages[prod_id] = 1.0
+
+    service = StockTransfersService(user=request.user)
+    results = service.calculate_transfer(
+        origin_warehouse_id=origin,
+        destination_warehouse_id=destination,
+        start_date_str=start_date,
+        end_date_str=end_date,
+        product_class_ids=product_classes,
+        rotation_level_ids=rotation_levels
+    )
+
+    if results is None:
+        return HttpResponse("Parámetros de cálculo inválidos o faltantes.", status=400)
+
+    origin_obj = service.warehouse_model.objects.filter(id=origin).first() if origin else None
+    dest_obj = service.warehouse_model.objects.filter(id=destination).first() if destination else None
+
+    origin_name = origin_obj.name.title() if origin_obj else (origin or "Origen")
+    dest_name = dest_obj.name.title() if dest_obj else (destination or "Destino")
+
+    excel_data = StockTransferExports.export_excel(
+        results=results,
+        start_date_str=start_date,
+        end_date_str=end_date,
+        origin_name=origin_name,
+        destination_name=dest_name,
+        coverages=coverages
+    )
+
+    if not excel_data:
+        return HttpResponse("No se pudieron generar los datos para exportar.", status=400)
+
+    response = HttpResponse(
+        excel_data,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f"transferencias_{origin}_{destination}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
