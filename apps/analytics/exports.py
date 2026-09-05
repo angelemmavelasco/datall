@@ -13,7 +13,8 @@ from apps.customers.services.customers import CustomersService
 from apps.sales.services.routes import RoutesService
 from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.sales.services.sale_targets import SaleTargetsService
-from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter, MonthlySaleBreakdownFilter, TargetAchievementFilter
+from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter, MonthlySaleBreakdownFilter, TargetAchievementFilter, YearlySaleBreakdownFilter
+from apps.analytics.services.yearly_sale_breakdown import YearlySaleBreakdownService
 
 
 from time import perf_counter
@@ -253,5 +254,59 @@ def target_achievement_export_view(request):
 
     end = perf_counter()
     print(f"Target achievement export took {end - start} seconds")
+
+    return redirect(redirect_url)
+
+
+@login_required
+def yearly_sale_breakdown_export_view(request):
+    start = perf_counter()
+
+    req_data = request.GET.copy()
+    if not req_data.get('dimension'):
+        req_data['dimension'] = 'customer_productclass_product'
+
+    dimension = req_data.get('dimension', 'customer_productclass_product')
+
+    sale_transaction_service = SaleTransactionsService(user=request.user)
+    perspective = YearlySaleBreakdownService.get_perspective(dimension)
+    if perspective == 'customers':
+        tx_qs = sale_transaction_service.read_transactions_by_allowed_customers()
+    else:
+        tx_qs = sale_transaction_service.read_transactions_by_allowed_routes()
+
+    filter_set = YearlySaleBreakdownFilter(req_data, queryset=tx_qs, request=request)
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+
+    serializable_cleaned_data = {k: _make_serializable(v) for k, v in cleaned_data.items()}
+    serializable_cleaned_data['dimension'] = dimension
+
+    dim_label = YearlySaleBreakdownService.DIMENSION_CONFIG.get(dimension, {}).get('label', dimension)
+
+    report = GeneratedReport.objects.create(
+        user=request.user,
+        title=f"Reporte de Desglose Anual de Ventas - {dim_label}",
+        module_name="yearly_sale_breakdown",
+        status=GeneratedReport.Status.PENDING,
+        filters=serializable_cleaned_data,
+    )
+
+    async_task(
+        'apps.analytics.tasks.generate_yearly_sale_breakdown_report_task',
+        request.user.id,
+        request.GET.urlencode(),
+        serializable_cleaned_data,
+        report.id,
+    )
+
+    messages.info(request, "Tu reporte de desglose anual de ventas se está generando en segundo plano. Aparecerá en tus archivos cuando esté listo. Puedes seguir navegando por la web sin problemas.")
+
+    query_str = request.GET.urlencode()
+    redirect_url = reverse('analytics:yearly_sale_breakdown_view')
+    if query_str:
+        redirect_url += f"?{query_str}"
+
+    end = perf_counter()
+    print(f"Yearly Sale Breakdown export took {end - start} seconds")
 
     return redirect(redirect_url)

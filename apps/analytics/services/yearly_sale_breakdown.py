@@ -1,9 +1,11 @@
+import csv
+import io
 from dataclasses import dataclass, field
 from typing import Any
 from collections import defaultdict
 from django.db.models import Max, Min, QuerySet, Sum
 
-from apps.customers.models import Customer
+from apps.customers.models import Customer, CustomerAssignment
 from apps.human_resources.models import BusinessUnit
 from apps.products.models import Product, ProductClass
 from apps.sales.models import Route
@@ -862,3 +864,180 @@ class YearlySaleBreakdownService:
                 final_pivot[f'{k1_id}'] = l1_entry
 
             return final_pivot
+
+
+@dataclass
+class YearlySaleBreakdownExports:
+    breakdown_service: YearlySaleBreakdownService
+
+    def export_yearly_sale_breakdown_csv(self, is_seller: bool = False) -> io.BytesIO:
+        """
+        exports the full yearly sale breakdown dataset to a csv buffer with utf-8-sig encoding.
+        respects active filters, user permissions for seller margin, and includes assigned route
+        and route business unit for customer entities.
+        """
+        config = self.breakdown_service.dimension_config
+        depth = config['depth']
+        years = self.breakdown_service.sorted_years
+
+        level_keys = [config[f'l{i}_id'] for i in range(1, depth + 1)]
+        group_fields = [*level_keys, 'sale_date__year']
+
+        data_list = (
+            self.breakdown_service.queryset
+            .values(*group_fields)
+            .annotate(
+                total_net=Sum('net_amount'),
+                total_profit=Sum('profit'),
+            )
+            .order_by(*level_keys)
+        )
+
+        combos: dict[tuple, dict[int, dict[str, float]]] = defaultdict(
+            lambda: {y: {'net': 0.0, 'profit': 0.0} for y in years}
+        )
+        combo_total_net: dict[tuple, float] = defaultdict(float)
+        level_ids = {i: set() for i in range(1, depth + 1)}
+
+        for row in data_list:
+            combo_key = tuple(row[k] for k in level_keys)
+            y = row['sale_date__year']
+            if y in years:
+                net = float(row['total_net'] or 0.0)
+                profit = float(row['total_profit'] or 0.0)
+                combos[combo_key][y]['net'] += net
+                combos[combo_key][y]['profit'] += profit
+                combo_total_net[combo_key] += net
+
+                for i, k in enumerate(level_keys, start=1):
+                    val = row[k]
+                    if val is not None:
+                        level_ids[i].add(val)
+
+        # batch fetch entity names for each hierarchy level
+        names_map: dict[int, dict[Any, str]] = {}
+        customer_assignment_map: dict[str, dict[str, str]] = {}
+
+        for i in range(1, depth + 1):
+            model = config[f'l{i}_model']
+            ids = level_ids[i]
+            if ids:
+                names_map[i] = dict(model.objects.filter(id__in=ids).values_list('id', 'name'))
+                # if the entity is customer, also fetch active route assignment and route business unit
+                if model == Customer:
+                    active_assignments = (
+                        CustomerAssignment.objects
+                        .filter(customer_id__in=ids, end_date__isnull=True)
+                        .values('customer_id', 'route_id', 'route__name', 'route__business_unit__name')
+                    )
+                    for assign in active_assignments:
+                        cid = assign['customer_id']
+                        r_id = assign.get('route_id') or ''
+                        r_name = assign.get('route__name') or ''
+                        bu_name = assign.get('route__business_unit__name') or ''
+                        customer_assignment_map[cid] = {
+                            'route_id': r_id,
+                            'route_name': r_name.strip(),
+                            'business_unit': bu_name.strip(),
+                        }
+            else:
+                names_map[i] = {}
+
+        # build dynamic csv headers
+        headers: list[str] = []
+        for i in range(1, depth + 1):
+            model = config[f'l{i}_model']
+            label = config[f'l{i}_label']
+            if model == Customer:
+                headers.extend([
+                    'ID Cliente',
+                    'Cliente',
+                    'ID Ruta Asignada',
+                    'Ruta Asignada',
+                    'Gerencia de Ruta',
+                ])
+            elif model == BusinessUnit:
+                headers.append(label)
+            else:
+                headers.extend([f'ID {label}', label])
+
+        for y in years:
+            headers.append(f'Venta Neta {y}')
+            headers.append(f'Crecimiento % {y}')
+            if is_seller:
+                headers.append(f'Margen {y}')
+            else:
+                headers.append(f'Margen % {y}')
+                headers.append(f'Clasificación Margen {y}')
+
+        # sort combinations by total net sales descending
+        sorted_combos = sorted(combos.items(), key=lambda x: combo_total_net[x[0]], reverse=True)
+
+        buffer = io.BytesIO()
+        buffer.write(b'\xef\xbb\xbf')  # utf-8 bom for seamless excel compatibility
+        text_wrapper = io.TextIOWrapper(buffer, encoding='utf-8', newline='')
+        writer = csv.writer(text_wrapper)
+        writer.writerow(headers)
+
+        for combo_key, totals in sorted_combos:
+            row_data: list[Any] = []
+            for i, val in enumerate(combo_key, start=1):
+                model = config[f'l{i}_model']
+                val_str = str(val) if val is not None else ''
+                name_str = names_map[i].get(val) or ('Sin registro' if val is not None else '')
+
+                if model == Customer:
+                    assign = customer_assignment_map.get(val_str, {})
+                    r_id = assign.get('route_id', '')
+                    r_name = assign.get('route_name', '')
+                    bu_name = assign.get('business_unit', '')
+                    row_data.extend([
+                        val_str,
+                        name_str.title() if name_str else '',
+                        r_id,
+                        r_name.title() if r_name else 'Sin asignación',
+                        bu_name.title() if bu_name else 'Sin gerencia',
+                    ])
+                elif model == BusinessUnit:
+                    row_data.append(name_str.title() if name_str else '')
+                else:
+                    row_data.extend([
+                        val_str,
+                        name_str.title() if name_str else '',
+                    ])
+
+            prev_net = None
+            for y in years:
+                net = totals[y]['net']
+                profit = totals[y]['profit']
+                margin = (profit / net * 100.0) if net > 0 else 0.0
+                if prev_net is not None and prev_net > 0:
+                    growth = (net - prev_net) / prev_net * 100.0
+                else:
+                    growth = 0.0
+
+                if margin >= 43:
+                    m_label = 'Excelente'
+                elif margin >= 40:
+                    m_label = 'Óptimo'
+                elif margin >= 37:
+                    m_label = 'Regular'
+                elif margin >= 35:
+                    m_label = 'Malo'
+                else:
+                    m_label = 'Muy malo'
+
+                if is_seller:
+                    row_data.extend([round(net, 2), round(growth, 2), m_label])
+                else:
+                    row_data.extend([round(net, 2), round(growth, 2), round(margin, 2), m_label])
+
+                prev_net = net
+
+            writer.writerow(row_data)
+
+        text_wrapper.flush()
+        text_wrapper.detach()
+        buffer.seek(0)
+        return buffer
+

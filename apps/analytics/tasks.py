@@ -9,11 +9,12 @@ from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.sales.services.sale_targets import SaleTargetsService
 from apps.customers.services.accounts_receivables import AccountsReceivablesService
 from apps.sales.services.routes import RoutesService
-from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter, MonthlySaleBreakdownFilter, TargetAchievementFilter
+from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter, MonthlySaleBreakdownFilter, TargetAchievementFilter, YearlySaleBreakdownFilter
 from apps.analytics.services.customer_kpis import CustomerKpisService, CustomerKpisExports
 from apps.analytics.services.commercial_risk import CommercialRiskService, CommercialRiskExports
 from apps.analytics.services.monthly_sale_breakdown import MonthlySaleBreakdownService, MonthlySaleBreakdownExports
 from apps.analytics.services.target_achievement import TargetAchievementService, TargetAchievementExports
+from apps.analytics.services.yearly_sale_breakdown import YearlySaleBreakdownService, YearlySaleBreakdownExports
 
 
 
@@ -317,5 +318,67 @@ def generate_target_achievement_report_task(user_id: int, req_data: dict | str, 
             except Exception:
                 pass
         raise e
+
+
+def generate_yearly_sale_breakdown_report_task(
+        user_id: int,
+        req_data: dict | str,
+        cleaned_data: dict,
+        report_id: int | None = None,
+    ):
+    try:
+        user = User.objects.get(id=user_id)
+
+        if isinstance(req_data, str):
+            q_data = QueryDict(req_data)
+        else:
+            q_data = req_data
+
+        dimension = q_data.get('dimension', 'customer_productclass_product')
+
+        sale_transaction_service = SaleTransactionsService(user=user)
+        perspective = YearlySaleBreakdownService.get_perspective(dimension)
+        if perspective == 'customers':
+            tx_qs = sale_transaction_service.read_transactions_by_allowed_customers()
+        else:
+            tx_qs = sale_transaction_service.read_transactions_by_allowed_routes()
+
+        filter_set = YearlySaleBreakdownFilter(q_data, queryset=tx_qs, request=user)
+        filtered_tx_qs = filter_set.qs
+
+        is_seller = user.groups.filter(name='vendedor').exists()
+
+        breakdown_service = YearlySaleBreakdownService(
+            queryset=filtered_tx_qs,
+            dimension=dimension,
+            user=user,
+            cleaned_data=cleaned_data,
+        )
+
+        exports_service = YearlySaleBreakdownExports(breakdown_service=breakdown_service)
+        csv_file = exports_service.export_yearly_sale_breakdown_csv(is_seller=is_seller)
+        file_bytes = csv_file.getvalue()
+
+        if report_id:
+            report = GeneratedReport.objects.get(id=report_id)
+            filename = f"reporte_desglose_anual_ventas_{dimension}_{timezone.localdate().strftime('%Y%m%d_%H%M%S')}.csv"
+            report.file.save(filename, ContentFile(file_bytes), save=False)
+            report.file_size = len(file_bytes)
+            report.status = GeneratedReport.Status.COMPLETED
+            report.completed_at = timezone.now()
+            report.save()
+
+        return True
+    except Exception as e:
+        if report_id:
+            try:
+                report = GeneratedReport.objects.get(id=report_id)
+                report.status = GeneratedReport.Status.FAILED
+                report.error_message = str(e)
+                report.save()
+            except Exception:
+                pass
+        raise e
+
 
 
