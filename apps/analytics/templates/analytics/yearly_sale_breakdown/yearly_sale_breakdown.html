@@ -140,75 +140,59 @@
         hideLoading();
     });
 
-    function togglePivot(targetClass, iconId) {
-        const childRows = document.querySelectorAll('.' + targetClass);
+    function toggleNode(nodeId, iconId, childClass) {
+        const directChildren = document.querySelectorAll('[data-parent="' + nodeId + '"]');
         const icon = document.getElementById(iconId);
-        let isOpening = false;
 
-        childRows.forEach(row => {
-            if (row.classList.contains('hidden')) {
-                row.classList.remove('hidden');
-                isOpening = true;
-            } else {
-                row.classList.add('hidden');
-            }
-        });
-
-        if (icon) {
-            if (isOpening) {
-                icon.classList.remove('lucide-circle-chevron-right');
-                icon.classList.add('lucide-circle-chevron-down');
-                icon.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/>';
-            } else {
-                icon.classList.remove('lucide-circle-chevron-down');
-                icon.classList.add('lucide-circle-chevron-right');
-                icon.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/>';
-            }
-        }
-
-        if (!isOpening) {
-            let selectorsToHide = [];
-            let iconsToReset = [];
-
-            if (targetClass.startsWith('cust-')) {
-                const prefix = targetClass.split('-')[1];
-                selectorsToHide = [`[class*="line-cust-${prefix}-"]`];
-                iconsToReset = [`[id^="icon-line-cust-${prefix}-"]`];
-            } else if (targetClass.startsWith('lcp-line-')) {
-                const prefix = targetClass.split('-')[2];
-                selectorsToHide = [`[class*="lcp-cust-${prefix}-"]`];
-                iconsToReset = [`[id^="icon-lcp-cust-${prefix}-"]`];
-            } else if (targetClass.startsWith('mpp-mgt-')) {
-                const prefix = targetClass.split('-')[2];
-                selectorsToHide = [`[class*="mpp-line-${prefix}-"]`];
-                iconsToReset = [`[id^="icon-mpp-line-${prefix}-"]`];
-            } else if (targetClass.startsWith('mrpp-mgt-')) {
-                const prefix = targetClass.split('-')[2];
-                selectorsToHide = [`[class*="mrpp-route-${prefix}-"]`, `[class*="mrpp-line-${prefix}-"]`];
-                iconsToReset = [`[id^="icon-mrpp-route-${prefix}-"]`, `[id^="icon-mrpp-line-${prefix}-"]`];
-            } else if (targetClass.startsWith('mrpp-route-')) {
-                const parts = targetClass.split('-');
-                const m_id = parts[2];
-                const r_id = parts[3];
-                selectorsToHide = [`[class*="mrpp-line-${m_id}-${r_id}-"]`];
-                iconsToReset = [`[id^="icon-mrpp-line-${m_id}-${r_id}-"]`];
-            } else if (targetClass.startsWith('rpp-route-')) {
-                const prefix = targetClass.split('-')[2];
-                selectorsToHide = [`[class*="rpp-line-${prefix}-"]`];
-                iconsToReset = [`[id^="icon-rpp-line-${prefix}-"]`];
-            }
-
-            selectorsToHide.forEach(s => {
-                document.querySelectorAll(s).forEach(el => el.classList.add('hidden'));
+        if (directChildren.length > 0) {
+            let isOpening = false;
+            directChildren.forEach(row => {
+                if (row.classList.contains('hidden')) {
+                    row.classList.remove('hidden');
+                    isOpening = true;
+                } else {
+                    row.classList.add('hidden');
+                }
             });
-            iconsToReset.forEach(s => {
-                document.querySelectorAll(s).forEach(ic => {
+
+            if (icon) {
+                if (isOpening) {
+                    icon.classList.remove('lucide-circle-chevron-right');
+                    icon.classList.add('lucide-circle-chevron-down');
+                    icon.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/>';
+                } else {
+                    icon.classList.remove('lucide-circle-chevron-down');
+                    icon.classList.add('lucide-circle-chevron-right');
+                    icon.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/>';
+                }
+            }
+
+            if (!isOpening) {
+                // hide all descendants recursively
+                const allDescendants = document.querySelectorAll('.child-' + nodeId);
+                allDescendants.forEach(el => el.classList.add('hidden'));
+
+                // reset descendant icons to right-chevron
+                const descendantIcons = document.querySelectorAll('[id^="icon-' + nodeId + '_"]');
+                descendantIcons.forEach(ic => {
                     ic.classList.remove('lucide-circle-chevron-down');
                     ic.classList.add('lucide-circle-chevron-right');
                     ic.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/>';
                 });
-            });
+            }
+        } else {
+            // first click while htmx is loading
+            if (icon) {
+                icon.classList.remove('lucide-circle-chevron-right');
+                icon.classList.add('lucide-circle-chevron-down');
+                icon.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/>';
+            }
         }
+    }
+
+    function togglePivot(targetClass, iconId) {
+        // legacy compatibility alias if called
+        toggleNode(targetClass, iconId, targetClass);
     }
 </script>
 {% endblock %}

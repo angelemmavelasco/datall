@@ -1,28 +1,60 @@
-{% load humanize %}
+{% load humanize has_group %}
 
-{% if dimension == 'customer_productclass_product' %}
-    {% include 'analytics/yearly_sale_breakdown/partials/_dimension_customer_productclass_product.html' %}
-{% elif dimension == 'productclass_customer_product' %}
-    {% include 'analytics/yearly_sale_breakdown/partials/_dimension_productclass_customer_product.html' %}
-{% elif dimension == 'productclass_product' %}
-    {% include 'analytics/yearly_sale_breakdown/partials/_dimension_productclass_product.html' %}
-{% elif dimension == 'management_productclass_product' %}
-    {% include 'analytics/yearly_sale_breakdown/partials/_dimension_management_productclass_product.html' %}
-{% elif dimension == 'management_route_productclass_product' %}
-    {% include 'analytics/yearly_sale_breakdown/partials/_dimension_management_route_productclass_product.html' %}
-{% elif dimension == 'route_productclass_product' %}
-    {% include 'analytics/yearly_sale_breakdown/partials/_dimension_route_productclass_product.html' %}
-{% elif dimension == 'product_customer' %}
-    {% include 'analytics/yearly_sale_breakdown/partials/_dimension_product_customer.html' %}
-{% elif dimension == 'product_management' %}
-    {% include 'analytics/yearly_sale_breakdown/partials/_dimension_product_management.html' %}
-{% elif dimension == 'product_route' %}
-    {% include 'analytics/yearly_sale_breakdown/partials/_dimension_product_route.html' %}
-{% else %}
-    {% include 'analytics/yearly_sale_breakdown/partials/_dimension_customer_productclass_product.html' %}
-{% endif %}
+{% for item in items %}
+<tr id="row-{{ item.node_id }}"
+    class="border-b border-border hover:bg-hover/20 transition-colors group/row {% if item.has_children %}cursor-pointer{% endif %}"
+    {% if item.has_children %}
+    hx-get="{% url 'analytics:yearly_sale_breakdown_children_view' %}?dimension={{ dimension }}&level={{ item.next_level }}&l1_id={{ item.l1_id }}&parent_node_id={{ item.node_id }}{% if query_string %}&{{ query_string }}{% endif %}"
+    hx-target="#row-{{ item.node_id }}"
+    hx-swap="afterend"
+    hx-trigger="click once"
+    onclick="toggleNode('{{ item.node_id }}', 'icon-{{ item.node_id }}', 'child-{{ item.node_id }}')"
+    {% endif %}>
+    <td class="p-1 text-strong sticky md:left-0 z-20 min-w-[280px] bg-container border-r border-b border-border">
+        <div class="flex items-center gap-2 min-w-full min-h-full">
+            {% if item.has_children %}
+                <svg id="icon-{{ item.node_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0 group-[.htmx-request]/row:hidden">
+                    <circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/>
+                </svg>
+                <div class="hidden group-[.htmx-request]/row:flex text-hover shrink-0 items-center justify-center">
+                    {% include 'layouts/loading_animation_icon.html' %}
+                </div>
+            {% else %}
+                <span class="w-4 flex justify-center shrink-0 text-secondary text-xs">•</span>
+            {% endif %}
+            <span class="truncate font-semibold text-title" title="{% if item.is_route %}Ruta {% endif %}{% if item.id and item.id != 'otros' and not item.is_class and not item.is_management %}{{ item.id|upper }} - {% endif %}{{ item.name|title }}">
+                {% if item.is_route %}Ruta {% endif %}{% if item.id and item.id != 'otros' and not item.is_class and not item.is_management %}<span class="text-muted text-xs">{{ item.id|upper }}</span> - {% endif %}{{ item.name|title }}
+            </span>
+        </div>
+    </td>
+    {% for total in item.totals %}
+        <td class="p-1 text-right text-strong border-r border-b border-border min-w-[140px]">
+            <div class="flex items-center justify-between gap-2">
+                <span class="rounded text-[10px] px-1 py-[1px] whitespace-nowrap font-medium {{ total.growth_badge_class }}">
+                    {% if total.growth > 0 %}+{% endif %}{{ total.growth|default:0|floatformat:2|intcomma }}%
+                </span>
+                <div class="text-right">
+                    <span class="text-title font-medium text-xs">$ {{ total.net|default:0|floatformat:2|intcomma }}</span><br>
+                    {% if is_seller %}
+                        <span class="italic text-[10px] font-medium {{ total.margin_class }}">
+                            Mrg: {{ total.margin_label }}
+                        </span>
+                    {% else %}
+                        <span class="text-muted italic text-[10px]">
+                            Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%
+                            <span class="text-[9px] {{ total.margin_class }}">
+                                {{ total.margin_label }}
+                            </span>
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </td>
+    {% endfor %}
+</tr>
+{% endfor %}
 
-{% if not pivot_data %}
+{% if not items %}
     {% if not page_obj.has_previous %}
     <tr>
         <td colspan="{{ available_years|length|add:1 }}" class="p-4 text-muted text-center border-border">

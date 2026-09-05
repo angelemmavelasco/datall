@@ -1,0 +1,59 @@
+{% load humanize has_group %}
+
+{% for child in items %}
+<tr id="row-{{ child.node_id }}"
+    data-parent="{{ parent_node_id }}"
+    class="{{ child.ancestor_classes }} border-b border-border hover:bg-hover/20 transition-colors bg-page group/row {% if child.has_children %}cursor-pointer{% endif %}"
+    {% if child.has_children %}
+    hx-get="{% url 'analytics:yearly_sale_breakdown_children_view' %}?dimension={{ dimension }}&level={{ child.next_level }}&l1_id={{ child.l1_id }}&l2_id={{ child.l2_id|default:'' }}&l3_id={{ child.l3_id|default:'' }}&parent_node_id={{ child.node_id }}{% if query_string %}&{{ query_string }}{% endif %}"
+    hx-target="#row-{{ child.node_id }}"
+    hx-swap="afterend"
+    hx-trigger="click once"
+    onclick="toggleNode('{{ child.node_id }}', 'icon-{{ child.node_id }}', 'child-{{ child.node_id }}')"
+    {% endif %}>
+    <td class="p-1 {% if child.level == 2 %}pl-8{% elif child.level == 3 %}pl-16{% elif child.level == 4 %}pl-24{% else %}pl-8{% endif %} {% if child.has_children %}text-body{% else %}text-muted{% endif %} border-b border-border sticky md:left-0 z-20 min-w-[280px] bg-page border-r">
+        <div class="flex items-center gap-2 min-w-full min-h-full">
+            {% if child.has_children %}
+                <svg id="icon-{{ child.node_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0 group-[.htmx-request]/row:hidden">
+                    <circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/>
+                </svg>
+                <div class="hidden group-[.htmx-request]/row:flex text-hover shrink-0 items-center justify-center">
+                    {% include 'layouts/loading_animation_icon.html' %}
+                </div>
+                <span class="truncate font-medium text-title text-xs" title="{% if child.is_route %}Ruta {% endif %}{% if child.id and child.id != 'otros' and not child.is_class and not child.is_management %}{{ child.id|upper }} - {% endif %}{{ child.name|title }}">
+                    {% if child.is_route %}Ruta {% endif %}{% if child.id and child.id != 'otros' and not child.is_class and not child.is_management %}<span class="text-muted">{{ child.id|upper }}</span> - {% endif %}{{ child.name|title }}
+                </span>
+            {% else %}
+                <span class="w-4 flex justify-center shrink-0 text-secondary text-xs">•</span>
+                <span class="truncate text-xs" title="{% if child.is_route %}Ruta {% endif %}{% if child.id and child.id != 'otros' and not child.is_class and not child.is_management %}{{ child.id|upper }} - {% endif %}{{ child.name|title }}">
+                    {% if child.is_route %}Ruta {% endif %}{% if child.id and child.id != 'otros' and not child.is_class and not child.is_management %}<span>{{ child.id|upper }}</span> - {% endif %}{{ child.name|title }}
+                </span>
+            {% endif %}
+        </div>
+    </td>
+    {% for total in child.totals %}
+        <td class="p-1 text-right text-strong border-r border-b border-border min-w-[140px]">
+            <div class="flex items-center justify-between gap-2">
+                <span class="rounded text-[10px] px-1 py-[1px] whitespace-nowrap font-medium {{ total.growth_badge_class }}">
+                    {% if total.growth > 0 %}+{% endif %}{{ total.growth|default:0|floatformat:2|intcomma }}%
+                </span>
+                <div class="text-right">
+                    <span class="text-title font-medium text-xs">$ {{ total.net|default:0|floatformat:2|intcomma }}</span><br>
+                    {% if is_seller %}
+                        <span class="italic text-[10px] font-medium {{ total.margin_class }}">
+                            Mrg: {{ total.margin_label }}
+                        </span>
+                    {% else %}
+                        <span class="text-muted italic text-[10px]">
+                            Mrg: {{ total.margin|default:0|floatformat:2|intcomma }}%
+                            <span class="text-[9px] {{ total.margin_class }}">
+                                {{ total.margin_label }}
+                            </span>
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </td>
+    {% endfor %}
+</tr>
+{% endfor %}

@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any
+from collections import defaultdict
 from django.db.models import Max, Min, QuerySet, Sum
 
 from apps.customers.models import Customer
@@ -234,6 +235,7 @@ class YearlySaleBreakdownService:
         return result
 
     def get_level_1_queryset(self) -> QuerySet:
+        """returns queryset of distinct level 1 ids ordered by overall total net sales"""
         l1_id = self.l1_id_field
 
         return (
@@ -242,6 +244,224 @@ class YearlySaleBreakdownService:
             .filter(total_overall__gt=0)
             .order_by('-total_overall')
         )
+
+    def get_level_1_items(self, top_l1_ids: list[Any]) -> list[dict[str, Any]]:
+        """
+        fetches and returns level 1 items with their annual totals for the initial page load
+        """
+        if not top_l1_ids:
+            return []
+
+        l1_id = self.l1_id_field
+        l1_model = self.dimension_config['l1_model']
+        depth = self.dimension_config['depth']
+
+        data_list = (
+            self.queryset
+            .filter(**{f'{l1_id}__in': top_l1_ids})
+            .values(l1_id, 'sale_date__year')
+            .annotate(
+                total_net=Sum('net_amount'),
+                total_profit=Sum('profit'),
+            )
+            .order_by()
+        )
+
+        l1_names = dict(
+            l1_model.objects.filter(id__in=top_l1_ids).values_list('id', 'name')
+        )
+
+        totals_map: dict[Any, dict[int, dict[str, float]]] = {
+            cid: self._init_annual_totals() for cid in top_l1_ids
+        }
+
+        for row in data_list:
+            k1_id = row.get(l1_id)
+            y = row.get('sale_date__year')
+            net = float(row.get('total_net') or 0.0)
+            profit = float(row.get('total_profit') or 0.0)
+
+            if y in self.sorted_years and k1_id in totals_map:
+                totals_map[k1_id][y]['net'] += net
+                totals_map[k1_id][y]['profit'] += profit
+
+        # preserve pagination order from top_l1_ids
+        result = []
+        is_route = 'route' in l1_id and l1_model == Route
+        is_customer = 'customer' in l1_id and l1_model == Customer
+        is_product = 'product' in l1_id and l1_model == Product
+        is_class = l1_model == ProductClass
+        is_management = l1_model == BusinessUnit
+
+        for k1_id in top_l1_ids:
+            name = l1_names.get(k1_id) or 'Sin registro'
+            node_id = f"n1_{k1_id}"
+            result.append({
+                'id': k1_id,
+                'name': name,
+                'is_route': is_route,
+                'is_customer': is_customer,
+                'is_product': is_product,
+                'is_class': is_class,
+                'is_management': is_management,
+                'level': 1,
+                'next_level': 2,
+                'depth': depth,
+                'has_children': depth > 1,
+                'node_id': node_id,
+                'l1_id': k1_id,
+                'totals': self._flatten_annual_totals(totals_map[k1_id]),
+            })
+
+        return result
+
+    def get_level_children(self, target_level: int, parent_filters: dict[str, Any]) -> list[dict[str, Any]]:
+        """
+        fetches and returns child items for a given level and parent filter criteria
+        """
+        depth = self.dimension_config['depth']
+        if target_level > depth:
+            return []
+
+        target_id_field = self.dimension_config[f'l{target_level}_id']
+        target_model = self.dimension_config[f'l{target_level}_model']
+
+        # build filter criteria for transactions from parent identifiers
+        tx_filters = {}
+        for lvl in range(1, target_level):
+            parent_val = parent_filters.get(f'l{lvl}_id')
+            if parent_val is not None and str(parent_val).strip() != '' and str(parent_val) != 'otros':
+                field_name = self.dimension_config[f'l{lvl}_id']
+                tx_filters[field_name] = parent_val
+
+        data_list = (
+            self.queryset
+            .filter(**tx_filters)
+            .values(target_id_field, 'sale_date__year')
+            .annotate(
+                total_net=Sum('net_amount'),
+                total_profit=Sum('profit'),
+            )
+            .order_by()
+        )
+
+        # aggregate into totals per child
+        child_totals: dict[Any, dict[int, dict[str, float]]] = defaultdict(self._init_annual_totals)
+        child_net_sum: dict[Any, float] = defaultdict(float)
+
+        for row in data_list:
+            c_id = row.get(target_id_field)
+            if c_id is None:
+                continue
+            y = row.get('sale_date__year')
+            net = float(row.get('total_net') or 0.0)
+            profit = float(row.get('total_profit') or 0.0)
+
+            if y in self.sorted_years:
+                child_totals[c_id][y]['net'] += net
+                child_totals[c_id][y]['profit'] += profit
+                child_net_sum[c_id] += net
+
+        # sort children by sales descending
+        sorted_children = sorted(child_net_sum.items(), key=lambda x: x[1], reverse=True)
+
+        # limit by level
+        if target_level == 2:
+            limit = 100 if depth >= 3 else 50
+        elif target_level == 3:
+            limit = 50 if depth >= 4 else 50
+        else:
+            limit = 25
+
+        top_pairs = sorted_children[:limit]
+        other_pairs = sorted_children[limit:]
+
+        top_ids = [c_id for c_id, _ in top_pairs]
+        target_names = dict(
+            target_model.objects.filter(id__in=top_ids).values_list('id', 'name')
+        )
+
+        is_route = 'route' in target_id_field and target_model == Route
+        is_customer = 'customer' in target_id_field and target_model == Customer
+        is_product = 'product' in target_id_field and target_model == Product
+        is_class = target_model == ProductClass
+        is_management = target_model == BusinessUnit
+
+        parent_node_id = parent_filters.get('parent_node_id', '')
+
+        def _build_ancestor_classes(p_node_id: str) -> str:
+            if not p_node_id:
+                return ''
+            parts = p_node_id.split('_')
+            classes = []
+            for i in range(2, len(parts) + 1):
+                prefix = '_'.join(parts[:i])
+                classes.append(f'child-{prefix}')
+            return ' '.join(classes)
+
+        ancestor_classes = _build_ancestor_classes(parent_node_id)
+        result = []
+
+        for c_id, _ in top_pairs:
+            name = target_names.get(c_id) or 'Sin registro'
+            node_id = f"{parent_node_id}_{c_id}" if parent_node_id else f"n{target_level}_{c_id}"
+
+            item_data = {
+                'id': c_id,
+                'name': name,
+                'is_route': is_route,
+                'is_customer': is_customer,
+                'is_product': is_product,
+                'is_class': is_class,
+                'is_management': is_management,
+                'level': target_level,
+                'next_level': target_level + 1,
+                'depth': depth,
+                'has_children': target_level < depth,
+                'node_id': node_id,
+                'parent_node_id': parent_node_id,
+                'ancestor_classes': ancestor_classes,
+                'l1_id': parent_filters.get('l1_id'),
+                'totals': self._flatten_annual_totals(child_totals[c_id]),
+            }
+            if target_level >= 2:
+                item_data['l2_id'] = c_id if target_level == 2 else parent_filters.get('l2_id')
+            if target_level >= 3:
+                item_data['l3_id'] = c_id if target_level == 3 else parent_filters.get('l3_id')
+
+            result.append(item_data)
+
+        # add aggregated 'otros' row if threshold was exceeded
+        if other_pairs:
+            other_totals = self._init_annual_totals()
+            for o_id, _ in other_pairs:
+                self._add_annual_totals(other_totals, child_totals[o_id])
+
+            label_otros = (
+                'OTROS PRODUCTOS'
+                if 'product' in target_id_field
+                else 'OTROS REGISTROS'
+            )
+            node_id = f"{parent_node_id}_otros" if parent_node_id else f"n{target_level}_otros"
+            result.append({
+                'id': 'otros',
+                'name': label_otros,
+                'is_route': False,
+                'is_customer': False,
+                'is_product': is_product,
+                'is_class': is_class,
+                'is_management': is_management,
+                'level': target_level,
+                'next_level': target_level + 1,
+                'depth': depth,
+                'has_children': False,
+                'node_id': node_id,
+                'parent_node_id': parent_node_id,
+                'ancestor_classes': ancestor_classes,
+                'totals': self._flatten_annual_totals(other_totals),
+            })
+
+        return result
 
     def get_pivot_data(self, top_l1_ids: list[Any]) -> dict[str, Any]:
         if not top_l1_ids:

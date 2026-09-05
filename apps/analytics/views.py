@@ -569,8 +569,8 @@ def yearly_sale_breakdown_view(request):
         item[l1_id_field] for item in page_obj.object_list if item.get(l1_id_field) is not None
     ]
 
-    # aggregated calculation for the page data
-    pivot_data = breakdown_service.get_pivot_data(top_l1_ids)
+    # level 1 items calculation for the page data
+    items = breakdown_service.get_level_1_items(top_l1_ids)
 
     query_dict = req_data.copy()
     if 'page' in query_dict:
@@ -592,7 +592,7 @@ def yearly_sale_breakdown_view(request):
         'dimension_label': breakdown_service.dimension_config.get('label', ''),
         'available_years': breakdown_service.sorted_years,
         'years': breakdown_service.sorted_years,
-        'pivot_data': pivot_data,
+        'items': items,
         'page_obj': page_obj,
         'query_string': query_dict.urlencode(),
         'perf': perf,
@@ -607,6 +607,75 @@ def yearly_sale_breakdown_view(request):
         )
 
     return render(request, template, context)
+
+@login_required
+def yearly_sale_breakdown_children_view(request):
+    """
+    lazy loads and returns child rows for a given breakdown hierarchy node
+    """
+    req_data = request.GET.copy()
+    dimension = req_data.get('dimension', 'customer_productclass_product')
+
+    try:
+        target_level = int(req_data.get('level', 2))
+    except (TypeError, ValueError):
+        target_level = 2
+
+    parent_filters = {
+        'l1_id': req_data.get('l1_id'),
+        'l2_id': req_data.get('l2_id'),
+        'l3_id': req_data.get('l3_id'),
+        'parent_node_id': req_data.get('parent_node_id', ''),
+    }
+
+    # perspective determination
+    sale_transaction_service = SaleTransactionsService(user=request.user)
+    perspective = YearlySaleBreakdownService.get_perspective(dimension)
+    if perspective == 'customers':
+        tx_qs = sale_transaction_service.read_transactions_by_allowed_customers()
+    else:
+        tx_qs = sale_transaction_service.read_transactions_by_allowed_routes()
+
+    # filters
+    filter_set = YearlySaleBreakdownFilter(req_data, queryset=tx_qs, request=request)
+    filtered_tx_qs = filter_set.qs
+
+    # service initialization
+    breakdown_service = YearlySaleBreakdownService(
+        queryset=filtered_tx_qs,
+        dimension=dimension,
+        user=request.user,
+    )
+
+    child_items = breakdown_service.get_level_children(
+        target_level=target_level,
+        parent_filters=parent_filters,
+    )
+
+    query_dict = req_data.copy()
+    for param in ['level', 'l1_id', 'l2_id', 'l3_id', 'parent_node_id', 'page']:
+        if param in query_dict:
+            del query_dict[param]
+
+    is_seller = (
+        request.user.is_authenticated
+        and request.user.groups.filter(name='vendedor').exists()
+    )
+
+    context = {
+        'items': child_items,
+        'dimension': dimension,
+        'available_years': breakdown_service.sorted_years,
+        'parent_node_id': parent_filters.get('parent_node_id', ''),
+        'query_string': query_dict.urlencode(),
+        'is_seller': is_seller,
+    }
+
+    return render(
+        request,
+        'analytics/yearly_sale_breakdown/partials/_yearly_sale_breakdown_child_rows.html',
+        context,
+    )
 
 @login_required
 def monthly_sale_breakdown_view(request):

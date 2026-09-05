@@ -21,6 +21,7 @@ urlpatterns = [
 
 
     path('yearly-sale-breakdown/', yearly_sale_breakdown_view, name='yearly_sale_breakdown_view'),
+    path('yearly-sale-breakdown/children/', yearly_sale_breakdown_children_view, name='yearly_sale_breakdown_children_view'),
     
     path('monthly-sale-breakdown/', monthly_sale_breakdown_view, name='monthly_sale_breakdown_view'),
     path('monthly-sale-breakdown/export/', monthly_sale_breakdown_export_view, name='monthly_sale_breakdown_export_view'),
