@@ -166,15 +166,18 @@ class CustomerKpisService:
         if self._cached_target_customers is not None:
             return self._cached_target_customers
 
-        self._cached_target_customers = [
-            c for c in self.customers_qs
-            if not c.registration_date or c.registration_date <= self.date_end
-        ]
+        # filter directly at database level and clear heavy assignment prefetching
+        filtered_qs = (
+            self.customers_qs
+            .filter(Q(registration_date__isnull=True) | Q(registration_date__lte=self.date_end))
+            .prefetch_related(None)
+        )
+        self._cached_target_customers = list(filtered_qs)
         return self._cached_target_customers
 
     def _get_sales_metrics(self, customer_ids: list[Any]) -> dict[Any, dict[str, Any]]:
         """
-        calculates all key sales amounts using targeted date filtered queries:
+        calculates all key sales amounts using a single consolidated conditional aggregation query:
         - previous year total
         - previous quarter total
         - previous month total
@@ -191,36 +194,63 @@ class CustomerKpisService:
         today = self.today
         clean_tx = self.transactions_qs.select_related(None).order_by()
 
-        sales_metrics = defaultdict(dict)
-
-        #previous year
-        for r in clean_tx.filter(customer_id__in=customer_ids, sale_date__year=previous_year).values('customer_id').annotate(total=Sum('net_amount')):
-            sales_metrics[r['customer_id']]['prev_year'] = r['total']
-
-        # contribution period
-        for r in clean_tx.filter(customer_id__in=customer_ids, sale_date__gte=self.date_start, sale_date__lte=self.date_end).values('customer_id').annotate(net=Sum('net_amount'), profit=Sum('profit')):
-            sales_metrics[r['customer_id']]['contrib_net'] = r['net']
-            sales_metrics[r['customer_id']]['contrib_profit'] = r['profit']
-
-        # monthly breakdown for current year
-        for r in clean_tx.filter(customer_id__in=customer_ids, sale_date__year=current_year).values('customer_id', 'sale_date__month').annotate(total=Sum('net_amount')):
-            sales_metrics[r['customer_id']][f"m_{r['sale_date__month']}"] = r['total']
-
-        # derivations:
         last_day_prev_month = today.replace(day=1) - timedelta(days=1)
         first_day_prev_month = last_day_prev_month.replace(day=1)
 
         prev_q_in_curr_year = (self.first_day_q.year == current_year and self.last_day_q.year == current_year)
         prev_q_months = list(range(self.first_day_q.month, self.last_day_q.month + 1)) if prev_q_in_curr_year else []
-        if not prev_q_in_curr_year:
-            for r in clean_tx.filter(customer_id__in=customer_ids, sale_date__gte=self.first_day_q, sale_date__lte=self.last_day_q).values('customer_id').annotate(total=Sum('net_amount')):
-                sales_metrics[r['customer_id']]['prev_q'] = r['total']
 
         prev_m_in_curr_year = (first_day_prev_month.year == current_year)
         prev_m_month = first_day_prev_month.month if prev_m_in_curr_year else None
+
+        # consolidated aggregation dictionary for one-pass query
+        annotations = {
+            'prev_year': Sum('net_amount', filter=Q(sale_date__year=previous_year)),
+            'contrib_net': Sum('net_amount', filter=Q(sale_date__gte=self.date_start, sale_date__lte=self.date_end)),
+            'contrib_profit': Sum('profit', filter=Q(sale_date__gte=self.date_start, sale_date__lte=self.date_end)),
+        }
+        for m in range(1, 13):
+            annotations[f'm_{m}'] = Sum('net_amount', filter=Q(sale_date__year=current_year, sale_date__month=m))
+
+        if not prev_q_in_curr_year:
+            annotations['prev_q'] = Sum('net_amount', filter=Q(sale_date__gte=self.first_day_q, sale_date__lte=self.last_day_q))
+
         if not prev_m_in_curr_year:
-            for r in clean_tx.filter(customer_id__in=customer_ids, sale_date__gte=first_day_prev_month, sale_date__lte=last_day_prev_month).values('customer_id').annotate(total=Sum('net_amount')):
-                sales_metrics[r['customer_id']]['prev_m'] = r['total']
+            annotations['prev_m'] = Sum('net_amount', filter=Q(sale_date__gte=first_day_prev_month, sale_date__lte=last_day_prev_month))
+
+        earliest_date = min(
+            date(previous_year, 1, 1),
+            self.date_start,
+            self.first_day_q,
+            first_day_prev_month
+        )
+
+        rows = (
+            clean_tx
+            .filter(customer_id__in=customer_ids, sale_date__gte=earliest_date)
+            .values('customer_id')
+            .annotate(**annotations)
+        )
+
+        sales_metrics = defaultdict(dict)
+        for r in rows:
+            cid = r['customer_id']
+            c_entry = sales_metrics[cid]
+            if r.get('prev_year') is not None:
+                c_entry['prev_year'] = r['prev_year']
+            if r.get('contrib_net') is not None:
+                c_entry['contrib_net'] = r['contrib_net']
+            if r.get('contrib_profit') is not None:
+                c_entry['contrib_profit'] = r['contrib_profit']
+            if 'prev_q' in r and r.get('prev_q') is not None:
+                c_entry['prev_q'] = r['prev_q']
+            if 'prev_m' in r and r.get('prev_m') is not None:
+                c_entry['prev_m'] = r['prev_m']
+
+            for m in range(1, 13):
+                m_val = r.get(f'm_{m}')
+                if m_val is not None:
+                    c_entry[f'm_{m}'] = m_val
 
         for cid, c_m in sales_metrics.items():
             c_m['curr_y'] = sum((c_m.get(f'm_{m}') or Decimal('0.00') for m in range(1, 13)), Decimal('0.00'))
@@ -278,14 +308,14 @@ class CustomerKpisService:
                 sale_date__gte=date(self.previous_year, 1, 1),
                 net_amount__gt=0
             )
-            .values('customer_id', 'sale_date')
+            .values_list('customer_id', 'sale_date')
             .distinct()
             .order_by('customer_id', 'sale_date')
         )
 
         customer_dates = defaultdict(list)
-        for row in dates_qs:
-            customer_dates[row['customer_id']].append(row['sale_date'])
+        for cid, sale_date in dates_qs:
+            customer_dates[cid].append(sale_date)
 
         freq_map = {}
         for c_id, dates in customer_dates.items():
@@ -324,45 +354,42 @@ class CustomerKpisService:
                 net_amount__gt=0,
                 product_class_id__in=self.relevant_classes
             )
-            .values('customer_id', 'product_class_id')
+            .values_list('customer_id', 'product_class_id')
             .annotate(total=Sum('net_amount'))
         )
 
         classes_map = defaultdict(dict)
         class_names = getattr(self, 'class_names', {})
-        for row in classes_qs:
-            cid = row['customer_id']
-            class_id = row['product_class_id']
+        for cid, class_id, total in classes_qs:
             class_name = class_names.get(class_id, class_id)
             classes_map[cid][class_id] = {
                 'name': class_name,
-                'total': row['total'] or Decimal('0.00')
+                'total': total or Decimal('0.00')
             }
 
         return dict(classes_map)
 
     def _get_collections_info(self, customer_ids: list[Any]) -> dict[Any, dict[str, Decimal]]:
-        '''
+        """
         returns a dictionary with current balance, overdue balance and total balance for each customer.
         returns {customer_id: {'current_balance': Decimal, 'overdue_balance': Decimal, 'total_balance': Decimal}}
-        '''        
+        """        
         if not customer_ids:
             return {}
         clean_ar = self.ars_qs.select_related(None).order_by()
         ar_data = (
             clean_ar
             .filter(customer_id__in=customer_ids)
-            .values('customer_id')
+            .values_list('customer_id')
             .annotate(
                 total_balance=Sum('total_balance'),
                 current_balance=Sum('current_balance')
             )
         )
         collections_map = {}
-        for row in ar_data:
-            cid = row['customer_id']
-            curr_b = row['current_balance'] or Decimal('0.00')
-            tot_b = row['total_balance'] or Decimal('0.00')
+        for cid, tot_b, curr_b in ar_data:
+            curr_b = curr_b or Decimal('0.00')
+            tot_b = tot_b or Decimal('0.00')
             overdue_b = max(tot_b - curr_b, Decimal('0.00'))
             collections_map[cid] = {
                 'current_balance': curr_b,
@@ -642,16 +669,17 @@ class CustomerKpisService:
 
 @dataclass
 class CustomerKpisExports:
-    '''dedicated to receive all exports request for customer kpis objects and filters'''
+    """dedicated to receive all exports request for customer kpis objects and filters"""
     customer_kpis_service: CustomerKpisService
 
     def export_customer_kpis_report(self) -> io.BytesIO:
+        """generates the optimized excel report with summary and complete customer dataset"""
         customers_data = self.customer_kpis_service.read_customer_kpis()
         kpis = self.customer_kpis_service.get_stats()
 
         wb = openpyxl.Workbook()
 
-        #styles
+        # styles
         header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
         header_font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
         section_font = Font(name="Calibri", size=12, bold=True, color="0F172A")
@@ -662,6 +690,11 @@ class CustomerKpisExports:
 
         thin_border_side = Side(style='thin', color='CBD5E1')
         cell_border = Border(left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side)
+
+        align_left = Alignment(horizontal="left", vertical="center")
+        align_right = Alignment(horizontal="right", vertical="center")
+        align_center = Alignment(horizontal="center", vertical="center")
+        align_header_wrap = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
         currency_format = '"$"#,##0.00'
         pct_format = '0.00%'
@@ -687,7 +720,7 @@ class CustomerKpisExports:
             cell = ws_summary.cell(row=5, column=col_num, value=h_text)
             cell.fill = header_fill
             cell.font = header_font
-            cell.alignment = Alignment(horizontal="center" if col_num > 1 else "left")
+            cell.alignment = align_center if col_num > 1 else align_left
             cell.border = cell_border
 
         reg_c = int(kpis.get('registered_customers') or 0)
@@ -710,13 +743,13 @@ class CustomerKpisExports:
             c_val = ws_summary.cell(row=row_idx, column=2, value=val)
             c_val.font = bold_data_font
             c_val.number_format = int_format
-            c_val.alignment = Alignment(horizontal="right")
+            c_val.alignment = align_right
             c_val.border = cell_border
 
             c_pct = ws_summary.cell(row=row_idx, column=3, value=pct)
             c_pct.font = bold_data_font
             c_pct.number_format = pct_format
-            c_pct.alignment = Alignment(horizontal="right")
+            c_pct.alignment = align_right
             c_pct.border = cell_border
 
         #gen 2, performance, net and profit 
@@ -727,7 +760,7 @@ class CustomerKpisExports:
             cell = ws_summary.cell(row=start_row_perf + 1, column=col_num, value=h_text)
             cell.fill = header_fill
             cell.font = header_font
-            cell.alignment = Alignment(horizontal="center" if col_num > 1 else "left")
+            cell.alignment = align_center if col_num > 1 else align_left
             cell.border = cell_border
 
         is_vendor = self.customer_kpis_service.is_vendor
@@ -749,14 +782,14 @@ class CustomerKpisExports:
             c_a = ws_summary.cell(row=idx, column=2, value=amt)
             c_a.font = bold_data_font
             c_a.number_format = currency_format
-            c_a.alignment = Alignment(horizontal="right")
+            c_a.alignment = align_right
             c_a.border = cell_border
 
             c_m = ws_summary.cell(row=idx, column=3, value=marg if marg is not None else "-")
             c_m.font = bold_data_font
             if marg is not None:
                 c_m.number_format = pct_format
-            c_m.alignment = Alignment(horizontal="right" if marg is not None else "center")
+            c_m.alignment = align_right if marg is not None else align_center
             c_m.border = cell_border
 
         # sheet 2, complete table
@@ -766,12 +799,12 @@ class CustomerKpisExports:
         #superheaders
         if is_vendor:
             superheaders = [
-                ("Identificación", 1, 4),# Cols 1-4 (A-D)
-                ("Segmentación", 5, 9), # Cols 5-9 (E-I)
-                ("Cobranza", 10, 14),   # Cols 10-14 (J-N)
-                ("Métricas de Consumo", 15, 19), # Cols 15-19 (O-S)
-                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 20, 24),  # Cols 20-24 (T-X)
-                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 25, 36), # Cols 25-36 (Y-AJ)
+                ("Identificación", 1, 4),# cols 1-4 (A-D)
+                ("Segmentación", 5, 9), # cols 5-9 (E-I)
+                ("Cobranza", 10, 14),   # cols 10-14 (J-N)
+                ("Métricas de Consumo", 15, 19), # cols 15-19 (O-S)
+                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 20, 24),  # cols 20-24 (T-X)
+                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 25, 36), # cols 25-36 (Y-AJ)
             ]
             contrib_headers = [
                 "Venta Neta Periodo",
@@ -782,12 +815,12 @@ class CustomerKpisExports:
             ]
         else:
             superheaders = [
-                ("Identificación", 1, 4),# Cols 1-4 (A-D)
-                ("Segmentación", 5, 9), # Cols 5-9 (E-I)
-                ("Cobranza", 10, 14),   # Cols 10-14 (J-N)
-                ("Métricas de Consumo", 15, 19), # Cols 15-19 (O-S)
-                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 20, 26),  # Cols 20-26 (T-Z)
-                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 27, 38), # Cols 27-38 (AA-AL)
+                ("Identificación", 1, 4),# cols 1-4 (A-D)
+                ("Segmentación", 5, 9), # cols 5-9 (E-I)
+                ("Cobranza", 10, 14),   # cols 10-14 (J-N)
+                ("Métricas de Consumo", 15, 19), # cols 15-19 (O-S)
+                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 20, 26),  # cols 20-26 (T-Z)
+                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 27, 38), # cols 27-38 (AA-AL)
             ]
             contrib_headers = [
                 "Venta Neta Periodo",
@@ -811,7 +844,7 @@ class CustomerKpisExports:
                 c_head.fill = header_fill
                 c_head.font = header_font
                 c_head.border = cell_border
-                c_head.alignment = Alignment(horizontal="center", vertical="center")
+                c_head.alignment = align_center
 
         ws_customers.row_dimensions[1].height = 24
 
@@ -852,7 +885,7 @@ class CustomerKpisExports:
             cell = ws_customers.cell(row=2, column=col_num, value=h_text)
             cell.fill = header_fill
             cell.font = header_font
-            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.alignment = align_header_wrap
             cell.border = cell_border
 
         ws_customers.row_dimensions[2].height = 26
@@ -899,72 +932,89 @@ class CustomerKpisExports:
 
             if is_vendor:
                 contrib_values = [
-                    (perf_net, currency_format, "right"),
-                    (contrib_net_pct, pct_format, "right"),
-                    (cumuled_contrib, pct_format, "right"),
-                    (cumuled_count, int_format, "right"),
-                    (cumuled_pct, pct_format, "right"),
+                    (perf_net, currency_format, align_right),
+                    (contrib_net_pct, pct_format, align_right),
+                    (cumuled_contrib, pct_format, align_right),
+                    (cumuled_count, int_format, align_right),
+                    (cumuled_pct, pct_format, align_right),
                 ]
             else:
                 contrib_values = [
-                    (perf_net, currency_format, "right"),
-                    (perf_profit, currency_format, "right"),
-                    (contrib_net_pct, pct_format, "right"),
-                    (contrib_profit_pct, pct_format, "right"),
-                    (cumuled_contrib, pct_format, "right"),
-                    (cumuled_count, int_format, "right"),
-                    (cumuled_pct, pct_format, "right"),
+                    (perf_net, currency_format, align_right),
+                    (perf_profit, currency_format, align_right),
+                    (contrib_net_pct, pct_format, align_right),
+                    (contrib_profit_pct, pct_format, align_right),
+                    (cumuled_contrib, pct_format, align_right),
+                    (cumuled_count, int_format, align_right),
+                    (cumuled_pct, pct_format, align_right),
                 ]
 
             row_values = [
                 # ids
-                (cid, '@', "center"),
-                (cname, None, "left"),
-                (r_id, '@', "center"),
-                (r_bu, None, "left"),
+                (cid, '@', align_center),
+                (cname, None, align_left),
+                (r_id, '@', align_center),
+                (r_bu, None, align_left),
                 # segs
-                (c_type, None, "left"),
-                (cat_name, '@', "center"),
-                (freq_name, None, "left"),
-                (freq_days, int_format, "right"),
-                (op_leader, '@', "center"),
+                (c_type, None, align_left),
+                (cat_name, '@', align_center),
+                (freq_name, None, align_left),
+                (freq_days, int_format, align_right),
+                (op_leader, '@', align_center),
                 # collections
-                (credit_limit, currency_format, "right"),
-                (credit_usage, pct_format, "right"),
-                (curr_bal, currency_format, "right"),
-                (overdue_bal, currency_format, "right"),
-                (tot_bal, currency_format, "right"),
+                (credit_limit, currency_format, align_right),
+                (credit_usage, pct_format, align_right),
+                (curr_bal, currency_format, align_right),
+                (overdue_bal, currency_format, align_right),
+                (tot_bal, currency_format, align_right),
                 # consumption metrics
-                (active_agreements, int_format, "right"),
-                (prod_classes, int_format, "right"),
-                (prev_y_avg, currency_format, "right"),
-                (curr_y_avg, currency_format, "right"),
-                (prev_q_avg, currency_format, "right"),
+                (active_agreements, int_format, align_right),
+                (prod_classes, int_format, align_right),
+                (prev_y_avg, currency_format, align_right),
+                (curr_y_avg, currency_format, align_right),
+                (prev_q_avg, currency_format, align_right),
                 # contrib
                 *contrib_values,
                 # monthly
-                *[(m_sale, currency_format, "right") for m_sale in monthly_sales]
+                *[(m_sale, currency_format, align_right) for m_sale in monthly_sales]
             ]
 
-            for col_idx, (val, num_fmt, align_h) in enumerate(row_values, 1):
+            for col_idx, (val, num_fmt, cell_align) in enumerate(row_values, 1):
                 cell = ws_customers.cell(row=row_idx, column=col_idx, value=val)
                 cell.font = data_font
                 cell.border = cell_border
-                cell.alignment = Alignment(horizontal=align_h)
+                cell.alignment = cell_align
                 if num_fmt:
                     cell.number_format = num_fmt
 
-        # autosize columns
-        for sheet in [ws_summary, ws_customers]:
-            for col in sheet.columns:
-                max_len = 0
-                col_letter = get_column_letter(col[0].column)
-                for cell in col:
-                    val_str = str(cell.value or '')
-                    if cell.number_format == currency_format:
-                        val_str = f"${val_str}"
-                    max_len = max(max_len, len(val_str))
-                sheet.column_dimensions[col_letter].width = max(max_len + 3, 11)
+        # predefined column widths for summary worksheet
+        summary_widths = {'A': 32, 'B': 20, 'C': 18}
+        for col_letter, width in summary_widths.items():
+            ws_summary.column_dimensions[col_letter].width = width
+
+        # predefined column widths for customers worksheet (avoids scanning 350k+ cells dynamically)
+        if is_vendor:
+            customer_col_widths = [
+                14, 38, 12, 22, # id, name, route, bu
+                18, 14, 18, 16, 16, # type, cat, freq, days, leader
+                18, 16, 18, 18, 18, # credit limit, usage, curr, overdue, total
+                16, 18, 20, 20, 20, # agreements, classes, prev_y, curr_y, prev_q
+                18, 20, 20, 18, 18, # contrib net, % net, % cum, count, % port
+                16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16 # 12 months
+            ]
+        else:
+            customer_col_widths = [
+                14, 38, 12, 22, # id, name, route, bu
+                18, 14, 18, 16, 16, # type, cat, freq, days, leader
+                18, 16, 18, 18, 18, # credit limit, usage, curr, overdue, total
+                16, 18, 20, 20, 20, # agreements, classes, prev_y, curr_y, prev_q
+                18, 18, 20, 20, 20, 18, 18, # contrib net, profit, % net, % profit, % cum, count, % port
+                16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16 # 12 months
+            ]
+
+        for col_idx, width in enumerate(customer_col_widths, 1):
+            col_letter = get_column_letter(col_idx)
+            ws_customers.column_dimensions[col_letter].width = width
 
         output = io.BytesIO()
         wb.save(output)

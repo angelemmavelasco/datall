@@ -35,7 +35,7 @@ def generate_customer_kpis_report_task(user_id: int, req_data: dict | str, clean
         else:
             q_data = req_data
 
-        filter_set = CustomerKpisFilter(q_data, queryset=customer_qs)
+        filter_set = CustomerKpisFilter(q_data, queryset=customer_qs, request=user)
         filtered_customers_qs = filter_set.qs
 
         customer_kpis_service = CustomerKpisService(
