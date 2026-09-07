@@ -156,6 +156,15 @@ class StocksService(UsersService):
             print(f"[STOCKS-ETL ERROR] required columns validation failed: {req_msg}", flush=True)
             return False, req_msg
 
+        str_cols = ['product_id', 'warehouse_id', 'lot_number']
+        for col in str_cols:
+            if col in df.columns:
+                df[col] = df[col].astype(str).str.strip()
+                df[col] = df[col].replace({'nan': None, 'NaN': None, 'None': None, 'none': None, 'null': None, 'NULL': None, '': None})
+
+        valid_warehouses_dict = {str(w.id).strip().lower(): w.id for w in self.warehouse_model.objects.all()}
+        default_warehouse = valid_warehouses_dict.get('snc') or (next(iter(valid_warehouses_dict.values())) if valid_warehouses_dict else None)
+
         if 'warehouse_id' in df.columns:
             df = BaseETLHelper.apply_reference_value_mappings(
                 df,
@@ -164,12 +173,11 @@ class StocksService(UsersService):
                 context='valor_cedis',
                 submodule_url_name='core:upload_options_list_view'
             )
-
-        str_cols = ['product_id', 'warehouse_id', 'lot_number']
-        for col in str_cols:
-            if col in df.columns:
-                df[col] = df[col].astype(str).str.strip()
-                df[col] = df[col].replace({'nan': None, 'NaN': None, 'None': None, 'none': None, 'null': None, 'NULL': None, '': None})
+            df['warehouse_id'] = df['warehouse_id'].apply(
+                lambda x: valid_warehouses_dict.get(str(x).strip().lower(), default_warehouse) if x not in (None, 'None', 'nan', 'NaN', 'null', 'NULL', '') else default_warehouse
+            )
+        elif default_warehouse:
+            df['warehouse_id'] = default_warehouse
 
         if 'lot_number' in df.columns:
             df['lot_number'] = df['lot_number'].fillna('')
@@ -177,7 +185,7 @@ class StocksService(UsersService):
             df['lot_number'] = ''
         df = df.dropna(subset=['product_id', 'warehouse_id'])
         if df.empty:
-            err = "The file does not contain valid stock after discarding rows without product or warehouse."
+            err = "El archivo no contiene existencias válidas después de descartar filas sin producto o almacén."
             print(f"[STOCKS-ETL ERROR] {err}", flush=True)
             return False, err
 
@@ -231,8 +239,8 @@ class StocksService(UsersService):
 
     def bulk_create_stocks(self, file_obj) -> object:
         """
-        executes high-performance bulk import/upsert of Stock records into the database.
-        leverages native postgresql ON CONFLICT upsert through django bulk_create.
+        executes high-performance bulk import of Stock records into the database.
+        performs a complete delete of previous stock records and bulk inserts the new snapshot.
         """
         from apps.core.services.uploads import ImportResult, PermissionsError, BaseETLHelper
 
@@ -253,40 +261,17 @@ class StocksService(UsersService):
         if df is None or df.empty:
             return ImportResult(success=False, message="El archivo no contiene existencias para procesar.")
 
-        product_ids = set(df['product_id'].dropna().unique())
-        warehouse_ids = set(df['warehouse_id'].dropna().unique())
-
-        print(f"[STOCKS-BULK] Productos únicos: {len(product_ids)} | Almacenes únicos: {len(warehouse_ids)}", flush=True)
-
-        # check existing stock keys via lightweight values_list (no model instances overhead)
-        existing_keys = {
-            (str(pid).strip(), str(wid).strip(), str(lot or '').strip())
-            for pid, wid, lot in self.stock_model.objects.filter(
-                product_id__in=product_ids,
-                warehouse_id__in=warehouse_ids
-            ).values_list('product_id', 'warehouse_id', 'lot_number')
-        }
-        print(f"[STOCKS-BULK] Existencias coincidentes en BD: {len(existing_keys)}", flush=True)
-
-        keys_in_file = set(zip(df['product_id'], df['warehouse_id'], df['lot_number']))
-        updated_count = len(keys_in_file & existing_keys)
-        created_count = len(keys_in_file) - updated_count
         total_processed = len(df)
-
-        print(
-            f"[STOCKS-BULK PLAN] Total a procesar: {total_processed} | "
-            f"Nuevos estimados: {created_count} | A actualizar: {updated_count}",
-            flush=True
-        )
+        print(f"[STOCKS-BULK] Total existencias únicas a registrar: {total_processed}", flush=True)
 
         now = timezone.now()
-        stocks_to_upsert = []
+        stocks_to_create = []
         for row in df.itertuples(index=False):
             exp_date = getattr(row, 'expiration_date', None)
             if pd.isna(exp_date) or str(exp_date).strip() in ('', 'None', 'nan', 'NaN', 'NaT'):
                 exp_date = None
 
-            stocks_to_upsert.append(
+            stocks_to_create.append(
                 self.stock_model(
                     product_id=str(row.product_id).strip(),
                     warehouse_id=str(row.warehouse_id).strip(),
@@ -299,23 +284,23 @@ class StocksService(UsersService):
 
         try:
             with transaction.atomic():
-                print(f"[STOCKS-BULK DB] Ejecutando upsert nativo de {len(stocks_to_upsert)} existencias...", flush=True)
+                deleted_count, _ = self.stock_model.objects.all().delete()
+                print(f"[STOCKS-BULK DB] Se eliminaron {deleted_count} existencias anteriores.", flush=True)
+
+                print(f"[STOCKS-BULK DB] Insertando {len(stocks_to_create)} existencias...", flush=True)
                 self.stock_model.objects.bulk_create(
-                    stocks_to_upsert,
-                    batch_size=2000,
-                    update_conflicts=True,
-                    update_fields=['quantity', 'expiration_date', 'updated_at'],
-                    unique_fields=['product', 'warehouse', 'lot_number']
+                    stocks_to_create,
+                    batch_size=5000
                 )
 
-            success_msg = f"Importación exitosa. Se procesaron {total_processed} existencias ({created_count} nuevos, {updated_count} actualizados)."
+            success_msg = f"Importación exitosa. Se eliminaron {deleted_count} registros antiguos y se crearon {len(stocks_to_create)} nuevas existencias."
             print(f"[STOCKS-BULK SUCCESS] {success_msg}\n", flush=True)
             return ImportResult(
                 success=True,
                 message=success_msg,
                 total_processed=total_processed,
-                created_count=created_count,
-                updated_count=updated_count
+                created_count=len(stocks_to_create),
+                updated_count=0
             )
 
         except Exception as e:
