@@ -190,16 +190,25 @@ class StocksService(UsersService):
             df['quantity'] = 0.0
 
         if 'expiration_date' in df.columns:
-            fechas_str = df['expiration_date'].astype(str).str.strip().str.replace(' 00:00:00', '', regex=False)
-            fechas_str = fechas_str.replace({'nan': None, 'NaN': None, 'None': None, 'none': None, 'null': None, '': None})
+            fechas = df['expiration_date']
+            if pd.api.types.is_datetime64_any_dtype(fechas):
+                df['expiration_date'] = fechas.dt.date.where(fechas.notnull(), None)
+            else:
+                fechas_str = fechas.astype(str).str.strip().str.replace(' 00:00:00', '', regex=False)
+                fechas_str = fechas_str.replace({'nan': None, 'NaN': None, 'None': None, 'none': None, 'null': None, '': None})
 
-            dates_iso = pd.to_datetime(fechas_str, format='%Y-%m-%d', errors='coerce')
-            dates_mx = pd.to_datetime(fechas_str, format='%d/%m/%Y', errors='coerce')
-            dates_mx_short = pd.to_datetime(fechas_str, format='%d/%m/%y', errors='coerce')
+                parsed_dates = pd.to_datetime(fechas_str, format='%Y-%m-%d', errors='coerce')
+                mask = parsed_dates.isna() & fechas_str.notna()
+                if mask.any():
+                    parsed_dates[mask] = pd.to_datetime(fechas_str[mask], format='%d/%m/%Y', errors='coerce')
+                mask = parsed_dates.isna() & fechas_str.notna()
+                if mask.any():
+                    parsed_dates[mask] = pd.to_datetime(fechas_str[mask], format='%d/%m/%y', errors='coerce')
+                mask = parsed_dates.isna() & fechas_str.notna()
+                if mask.any():
+                    parsed_dates[mask] = pd.to_datetime(fechas_str[mask], errors='coerce')
 
-            parsed_dates = dates_iso.fillna(dates_mx).fillna(dates_mx_short).fillna(pd.to_datetime(fechas_str, errors='coerce'))
-            df['expiration_date'] = parsed_dates.dt.date
-            df['expiration_date'] = df['expiration_date'].where(df['expiration_date'].notnull(), None)
+                df['expiration_date'] = parsed_dates.dt.date.where(parsed_dates.notnull(), None)
         else:
             df['expiration_date'] = None
 
@@ -222,8 +231,8 @@ class StocksService(UsersService):
 
     def bulk_create_stocks(self, file_obj) -> object:
         """
-        Executes bulk import/upsert of Stock records into the database.
-        Respects the unique constraint on (product, warehouse, lot_number).
+        executes high-performance bulk import/upsert of Stock records into the database.
+        leverages native postgresql ON CONFLICT upsert through django bulk_create.
         """
         from apps.core.services.uploads import ImportResult, PermissionsError, BaseETLHelper
 
@@ -249,78 +258,64 @@ class StocksService(UsersService):
 
         print(f"[STOCKS-BULK] Productos únicos: {len(product_ids)} | Almacenes únicos: {len(warehouse_ids)}", flush=True)
 
-        # Lookup existing stocks for the matching products and warehouses
-        existing_stocks_qs = self.stock_model.objects.filter(
-            product_id__in=product_ids,
-            warehouse_id__in=warehouse_ids
-        )
-        existing_stocks_map = {
-            (str(s.product_id).strip(), str(s.warehouse_id).strip(), (s.lot_number or '').strip()): s
-            for s in existing_stocks_qs
+        # check existing stock keys via lightweight values_list (no model instances overhead)
+        existing_keys = {
+            (str(pid).strip(), str(wid).strip(), str(lot or '').strip())
+            for pid, wid, lot in self.stock_model.objects.filter(
+                product_id__in=product_ids,
+                warehouse_id__in=warehouse_ids
+            ).values_list('product_id', 'warehouse_id', 'lot_number')
         }
-        print(f"[STOCKS-BULK] Existencias coincidentes en BD: {len(existing_stocks_map)}", flush=True)
+        print(f"[STOCKS-BULK] Existencias coincidentes en BD: {len(existing_keys)}", flush=True)
 
-        stocks_to_create = []
-        stocks_to_update = []
-        total_processed = 0
-
-        for _, row in df.iterrows():
-            pid = str(row['product_id']).strip()
-            wid = str(row['warehouse_id']).strip()
-            lot = str(row.get('lot_number', '') or '').strip()
-            qty = row['quantity']
-            exp_date = row.get('expiration_date')
-            if pd.isna(exp_date) or str(exp_date).strip() in ('', 'None', 'nan', 'NaN', 'NaT'):
-                exp_date = None
-
-            key = (pid, wid, lot)
-            total_processed += 1
-
-            if key in existing_stocks_map:
-                stock_instance = existing_stocks_map[key]
-                stock_instance.quantity = qty
-                stock_instance.expiration_date = exp_date
-                stock_instance.updated_at = timezone.now()
-                stocks_to_update.append(stock_instance)
-            else:
-                stocks_to_create.append(
-                    self.stock_model(
-                        product_id=pid,
-                        warehouse_id=wid,
-                        lot_number=lot,
-                        quantity=qty,
-                        expiration_date=exp_date
-                    )
-                )
+        keys_in_file = set(zip(df['product_id'], df['warehouse_id'], df['lot_number']))
+        updated_count = len(keys_in_file & existing_keys)
+        created_count = len(keys_in_file) - updated_count
+        total_processed = len(df)
 
         print(
-            f"[STOCKS-BULK PLAN] Nuevos a crear: {len(stocks_to_create)} | "
-            f"A actualizar: {len(stocks_to_update)}",
+            f"[STOCKS-BULK PLAN] Total a procesar: {total_processed} | "
+            f"Nuevos estimados: {created_count} | A actualizar: {updated_count}",
             flush=True
         )
 
+        now = timezone.now()
+        stocks_to_upsert = []
+        for row in df.itertuples(index=False):
+            exp_date = getattr(row, 'expiration_date', None)
+            if pd.isna(exp_date) or str(exp_date).strip() in ('', 'None', 'nan', 'NaN', 'NaT'):
+                exp_date = None
+
+            stocks_to_upsert.append(
+                self.stock_model(
+                    product_id=str(row.product_id).strip(),
+                    warehouse_id=str(row.warehouse_id).strip(),
+                    lot_number=str(getattr(row, 'lot_number', '') or '').strip(),
+                    quantity=row.quantity,
+                    expiration_date=exp_date,
+                    updated_at=now,
+                )
+            )
+
         try:
             with transaction.atomic():
-                if stocks_to_create:
-                    print(f"[STOCKS-BULK DB] Creando {len(stocks_to_create)} existencias...", flush=True)
-                    self.stock_model.objects.bulk_create(stocks_to_create, batch_size=1000)
+                print(f"[STOCKS-BULK DB] Ejecutando upsert nativo de {len(stocks_to_upsert)} existencias...", flush=True)
+                self.stock_model.objects.bulk_create(
+                    stocks_to_upsert,
+                    batch_size=2000,
+                    update_conflicts=True,
+                    update_fields=['quantity', 'expiration_date', 'updated_at'],
+                    unique_fields=['product', 'warehouse', 'lot_number']
+                )
 
-                if stocks_to_update:
-                    print(f"[STOCKS-BULK DB] Actualizando {len(stocks_to_update)} existencias...", flush=True)
-                    self.stock_model.objects.bulk_update(
-                        stocks_to_update,
-                        ['quantity', 'expiration_date', 'updated_at'],
-                        batch_size=1000
-                    )
-
-            success_msg = f"Importación exitosa. Se crearon {len(stocks_to_create)} existencias y se actualizaron {len(stocks_to_update)}."
+            success_msg = f"Importación exitosa. Se procesaron {total_processed} existencias ({created_count} nuevos, {updated_count} actualizados)."
             print(f"[STOCKS-BULK SUCCESS] {success_msg}\n", flush=True)
             return ImportResult(
                 success=True,
                 message=success_msg,
                 total_processed=total_processed,
-                created_count=len(stocks_to_create),
-                updated_count=len(stocks_to_update)
+                created_count=created_count,
+                updated_count=updated_count
             )
 
         except Exception as e:
