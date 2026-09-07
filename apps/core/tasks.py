@@ -1,14 +1,16 @@
+import os
 import sys
 import traceback
 from django.utils import timezone
+from django.core.files import File
 from apps.core.models import User, GeneratedReport
 from apps.core.services.uploads import UploadsService
 
 
-def process_bulk_upload_task(report_id: int, model_key: str, user_id: int):
+def process_bulk_upload_task(report_id: int, model_key: str, user_id: int, temp_file_path: str = None):
     """
-    django q background task to process file uploads asynchronously.
-    updates the GeneratedReport record with the outcome and diagnostics.
+    django q background task to process file uploads asynchronously from local shared volume.
+    updates the GeneratedReport record with the outcome and diagnostics without uploading raw files to Cloudflare R2.
     """
     print(f"\n{'='*20} [TASK-UPLOAD START] Report ID: {report_id} | Model: {model_key} | User ID: {user_id} {'='*20}", flush=True)
     try:
@@ -17,12 +19,27 @@ def process_bulk_upload_task(report_id: int, model_key: str, user_id: int):
         print(f"[TASK-UPLOAD ERROR] GeneratedReport #{report_id} no existe.", flush=True)
         return False
 
+    target_temp_path = temp_file_path or (report.filters.get('temp_file_path') if report.filters else None)
+    raw_file = None
+    file_to_process = None
+
     try:
         user = User.objects.get(id=user_id)
         service = UploadsService(user=user)
 
-        if not report.file:
-            err_msg = "No se encontró el archivo adjunto para procesar la importación."
+        orig_filename = (report.filters.get('filename') if report.filters else '') or f"upload_{model_key}.xlsx"
+
+        if target_temp_path and os.path.exists(target_temp_path):
+            file_size = os.path.getsize(target_temp_path)
+            print(f"[TASK-UPLOAD] Archivo local a procesar: {orig_filename} ({target_temp_path}, Tamaño: {file_size} bytes)", flush=True)
+            raw_file = open(target_temp_path, 'rb')
+            file_to_process = File(raw_file, name=orig_filename)
+        elif report.file:
+            print(f"[TASK-UPLOAD] Archivo adjunto a procesar: {getattr(report.file, 'name', 'desconocido')}", flush=True)
+            report.file.open('rb')
+            file_to_process = report.file
+        else:
+            err_msg = "No se encontró el archivo temporal o adjunto para procesar la importación."
             print(f"[TASK-UPLOAD ERROR] #{report_id}: {err_msg}", flush=True)
             report.status = GeneratedReport.Status.FAILED
             report.error_message = err_msg
@@ -31,15 +48,21 @@ def process_bulk_upload_task(report_id: int, model_key: str, user_id: int):
             report.save()
             return False
 
-        filename = getattr(report.file, 'name', 'desconocido')
-        file_size = getattr(report.file, 'size', 'desconocido')
-        print(f"[TASK-UPLOAD] Archivo a procesar: {filename} (Tamaño: {file_size} bytes)", flush=True)
-
-        report.file.open('rb')
         try:
-            result = service.process_upload(model_key=model_key, file_obj=report.file)
+            result = service.process_upload(model_key=model_key, file_obj=file_to_process)
         finally:
-            report.file.close()
+            if raw_file:
+                raw_file.close()
+            elif hasattr(report.file, 'close'):
+                report.file.close()
+
+            # clean up local temporary file to prevent disk bloat
+            if target_temp_path and os.path.exists(target_temp_path):
+                try:
+                    os.remove(target_temp_path)
+                    print(f"[TASK-UPLOAD] Archivo temporal eliminado con éxito: {target_temp_path}", flush=True)
+                except Exception as rem_err:
+                    print(f"[TASK-UPLOAD WARNING] No se pudo eliminar archivo temporal {target_temp_path}: {rem_err}", flush=True)
 
         print(f"[TASK-UPLOAD] Resultado de la importación: success={result.success}, mensaje='{result.message}'", flush=True)
         if result.errors:
@@ -65,6 +88,18 @@ def process_bulk_upload_task(report_id: int, model_key: str, user_id: int):
     except Exception as e:
         print(f"\n[TASK-UPLOAD EXCEPTION] Excepción no controlada en la tarea #{report_id}: {str(e)}", flush=True)
         traceback.print_exc()
+
+        if raw_file:
+            try:
+                raw_file.close()
+            except Exception:
+                pass
+        if target_temp_path and os.path.exists(target_temp_path):
+            try:
+                os.remove(target_temp_path)
+            except Exception:
+                pass
+
         report.status = GeneratedReport.Status.FAILED
         report.error_message = f"Error inesperado durante la ejecución en segundo plano: {str(e)}"
         report.completed_at = timezone.now()

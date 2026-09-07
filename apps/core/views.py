@@ -1,17 +1,18 @@
+import os
+import uuid
 from django.conf import settings
 from django.contrib import messages
-from django.core.files.base import ContentFile
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.urls import reverse
+from django_q.tasks import async_task
 
 from apps.core.services.uploads import UploadsService, BaseETLHelper
 from apps.human_resources.services.employees import EmployeesService
 
 from django.utils import timezone
-from django_q.tasks import async_task
 from .filters import UserFilter
 from .forms import UserForm
 from .models import User, GeneratedReport, Reference, AppVersion
@@ -380,23 +381,34 @@ def upload_options_list_view(request):
         title_label = catalog_titles.get(model_key, model_key.title())
 
         try:
-            if hasattr(file_obj, 'seek'):
-                file_obj.seek(0)
-            file_bytes = file_obj.read()
-            if hasattr(file_obj, 'seek'):
-                file_obj.seek(0)
+            # write directly to shared local disk volume
+            temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_uploads')
+            os.makedirs(temp_dir, exist_ok=True)
 
             orig_filename = getattr(file_obj, 'name', '') or f"upload_{model_key}.xlsx"
-            content_file = ContentFile(file_bytes, name=orig_filename)
+            ext = os.path.splitext(orig_filename)[1].lower() or '.xlsx'
+            temp_filename = f"{uuid.uuid4().hex}{ext}"
+            temp_file_path = os.path.join(temp_dir, temp_filename)
 
+            total_bytes = 0
+            with open(temp_file_path, 'wb+') as dest:
+                for chunk in file_obj.chunks():
+                    dest.write(chunk)
+                    total_bytes += len(chunk)
+
+            # create GeneratedReport notification record without file in R2 (file=None)
             report = GeneratedReport.objects.create(
                 user=request.user,
                 title=f"Importación: {title_label}",
                 module_name="uploads",
-                file=content_file,
-                file_size=len(file_bytes),
+                file=None,
+                file_size=total_bytes,
                 status=GeneratedReport.Status.PENDING,
-                filters={'model_key': model_key, 'filename': orig_filename},
+                filters={
+                    'model_key': model_key,
+                    'filename': orig_filename,
+                    'temp_file_path': temp_file_path,
+                },
             )
 
             async_task(
@@ -404,11 +416,12 @@ def upload_options_list_view(request):
                 report.id,
                 model_key,
                 request.user.id,
+                temp_file_path,
             )
 
             messages.info(
                 request,
-                f"El archivo para {title_label} se ha cargado correctamente y se está procesando en segundo plano. Puedes consultar el progreso y los resultados en 'Mis Archivos'."
+                f"El archivo para {title_label} se ha recibido y se está procesando en segundo plano. Te notificaremos en 'Mis Archivos' al finalizar."
             )
         except Exception as e:
             import traceback
