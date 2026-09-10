@@ -1,4 +1,7 @@
+import os
+import uuid
 from datetime import date, timedelta
+from django.conf import settings
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
@@ -13,8 +16,10 @@ from apps.customers.services.customers import CustomersService
 from apps.sales.services.routes import RoutesService
 from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.sales.services.sale_targets import SaleTargetsService
+from apps.human_resources.models import BusinessUnit
 from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter, MonthlySaleBreakdownFilter, TargetAchievementFilter, YearlySaleBreakdownFilter
 from apps.analytics.services.yearly_sale_breakdown import YearlySaleBreakdownService
+from apps.analytics.services.target_achievement import TargetAchievementService, TargetAchievementExports
 
 
 from time import perf_counter
@@ -221,41 +226,128 @@ def target_achievement_export_view(request):
     if not req_data.get('date_end'):
         req_data['date_end'] = last_day_curr_month.strftime('%Y-%m-%d')
 
-    targets_service = SaleTargetsService(user=request.user)
+    user = request.user
+
+    targets_service = SaleTargetsService(user=user)
     base_targets_qs = targets_service.read_sale_targets()
 
-    filter_set = TargetAchievementFilter(req_data, queryset=base_targets_qs, request=request)
-    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+    tx_service = SaleTransactionsService(user=user)
+    base_tx_qs = tx_service.read_transactions_by_allowed_routes()
 
+    customers_service = CustomersService(user=user)
+    base_customers_qs = customers_service.read_customers()
+
+    routes_service = RoutesService(user=user)
+    allowed_routes_qs = routes_service.get_allowed_routes(can_view=True, can_edit=False)
+
+    filter_set = TargetAchievementFilter(req_data, queryset=base_targets_qs, request=user)
+    filtered_targets_qs = filter_set.qs
+    parsed_cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+    cleaned_data = parsed_cleaned_data
     serializable_cleaned_data = {k: _make_serializable(v) for k, v in cleaned_data.items()}
 
-    report = GeneratedReport.objects.create(
-        user=request.user,
-        title="Reporte de Alcance de Objetivos",
-        module_name="target_achievement",
-        status=GeneratedReport.Status.PENDING,
-        filters=serializable_cleaned_data,
+    filtered_tx_qs = base_tx_qs
+    filtered_routes_qs = allowed_routes_qs
+    filtered_customers_qs = base_customers_qs
+
+    if cleaned_data.get('region'):
+        selected_region_ids = set(r.pk if hasattr(r, 'pk') else r for r in cleaned_data['region'])
+        all_bu_ids = set(selected_region_ids)
+        current_parents = set(selected_region_ids)
+        while current_parents:
+            child_ids = set(
+                BusinessUnit.objects.filter(parent_id__in=current_parents).values_list('id', flat=True)
+            )
+            new_ids = child_ids - all_bu_ids
+            if not new_ids:
+                break
+            all_bu_ids.update(new_ids)
+            current_parents = new_ids
+
+        filtered_tx_qs = filtered_tx_qs.filter(route__business_unit_id__in=all_bu_ids)
+        filtered_routes_qs = filtered_routes_qs.filter(business_unit_id__in=all_bu_ids)
+        filtered_customers_qs = filtered_customers_qs.filter(
+            assignments__route__business_unit_id__in=all_bu_ids
+        )
+
+    if cleaned_data.get('business_unit'):
+        bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in cleaned_data['business_unit']]
+        filtered_tx_qs = filtered_tx_qs.filter(route__business_unit_id__in=bu_ids)
+        filtered_routes_qs = filtered_routes_qs.filter(business_unit_id__in=bu_ids)
+        filtered_customers_qs = filtered_customers_qs.filter(
+            assignments__route__business_unit_id__in=bu_ids
+        )
+
+    if cleaned_data.get('route'):
+        route_ids = [r.pk if hasattr(r, 'pk') else r for r in cleaned_data['route']]
+        filtered_tx_qs = filtered_tx_qs.filter(route_id__in=route_ids)
+        filtered_routes_qs = filtered_routes_qs.filter(id__in=route_ids)
+        filtered_customers_qs = filtered_customers_qs.filter(
+            assignments__route_id__in=route_ids
+        )
+
+    if cleaned_data.get('product_category'):
+        filtered_tx_qs = filtered_tx_qs.filter(product_class__product_category__in=cleaned_data['product_category'])
+
+    if cleaned_data.get('product_class'):
+        filtered_tx_qs = filtered_tx_qs.filter(product_class__in=cleaned_data['product_class'])
+
+    achievement_service = TargetAchievementService(
+        user=user,
+        targets_qs=filtered_targets_qs,
+        transactions_qs=filtered_tx_qs,
+        customers_qs=filtered_customers_qs,
+        routes_qs=filtered_routes_qs,
+        date_start=cleaned_data.get('date_start'),
+        date_end=cleaned_data.get('date_end'),
+        cleaned_data=cleaned_data
     )
 
-    async_task(
-        'apps.analytics.tasks.generate_target_achievement_report_task',
-        request.user.id,
-        request.GET.urlencode(),
-        serializable_cleaned_data,
-        report.id,
-    )
+    exports_service = TargetAchievementExports(target_achievement_service=achievement_service)
+    excel_file = exports_service.export_target_achievement_report()
+    file_bytes = excel_file.getvalue()
 
-    messages.info(request, "Tu reporte de alcance de objetivos se está generando en segundo plano. Aparecerá en tus archivos cuando esté listo. Puedes seguir navegando por la web sin problemas.")
+    d_start_str = achievement_service.date_start_dt.strftime('%Y%m%d')
+    d_end_str = achievement_service.date_end_dt.strftime('%Y%m%d')
+    timestamp_str = timezone.localdate().strftime('%Y%m%d_%H%M%S')
+    filename = f"reporte_alcance_objetivos_{d_start_str}_{d_end_str}_{timestamp_str}.xlsx"
 
-    query_str = request.GET.urlencode()
-    redirect_url = reverse('analytics:target_achievement_view')
-    if query_str:
-        redirect_url += f"?{query_str}"
+    try:
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_reports')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_filename = f"{uuid.uuid4().hex}.xlsx"
+        temp_file_path = os.path.join(temp_dir, temp_filename)
+        with open(temp_file_path, 'wb') as f:
+            f.write(file_bytes)
+
+        report = GeneratedReport.objects.create(
+            user=user,
+            title="Reporte de Alcance de Objetivos",
+            module_name="target_achievement",
+            status=GeneratedReport.Status.PENDING,
+            filters=serializable_cleaned_data,
+            file_size=len(file_bytes),
+        )
+
+        async_task(
+            'apps.analytics.tasks.save_target_achievement_report_file_task',
+            report.id,
+            temp_file_path,
+            filename,
+        )
+    except Exception as bg_err:
+        print(f"[TARGET ACHIEVEMENT EXPORT] Error queuing background persistence: {bg_err}", flush=True)
 
     end = perf_counter()
-    print(f"Target achievement export took {end - start} seconds")
+    print(f"Target achievement direct export took {end - start:.2f} seconds")
 
-    return redirect(redirect_url)
+    response = HttpResponse(
+        file_bytes,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Content-Length"] = len(file_bytes)
+    return response
 
 
 @login_required

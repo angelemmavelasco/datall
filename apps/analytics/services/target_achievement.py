@@ -789,6 +789,11 @@ class TargetAchievementExports:
                 if num_fmt:
                     cell.number_format = num_fmt
 
+        align_left = Alignment(horizontal="left", vertical="center")
+        align_right = Alignment(horizontal="right", vertical="center")
+        align_center = Alignment(horizontal="center", vertical="center")
+        align_map = {"left": align_left, "right": align_right, "center": align_center}
+
         ws_cartera = wb.create_sheet(title="Cartera")
         ws_cartera.views.sheetView[0].showGridLines = True
 
@@ -806,7 +811,7 @@ class TargetAchievementExports:
             cell = ws_cartera.cell(row=1, column=col_num, value=h_text)
             cell.fill = header_fill
             cell.font = header_font
-            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.alignment = align_center
             cell.border = cell_border
 
         ws_cartera.row_dimensions[1].height = 24
@@ -841,7 +846,7 @@ class TargetAchievementExports:
                 cell = ws_cartera.cell(row=row_idx, column=col_idx, value=val)
                 cell.font = data_font
                 cell.border = cell_border
-                cell.alignment = Alignment(horizontal=align_h)
+                cell.alignment = align_map.get(align_h, align_left)
                 if num_fmt:
                     cell.number_format = num_fmt
 
@@ -864,7 +869,7 @@ class TargetAchievementExports:
             cell = ws_ventas.cell(row=1, column=col_num, value=h_text)
             cell.fill = header_fill
             cell.font = header_font
-            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.alignment = align_center
             cell.border = cell_border
 
         ws_ventas.row_dimensions[1].height = 24
@@ -879,7 +884,7 @@ class TargetAchievementExports:
         )
 
         ventas_agrupadas = (
-            tx_qs.annotate(periodo=TruncMonth('sale_date'))
+            tx_qs.order_by().annotate(periodo=TruncMonth('sale_date'))
             .values(
                 'route_id',
                 'route__name',
@@ -893,7 +898,7 @@ class TargetAchievementExports:
         )
 
         cuotas_agrupadas = (
-            target_qs.annotate(periodo=TruncMonth('period'))
+            target_qs.order_by().annotate(periodo=TruncMonth('period'))
             .values(
                 'route_id',
                 'route__name',
@@ -973,20 +978,21 @@ class TargetAchievementExports:
                 cell = ws_ventas.cell(row=row_idx, column=col_idx, value=val)
                 cell.font = data_font
                 cell.border = cell_border
-                cell.alignment = Alignment(horizontal=align_h)
+                cell.alignment = align_map.get(align_h, align_left)
                 if num_fmt:
                     cell.number_format = num_fmt
 
-        for sheet in [ws_summary, ws_cartera, ws_ventas]:
-            for col in sheet.columns:
-                max_len = 0
-                col_letter = get_column_letter(col[0].column)
-                for cell in col:
-                    val_str = str(cell.value or '')
-                    if cell.number_format == currency_format:
-                        val_str = f"${val_str}"
-                    max_len = max(max_len, len(val_str))
-                sheet.column_dimensions[col_letter].width = max(max_len + 3, 12)
+        summary_widths = {1: 32, 2: 18, 3: 18, 4: 15, 5: 15, 6: 18, 7: 18, 8: 18, 9: 15, 10: 15, 11: 18, 12: 15, 13: 15}
+        for col_idx, width in summary_widths.items():
+            ws_summary.column_dimensions[get_column_letter(col_idx)].width = width
+
+        cartera_widths = {1: 12, 2: 30, 3: 24, 4: 20, 5: 20, 6: 16, 7: 16}
+        for col_idx, width in cartera_widths.items():
+            ws_cartera.column_dimensions[get_column_letter(col_idx)].width = width
+
+        ventas_widths = {1: 12, 2: 30, 3: 24, 4: 14, 5: 22, 6: 18, 7: 18, 8: 18, 9: 15}
+        for col_idx, width in ventas_widths.items():
+            ws_ventas.column_dimensions[get_column_letter(col_idx)].width = width
 
         output = io.BytesIO()
         wb.save(output)

@@ -1,4 +1,6 @@
+import os
 from django.http import QueryDict
+from django.core.files import File
 from django.core.files.base import ContentFile
 from django.utils import timezone
 
@@ -204,6 +206,50 @@ def generate_monthly_sale_breakdown_report_task(user_id: int, req_data: dict | s
                 report.status = GeneratedReport.Status.FAILED
                 report.error_message = str(e)
                 report.save()
+            except Exception:
+                pass
+        raise e
+
+
+def save_target_achievement_report_file_task(report_id: int, temp_file_path: str, filename: str):
+    """
+    persists an already generated report file to storage in background
+    without blocking the user's initial direct download.
+    """
+    try:
+        report = GeneratedReport.objects.get(id=report_id)
+        if os.path.exists(temp_file_path):
+            file_size = os.path.getsize(temp_file_path)
+            with open(temp_file_path, 'rb') as f:
+                report.file.save(filename, File(f), save=False)
+            report.file_size = file_size
+            report.status = GeneratedReport.Status.COMPLETED
+            report.completed_at = timezone.now()
+            report.save()
+
+            try:
+                os.remove(temp_file_path)
+            except Exception as rem_err:
+                print(f"[SAVE-REPORT WARNING] Could not remove temp file {temp_file_path}: {rem_err}", flush=True)
+            return True
+        else:
+            err_msg = f"Archivo temporal no encontrado: {temp_file_path}"
+            report.status = GeneratedReport.Status.FAILED
+            report.error_message = err_msg
+            report.save()
+            return False
+    except Exception as e:
+        if report_id:
+            try:
+                report = GeneratedReport.objects.get(id=report_id)
+                report.status = GeneratedReport.Status.FAILED
+                report.error_message = str(e)
+                report.save()
+            except Exception:
+                pass
+        if os.path.exists(temp_file_path):
+            try:
+                os.remove(temp_file_path)
             except Exception:
                 pass
         raise e
