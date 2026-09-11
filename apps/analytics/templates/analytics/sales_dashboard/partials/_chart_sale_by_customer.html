@@ -20,7 +20,7 @@
                 <tr>
                     <td class=" p-2 border-r border-border sticky z-10 bg-container sticky left-0 bg-container">
 
-                        <a href="{% url 'analytics:customer_kpis_view' %}?customer_id={{ customer.id }}&date_start={{ selected_date_start|default:'' }}&date_end={{ selected_date_end|default:'' }}"
+                        <a href="{% url 'customers:customer_detail_view' customer.id %}"
                             target="_blank" class="flex items-center justify-start gap-1 underline text-strong">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
