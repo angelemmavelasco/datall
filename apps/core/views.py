@@ -509,8 +509,6 @@ def user_reports_partial_view(request):
 def report_download_view(request, pk: int):
     """
     secure download handler for generated reports.
-    avoids WSGI FileWrapper resource deadlock on macOS / Docker dev mounts
-    and validates user permissions.
     """
     report = get_object_or_404(GeneratedReport, pk=pk)
 
@@ -522,7 +520,7 @@ def report_download_view(request, pk: int):
         messages.error(request, "El archivo solicitado no se encuentra disponible.")
         return redirect(request.META.get('HTTP_REFERER', '/'))
 
-    if not settings.DEBUG and hasattr(report.file, 'url') and str(report.file.url).startswith(('http://', 'https://')):
+    if hasattr(report.file, 'url') and str(report.file.url).startswith(('http://', 'https://')):
         return redirect(report.file.url)
 
     filename = report.file.name.split('/')[-1]

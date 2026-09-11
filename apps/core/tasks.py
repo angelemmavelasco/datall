@@ -106,3 +106,49 @@ def process_bulk_upload_task(report_id: int, model_key: str, user_id: int, temp_
         report.is_seen = False
         report.save()
         return False
+
+
+def save_generated_report_file_task(report_id: int, temp_file_path: str, filename: str):
+    try:
+        report = GeneratedReport.objects.get(id=report_id)
+        if os.path.exists(temp_file_path):
+            file_size = os.path.getsize(temp_file_path)
+            with open(temp_file_path, 'rb') as f:
+                report.file.save(filename, File(f), save=False)
+            report.file_size = file_size
+            report.status = GeneratedReport.Status.COMPLETED
+            report.completed_at = timezone.now()
+            report.is_seen = False
+            report.save()
+
+            try:
+                os.remove(temp_file_path)
+            except Exception as rem_err:
+                print(f"[SAVE-REPORT WARNING] Could not remove temp file {temp_file_path}: {rem_err}", flush=True)
+            return True
+        else:
+            err_msg = f"Archivo temporal no encontrado: {temp_file_path}"
+            report.status = GeneratedReport.Status.FAILED
+            report.error_message = err_msg
+            report.completed_at = timezone.now()
+            report.is_seen = False
+            report.save()
+            return False
+    except Exception as e:
+        if report_id:
+            try:
+                report = GeneratedReport.objects.get(id=report_id)
+                report.status = GeneratedReport.Status.FAILED
+                report.error_message = str(e)
+                report.completed_at = timezone.now()
+                report.is_seen = False
+                report.save()
+            except Exception:
+                pass
+        if os.path.exists(temp_file_path):
+            try:
+                os.remove(temp_file_path)
+            except Exception:
+                pass
+        raise e
+

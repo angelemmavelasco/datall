@@ -1,8 +1,15 @@
+import os
+import uuid
+from django.conf import settings
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from django_q.tasks import async_task
+
+from apps.core.models import GeneratedReport
 
 from .services import (
     ProductsService,
@@ -349,10 +356,46 @@ def export_stock_transfers_view(request):
     if not excel_data:
         return HttpResponse("No se pudieron generar los datos para exportar.", status=400)
 
+    timestamp_str = timezone.localdate().strftime('%Y%m%d_%H%M%S')
+    filename = f"transferencias_{origin}_{destination}_{timestamp_str}.xlsx"
+
+    serializable_cleaned_data = {}
+    for k, v in req_data.lists():
+        if len(v) == 1:
+            serializable_cleaned_data[k] = v[0]
+        else:
+            serializable_cleaned_data[k] = v
+
+    try:
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_reports')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_filename = f"{uuid.uuid4().hex}.xlsx"
+        temp_file_path = os.path.join(temp_dir, temp_filename)
+        with open(temp_file_path, 'wb') as f:
+            f.write(excel_data)
+
+        report = GeneratedReport.objects.create(
+            user=request.user,
+            title=f"Reporte de Transferencias - {origin_name} a {dest_name}",
+            module_name="stock_transfers",
+            status=GeneratedReport.Status.PENDING,
+            filters=serializable_cleaned_data,
+            file_size=len(excel_data),
+        )
+
+        async_task(
+            'apps.core.tasks.save_generated_report_file_task',
+            report.id,
+            temp_file_path,
+            filename,
+        )
+    except Exception as bg_err:
+        print(f"[STOCK TRANSFERS EXPORT] Error queuing background persistence: {bg_err}", flush=True)
+
     response = HttpResponse(
         excel_data,
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    filename = f"transferencias_{origin}_{destination}.xlsx"
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response["Content-Length"] = len(excel_data)
     return response

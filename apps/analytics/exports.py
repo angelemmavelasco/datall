@@ -17,8 +17,12 @@ from apps.sales.services.routes import RoutesService
 from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.sales.services.sale_targets import SaleTargetsService
 from apps.human_resources.models import BusinessUnit
+from apps.customers.services.accounts_receivables import AccountsReceivablesService
 from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter, MonthlySaleBreakdownFilter, TargetAchievementFilter, YearlySaleBreakdownFilter
-from apps.analytics.services.yearly_sale_breakdown import YearlySaleBreakdownService
+from apps.analytics.services.customer_kpis import CustomerKpisService, CustomerKpisExports
+from apps.analytics.services.commercial_risk import CommercialRiskService, CommercialRiskExports
+from apps.analytics.services.monthly_sale_breakdown import MonthlySaleBreakdownService, MonthlySaleBreakdownExports
+from apps.analytics.services.yearly_sale_breakdown import YearlySaleBreakdownService, YearlySaleBreakdownExports
 from apps.analytics.services.target_achievement import TargetAchievementService, TargetAchievementExports
 
 
@@ -44,11 +48,17 @@ def _make_serializable(val):
 @login_required
 def customer_kpis_export_view(request):
     start = perf_counter()
-    # base services
-    customer_service = CustomersService(user=request.user)
+    user = request.user
+
+    customer_service = CustomersService(user=user)
     customer_qs = customer_service.read_customers()
 
-    # default contrib period
+    sale_transaction_service = SaleTransactionsService(user=user)
+    tx_by_allowed_ctm = sale_transaction_service.read_transactions_by_allowed_customers()
+
+    ar_service = AccountsReceivablesService(user=user)
+    ar_allowed_ctm = ar_service.read_ars_by_allowed_customers()
+
     today = timezone.localdate()
     first_day_curr_month = today.replace(day=1)
     last_day_q = first_day_curr_month - relativedelta(days=1)
@@ -60,51 +70,75 @@ def customer_kpis_export_view(request):
     if not req_data.get('end_contrib'):
         req_data['end_contrib'] = last_day_q.strftime('%Y-%m-%d')
 
-    # set filters
     filter_set = CustomerKpisFilter(req_data, queryset=customer_qs, request=request)
+    filtered_customers_qs = filter_set.qs
     cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
-
-    # serializable cleaned_data dict
     serializable_cleaned_data = {k: _make_serializable(v) for k, v in cleaned_data.items()}
 
-    # create database record for user downloads
-    report = GeneratedReport.objects.create(
-        user=request.user,
-        title="Reporte de KPIs de Clientes",
-        module_name="customer_kpis",
-        status=GeneratedReport.Status.PENDING,
-        filters=serializable_cleaned_data,
+    customer_kpis_service = CustomerKpisService(
+        user=user,
+        customers_qs=filtered_customers_qs,
+        transactions_qs=tx_by_allowed_ctm,
+        ars_qs=ar_allowed_ctm,
+        date_start=cleaned_data.get('start_contrib'),
+        date_end=cleaned_data.get('end_contrib'),
+        cleaned_data=cleaned_data,
     )
 
-    # dispatch async task to Django Q worker
-    async_task(
-        'apps.analytics.tasks.generate_customer_kpis_report_task',
-        request.user.id,
-        request.GET.urlencode(),
-        serializable_cleaned_data,
-        report.id,
-    )
+    exports_service = CustomerKpisExports(customer_kpis_service=customer_kpis_service)
+    excel_file = exports_service.export_customer_kpis_report()
+    file_bytes = excel_file.getvalue()
 
-    messages.info(request, "Tu reporte de KPIs de clientes se está generando en segundo plano. Aparecerá en tus archivos cuando esté listo. Puedes seguir navegando por la web sin problemas.")
-    
-    query_str = request.GET.urlencode()
-    redirect_url = reverse('analytics:customer_kpis_view')
-    if query_str:
-        redirect_url += f"?{query_str}"
+    timestamp_str = timezone.localdate().strftime('%Y%m%d_%H%M%S')
+    filename = f"reporte_kpis_clientes_{timestamp_str}.xlsx"
+
+    try:
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_reports')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_filename = f"{uuid.uuid4().hex}.xlsx"
+        temp_file_path = os.path.join(temp_dir, temp_filename)
+        with open(temp_file_path, 'wb') as f:
+            f.write(file_bytes)
+
+        report = GeneratedReport.objects.create(
+            user=user,
+            title="Reporte de KPIs de Clientes",
+            module_name="customer_kpis",
+            status=GeneratedReport.Status.PENDING,
+            filters=serializable_cleaned_data,
+            file_size=len(file_bytes),
+        )
+
+        async_task(
+            'apps.core.tasks.save_generated_report_file_task',
+            report.id,
+            temp_file_path,
+            filename,
+        )
+    except Exception as bg_err:
+        print(f"[CUSTOMER KPIS EXPORT] Error queuing background persistence: {bg_err}", flush=True)
 
     end = perf_counter()
-    print(f"Customer KPIs export took {end - start} seconds")
+    print(f"Customer KPIs direct export took {end - start:.2f} seconds")
 
-    return redirect(redirect_url)
+    response = HttpResponse(
+        file_bytes,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Content-Length"] = len(file_bytes)
+    return response
 
 
 @login_required
 def commercial_risk_export_view(request):
-    routes_service = RoutesService(user=request.user)
+    start = perf_counter()
+    user = request.user
+
+    routes_service = RoutesService(user=user)
     allowed_routes = routes_service.read_routes().order_by('id')
     first_route = allowed_routes.first()
 
-    # default date range from Jan 1 of previous year to last closed month
     today = timezone.localdate()
     end_q_date = today.replace(day=1) - relativedelta(days=1)
     default_start_date = date(today.year - 1, 1, 1)
@@ -117,96 +151,167 @@ def commercial_risk_export_view(request):
     if not req_data.get('date_end'):
         req_data['date_end'] = end_q_date.strftime('%Y-%m-%d')
 
-    # set filters
     filter_set = CommercialRiskFilter(req_data, queryset=allowed_routes, request=request)
     cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
 
     selected_route = cleaned_data.get('route') or allowed_routes.filter(id=req_data.get('route')).first() or first_route
 
-    serializable_cleaned_data = {k: _make_serializable(v) for k, v in cleaned_data.items()}
+    customer_service = CustomersService(user=user)
+    customer_qs = customer_service.read_customers()
 
+    sale_transaction_service = SaleTransactionsService(user=user)
+    tx_by_allowed_ctm = sale_transaction_service.read_transactions_by_allowed_customers()
+
+    risk_service = CommercialRiskService(
+        user=user,
+        route=selected_route,
+        customers_qs=customer_qs,
+        transactions_qs=tx_by_allowed_ctm,
+        date_start=cleaned_data.get('date_start'),
+        date_end=cleaned_data.get('date_end'),
+        cleaned_data=cleaned_data,
+    )
+
+    exports_service = CommercialRiskExports(commercial_risk_service=risk_service)
+    excel_file = exports_service.export_commercial_risk_report()
+    file_bytes = excel_file.getvalue()
+
+    route_str = selected_route.id if selected_route else 'general'
+    timestamp_str = timezone.localdate().strftime('%Y%m%d_%H%M%S')
+    filename = f"reporte_riesgo_comercial_ruta_{route_str}_{timestamp_str}.xlsx"
+
+    serializable_cleaned_data = {k: _make_serializable(v) for k, v in cleaned_data.items()}
     route_name = f"Ruta {selected_route.id}" if selected_route else "General"
     if selected_route and hasattr(selected_route, 'name') and selected_route.name:
         route_name += f" - {selected_route.name.title()}"
 
-    # create database record for user downloads
-    report = GeneratedReport.objects.create(
-        user=request.user,
-        title=f"Reporte de Riesgo Comercial - {route_name}",
-        module_name="commercial_risk",
-        status=GeneratedReport.Status.PENDING,
-        filters=serializable_cleaned_data,
+    try:
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_reports')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_filename = f"{uuid.uuid4().hex}.xlsx"
+        temp_file_path = os.path.join(temp_dir, temp_filename)
+        with open(temp_file_path, 'wb') as f:
+            f.write(file_bytes)
+
+        report = GeneratedReport.objects.create(
+            user=user,
+            title=f"Reporte de Riesgo Comercial - {route_name}",
+            module_name="commercial_risk",
+            status=GeneratedReport.Status.PENDING,
+            filters=serializable_cleaned_data,
+            file_size=len(file_bytes),
+        )
+
+        async_task(
+            'apps.core.tasks.save_generated_report_file_task',
+            report.id,
+            temp_file_path,
+            filename,
+        )
+    except Exception as bg_err:
+        print(f"[COMMERCIAL RISK EXPORT] Error queuing background persistence: {bg_err}", flush=True)
+
+    end = perf_counter()
+    print(f"Commercial risk direct export took {end - start:.2f} seconds")
+
+    response = HttpResponse(
+        file_bytes,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-    # dispatch async task to Django Q worker
-    async_task(
-        'apps.analytics.tasks.generate_commercial_risk_report_task',
-        request.user.id,
-        request.GET.urlencode(),
-        serializable_cleaned_data,
-        report.id,
-    )
-
-    messages.info(request, "Tu reporte de riesgo comercial se está generando en segundo plano. Aparecerá en tus archivos cuando esté listo. Puedes seguir navegando por la web sin problemas.")
-
-    query_str = request.GET.urlencode()
-    redirect_url = reverse('analytics:commercial_risk_view')
-    if query_str:
-        redirect_url += f"?{query_str}"
-
-    return redirect(redirect_url)
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Content-Length"] = len(file_bytes)
+    return response
 
 
 @login_required
 def monthly_sale_breakdown_export_view(request):
     start = perf_counter()
+    user = request.user
 
     today = timezone.localdate()
     req_data = request.GET.copy()
     if not req_data.get('year'):
         req_data['year'] = str(today.year)
 
-    selected_year = int(req_data.get('year', today.year))
+    try:
+        selected_year = int(req_data.get('year', today.year))
+    except (ValueError, TypeError):
+        selected_year = today.year
 
-    # base services
-    sale_transaction_service = SaleTransactionsService(user=request.user)
+    sale_transaction_service = SaleTransactionsService(user=user)
     base_tx_qs = sale_transaction_service.read_transactions_by_allowed_routes()
 
-    # set filters
-    filter_set = MonthlySaleBreakdownFilter(req_data, queryset=base_tx_qs, request=request)
-    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+    targets_service = SaleTargetsService(user=user)
+    base_targets_qs = targets_service.read_sale_targets()
 
-    # serializable cleaned_data dict
+    customers_service = CustomersService(user=user)
+    base_customers_qs = customers_service.read_customers()
+
+    ar_service = AccountsReceivablesService(user=user)
+    base_ars_qs = ar_service.read_ars_by_allowed_customers()
+
+    routes_service = RoutesService(user=user)
+    allowed_routes_qs = routes_service.read_routes().order_by('id')
+
+    filter_set = MonthlySaleBreakdownFilter(req_data, queryset=base_tx_qs, request=request)
+    filtered_tx_qs = filter_set.qs
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
     serializable_cleaned_data = {k: _make_serializable(v) for k, v in cleaned_data.items()}
 
-    # create database record for user downloads
-    report = GeneratedReport.objects.create(
-        user=request.user,
-        title=f"Reporte de Desglose Mensual de Ventas - {selected_year}",
-        module_name="monthly_sale_breakdown",
-        status=GeneratedReport.Status.PENDING,
-        filters=serializable_cleaned_data,
+    breakdown_service = MonthlySaleBreakdownService(
+        user=user,
+        targets_qs=base_targets_qs,
+        transactions_qs=filtered_tx_qs,
+        customers_qs=base_customers_qs,
+        ars_qs=base_ars_qs,
+        routes_qs=allowed_routes_qs,
+        year=selected_year,
+        cleaned_data=cleaned_data,
     )
 
-    async_task(
-        'apps.analytics.tasks.generate_monthly_sale_breakdown_report_task',
-        request.user.id,
-        request.GET.urlencode(),
-        serializable_cleaned_data,
-        report.id,
-    )
+    exports_service = MonthlySaleBreakdownExports(monthly_sale_breakdown_service=breakdown_service)
+    excel_file = exports_service.export_monthly_sale_breakdown_report()
+    file_bytes = excel_file.getvalue()
 
-    messages.info(request, "Tu reporte de desglose mensual de ventas se está generando en segundo plano. Aparecerá en tus archivos cuando esté listo. Puedes seguir navegando por la web sin problemas.")
+    timestamp_str = timezone.localdate().strftime('%Y%m%d_%H%M%S')
+    filename = f"reporte_desglose_mensual_ventas_{selected_year}_{timestamp_str}.xlsx"
 
-    query_str = request.GET.urlencode()
-    redirect_url = reverse('analytics:monthly_sale_breakdown_view')
-    if query_str:
-        redirect_url += f"?{query_str}"
+    try:
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_reports')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_filename = f"{uuid.uuid4().hex}.xlsx"
+        temp_file_path = os.path.join(temp_dir, temp_filename)
+        with open(temp_file_path, 'wb') as f:
+            f.write(file_bytes)
+
+        report = GeneratedReport.objects.create(
+            user=user,
+            title=f"Reporte de Desglose Mensual de Ventas - {selected_year}",
+            module_name="monthly_sale_breakdown",
+            status=GeneratedReport.Status.PENDING,
+            filters=serializable_cleaned_data,
+            file_size=len(file_bytes),
+        )
+
+        async_task(
+            'apps.core.tasks.save_generated_report_file_task',
+            report.id,
+            temp_file_path,
+            filename,
+        )
+    except Exception as bg_err:
+        print(f"[MONTHLY BREAKDOWN EXPORT] Error queuing background persistence: {bg_err}", flush=True)
 
     end = perf_counter()
-    print(f"Monthly Sale Breakdown export took {end - start} seconds")
+    print(f"Monthly Sale Breakdown direct export took {end - start:.2f} seconds")
 
-    return redirect(redirect_url)
+    response = HttpResponse(
+        file_bytes,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Content-Length"] = len(file_bytes)
+    return response
 
 
 @login_required
@@ -330,7 +435,7 @@ def target_achievement_export_view(request):
         )
 
         async_task(
-            'apps.analytics.tasks.save_target_achievement_report_file_task',
+            'apps.core.tasks.save_generated_report_file_task',
             report.id,
             temp_file_path,
             filename,
@@ -353,6 +458,7 @@ def target_achievement_export_view(request):
 @login_required
 def yearly_sale_breakdown_export_view(request):
     start = perf_counter()
+    user = request.user
 
     req_data = request.GET.copy()
     if not req_data.get('dimension'):
@@ -360,7 +466,7 @@ def yearly_sale_breakdown_export_view(request):
 
     dimension = req_data.get('dimension', 'customer_productclass_product')
 
-    sale_transaction_service = SaleTransactionsService(user=request.user)
+    sale_transaction_service = SaleTransactionsService(user=user)
     perspective = YearlySaleBreakdownService.get_perspective(dimension)
     if perspective == 'customers':
         tx_qs = sale_transaction_service.read_transactions_by_allowed_customers()
@@ -368,6 +474,7 @@ def yearly_sale_breakdown_export_view(request):
         tx_qs = sale_transaction_service.read_transactions_by_allowed_routes()
 
     filter_set = YearlySaleBreakdownFilter(req_data, queryset=tx_qs, request=request)
+    filtered_tx_qs = filter_set.qs
     cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
 
     serializable_cleaned_data = {k: _make_serializable(v) for k, v in cleaned_data.items()}
@@ -375,30 +482,55 @@ def yearly_sale_breakdown_export_view(request):
 
     dim_label = YearlySaleBreakdownService.DIMENSION_CONFIG.get(dimension, {}).get('label', dimension)
 
-    report = GeneratedReport.objects.create(
-        user=request.user,
-        title=f"Reporte de Desglose Anual de Ventas - {dim_label}",
-        module_name="yearly_sale_breakdown",
-        status=GeneratedReport.Status.PENDING,
-        filters=serializable_cleaned_data,
+    is_seller = user.groups.filter(name='vendedor').exists()
+
+    breakdown_service = YearlySaleBreakdownService(
+        queryset=filtered_tx_qs,
+        dimension=dimension,
+        user=user,
+        cleaned_data=cleaned_data,
     )
 
-    async_task(
-        'apps.analytics.tasks.generate_yearly_sale_breakdown_report_task',
-        request.user.id,
-        request.GET.urlencode(),
-        serializable_cleaned_data,
-        report.id,
-    )
+    exports_service = YearlySaleBreakdownExports(breakdown_service=breakdown_service)
+    csv_file = exports_service.export_yearly_sale_breakdown_csv(is_seller=is_seller)
+    file_bytes = csv_file.getvalue()
 
-    messages.info(request, "Tu reporte de desglose anual de ventas se está generando en segundo plano. Aparecerá en tus archivos cuando esté listo. Puedes seguir navegando por la web sin problemas.")
+    timestamp_str = timezone.localdate().strftime('%Y%m%d_%H%M%S')
+    filename = f"reporte_desglose_anual_ventas_{dimension}_{timestamp_str}.csv"
 
-    query_str = request.GET.urlencode()
-    redirect_url = reverse('analytics:yearly_sale_breakdown_view')
-    if query_str:
-        redirect_url += f"?{query_str}"
+    try:
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_reports')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_filename = f"{uuid.uuid4().hex}.csv"
+        temp_file_path = os.path.join(temp_dir, temp_filename)
+        with open(temp_file_path, 'wb') as f:
+            f.write(file_bytes)
+
+        report = GeneratedReport.objects.create(
+            user=user,
+            title=f"Reporte de Desglose Anual de Ventas - {dim_label}",
+            module_name="yearly_sale_breakdown",
+            status=GeneratedReport.Status.PENDING,
+            filters=serializable_cleaned_data,
+            file_size=len(file_bytes),
+        )
+
+        async_task(
+            'apps.core.tasks.save_generated_report_file_task',
+            report.id,
+            temp_file_path,
+            filename,
+        )
+    except Exception as bg_err:
+        print(f"[YEARLY BREAKDOWN EXPORT] Error queuing background persistence: {bg_err}", flush=True)
 
     end = perf_counter()
-    print(f"Yearly Sale Breakdown export took {end - start} seconds")
+    print(f"Yearly Sale Breakdown direct export took {end - start:.2f} seconds")
 
-    return redirect(redirect_url)
+    response = HttpResponse(
+        file_bytes,
+        content_type="text/csv; charset=utf-8"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Content-Length"] = len(file_bytes)
+    return response

@@ -1746,18 +1746,30 @@ class CommercialRiskExports:
                         c.alignment = Alignment(horizontal="right")
                 cat_row_idx += 1
 
-        # autofit columns
-        for ws in wb.worksheets:
-            for col in ws.columns:
-                max_len = 0
-                col_letter = get_column_letter(col[0].column)
-                for cell in col:
-                    val_str = str(cell.value or '')
-                    if '\n' in val_str:
-                        val_str = max(val_str.split('\n'), key=len)
-                    if len(val_str) > max_len:
-                        max_len = len(val_str)
-                ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+        # predefined column widths for all worksheets
+        ws_summary.column_dimensions['A'].width = 38
+        for col_l in ['B', 'C', 'D', 'E', 'F']:
+            ws_summary.column_dimensions[col_l].width = 20
+
+        ws_customers.column_dimensions['A'].width = 14
+        ws_customers.column_dimensions['B'].width = 38
+        ws_customers.column_dimensions['C'].width = 16
+        ws_customers.column_dimensions['D'].width = 26
+        ws_customers.column_dimensions['E'].width = 24
+        for col_idx in range(6, len(timeline_months) + 13):
+            ws_customers.column_dimensions[get_column_letter(col_idx)].width = 18
+
+        churn_widths = {1: 16, 2: 14, 3: 38, 4: 22, 5: 20, 6: 20}
+        for col_idx, width in churn_widths.items():
+            ws_churn.column_dimensions[get_column_letter(col_idx)].width = width
+
+        downgrade_widths = {1: 16, 2: 14, 3: 38, 4: 18, 5: 20, 6: 18, 7: 20, 8: 20}
+        for col_idx, width in downgrade_widths.items():
+            ws_downgrade.column_dimensions[get_column_letter(col_idx)].width = width
+
+        cat_widths = {1: 16, 2: 20, 3: 16, 4: 16, 5: 20, 6: 16}
+        for col_idx, width in cat_widths.items():
+            ws_categories.column_dimensions[get_column_letter(col_idx)].width = width
 
         buffer = io.BytesIO()
         wb.save(buffer)

@@ -1213,18 +1213,19 @@ class SaleTargetCalculatorExports:
             style_cell(ws_cust.cell(row=cur_row, column=5, value=cust.credit_days), font=black_reg, alignment=center_align, number_format=int_format)
             style_cell(ws_cust.cell(row=cur_row, column=6, value="Sí" if cust.opinion_leader else "No"), font=black_reg, alignment=center_align)
 
-        # autofit columns across all worksheets
+        # predefined column widths across all worksheets
         for ws in wb.worksheets:
-            for col in ws.columns:
-                max_len = 0
-                col_letter = get_column_letter(col[0].column)
-                for cell in col:
-                    val_str = str(cell.value or '')
-                    if '\n' in val_str:
-                        val_str = max(val_str.split('\n'), key=len)
-                    if len(val_str) > max_len:
-                        max_len = len(val_str)
-                ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+            if ws.title == "Clientes Transferidos":
+                ws.column_dimensions['A'].width = 14
+                ws.column_dimensions['B'].width = 36
+                ws.column_dimensions['C'].width = 20
+                ws.column_dimensions['D'].width = 18
+                ws.column_dimensions['E'].width = 14
+                ws.column_dimensions['F'].width = 12
+            else:
+                ws.column_dimensions['A'].width = 28
+                for col_idx in range(2, ws.max_column + 2):
+                    ws.column_dimensions[get_column_letter(col_idx)].width = 16
 
         buffer = io.BytesIO()
         wb.save(buffer)

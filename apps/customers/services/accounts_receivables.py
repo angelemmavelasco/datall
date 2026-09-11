@@ -670,19 +670,27 @@ class AccountsReceivablesExports:
                 if num_fmt:
                     c.number_format = num_fmt
 
-        #auto fix width columns
-        for sheet in [ws_summary, ws_customers, ws_detail]:
-            for col in sheet.columns:
-                max_len = 0
-                col_letter = get_column_letter(col[0].column)
-                for cell in col:
-                    val_str = str(cell.value or '')
-                    if cell.number_format == currency_format:
-                        val_str = f"${val_str}"
-                    max_len = max(max_len, len(val_str))
-                sheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
+        # predefined column widths without scanning all cells
+        summary_widths = {1: 38, 2: 22, 3: 18, 4: 18}
+        for col_idx, width in summary_widths.items():
+            ws_summary.column_dimensions[get_column_letter(col_idx)].width = width
+
+        customer_widths = {
+            1: 14, 2: 36, 3: 12, 4: 28, 5: 24, 6: 18, 7: 16,
+            8: 18, 9: 18, 10: 18, 11: 16, 12: 16, 13: 16, 14: 16
+        }
+        for col_idx, width in customer_widths.items():
+            ws_customers.column_dimensions[get_column_letter(col_idx)].width = width
+
+        detail_widths = {
+            1: 22, 2: 30, 3: 14, 4: 36, 5: 12, 6: 28, 7: 24,
+            8: 16, 9: 16, 10: 18, 11: 18, 12: 16, 13: 16, 14: 16, 15: 16
+        }
+        for col_idx, width in detail_widths.items():
+            ws_detail.column_dimensions[get_column_letter(col_idx)].width = width
 
         output = io.BytesIO()
         wb.save(output)
         output.seek(0)
         return output
+
