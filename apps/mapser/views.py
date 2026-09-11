@@ -1,4 +1,5 @@
 import json
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
@@ -44,6 +45,7 @@ def mapser_view(request):
         'geo_data_json': json.dumps(geo_data),
         'denue_points_json': json.dumps(denue_points),
         'default_center': list(mapser_service.default_center),
+        'carto_api_key': getattr(settings, 'CARTO_API_KEY', ''),
     }
 
     return render(request, template, context)
