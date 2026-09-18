@@ -643,4 +643,229 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         for r in data_rows:
             self.assertIn(r[idx_margin_label_2024], ['Excelente', 'Óptimo', 'Regular', 'Malo', 'Muy malo'])
 
+    def test_productclass_customer_product_dimension_aggregates_vs_db_raw(self):
+        """
+        Validates productclass_customer_product dimension when filtering by Route A:
+        1. Only considers actively assigned customers (Customer 1).
+        2. Level 1 (ProductClass) totals reflect Customer 1's historical consumption across all years.
+        3. Customer 2's sales (no longer assigned to Route A) are NOT included.
+        4. Level 2 (Customer) only displays actively assigned customers.
+        5. Compares all values directly against raw DB aggregates.
+        """
+        today = timezone.localdate()
+        tx_service = SaleTransactionsService(user=self.user)
+        base_tx_qs = tx_service.read_transactions_by_allowed_customers()
+
+        filter_set = YearlySaleBreakdownFilter(
+            data={'dimension': 'productclass_customer_product', 'route': [self.route_a.id]},
+            queryset=base_tx_qs,
+        )
+        self.assertTrue(filter_set.is_valid(), filter_set.errors)
+
+        service = YearlySaleBreakdownService(
+            queryset=filter_set.qs,
+            dimension='productclass_customer_product',
+            user=self.user,
+            cleaned_data=filter_set.form.cleaned_data,
+        )
+
+        active_customer_ids = list(
+            CustomerAssignment.objects.filter(route=self.route_a)
+            .filter(Q(end_date__isnull=True) | Q(end_date__gte=today))
+            .values_list('customer_id', flat=True)
+        )
+        self.assertEqual(active_customer_ids, [self.customer_1.id])
+
+        # Level 1 items (ProductClass)
+        l1_qs = service.get_level_1_queryset()
+        l1_ids = [item['product_class_id'] for item in l1_qs]
+        self.assertIn(self.class_analgesic.id, l1_ids)
+        self.assertIn(self.class_antibiotic.id, l1_ids)
+
+        items = service.get_level_1_items(l1_ids)
+        items_map = {item['id']: item for item in items}
+
+        # Validate Analgesics L1 totals vs DB raw (Customer 1 only: 10000 in 2024 under Route B + 15000 in 2025 under Route A = 25000)
+        # Note: Customer 2 also had 5000 in 2024 under Route A, but Customer 2 is inactive so it must NOT be included!
+        analg_item = items_map[self.class_analgesic.id]
+        analg_totals = {t['year']: t for t in analg_item['totals']}
+
+        db_analg_2024 = SaleTransaction.objects.filter(
+            customer_id__in=active_customer_ids,
+            product_class=self.class_analgesic,
+            sale_date__year=2024,
+        ).aggregate(net=Sum('net_amount'), profit=Sum('profit'))
+
+        db_analg_2025 = SaleTransaction.objects.filter(
+            customer_id__in=active_customer_ids,
+            product_class=self.class_analgesic,
+            sale_date__year=2025,
+        ).aggregate(net=Sum('net_amount'), profit=Sum('profit'))
+
+        self.assertAlmostEqual(analg_totals[2024]['net'], float(db_analg_2024['net']), places=2)
+        self.assertAlmostEqual(analg_totals[2024]['net'], 10000.0, places=2)  # Customer 1 only
+        self.assertAlmostEqual(analg_totals[2025]['net'], float(db_analg_2025['net']), places=2)
+        self.assertAlmostEqual(analg_totals[2025]['net'], 15000.0, places=2)
+
+        # Level 2 children (Customer) under Analgesics
+        l2_children = service.get_level_children(
+            target_level=2,
+            parent_filters={'l1_id': self.class_analgesic.id, 'parent_node_id': f'n1_{self.class_analgesic.id}'},
+        )
+        l2_customer_ids = [c['id'] for c in l2_children]
+        self.assertEqual(l2_customer_ids, [self.customer_1.id])
+        self.assertNotIn(self.customer_2.id, l2_customer_ids)
+
+        c1_l2 = l2_children[0]
+        c1_l2_totals = {t['year']: t for t in c1_l2['totals']}
+        self.assertAlmostEqual(c1_l2_totals[2024]['net'], 10000.0, places=2)
+        self.assertAlmostEqual(c1_l2_totals[2025]['net'], 15000.0, places=2)
+
+        # Level 3 children (Product) under Customer 1 under Analgesics
+        l3_children = service.get_level_children(
+            target_level=3,
+            parent_filters={
+                'l1_id': self.class_analgesic.id,
+                'l2_id': self.customer_1.id,
+                'parent_node_id': f'n1_{self.class_analgesic.id}_{self.customer_1.id}',
+            },
+        )
+        l3_product_ids = [p['id'] for p in l3_children]
+        self.assertIn(self.prod_paracetamol.id, l3_product_ids)
+        self.assertIn(self.prod_ibuprofen.id, l3_product_ids)
+
+    def test_productclass_customer_product_csv_export(self):
+        """
+        Validates CSV export for productclass_customer_product dimension:
+        1. Ensures assigned route columns correspond to active customer assignment.
+        2. Customer 2 is excluded because it is no longer assigned to Route A.
+        """
+        tx_service = SaleTransactionsService(user=self.user)
+        base_tx_qs = tx_service.read_transactions_by_allowed_customers()
+
+        filter_set = YearlySaleBreakdownFilter(
+            data={'dimension': 'productclass_customer_product', 'route': [self.route_a.id]},
+            queryset=base_tx_qs,
+        )
+        self.assertTrue(filter_set.is_valid(), filter_set.errors)
+
+        service = YearlySaleBreakdownService(
+            queryset=filter_set.qs,
+            dimension='productclass_customer_product',
+            user=self.user,
+            cleaned_data=filter_set.form.cleaned_data,
+        )
+
+        exporter = YearlySaleBreakdownExports(breakdown_service=service)
+        csv_buffer = exporter.export_yearly_sale_breakdown_csv(is_seller=False)
+
+        csv_content = csv_buffer.getvalue().decode('utf-8-sig')
+        reader = list(csv.reader(io.StringIO(csv_content)))
+        headers = reader[0]
+
+        self.assertIn('ID Clase de Producto', headers)
+        self.assertIn('Clase de Producto', headers)
+        self.assertIn('ID Cliente', headers)
+        self.assertIn('Cliente', headers)
+        self.assertIn('ID Ruta Asignada', headers)
+        self.assertIn('Ruta Asignada', headers)
+        self.assertIn('ID Producto', headers)
+
+        idx_cid = headers.index('ID Cliente')
+        idx_rid = headers.index('ID Ruta Asignada')
+
+        data_rows = reader[1:]
+        self.assertTrue(len(data_rows) > 0)
+
+        for row in data_rows:
+            self.assertEqual(row[idx_cid], self.customer_1.id)
+            self.assertEqual(row[idx_rid], self.route_a.id)
+
+    def test_product_customer_dimension_aggregates_vs_db_raw(self):
+        """
+        Validates product_customer dimension (Producto -> Cliente) when filtering by Route A:
+        1. Level 1 (Product) only reflects active customers of Route A (Customer 1).
+        2. Paracetamol excludes Customer 2's sales (ended assignment).
+        3. Level 2 (Customer) only shows Customer 1 with its full consumption.
+        4. CSV export correctly reports active route assignment.
+        """
+        today = timezone.localdate()
+        tx_service = SaleTransactionsService(user=self.user)
+        base_tx_qs = tx_service.read_transactions_by_allowed_customers()
+
+        filter_set = YearlySaleBreakdownFilter(
+            data={'dimension': 'product_customer', 'route': [self.route_a.id]},
+            queryset=base_tx_qs,
+        )
+        self.assertTrue(filter_set.is_valid(), filter_set.errors)
+
+        service = YearlySaleBreakdownService(
+            queryset=filter_set.qs,
+            dimension='product_customer',
+            user=self.user,
+            cleaned_data=filter_set.form.cleaned_data,
+        )
+
+        active_customer_ids = list(
+            CustomerAssignment.objects.filter(route=self.route_a)
+            .filter(Q(end_date__isnull=True) | Q(end_date__gte=today))
+            .values_list('customer_id', flat=True)
+        )
+        self.assertEqual(active_customer_ids, [self.customer_1.id])
+
+        # Level 1 items (Products)
+        l1_qs = service.get_level_1_queryset()
+        l1_ids = [item['product_id'] for item in l1_qs]
+        self.assertIn(self.prod_paracetamol.id, l1_ids)
+        self.assertIn(self.prod_ibuprofen.id, l1_ids)
+        self.assertIn(self.prod_amoxicillin.id, l1_ids)
+
+        items = service.get_level_1_items(l1_ids)
+        items_map = {item['id']: item for item in items}
+
+        # Validate Paracetamol totals vs DB raw (Customer 1 only: 10000 in 2024 under Route B)
+        # Customer 2's 5000 in 2024 under Route A must NOT appear
+        paracetamol_item = items_map[self.prod_paracetamol.id]
+        paracetamol_totals = {t['year']: t for t in paracetamol_item['totals']}
+
+        db_paracetamol_2024 = SaleTransaction.objects.filter(
+            customer_id__in=active_customer_ids,
+            product=self.prod_paracetamol,
+            sale_date__year=2024,
+        ).aggregate(net=Sum('net_amount'), profit=Sum('profit'))
+
+        self.assertAlmostEqual(paracetamol_totals[2024]['net'], float(db_paracetamol_2024['net']), places=2)
+        self.assertAlmostEqual(paracetamol_totals[2024]['net'], 10000.0, places=2)
+
+        # Level 2 children (Customer) under Paracetamol
+        l2_children = service.get_level_children(
+            target_level=2,
+            parent_filters={'l1_id': self.prod_paracetamol.id, 'parent_node_id': f'n1_{self.prod_paracetamol.id}'},
+        )
+        l2_customer_ids = [c['id'] for c in l2_children]
+        self.assertEqual(l2_customer_ids, [self.customer_1.id])
+        self.assertNotIn(self.customer_2.id, l2_customer_ids)
+
+        # CSV export for product_customer
+        exporter = YearlySaleBreakdownExports(breakdown_service=service)
+        csv_buffer = exporter.export_yearly_sale_breakdown_csv(is_seller=False)
+        reader = list(csv.reader(io.StringIO(csv_buffer.getvalue().decode('utf-8-sig'))))
+        headers = reader[0]
+
+        self.assertIn('ID Producto', headers)
+        self.assertIn('Producto', headers)
+        self.assertIn('ID Cliente', headers)
+        self.assertIn('Cliente', headers)
+        self.assertIn('ID Ruta Asignada', headers)
+        self.assertIn('Ruta Asignada', headers)
+
+        idx_cid = headers.index('ID Cliente')
+        idx_rid = headers.index('ID Ruta Asignada')
+
+        for row in reader[1:]:
+            self.assertEqual(row[idx_cid], self.customer_1.id)
+            self.assertEqual(row[idx_rid], self.route_a.id)
+
+
+
 

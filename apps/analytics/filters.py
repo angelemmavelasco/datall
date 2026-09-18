@@ -469,6 +469,13 @@ class TargetAchievementFilter(django_filters.FilterSet):
         ).distinct()
 
 
+CUSTOMER_ASSIGNMENT_DIMENSIONS = (
+    'customer_productclass_product',
+    'productclass_customer_product',
+    'product_customer',
+)
+
+
 class YearlySaleBreakdownFilter(django_filters.FilterSet):
     DIMENSION_CHOICES = [
         ('customer_productclass_product', 'Cliente → Clase de producto → Producto'),
@@ -636,7 +643,7 @@ class YearlySaleBreakdownFilter(django_filters.FilterSet):
             dim = dim[0] if dim else None
         dim = dim or 'customer_productclass_product'
 
-        if dim == 'customer_productclass_product':
+        if dim in CUSTOMER_ASSIGNMENT_DIMENSIONS:
             today = timezone.localdate()
             customer_ids = CustomerAssignment.objects.filter(
                 route__business_unit_id__in=all_bu_ids
@@ -657,7 +664,7 @@ class YearlySaleBreakdownFilter(django_filters.FilterSet):
             dim = dim[0] if dim else None
         dim = dim or 'customer_productclass_product'
 
-        if dim == 'customer_productclass_product':
+        if dim in CUSTOMER_ASSIGNMENT_DIMENSIONS:
             today = timezone.localdate()
             customer_ids = CustomerAssignment.objects.filter(
                 route__business_unit_id__in=bu_ids
@@ -677,7 +684,7 @@ class YearlySaleBreakdownFilter(django_filters.FilterSet):
             dim = dim[0] if dim else None
         dim = dim or 'customer_productclass_product'
 
-        if dim == 'customer_productclass_product':
+        if dim in CUSTOMER_ASSIGNMENT_DIMENSIONS:
             today = timezone.localdate()
             customer_ids = CustomerAssignment.objects.filter(
                 route__in=value

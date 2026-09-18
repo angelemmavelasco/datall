@@ -142,6 +142,12 @@ class YearlySaleBreakdownService:
         },
     }
 
+    CUSTOMER_ASSIGNMENT_DIMENSIONS = (
+        'customer_productclass_product',
+        'productclass_customer_product',
+        'product_customer',
+    )
+
     def __post_init__(self):
         self.queryset = self.queryset.order_by()
         if self.dimension not in self.DIMENSION_CONFIG:
@@ -151,7 +157,10 @@ class YearlySaleBreakdownService:
         self.sorted_years = self._extract_sorted_years()
 
     def _apply_dimension_filters(self) -> None:
-        if self.dimension == 'customer_productclass_product' and self.cleaned_data:
+        if (
+            self.dimension in self.CUSTOMER_ASSIGNMENT_DIMENSIONS
+            and self.cleaned_data
+        ):
             today = timezone.localdate()
             if self.cleaned_data.get('route'):
                 routes = self.cleaned_data['route']
