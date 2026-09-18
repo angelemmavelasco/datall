@@ -2,7 +2,13 @@ from django import forms
 from django.forms import inlineformset_factory
 
 from apps.mapser.models import CustomerGeoProfile
-from .models import Customer, CustomerAssignment, CustomerClassMargin
+from .models import (
+    Customer,
+    CustomerAssignment,
+    CustomerClassMargin,
+    CustomerNote,
+    CustomerNoteCategoryChoices,
+)
 
 
 class CustomerForm(forms.ModelForm):
@@ -138,4 +144,30 @@ class CustomerGeoProfileForm(forms.ModelForm):
             self.add_error('longitude', 'La longitud debe estar entre -180 y 180 grados.')
 
         return cleaned_data
+
+
+class CustomerNoteForm(forms.ModelForm):
+    class Meta:
+        model = CustomerNote
+        fields = ['category', 'content', 'is_pinned']
+        labels = {
+            'category': 'Categoría',
+            'content': 'Contenido',
+            'is_pinned': 'Fijar nota',
+        }
+        widgets = {
+            'category': forms.Select(),
+            'content': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': 'Escribe aquí la nota o detalle relevante...',
+            }),
+            'is_pinned': forms.CheckboxInput(),
+        }
+
+    def clean_content(self):
+        content = self.cleaned_data.get('content')
+        if content:
+            return content.strip()
+        return content
+
 

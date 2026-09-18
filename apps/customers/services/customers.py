@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction, IntegrityError
 from django.utils import timezone
 from decimal import Decimal
+from apps.sales.models import RouteAssignment
 from django.db.models import (
     Q,
     QuerySet,
@@ -34,6 +35,7 @@ from ..models import (
     Customer,
     CustomerAssignment,
     CustomerClassMargin,
+    CustomerNote,
 )
 
 class ServiceError(Exception):
@@ -54,6 +56,7 @@ class CustomersService(UsersService):
     customer_type_model: type = CustomerType
     customer_assignment_model: type = CustomerAssignment
     customer_class_margin_model: type = CustomerClassMargin
+    customer_note_model: type = CustomerNote
     ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
         'acceso_total_clientes',
         'clientes',
@@ -193,35 +196,88 @@ class CustomersService(UsersService):
 
         raise CustomerNotFound(f'No se encontró ningún cliente con el ID "{pk}".')
 
-    def can_edit_customer_geo_profile(self, customer: Customer | str) -> bool:
+    def can_edit_partially(self, customer: Customer | str) -> bool:
         """
-        determines if user can edit customer geo profile.
-        returns true if user has full access or has an active route assignment
-        matching the customer's current active route assignment.
+        determines if user can partially edit a customer (geo profile, notes, etc.).
+        returns true if user has full access or has view access to any active route
+        assigned to the customer.
         """
         if self.has_full_access:
             return True
 
         today = timezone.localdate()
-        from apps.sales.models import RouteAssignment
-        user_active_routes = RouteAssignment.objects.filter(
-            employee__user=self.user,
-            date_start__lte=today,
-        ).filter(
-            Q(date_end__isnull=True) | Q(date_end__gte=today)
-        ).values_list('route_id', flat=True)
-
-        if not user_active_routes:
-            return False
+        routes_service = RoutesService(user=self.user)
+        allowed_routes_qs = routes_service.get_allowed_routes(can_view=True, can_edit=False)
 
         customer_id = customer.pk if hasattr(customer, 'pk') else customer
         return self.customer_assignment_model.objects.filter(
             customer_id=customer_id,
-            route_id__in=user_active_routes,
+            route__in=allowed_routes_qs,
             start_date__lte=today,
         ).filter(
             Q(end_date__isnull=True) | Q(end_date__gte=today)
         ).exists()
+
+    def can_edit_customer_geo_profile(self, customer: Customer | str) -> bool:
+        """
+        alias for can_edit_partially
+        """
+        return self.can_edit_partially(customer)
+
+    def get_customer_notes(self, customer: Customer | str) -> QuerySet:
+        """
+        returns all notes for the specified customer ordered by -is_pinned, -created_at.
+        includes author and current_route relations.
+        """
+        customer_id = customer.pk if hasattr(customer, 'pk') else customer
+        return self.customer_note_model.objects.filter(
+            customer_id=customer_id
+        ).select_related('author', 'current_route').order_by('-is_pinned', '-created_at')
+
+    def add_customer_note(
+        self,
+        *,
+        customer: Customer | str,
+        category: str,
+        content: str,
+        is_pinned: bool = False,
+        route: Route | str | None = None,
+    ) -> CustomerNote:
+        """
+        creates a new non editable note in the customer logbook.
+        validates that the user has partial / full edit permissions for the customer
+        """
+        customer_obj = customer if isinstance(customer, Customer) else self.customer_model.objects.get(pk=customer)
+
+        if not self.can_edit_partially(customer_obj):
+            raise PermissionsError(f'No tienes permisos para agregar notas al cliente "{customer_obj.id}".')
+
+        if not content or not str(content).strip():
+            raise ValidationError('El contenido de la nota no puede estar vacío.')
+
+        current_route = None
+        if route:
+            current_route = route if isinstance(route, Route) else Route.objects.filter(pk=route).first()
+        else:
+            today = timezone.localdate()
+            active_assignment = self.customer_assignment_model.objects.filter(
+                customer=customer_obj,
+                start_date__lte=today,
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=today)
+            ).select_related('route').first()
+            if active_assignment:
+                current_route = active_assignment.route
+
+        note = self.customer_note_model.objects.create(
+            customer=customer_obj,
+            author=self.user,
+            current_route=current_route,
+            category=category,
+            content=content.strip(),
+            is_pinned=is_pinned,
+        )
+        return note
 
     def update_or_create_geo_profile(
             self,

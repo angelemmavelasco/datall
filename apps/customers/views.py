@@ -3,6 +3,7 @@ from django.core.paginator import Paginator
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.utils import timezone
 from .exports import *
 
@@ -23,6 +24,7 @@ from .forms import (
     CustomerAssignmentFormSet,
     CustomerClassMarginFormSet,
     CustomerGeoProfileForm,
+    CustomerNoteForm,
 )
 from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.analytics.services.customer_kpis import CustomerProfileService
@@ -119,16 +121,22 @@ def customer_detail_view(request, pk: str):
     customer = profile_service.build_profile()
 
     available_actions = None
-    can_edit_geo = service.can_edit_customer_geo_profile(customer=customer)
-    if service.has_full_access or can_edit_geo:
+    can_edit_partially = service.can_edit_partially(customer=customer)
+    if service.has_full_access or can_edit_partially:
         available_actions = 'customers/partials/customer_detail__actions.html'
+
+    customer_notes = service.get_customer_notes(customer=customer)
+    note_form = CustomerNoteForm()
 
     context = {
         'customer': customer,
         'filter': profile_filter,
         'available_actions': available_actions,
         'can_edit_customer': service.has_full_access,
-        'can_edit_geo_profile': can_edit_geo,
+        'can_edit_partially': can_edit_partially,
+        'can_edit_geo_profile': can_edit_partially,
+        'customer_notes': customer_notes,
+        'note_form': note_form,
     }
     return render(request, template, context)
 
@@ -194,6 +202,7 @@ def customer_create_view(request):
         'geo_form': geo_form,
         'can_update_access': service.has_full_access,
         'can_edit_customer': True,
+        'can_edit_partially': True,
         'can_edit_geo_profile': True,
         'updating': None,
     }
@@ -217,10 +226,10 @@ def customer_update_view(request, pk: str):
         return redirect('customers:customer_list_view')
 
     can_edit_full = service.has_full_access
-    can_edit_geo = service.can_edit_customer_geo_profile(customer=customer_instance)
+    can_edit_partially = service.can_edit_partially(customer=customer_instance)
 
-    if not can_edit_full and not can_edit_geo:
-        messages.error(request, "No tienes permisos para actualizar este cliente ni su perfil geográfico.")
+    if not can_edit_full and not can_edit_partially:
+        messages.error(request, "No tienes permisos para actualizar este cliente ni su información.")
         return redirect('customers:customer_detail_view', pk=pk)
 
     geo_profile_instance = getattr(customer_instance, 'geo_profile', None)
@@ -228,8 +237,8 @@ def customer_update_view(request, pk: str):
         geo_profile_instance = CustomerGeoProfile.objects.filter(customer=customer_instance).first()
 
     if request.method == 'POST':
-        if not can_edit_full and can_edit_geo:
-            # seller with active route: can ONLY edit customer geo profile
+        if not can_edit_full and can_edit_partially:
+            # user with partial access: can only edit customer geo profile
             geo_form = CustomerGeoProfileForm(request.POST, instance=geo_profile_instance)
             if geo_form.is_valid():
                 try:
@@ -251,7 +260,7 @@ def customer_update_view(request, pk: str):
             class_margins_formset = CustomerClassMarginFormSet(instance=customer_instance, prefix='class_margins')
 
         else:
-            # full access: can edit customer, assignments, margins and geo profile
+            # full access can edit customer, assignments, margins and geo profile
             form = CustomerForm(request.POST, instance=customer_instance)
             assignments_formset = CustomerAssignmentFormSet(
                 request.POST, instance=customer_instance, prefix='assignments'
@@ -312,9 +321,49 @@ def customer_update_view(request, pk: str):
         'updating': customer_instance,
         'can_update_access': can_edit_full,
         'can_edit_customer': can_edit_full,
-        'can_edit_geo_profile': can_edit_geo,
+        'can_edit_partially': can_edit_partially,
+        'can_edit_geo_profile': can_edit_partially,
     }
     return render(request, template, context)
+
+@login_required
+@require_POST
+def customer_add_note_view(request, pk: str):
+    """
+    view for creating a new note on the customer logbook
+    """
+    service = CustomersService(user=request.user)
+    try:
+        customer = service.read_customer(pk=pk)
+    except (CustomerNotFound, PermissionsError) as e:
+        messages.error(request, str(e))
+        return redirect('customers:customer_list_view')
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al cargar el cliente: {str(e)}")
+        return redirect('customers:customer_list_view')
+
+    if not service.can_edit_partially(customer):
+        messages.error(request, "No tienes permisos para agregar notas a este cliente.")
+        return redirect('customers:customer_detail_view', pk=pk)
+
+    form = CustomerNoteForm(request.POST)
+    if form.is_valid():
+        try:
+            service.add_customer_note(
+                customer=customer,
+                category=form.cleaned_data['category'],
+                content=form.cleaned_data['content'],
+                is_pinned=form.cleaned_data.get('is_pinned', False),
+            )
+            messages.success(request, "Nota registrada exitosamente en la bitácora del cliente.")
+        except PermissionsError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f"Error al guardar la nota: {str(e)}")
+    else:
+        messages.error(request, "Por favor completa el contenido de la nota.")
+
+    return redirect('customers:customer_detail_view', pk=pk)
 
 @login_required
 def customer_filter_options_view(request):
