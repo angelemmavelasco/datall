@@ -3,7 +3,8 @@ import io
 from dataclasses import dataclass, field
 from typing import Any
 from collections import defaultdict
-from django.db.models import Max, Min, QuerySet, Sum
+from django.db.models import Max, Min, QuerySet, Sum, Q
+from django.utils import timezone
 
 from apps.customers.models import Customer, CustomerAssignment
 from apps.human_resources.models import BusinessUnit
@@ -146,7 +147,49 @@ class YearlySaleBreakdownService:
         if self.dimension not in self.DIMENSION_CONFIG:
             self.dimension = 'customer_productclass_product'
         self.dimension_config = self.DIMENSION_CONFIG[self.dimension]
+        self._apply_dimension_filters()
         self.sorted_years = self._extract_sorted_years()
+
+    def _apply_dimension_filters(self) -> None:
+        if self.dimension == 'customer_productclass_product' and self.cleaned_data:
+            today = timezone.localdate()
+            if self.cleaned_data.get('route'):
+                routes = self.cleaned_data['route']
+                customer_ids = CustomerAssignment.objects.filter(
+                    route__in=routes
+                ).filter(
+                    Q(end_date__isnull=True) | Q(end_date__gte=today)
+                ).values('customer_id')
+                self.queryset = self.queryset.filter(customer_id__in=customer_ids)
+            elif self.cleaned_data.get('business_unit'):
+                bu_list = self.cleaned_data['business_unit']
+                bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in bu_list]
+                customer_ids = CustomerAssignment.objects.filter(
+                    route__business_unit_id__in=bu_ids
+                ).filter(
+                    Q(end_date__isnull=True) | Q(end_date__gte=today)
+                ).values('customer_id')
+                self.queryset = self.queryset.filter(customer_id__in=customer_ids)
+            elif self.cleaned_data.get('region'):
+                region_objs = self.cleaned_data['region']
+                region_ids = set(r.pk if hasattr(r, 'pk') else r for r in region_objs)
+                all_bu_ids = set(region_ids)
+                current_parents = set(region_ids)
+                while current_parents:
+                    child_ids = set(
+                        BusinessUnit.objects.filter(parent_id__in=current_parents).values_list('id', flat=True)
+                    )
+                    new_ids = child_ids - all_bu_ids
+                    if not new_ids:
+                        break
+                    all_bu_ids.update(new_ids)
+                    current_parents = new_ids
+                customer_ids = CustomerAssignment.objects.filter(
+                    route__business_unit_id__in=all_bu_ids
+                ).filter(
+                    Q(end_date__isnull=True) | Q(end_date__gte=today)
+                ).values('customer_id')
+                self.queryset = self.queryset.filter(customer_id__in=customer_ids)
 
     @classmethod
     def get_perspective(cls, dimension: str) -> str:
@@ -925,9 +968,11 @@ class YearlySaleBreakdownExports:
                 names_map[i] = dict(model.objects.filter(id__in=ids).values_list('id', 'name'))
                 # if the entity is customer, also fetch active route assignment and route business unit
                 if model == Customer:
+                    today = timezone.localdate()
                     active_assignments = (
                         CustomerAssignment.objects
-                        .filter(customer_id__in=ids, end_date__isnull=True)
+                        .filter(customer_id__in=ids)
+                        .filter(Q(end_date__isnull=True) | Q(end_date__gte=today))
                         .values('customer_id', 'route_id', 'route__name', 'route__business_unit__name')
                     )
                     for assign in active_assignments:

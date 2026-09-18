@@ -531,7 +531,7 @@ class YearlySaleBreakdownFilter(django_filters.FilterSet):
         label='Gerencia'
     )
     route = django_filters.ModelMultipleChoiceFilter(
-        field_name='route',
+        method='filter_route',
         queryset=Route.objects.all(),
         widget=forms.CheckboxSelectMultiple,
         label='Ruta'
@@ -630,13 +630,63 @@ class YearlySaleBreakdownFilter(django_filters.FilterSet):
                 break
             all_bu_ids.update(new_ids)
             current_parents = new_ids
+
+        dim = self.data.get('dimension') if self.data else None
+        if isinstance(dim, list):
+            dim = dim[0] if dim else None
+        dim = dim or 'customer_productclass_product'
+
+        if dim == 'customer_productclass_product':
+            today = timezone.localdate()
+            customer_ids = CustomerAssignment.objects.filter(
+                route__business_unit_id__in=all_bu_ids
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=today)
+            ).values('customer_id')
+            return queryset.filter(customer_id__in=customer_ids)
+
         return queryset.filter(route__business_unit_id__in=all_bu_ids)
 
     def filter_business_unit(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
         if not value:
             return queryset
         bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in value]
+
+        dim = self.data.get('dimension') if self.data else None
+        if isinstance(dim, list):
+            dim = dim[0] if dim else None
+        dim = dim or 'customer_productclass_product'
+
+        if dim == 'customer_productclass_product':
+            today = timezone.localdate()
+            customer_ids = CustomerAssignment.objects.filter(
+                route__business_unit_id__in=bu_ids
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=today)
+            ).values('customer_id')
+            return queryset.filter(customer_id__in=customer_ids)
+
         return queryset.filter(route__business_unit_id__in=bu_ids)
+
+    def filter_route(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+
+        dim = self.data.get('dimension') if self.data else None
+        if isinstance(dim, list):
+            dim = dim[0] if dim else None
+        dim = dim or 'customer_productclass_product'
+
+        if dim == 'customer_productclass_product':
+            today = timezone.localdate()
+            customer_ids = CustomerAssignment.objects.filter(
+                route__in=value
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=today)
+            ).values('customer_id')
+            return queryset.filter(customer_id__in=customer_ids)
+
+        return queryset.filter(route__in=value)
 
 
 class MonthlySaleBreakdownFilter(django_filters.FilterSet):

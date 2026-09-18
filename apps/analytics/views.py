@@ -549,12 +549,14 @@ def yearly_sale_breakdown_view(request):
     # filters
     filter_set = YearlySaleBreakdownFilter(req_data, queryset=tx_qs, request=request)
     filtered_tx_qs = filter_set.qs
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
 
     # service initialization
     breakdown_service = YearlySaleBreakdownService(
         queryset=filtered_tx_qs,
         dimension=dimension,
         user=request.user,
+        cleaned_data=cleaned_data,
     )
 
     # level 1 pagination
@@ -639,12 +641,14 @@ def yearly_sale_breakdown_children_view(request):
     # filters
     filter_set = YearlySaleBreakdownFilter(req_data, queryset=tx_qs, request=request)
     filtered_tx_qs = filter_set.qs
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
 
     # service initialization
     breakdown_service = YearlySaleBreakdownService(
         queryset=filtered_tx_qs,
         dimension=dimension,
         user=request.user,
+        cleaned_data=cleaned_data,
     )
 
     child_items = breakdown_service.get_level_children(
