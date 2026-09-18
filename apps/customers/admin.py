@@ -5,6 +5,7 @@ from .models import (
     CustomerAssignment,
     CustomerClassMargin,
     AccountsReceivable,
+    CustomerNote,
 )
 
 
@@ -21,6 +22,15 @@ class CustomerClassMarginInline(admin.TabularInline):
     extra = 1
     fields = ('product_class', 'min_margin_percentage')
     autocomplete_fields = ['product_class']
+    show_change_link = True
+
+
+class CustomerNoteInline(admin.TabularInline):
+    model = CustomerNote
+    extra = 0
+    fields = ('category', 'content', 'is_pinned', 'author', 'current_route', 'created_at')
+    readonly_fields = ('created_at',)
+    autocomplete_fields = ['author', 'current_route']
     show_change_link = True
 
 
@@ -46,7 +56,7 @@ class CustomerAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name')
     autocomplete_fields = ['customer_type']
     ordering = ('id',)
-    inlines = [CustomerAssignmentInline, CustomerClassMarginInline]
+    inlines = [CustomerAssignmentInline, CustomerClassMarginInline, CustomerNoteInline]
 
 
 @admin.register(CustomerAssignment)
@@ -108,3 +118,41 @@ class AccountsReceivableAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ['customer', 'route']
     ordering = ('-due_date', '-issue_date')
+
+
+@admin.register(CustomerNote)
+class CustomerNoteAdmin(admin.ModelAdmin):
+    list_display = (
+        'customer',
+        'category',
+        'is_pinned',
+        'author',
+        'current_route',
+        'created_at',
+        'short_content',
+    )
+    list_filter = (
+        'category',
+        'is_pinned',
+        'created_at',
+        'current_route__business_unit',
+        'current_route',
+    )
+    search_fields = (
+        'customer__id',
+        'customer__name',
+        'author__username',
+        'author__first_name',
+        'author__last_name',
+        'content',
+    )
+    autocomplete_fields = ['customer', 'author', 'current_route']
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('-is_pinned', '-created_at')
+
+    @admin.display(description='Contenido')
+    def short_content(self, obj):
+        if not obj.content:
+            return ''
+        return obj.content[:60] + ('...' if len(obj.content) > 60 else '')
+

@@ -91,6 +91,7 @@ class ThemedAdminSite(admin.AdminSite):
                     'CustomerAssignment',
                     'CustomerClassMargin',
                     'AccountsReceivable',
+                    'CustomerNote',
                 ]
             },
             {

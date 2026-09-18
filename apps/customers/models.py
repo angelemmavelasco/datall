@@ -90,6 +90,36 @@ class CustomerAssignment(models.Model):
     def __str__(self):
         return f'{self.customer.id.upper()} -> {self.route.id.upper()}'
 
+class CustomerNoteCategoryChoices(models.TextChoices):
+    HANDOVER = 'handover', 'Traspaso / Entrega de cuenta'
+    COMMERCIAL = 'commercial', 'Preferencia comercial / Negociación'
+    COLLECTION = 'collection', 'Cobranza / Condiciones de crédito'
+    LOGISTICS = 'logistics', 'Recepción / Restricciones de entrega'
+    INCIDENT = 'incident', 'Queja o incidencia'
+    GENERAL = 'general', 'Nota general'
+
+class CustomerNote(models.Model):
+    customer = models.ForeignKey('Customer', on_delete=models.CASCADE, related_name='notes', help_text='Cliente al que pertenece la nota')
+    author = models.ForeignKey('core.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='authored_customer_notes', help_text='Autor de la nota')
+    current_route = models.ForeignKey('sales.Route', on_delete=models.SET_NULL, null=True, blank=True, related_name='route_customer_notes', help_text='Ruta asignada al momento de la nota')
+    category = models.CharField(max_length=20, choices=CustomerNoteCategoryChoices.choices, default=CustomerNoteCategoryChoices.GENERAL, help_text='Categoría de la nota')
+    content = models.TextField(help_text='Contenido de la nota')
+    is_pinned = models.BooleanField(default=False, help_text='Indica si la nota está fijada')
+    created_at = models.DateTimeField(auto_now_add=True, help_text='Fecha de creación de la nota')
+    updated_at = models.DateTimeField(auto_now=True, help_text='Fecha de actualización de la nota')
+
+    class Meta:
+        verbose_name = 'Nota de cliente'
+        verbose_name_plural = 'Notas de clientes'
+        ordering = ['-is_pinned', '-created_at']
+        indexes = [
+            models.Index(fields=["customer", "-is_pinned", "-created_at"]),
+            models.Index(fields=["created_at"]),
+        ]
+
+    def __str__(self):
+        return f'{self.customer.id.upper()}: {self.content[:50]}...'
+
 class CustomerClassMargin(models.Model):
     customer = models.ForeignKey('Customer', on_delete=models.CASCADE, related_name='class_margins')
     product_class = models.ForeignKey('products.ProductClass', on_delete=models.CASCADE, related_name='customer_margins')
