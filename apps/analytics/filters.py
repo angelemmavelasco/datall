@@ -1,7 +1,7 @@
 from typing import Any
 import django_filters
 from django import forms
-from django.db.models import Q, QuerySet
+from django.db.models import Min, Max, Q, QuerySet
 from django.utils import timezone
 
 from apps.sales.models import SaleTransaction, Route, Warehouse, SaleTarget
@@ -506,6 +506,12 @@ class YearlySaleBreakdownFilter(django_filters.FilterSet):
         null_label=None,
         initial='customer_productclass_product',
     )
+    year = django_filters.MultipleChoiceFilter(
+        choices=[],
+        method='filter_year',
+        widget=forms.CheckboxSelectMultiple,
+        label='Año',
+    )
     months = django_filters.MultipleChoiceFilter(
         choices=MONTH_CHOICES,
         method='filter_months',
@@ -550,6 +556,35 @@ class YearlySaleBreakdownFilter(django_filters.FilterSet):
     def __init__(self, *args, **kwargs):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
+
+        today_year = timezone.localdate().year
+        qs = self.queryset if self.queryset is not None else SaleTransaction.objects.all()
+        dates = qs.order_by().aggregate(
+            min_date=Min('sale_date'),
+            max_date=Max('sale_date'),
+        )
+        min_date = dates.get('min_date')
+        max_date = dates.get('max_date')
+        if min_date and max_date:
+            min_year = min_date.year
+            max_year = max_date.year
+            year_choices = [(str(y), str(y)) for y in range(min_year, max_year + 1)]
+        else:
+            year_choices = [(str(y), str(y)) for y in range(today_year - 4, today_year + 1)]
+
+        self.filters['year'].extra['choices'] = year_choices
+        if hasattr(self, '_form') and self._form is not None and 'year' in self._form.fields:
+            self._form.fields['year'].choices = year_choices
+
+        if hasattr(self, 'data') and self.data:
+            if 'years' in self.data and 'year' not in self.data:
+                if hasattr(self.data, 'setlist'):
+                    self.data = self.data.copy()
+                    self.data.setlist('year', self.data.getlist('years'))
+                elif isinstance(self.data, dict):
+                    self.data = dict(self.data)
+                    self.data['year'] = self.data['years']
+
         if request:
             user = request.user if hasattr(request, 'user') else request
             bu_service = BusinessUnitsService(user=user)
@@ -560,6 +595,16 @@ class YearlySaleBreakdownFilter(django_filters.FilterSet):
             self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
 
     def filter_noop(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        return queryset
+
+    def filter_year(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        if isinstance(value, (str, int)):
+            value = [value]
+        year_ints = [int(v) for v in value if str(v).isdigit()]
+        if year_ints:
+            return queryset.filter(sale_date__year__in=year_ints)
         return queryset
 
     def filter_months(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
