@@ -409,6 +409,49 @@ Soporte y documentación
     .markdown-content a:hover {
         opacity: 0.8;
     }
+
+    .markdown-content table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.75rem;
+        border: none;
+    }
+
+    .markdown-content thead {
+        background-color: rgba(125, 125, 125, 0.08);
+    }
+
+    .markdown-content th {
+        padding: 0.5rem 0.75rem;
+        font-weight: 600;
+        color: var(--color-title, inherit);
+        border-bottom: 1px solid var(--color-border);
+        border-right: 1px solid var(--color-border);
+        white-space: nowrap;
+    }
+
+    .markdown-content th:last-child {
+        border-right: none;
+    }
+
+    .markdown-content td {
+        padding: 0.45rem 0.75rem;
+        border-bottom: 1px solid var(--color-border);
+        border-right: 1px solid var(--color-border);
+        vertical-align: middle;
+    }
+
+    .markdown-content td:last-child {
+        border-right: none;
+    }
+
+    .markdown-content tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .markdown-content tbody tr:hover td {
+        background-color: rgba(125, 125, 125, 0.04);
+    }
 </style>
 
 <script>
@@ -423,6 +466,14 @@ Soporte y documentación
                 const targetEl = art.querySelector('.markdown-content');
                 if (rawTpl && targetEl) {
                     targetEl.innerHTML = marked.parse(rawTpl.innerHTML.trim());
+                    targetEl.querySelectorAll('table').forEach(tbl => {
+                        if (!tbl.parentElement.classList.contains('overflow-x-auto')) {
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'overflow-x-auto my-2 border border-border rounded';
+                            tbl.parentNode.insertBefore(wrapper, tbl);
+                            wrapper.appendChild(tbl);
+                        }
+                    });
                 }
             });
         }
