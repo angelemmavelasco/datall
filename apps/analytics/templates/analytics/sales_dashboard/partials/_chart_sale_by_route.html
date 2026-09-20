@@ -1,17 +1,17 @@
 {% load humanize widget_tweaks has_group %}
 <div class="border border-border rounded p-2 bg-container  min-h-98">
-    <p class="text-title text-sm text-center mt-2 mb-2">Venta neta por ruta</p>
+    <p class="text-title text-sm text-center mt-2 mb-2" title="Panel tabular que desglosa el desempeño individual de cada ruta de venta activa ordenada de mayor a menor por venta neta.">Venta neta por ruta ⓘ</p>
 
     <div class="overflow-auto rounded overflow-y-auto h-80" style="max-height: 320px; overflow-y: auto; display: block;">
         <table class="table-fixed w-full rounded max-h-80 border-separate border-spacing-0">
             <thead>
                 <tr class="">
-                    <th class="w-30 p-1 text-center border-b border-r border-border sticky top-0 z-20 left-0 bg-container" style="z-index: 30;">Ruta</th>
-                    <th class="w-30 p-1 text-center border-b border-border sticky top-0 z-10 bg-container">Venta neta</th>
-                    <th class="w-30 p-1 text-center border-b border-border sticky top-0 z-10 bg-container">Objetivo</th>
-                    <th class="w-30 p-1 text-center border-b border-border sticky top-0 z-10 bg-container">Diferencia</th>
-                    <th class="w-20 p-1 text-center border-b border-border sticky top-0 z-10 bg-container">Alcance</th>
-                    <th class="w-24 p-1 text-center border-b border-border sticky top-0 z-10 bg-container">Margen</th>
+                    <th class="w-30 p-1 text-center border-b border-r border-border sticky top-0 z-20 left-0 bg-container" style="z-index: 30;" title="Número identificador y nombre descriptivo de la ruta. Haz clic para consultar sus indicadores a detalle.">Ruta ⓘ</th>
+                    <th class="w-30 p-1 text-center border-b border-border sticky top-0 z-10 bg-container" title="Importe neto total facturado por la ruta en el periodo consultado.">Venta neta ⓘ</th>
+                    <th class="w-30 p-1 text-center border-b border-border sticky top-0 z-10 bg-container" title="Cuota o meta mensual asignada específicamente a la ruta.">Objetivo ⓘ</th>
+                    <th class="w-30 p-1 text-center border-b border-border sticky top-0 z-10 bg-container" title="Variación monetaria calculada restando el objetivo a la venta neta (Superávit o faltante).">Diferencia ⓘ</th>
+                    <th class="w-20 p-1 text-center border-b border-border sticky top-0 z-10 bg-container" title="Porcentaje de cumplimiento de la cuota comercial de la ruta (Venta neta / Objetivo * 100).">Alcance ⓘ</th>
+                    <th class="w-24 p-1 text-center border-b border-border sticky top-0 z-10 bg-container" title="Rentabilidad bruta comercial obtenida por la ruta (Utilidad / Venta neta * 100).">Margen ⓘ</th>
                 </tr>
             </thead>
 

@@ -1,17 +1,22 @@
 {% load humanize widget_tweaks has_group %}
 <div class="border border-border rounded p-2 bg-container">
-    <p class="text-title text-sm text-center mt-2 mb-2">Top 50 clientes</p>
+    <p class="text-title text-sm text-center mt-2 mb-2" title="Top 50 clientes que mayor facturación neta aportaron en el periodo seleccionado.">Top 50 clientes ⓘ</p>
 
     <div class="overflow-x-auto rounded overflow-y-auto h-80">
         <table class="table-fixed w-full rounded max-h-80 border-separate border-spacing-0">
             <thead>
                 <tr class="">
                     <th
-                        class="w-40 p-2 text-center border-r border-border border-b sticky top-0 z-20 bg-container left-0">Cliente</th>
-                    <th class="w-30 p-2 text-center border-border border-b sticky top-0 z-10 bg-container">Venta neta</th>
-                    <th class="w-30 p-2 text-center border-border border-b sticky top-0 z-10 bg-container">Venta total</th>
-                    <th class="w-20 p-2 text-center border-border border-b sticky top-0 z-10 bg-container">Unidades</th>
-                    <th class="w-24 p-2 text-center border-border border-b sticky top-0 z-10 bg-container">Margen</th>
+                        class="w-40 p-2 text-center border-r border-border border-b sticky top-0 z-20 bg-container left-0"
+                        title="Clave y nombre comercial del cliente. Haz clic en el icono para abrir su expediente individual en una nueva pestaña.">Cliente ⓘ</th>
+                    <th class="w-30 p-2 text-center border-border border-b sticky top-0 z-10 bg-container"
+                        title="Total neto facturado al cliente en el rango de fechas seleccionado.">Venta neta ⓘ</th>
+                    <th class="w-30 p-2 text-center border-border border-b sticky top-0 z-10 bg-container"
+                        title="Monto bruto facturado al cliente previo a notas de crédito o devoluciones.">Venta total ⓘ</th>
+                    <th class="w-25 p-2 text-center border-border border-b sticky top-0 z-10 bg-container"
+                        title="Total de piezas adquiridas por el cliente durante el periodo evaluado.">Unidades ⓘ</th>
+                    <th class="w-24 p-2 text-center border-border border-b sticky top-0 z-10 bg-container"
+                        title="Rentabilidad comercial promedio obtenida con el cliente (Utilidad / Venta neta * 100).">Margen ⓘ</th>
                 </tr>
             </thead>
 

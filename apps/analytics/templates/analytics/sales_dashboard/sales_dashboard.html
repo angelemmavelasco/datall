@@ -36,8 +36,8 @@
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-            <span class="text-sm text-title">
-                Venta neta
+            <span class="text-sm text-title" title="Suma del importe neto facturado de todas las transacciones de venta del periodo seleccionado, deduciendo devoluciones y notas de crédito aplicadas.">
+                Venta neta ⓘ
             </span><br>
             <span class="text-xl text-emerald-500">
                 $ {{ kpis.net_amount|default:0|floatformat:2|intcomma }}
@@ -45,8 +45,8 @@
         </a>
 
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-            <span class="text-sm text-title">
-                Objetivo de venta
+            <span class="text-sm text-title" title="Suma consolidada de las cuotas o metas comerciales mensuales asignadas a las rutas y periodos seleccionados.">
+                Objetivo de venta ⓘ
             </span><br>
             <span class="text-xl text-blue-500">
                 $ {{ kpis.sale_target|default:0|floatformat:2|intcomma }}
@@ -54,8 +54,8 @@
         </a>
 
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-            <span class="text-sm text-title">
-                Alcance
+            <span class="text-sm text-title" title="Porcentaje de cumplimiento de la meta comercial (Venta neta / Objetivo de venta * 100).">
+                Alcance ⓘ
             </span><br>
             <span class="text-xl text-violet-500">
                 {{ kpis.target_achivement|default:0|floatformat:2|intcomma }} %
@@ -63,8 +63,8 @@
         </a>
 
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-            <span class="text-sm text-title">
-                Diferencia
+            <span class="text-sm text-title" title="Variación entre lo vendido y la meta fijada (Venta neta - Objetivo de venta). En rojo indica faltante y en verde superávit.">
+                Diferencia ⓘ
             </span><br>
             <span class="text-xl {% if kpis.diff_amount < 0 %} text-red-500 {% else %} text-emerald-500 {% endif %}">
                 $ {{ kpis.diff_amount|default:0|floatformat:2|intcomma }}
@@ -72,8 +72,8 @@
         </a>
 
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-            <span class="text-sm text-title">
-                Venta total
+            <span class="text-sm text-title" title="Suma del importe bruto de las ventas antes de cualquier deducción o descuento comercial aplicado en las transacciones.">
+                Venta total ⓘ
             </span><br>
             <span class="text-xl text-emerald-500">
                 $ {{ kpis.gross_amount|default:0|floatformat:2|intcomma }}
@@ -81,8 +81,8 @@
         </a>
 
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-            <span class="text-sm text-title">
-                Unidades
+            <span class="text-sm text-title" title="Cantidad total acumulada de piezas o unidades de producto vendidas y facturadas durante el periodo seleccionado.">
+                Unidades ⓘ
             </span><br>
             <span class="text-xl text-title">
                 {{ kpis.quantity|default:0|floatformat:0|intcomma }}
@@ -90,8 +90,8 @@
         </a>
 
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-            <span class="text-sm text-title">
-                Clientes con compra
+            <span class="text-sm text-title" title="Cantidad de clientes únicos distintos que realizaron al menos una compra dentro del periodo evaluado (cuentas activadas).">
+                Clientes con compra ⓘ
             </span><br>
             <span class="text-xl text-cyan-500">
                 {{ kpis.occupied_positions_count|default:0|floatformat:0|intcomma }}
@@ -99,8 +99,8 @@
         </a>
 
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
-            <span class="text-sm text-title">
-                Margen
+            <span class="text-sm text-title" title="Porcentaje de rentabilidad o margen bruto comercial obtenido (Utilidad neta / Venta neta * 100). Para vendedores se muestra por clasificación cualitativa.">
+                Margen ⓘ
             </span><br>
             {% if request.user|has_group:"vendedor" %}
                 {% if kpis.margin >= 43 %}
@@ -135,31 +135,31 @@
         </a>
     </div>
 
-    <p class="text-title pb-1 border-b border-border">
-        Evolución de venta neta, unidades y alcance de objetivos
+    <p class="text-title pb-1 border-b border-border" title="Línea de tiempo de doble eje: Venta neta (línea verde), Unidades (línea azul) y Alcance acumulado frente a la meta total.">
+        Evolución de venta neta, unidades y alcance de objetivos ⓘ
     </p>
     <div class="min-h-[400px] border border-border rounded bg-container p-2">
         {% include 'analytics/sales_dashboard/partials/_chart_timeline_by_sale_qty.html' %}
     </div>
 
-    <p class="text-title pb-1 border-b border-border">
-        Gerencias y rutas
+    <p class="text-title pb-1 border-b border-border" title="Comparativa de venta neta por gerencia frente a su cuota consolidada y tabla de desempeño individual por ruta.">
+        Gerencias y rutas ⓘ
     </p>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 h-200 md:h-100 ">
         {% include 'analytics/sales_dashboard/partials/_chart_sale_by_warehouse.html' %}
         {% include 'analytics/sales_dashboard/partials/_chart_sale_by_route.html' %}
     </div>
 
-    <p class="text-title pb-1 border-b border-border">
-        Categorías y clases de producto
+    <p class="text-title pb-1 border-b border-border" title="Desempeño de líneas específicas por clase frente a su cuota y distribución de la cartera por categoría en gráfica de dona.">
+        Categorías y clases de producto ⓘ
     </p>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[400px]">
         {% include 'analytics/sales_dashboard/partials/_chart_sale_by_product_class.html' %}
         {% include 'analytics/sales_dashboard/partials/_chart_sale_by_category.html' %}
     </div>
 
-    <p class="text-title pb-1 border-b border-border">
-        Productos y clientes
+    <p class="text-title pb-1 border-b border-border" title="Ranking de los 50 productos con mayor facturación y los 50 clientes con mayor volumen de compra en el periodo.">
+        Productos y clientes ⓘ
     </p>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[400px]">
         {% include 'analytics/sales_dashboard/partials/_chart_sale_by_product.html' %}
