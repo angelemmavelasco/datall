@@ -584,13 +584,6 @@
     {% endfor %}
 </div>
 
-
-<div id="touch-tooltip-popover" class="fixed z-50 hidden transition-opacity duration-150 ease-out pointer-events-none opacity-0">
-    <div class="bg-container border border-border text-title text-xs p-1 rounded shadow-xl max-w-xs whitespace-pre-line backdrop-blur-md bg-opacity-95 font-sans leading-relaxed pointer-events-auto">
-        <div id="touch-tooltip-content"></div>
-    </div>
-</div>
-
 <script>
     function toggleGerenciaRoutes(buId) {
         const rows = document.querySelectorAll(`.gerencia-routes-${buId}`);
@@ -602,85 +595,6 @@
             icon.classList.toggle('rotate-180');
         }
     }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const popover = document.getElementById('touch-tooltip-popover');
-        const content = document.getElementById('touch-tooltip-content');
-        let activeTarget = null;
-
-        const showPopover = (target, text) => {
-            if (!text || !text.trim()) return;
-            content.textContent = text.trim();
-            
-            popover.classList.remove('hidden');
-            
-            const rect = target.getBoundingClientRect();
-            const popRect = popover.getBoundingClientRect();
-            
-            let top = rect.bottom + 8;
-            let left = rect.left + (rect.width / 2) - (popRect.width / 2);
-            
-            const padding = 12;
-            if (left < padding) left = padding;
-            if (left + popRect.width > window.innerWidth - padding) {
-                left = window.innerWidth - popRect.width - padding;
-            }
-            
-            if (top + popRect.height > window.innerHeight - padding) {
-                top = rect.top - popRect.height - 8;
-            }
-            if (top < padding) top = padding;
-            
-            popover.style.top = `${top}px`;
-            popover.style.left = `${left}px`;
-            
-            requestAnimationFrame(() => {
-                popover.classList.remove('opacity-0');
-                popover.classList.add('opacity-100');
-            });
-            
-            activeTarget = target;
-        };
-
-        const hidePopover = () => {
-            if (!activeTarget) return;
-            popover.classList.remove('opacity-100');
-            popover.classList.add('opacity-0');
-            setTimeout(() => {
-                if (popover.classList.contains('opacity-0')) {
-                    popover.classList.add('hidden');
-                }
-            }, 150);
-            activeTarget = null;
-        };
-
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('a[href]')) {
-                hidePopover();
-                return;
-            }
-
-            const targetWithTitle = e.target.closest('[title]');
-            if (targetWithTitle) {
-                const titleText = targetWithTitle.getAttribute('title');
-                if (titleText && titleText.trim()) {
-                    if (activeTarget === targetWithTitle) {
-                        hidePopover();
-                    } else {
-                        showPopover(targetWithTitle, titleText);
-                    }
-                    return;
-                }
-            }
-            
-            hidePopover();
-        });
-
-        window.addEventListener('scroll', hidePopover, { passive: true });
-        document.querySelectorAll('.overflow-x-auto').forEach(el => {
-            el.addEventListener('scroll', hidePopover, { passive: true });
-        });
-    });
 </script>
 
 {% endblock %}
