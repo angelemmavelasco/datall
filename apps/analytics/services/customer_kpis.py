@@ -361,11 +361,17 @@ class CustomerKpisService:
 
         for cid in customer_ids:
             c_metrics = metrics_map.get(cid, {})
-            w1_net = c_metrics.get('w1_net') or Decimal('0.00')
-            w2_net = c_metrics.get('w2_net') or Decimal('0.00')
-            w3_net = c_metrics.get('w3_net') or Decimal('0.00')
-            w4_net = c_metrics.get('w4_net') or Decimal('0.00')
-            total_net = c_metrics.get('contrib_net') or (w1_net + w2_net + w3_net + w4_net)
+            # Filtrar semanas que sean >= 0; las semanas que sean menores a 0 quedan en ceros
+            raw_w1 = c_metrics.get('w1_net') or Decimal('0.00')
+            raw_w2 = c_metrics.get('w2_net') or Decimal('0.00')
+            raw_w3 = c_metrics.get('w3_net') or Decimal('0.00')
+            raw_w4 = c_metrics.get('w4_net') or Decimal('0.00')
+
+            w1_net = max(raw_w1, Decimal('0.00'))
+            w2_net = max(raw_w2, Decimal('0.00'))
+            w3_net = max(raw_w3, Decimal('0.00'))
+            w4_net = max(raw_w4, Decimal('0.00'))
+            total_net = w1_net + w2_net + w3_net + w4_net
 
             if total_net > Decimal('0.00'):
                 w1_pct = round((w1_net / total_net) * Decimal('100.00'), 2)
