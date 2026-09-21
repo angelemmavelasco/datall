@@ -518,6 +518,9 @@
   .hidden {
     display: none;
   }
+  .inline {
+    display: inline;
+  }
   .inline-block {
     display: inline-block;
   }
@@ -2446,6 +2449,9 @@
     }
     .hover\:text-red-400:hover {
       color: var(--color-red-400);
+    }
+    .hover\:text-rose-500:hover {
+      color: var(--color-rose-500);
     }
     .hover\:text-title:hover {
       color: var(--theme-title);

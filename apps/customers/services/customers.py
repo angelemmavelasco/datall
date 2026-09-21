@@ -36,6 +36,7 @@ from ..models import (
     CustomerAssignment,
     CustomerClassMargin,
     CustomerNote,
+    CustomerContact,
 )
 
 class ServiceError(Exception):
@@ -50,6 +51,9 @@ class CustomerNotFound(ServiceError):
 class CustomerTypeNotFound(ServiceError):
     pass
 
+class CustomerContactNotFound(ServiceError):
+    pass
+
 @dataclass
 class CustomersService(UsersService):
     customer_model: type = Customer
@@ -57,6 +61,7 @@ class CustomersService(UsersService):
     customer_assignment_model: type = CustomerAssignment
     customer_class_margin_model: type = CustomerClassMargin
     customer_note_model: type = CustomerNote
+    customer_contact_model: type = CustomerContact
     ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
         'acceso_total_clientes',
         'clientes',
@@ -278,6 +283,146 @@ class CustomersService(UsersService):
             is_pinned=is_pinned,
         )
         return note
+
+    def get_customer_contacts(self, customer: Customer | str) -> QuerySet:
+        """
+        returns all contacts for the specified customer ordered by -is_primary, name.
+        """
+        customer_id = customer.pk if hasattr(customer, 'pk') else customer
+        return self.customer_contact_model.objects.filter(
+            customer_id=customer_id
+        ).order_by('-is_primary', 'name')
+
+    def add_customer_contact(
+        self,
+        *,
+        customer: Customer | str,
+        name: str,
+        role: str,
+        phone: str | None = None,
+        mobile: str | None = None,
+        email: str | None = None,
+        is_primary: bool = False,
+        notes: str | None = None,
+    ) -> CustomerContact:
+        """
+        creates a new contact for the customer.
+        validates that the user has partial / full edit permissions for the customer
+        """
+        customer_obj = customer if isinstance(customer, Customer) else self.customer_model.objects.get(pk=customer)
+
+        if not self.can_edit_partially(customer_obj):
+            raise PermissionsError(f'No tienes permisos para agregar contactos al cliente "{customer_obj.id}".')
+
+        name_clean = str(name).strip() if name else ''
+        if not name_clean:
+            raise ValidationError('El nombre del contacto no puede estar vacío.')
+
+        role_clean = str(role).strip() if role else 'general'
+
+        with transaction.atomic():
+            if is_primary:
+                self.customer_contact_model.objects.filter(
+                    customer=customer_obj,
+                    is_primary=True,
+                ).update(is_primary=False)
+
+            contact = self.customer_contact_model.objects.create(
+                customer=customer_obj,
+                name=name_clean,
+                role=role_clean,
+                phone=phone.strip() if phone and str(phone).strip() else None,
+                mobile=mobile.strip() if mobile and str(mobile).strip() else None,
+                email=email.strip().lower() if email and str(email).strip() else None,
+                is_primary=bool(is_primary),
+                notes=notes.strip() if notes and str(notes).strip() else None,
+            )
+        return contact
+
+    def update_customer_contact(
+        self,
+        *,
+        contact: CustomerContact | int,
+        name: str | None = None,
+        role: str | None = None,
+        phone: str | None = None,
+        mobile: str | None = None,
+        email: str | None = None,
+        is_primary: bool | None = None,
+        notes: str | None = None,
+    ) -> CustomerContact:
+        """
+        updates an existing contact for the customer.
+        validates that the user has partial / full edit permissions for the customer
+        """
+        contact_obj = (
+            contact
+            if isinstance(contact, self.customer_contact_model)
+            else self.customer_contact_model.objects.select_related('customer').filter(pk=contact).first()
+        )
+        if not contact_obj:
+            raise CustomerContactNotFound(f'No se encontró el contacto con ID "{contact}".')
+
+        if not self.can_edit_partially(contact_obj.customer):
+            raise PermissionsError(f'No tienes permisos para editar contactos del cliente "{contact_obj.customer_id}".')
+
+        with transaction.atomic():
+            if name is not None:
+                name_clean = str(name).strip()
+                if not name_clean:
+                    raise ValidationError('El nombre del contacto no puede estar vacío.')
+                contact_obj.name = name_clean
+
+            if role is not None:
+                role_clean = str(role).strip()
+                if role_clean:
+                    contact_obj.role = role_clean
+
+            if phone is not None:
+                contact_obj.phone = phone.strip() if phone and str(phone).strip() else None
+
+            if mobile is not None:
+                contact_obj.mobile = mobile.strip() if mobile and str(mobile).strip() else None
+
+            if email is not None:
+                contact_obj.email = email.strip().lower() if email and str(email).strip() else None
+
+            if notes is not None:
+                contact_obj.notes = notes.strip() if notes and str(notes).strip() else None
+
+            if is_primary is not None:
+                if is_primary:
+                    self.customer_contact_model.objects.filter(
+                        customer=contact_obj.customer,
+                        is_primary=True,
+                    ).exclude(pk=contact_obj.pk).update(is_primary=False)
+                contact_obj.is_primary = bool(is_primary)
+
+            contact_obj.save()
+
+        return contact_obj
+
+    def delete_customer_contact(
+        self,
+        *,
+        contact: CustomerContact | int,
+    ) -> None:
+        """
+        deletes an existing contact for the customer.
+        validates that the user has partial / full edit permissions for the customer
+        """
+        contact_obj = (
+            contact
+            if isinstance(contact, self.customer_contact_model)
+            else self.customer_contact_model.objects.select_related('customer').filter(pk=contact).first()
+        )
+        if not contact_obj:
+            raise CustomerContactNotFound(f'No se encontró el contacto con ID "{contact}".')
+
+        if not self.can_edit_partially(contact_obj.customer):
+            raise PermissionsError(f'No tienes permisos para eliminar contactos del cliente "{contact_obj.customer_id}".')
+
+        contact_obj.delete()
 
     def update_or_create_geo_profile(
             self,

@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -13,6 +14,7 @@ from .services import (
     CustomerNotFound,
     PermissionsError,
     ServiceError,
+    CustomerContactNotFound,
     AccountsReceivablesService,
     AccountsReceivablesStats,
     AccountsReceivableNotFound,
@@ -25,6 +27,7 @@ from .forms import (
     CustomerClassMarginFormSet,
     CustomerGeoProfileForm,
     CustomerNoteForm,
+    CustomerContactForm,
 )
 from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.analytics.services.customer_kpis import CustomerProfileService
@@ -128,6 +131,9 @@ def customer_detail_view(request, pk: str):
     customer_notes = service.get_customer_notes(customer=customer)
     note_form = CustomerNoteForm()
 
+    customer_contacts = service.get_customer_contacts(customer=customer)
+    contact_form = CustomerContactForm()
+
     context = {
         'customer': customer,
         'filter': profile_filter,
@@ -137,6 +143,8 @@ def customer_detail_view(request, pk: str):
         'can_edit_geo_profile': can_edit_partially,
         'customer_notes': customer_notes,
         'note_form': note_form,
+        'customer_contacts': customer_contacts,
+        'contact_form': contact_form,
     }
     return render(request, template, context)
 
@@ -362,6 +370,124 @@ def customer_add_note_view(request, pk: str):
             messages.error(request, f"Error al guardar la nota: {str(e)}")
     else:
         messages.error(request, "Por favor completa el contenido de la nota.")
+
+    return redirect('customers:customer_detail_view', pk=pk)
+
+@login_required
+@require_POST
+def customer_add_contact_view(request, pk: str):
+    """
+    view for creating a new contact for the customer
+    """
+    service = CustomersService(user=request.user)
+    try:
+        customer = service.read_customer(pk=pk)
+    except (CustomerNotFound, PermissionsError) as e:
+        messages.error(request, str(e))
+        return redirect('customers:customer_list_view')
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al cargar el cliente: {str(e)}")
+        return redirect('customers:customer_list_view')
+
+    if not service.can_edit_partially(customer):
+        messages.error(request, "No tienes permisos para agregar contactos a este cliente.")
+        return redirect('customers:customer_detail_view', pk=pk)
+
+    form = CustomerContactForm(request.POST)
+    if form.is_valid():
+        try:
+            service.add_customer_contact(
+                customer=customer,
+                name=form.cleaned_data['name'],
+                role=form.cleaned_data['role'],
+                phone=form.cleaned_data.get('phone'),
+                mobile=form.cleaned_data.get('mobile'),
+                email=form.cleaned_data.get('email'),
+                is_primary=form.cleaned_data.get('is_primary', False),
+                notes=form.cleaned_data.get('notes'),
+            )
+            messages.success(request, f'Contacto "{form.cleaned_data["name"].title()}" agregado exitosamente.')
+        except (PermissionsError, ValidationError) as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f"Error al guardar el contacto: {str(e)}")
+    else:
+        error_msgs = [f"{errs[0]}" for field, errs in form.errors.items()]
+        messages.error(request, f"Error en los datos del contacto: {', '.join(error_msgs)}")
+
+    return redirect('customers:customer_detail_view', pk=pk)
+
+@login_required
+@require_POST
+def customer_update_contact_view(request, pk: str, contact_id: int):
+    """
+    view for updating an existing contact of the customer
+    """
+    service = CustomersService(user=request.user)
+    try:
+        customer = service.read_customer(pk=pk)
+    except (CustomerNotFound, PermissionsError) as e:
+        messages.error(request, str(e))
+        return redirect('customers:customer_list_view')
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al cargar el cliente: {str(e)}")
+        return redirect('customers:customer_list_view')
+
+    if not service.can_edit_partially(customer):
+        messages.error(request, "No tienes permisos para editar contactos de este cliente.")
+        return redirect('customers:customer_detail_view', pk=pk)
+
+    form = CustomerContactForm(request.POST)
+    if form.is_valid():
+        try:
+            service.update_customer_contact(
+                contact=contact_id,
+                name=form.cleaned_data['name'],
+                role=form.cleaned_data['role'],
+                phone=form.cleaned_data.get('phone'),
+                mobile=form.cleaned_data.get('mobile'),
+                email=form.cleaned_data.get('email'),
+                is_primary=form.cleaned_data.get('is_primary', False),
+                notes=form.cleaned_data.get('notes'),
+            )
+            messages.success(request, f'Contacto "{form.cleaned_data["name"]}" actualizado exitosamente.')
+        except (CustomerContactNotFound, PermissionsError, ValidationError) as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f"Error al actualizar el contacto: {str(e)}")
+    else:
+        error_msgs = [f"{errs[0]}" for field, errs in form.errors.items()]
+        messages.error(request, f"Error en los datos del contacto: {', '.join(error_msgs)}")
+
+    return redirect('customers:customer_detail_view', pk=pk)
+
+@login_required
+@require_POST
+def customer_delete_contact_view(request, pk: str, contact_id: int):
+    """
+    view for deleting an existing contact of the customer
+    """
+    service = CustomersService(user=request.user)
+    try:
+        customer = service.read_customer(pk=pk)
+    except (CustomerNotFound, PermissionsError) as e:
+        messages.error(request, str(e))
+        return redirect('customers:customer_list_view')
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al cargar el cliente: {str(e)}")
+        return redirect('customers:customer_list_view')
+
+    if not service.can_edit_partially(customer):
+        messages.error(request, "No tienes permisos para eliminar contactos de este cliente.")
+        return redirect('customers:customer_detail_view', pk=pk)
+
+    try:
+        service.delete_customer_contact(contact=contact_id)
+        messages.success(request, "Contacto eliminado correctamente.")
+    except (CustomerContactNotFound, PermissionsError) as e:
+        messages.error(request, str(e))
+    except Exception as e:
+        messages.error(request, f"Error al eliminar el contacto: {str(e)}")
 
     return redirect('customers:customer_detail_view', pk=pk)
 

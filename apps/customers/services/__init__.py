@@ -5,6 +5,7 @@ from .customers import (
     PermissionsError,
     CustomerNotFound,
     CustomerTypeNotFound,
+    CustomerContactNotFound,
 )
 from .accounts_receivables import (
     AccountsReceivablesService,
@@ -20,6 +21,7 @@ __all__ = [
     'PermissionsError',
     'CustomerNotFound',
     'CustomerTypeNotFound',
+    'CustomerContactNotFound',
     'AccountsReceivablesService',
     'AccountsReceivablesStats',
     'AccountsReceivablesExports',

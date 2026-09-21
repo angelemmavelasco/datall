@@ -8,6 +8,7 @@ from .models import (
     CustomerClassMargin,
     CustomerNote,
     CustomerNoteCategoryChoices,
+    CustomerContact,
 )
 
 
@@ -169,5 +170,79 @@ class CustomerNoteForm(forms.ModelForm):
         if content:
             return content.strip()
         return content
+
+
+class CustomerContactForm(forms.ModelForm):
+    class Meta:
+        model = CustomerContact
+        fields = ['name', 'role', 'phone', 'mobile', 'email', 'is_primary', 'notes']
+        labels = {
+            'name': 'Nombre del contacto',
+            'role': 'Función / Cargo',
+            'phone': 'Teléfono directo / oficina',
+            'mobile': 'Celular / WhatsApp',
+            'email': 'Correo electrónico',
+            'is_primary': 'Contacto principal',
+            'notes': 'Notas o especificaciones',
+        }
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'placeholder': 'Ej. Lic. Carlos Mendoza',
+                'class': 'w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
+            }),
+            'role': forms.Select(attrs={
+                'class': 'w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
+            }),
+            'phone': forms.TextInput(attrs={
+                'placeholder': 'Ej. 55 1234 5678 ext 102',
+                'class': 'w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
+            }),
+            'mobile': forms.TextInput(attrs={
+                'placeholder': 'Ej. 55 9876 5432',
+                'class': 'w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
+            }),
+            'email': forms.EmailInput(attrs={
+                'placeholder': 'carlos.mendoza@empresa.com',
+                'class': 'w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
+            }),
+            'is_primary': forms.CheckboxInput(attrs={
+                'class': 'rounded border-border',
+            }),
+            'notes': forms.TextInput(attrs={
+                'placeholder': 'Ej. Horario de atención: 9:00 a 14:00 hrs',
+                'class': 'w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
+            }),
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if name:
+            return name.strip().title()
+        return name
+
+    def clean_phone(self):
+        phone = self.cleaned_data.get('phone')
+        if phone:
+            return phone.strip()
+        return None
+
+    def clean_mobile(self):
+        mobile = self.cleaned_data.get('mobile')
+        if mobile:
+            return mobile.strip()
+        return None
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email:
+            return email.strip().lower()
+        return None
+
+    def clean_notes(self):
+        notes = self.cleaned_data.get('notes')
+        if notes:
+            return notes.strip()
+        return None
+
 
 

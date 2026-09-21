@@ -232,6 +232,106 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
     </div>
 
     <div class="flex justify-between items-center pb-2 border-b border-border">
+        <p class="text-title">Directorio de contactos del cliente</p>
+        {% if can_edit_customer or can_edit_partially %}
+            <button type="button" onclick="openCreateContactModal()" class="hover:text-hover transition-colors flex items-center gap-1 text-xs text-secondary cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 12h8"/>
+                    <path d="M12 8v8"/>
+                </svg>
+                <span>Agregar contacto</span>
+            </button>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title md:col-span-2">{{ customer_contacts|length|default:0|floatformat:0|intcomma }} contacto(s) registrado(s)</span>
+
+        <ul class="md:col-span-2 w-full max-h-64 overflow-y-auto rounded bg-page p-1 flex flex-col gap-2 border border-border">
+            {% for contact in customer_contacts %}
+                <li class="pb-2 border-b border-border last:border-b-0 last:pb-0 {% if contact.is_primary %}bg-amber-500/5 -mx-1 px-1 rounded border-l-2 border-l-amber-500{% endif %}">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            {% if contact.is_primary %}
+                                <span class="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-500 font-semibold" title="Contacto principal">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                    Principal
+                                </span>
+                            {% endif %}
+                            <span class="text-xs font-semibold text-title">
+                                {{ contact.name }}
+                            </span>
+                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded border
+                                {% if contact.role == 'owner' %}bg-amber-500/10 border-amber-500/30 text-amber-500
+                                {% elif contact.role == 'purchasing' %}bg-blue-500/10 border-blue-500/30 text-blue-500
+                                {% elif contact.role == 'collection' %}bg-purple-500/10 border-purple-500/30 text-purple-500
+                                {% elif contact.role == 'warehouse' %}bg-emerald-500/10 border-emerald-500/30 text-emerald-500
+                                {% else %}bg-container border-border text-title{% endif %}">
+                                {{ contact.get_role_display }}
+                            </span>
+                        </div>
+
+                        {% if can_edit_customer or can_edit_partially %}
+                            <div class="flex items-center gap-1">
+                                <button type="button"
+                                    onclick="openEditContactModal('{{ contact.pk }}', '{{ contact.name|escapejs }}', '{{ contact.role }}', '{{ contact.phone|default:''|escapejs }}', '{{ contact.mobile|default:''|escapejs }}', '{{ contact.email|default:''|escapejs }}', {{ contact.is_primary|yesno:'true,false' }}, '{{ contact.notes|default:''|escapejs }}')"
+                                    class="text-secondary hover:text-hover p-1 transition-colors cursor-pointer"
+                                    title="Editar contacto">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+                                </button>
+                                <form method="POST" action="{% url 'customers:customer_delete_contact_view' customer.pk contact.pk %}" onsubmit="return confirm('¿Estás seguro de eliminar al contacto {{ contact.name|escapejs }}?');" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="text-secondary hover:text-rose-500 p-1 transition-colors cursor-pointer">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                    </button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex items-center gap-3 flex-wrap text-xs text-secondary mt-1">
+                        {% if contact.phone %}
+                            <a href="tel:{{ contact.phone }}" class="inline-flex items-center gap-1 hover:text-hover font-mono">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-phone"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                <span>{{ contact.phone }}</span>
+                            </a>
+                        {% endif %}
+
+                        {% if contact.mobile %}
+                            <a href="https://wa.me/{{ contact.mobile|cut:' '|cut:'-'|cut:'+' }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 hover:text-emerald-500 font-mono" title="Enviar WhatsApp">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-smartphone"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+                                <span>{{ contact.mobile }}</span>
+                            </a>
+                        {% endif %}
+
+                        {% if contact.email %}
+                            <a href="mailto:{{ contact.email }}" class="inline-flex items-center gap-1 hover:text-hover font-mono">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                                <span>{{ contact.email }}</span>
+                            </a>
+                        {% endif %}
+
+                        {% if not contact.phone and not contact.mobile and not contact.email %}
+                            <span class="italic text-secondary">Sin medios de contacto directos registrados</span>
+                        {% endif %}
+                    </div>
+
+                    {% if contact.notes %}
+                        <div class="text-xs text-body mt-1 bg-container/50 p-1.5 rounded border border-border/50">
+                            {{ contact.notes }}
+                        </div>
+                    {% endif %}
+                </li>
+            {% empty %}
+                <li class="py-4">
+                    {% include 'layouts/data_not_found.html' %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="flex justify-between items-center pb-2 border-b border-border">
         <p class="text-title">Bitácora y notas del cliente</p>
         {% if can_edit_customer or can_edit_partially %}
             <button type="button" onclick="openNoteModal()" class="hover:text-hover transition-colors flex items-center gap-1 text-xs text-secondary cursor-pointer">
@@ -414,10 +514,158 @@ function closeNoteModal() {
     const modal = document.getElementById('noteModal');
     if (modal) modal.classList.add('hidden');
 }
+
+const addContactUrl = "{% url 'customers:customer_add_contact_view' customer.pk %}";
+const baseUpdateContactUrl = "{% url 'customers:customer_update_contact_view' customer.pk 0 %}";
+
+function openCreateContactModal() {
+    const modal = document.getElementById('contactModal');
+    const form = document.getElementById('contactForm');
+    const titleText = document.getElementById('contactModalTitleText');
+    const submitBtnText = document.getElementById('contactSubmitBtnText');
+
+    if (modal && form) {
+        form.action = addContactUrl;
+        if (titleText) titleText.textContent = "Nuevo contacto";
+        if (submitBtnText) submitBtnText.textContent = "Agregar contacto";
+
+        const nameInput = document.getElementById('id_contact_name');
+        const roleInput = document.getElementById('id_contact_role');
+        const phoneInput = document.getElementById('id_contact_phone');
+        const mobileInput = document.getElementById('id_contact_mobile');
+        const emailInput = document.getElementById('id_contact_email');
+        const notesInput = document.getElementById('id_contact_notes');
+        const primaryInput = document.getElementById('id_contact_is_primary');
+
+        if (nameInput) nameInput.value = '';
+        if (roleInput) roleInput.value = 'general';
+        if (phoneInput) phoneInput.value = '';
+        if (mobileInput) mobileInput.value = '';
+        if (emailInput) emailInput.value = '';
+        if (notesInput) notesInput.value = '';
+        if (primaryInput) primaryInput.checked = false;
+
+        modal.classList.remove('hidden');
+        if (nameInput) setTimeout(() => nameInput.focus(), 50);
+    }
+}
+
+function openEditContactModal(contactId, name, role, phone, mobile, email, isPrimary, notes) {
+    const modal = document.getElementById('contactModal');
+    const form = document.getElementById('contactForm');
+    const titleText = document.getElementById('contactModalTitleText');
+    const submitBtnText = document.getElementById('contactSubmitBtnText');
+
+    if (modal && form) {
+        form.action = baseUpdateContactUrl.replace('/0/', `/${contactId}/`);
+        if (titleText) titleText.textContent = "Editar contacto";
+        if (submitBtnText) submitBtnText.textContent = "Guardar cambios";
+
+        const nameInput = document.getElementById('id_contact_name');
+        const roleInput = document.getElementById('id_contact_role');
+        const phoneInput = document.getElementById('id_contact_phone');
+        const mobileInput = document.getElementById('id_contact_mobile');
+        const emailInput = document.getElementById('id_contact_email');
+        const notesInput = document.getElementById('id_contact_notes');
+        const primaryInput = document.getElementById('id_contact_is_primary');
+
+        if (nameInput) nameInput.value = name || '';
+        if (roleInput) roleInput.value = role || 'general';
+        if (phoneInput) phoneInput.value = phone || '';
+        if (mobileInput) mobileInput.value = mobile || '';
+        if (emailInput) emailInput.value = email || '';
+        if (notesInput) notesInput.value = notes || '';
+        if (primaryInput) primaryInput.checked = !!isPrimary;
+
+        modal.classList.remove('hidden');
+        if (nameInput) setTimeout(() => nameInput.focus(), 50);
+    }
+}
+
+function closeContactModal() {
+    const modal = document.getElementById('contactModal');
+    if (modal) modal.classList.add('hidden');
+}
+
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeNoteModal();
+    if (e.key === 'Escape') {
+        closeNoteModal();
+        closeContactModal();
+    }
 });
 </script>
+
+<div id="contactModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs hidden p-4" onclick="if(event.target === this) closeContactModal();">
+    <div class="bg-page border border-border rounded w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between p-3 border-b border-border bg-container">
+            <h3 class="text-sm font-semibold text-title flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-plus preview-icon"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+                <span id="contactModalTitleText">Nuevo contacto</span>
+            </h3>
+            <button type="button" onclick="closeContactModal()" class="text-secondary hover:text-hover cursor-pointer transition-colors p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+
+        <form id="contactForm" method="POST" action="{% url 'customers:customer_add_contact_view' customer.pk %}" class="flex flex-col gap-3 p-4 overflow-y-auto">
+            {% csrf_token %}
+
+            <div class="flex flex-col gap-1">
+                <label for="id_contact_name" class="text-xs text-title font-medium flex items-center gap-1">
+                    Nombre del contacto
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 lucide lucide-asterisk"><path d="M12 6v12"/><path d="M17.196 9 6.804 15"/><path d="m6.804 9 10.392 6"/></svg>
+                </label>
+                {% render_field contact_form.name id="id_contact_name" required="required" placeholder="Ej. Lic. Carlos Mendoza" class="w-full bg-container border border-border rounded p-1.5 text-xs text-title focus:outline-none focus:border-strong" %}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1">
+                    <label for="id_contact_role" class="text-xs text-title font-medium">Función o Área</label>
+                    {% render_field contact_form.role id="id_contact_role" class="w-full bg-container border border-border rounded p-1.5 text-xs text-title focus:outline-none focus:border-strong" %}
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label for="id_contact_email" class="text-xs text-title font-medium">Correo Electrónico</label>
+                    {% render_field contact_form.email id="id_contact_email" type="email" placeholder="carlos@empresa.com" class="w-full bg-container border border-border rounded p-1.5 text-xs text-title focus:outline-none focus:border-strong" %}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1">
+                    <label for="id_contact_phone" class="text-xs text-title font-medium">Teléfono oficina / directo</label>
+                    {% render_field contact_form.phone id="id_contact_phone" placeholder="55 1234 5678 ext 102" class="w-full bg-container border border-border rounded p-1.5 text-xs text-title focus:outline-none focus:border-strong" %}
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label for="id_contact_mobile" class="text-xs text-title font-medium">Celular / WhatsApp</label>
+                    {% render_field contact_form.mobile id="id_contact_mobile" placeholder="55 9876 5432" class="w-full bg-container border border-border rounded p-1.5 text-xs text-title focus:outline-none focus:border-strong" %}
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-1">
+                <label for="id_contact_notes" class="text-xs text-title font-medium">Notas u observaciones</label>
+                {% render_field contact_form.notes id="id_contact_notes" placeholder="Ej. Horario de atención: 9:00 a 14:00 hrs..." class="w-full bg-container border border-border rounded p-1.5 text-xs text-body focus:outline-none focus:border-strong" %}
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+                {% render_field contact_form.is_primary id="id_contact_is_primary" class="rounded border-border" %}
+                <label for="id_contact_is_primary" class="text-xs text-secondary select-none cursor-pointer flex items-center gap-1">
+                    <span>Marcar como contacto principal de este cliente</span>
+                </label>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-border mt-2">
+                <button type="button" onclick="closeContactModal()" class="border border-border text-secondary hover:bg-hover px-3 py-1.5 rounded text-xs transition-colors cursor-pointer">
+                    Cancelar
+                </button>
+                <button type="submit" class="bg-container border border-border text-strong hover:bg-hover px-4 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check preview-icon"><circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/></svg>
+                    <span id="contactSubmitBtnText">Confirmar</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endif %}
 
 {% endblock %}
