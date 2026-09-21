@@ -312,7 +312,8 @@ class CustomerKpisService:
             clean_tx
             .filter(
                 customer_id__in=customer_ids,
-                sale_date__gte=date(self.previous_year, 1, 1),
+                sale_date__gte=self.date_start,
+                sale_date__lte=self.date_end,
                 net_amount__gt=0
             )
             .values_list('customer_id', 'sale_date')
@@ -361,7 +362,6 @@ class CustomerKpisService:
 
         for cid in customer_ids:
             c_metrics = metrics_map.get(cid, {})
-            # Filtrar semanas que sean >= 0; las semanas que sean menores a 0 quedan en ceros
             raw_w1 = c_metrics.get('w1_net') or Decimal('0.00')
             raw_w2 = c_metrics.get('w2_net') or Decimal('0.00')
             raw_w3 = c_metrics.get('w3_net') or Decimal('0.00')
@@ -424,8 +424,8 @@ class CustomerKpisService:
             clean_tx
             .filter(
                 customer_id__in=customer_ids,
-                sale_date__gte=self.first_day_q,
-                sale_date__lte=self.last_day_q,
+                sale_date__gte=self.date_start,
+                sale_date__lte=self.date_end,
                 net_amount__gt=0,
                 product_class_id__in=self.relevant_classes
             )
@@ -1177,6 +1177,8 @@ class CustomerProfileService(CustomerKpisService):
         if not self.customer:
             return None
 
+        self.customer.date_start = self.date_start
+        self.customer.date_end = self.date_end
         self._set_static_categories()
         self._set_behavior_kpis()
         self._set_collections_kpis()
@@ -1220,46 +1222,22 @@ class CustomerProfileService(CustomerKpisService):
         '''
         calculates purchase frequency, consumed classes count, and top class in previous quarter.
         '''
-        filtered_txs = self.transactions_qs.filter(customer=self.customer)
+        #purchase frequency delegating to dynamic _calculate_sale_frequency
+        freq_map = self._calculate_sale_frequency([self.customer.id])
+        c_freq = freq_map.get(self.customer.id, {'name': 'nula', 'days': 0})
+        freq_name = c_freq['name']
+        avg_interval = c_freq['days']
 
-        #purchase frequency
-        dates = list(
-            filtered_txs.filter(net_amount__gt=0)
-            .order_by('sale_date')
-            .values_list('sale_date', flat=True)
-            .distinct()
-        )
-
-        if len(dates) < 2:
-            self.customer.frequency = 'nula'
-            self.customer.frequency_days = 0
-            self.customer.purchase_frequency_category = 'Nula'
-            self.customer.purchase_frequency_days = ''
-        else:
-            intervals = [(dates[i] - dates[i-1]).days for i in range(1, len(dates))]
-            avg_interval = round(sum(intervals) / len(intervals)) if intervals else 0
-
-            freq_name = 'atipico'
-            for name, max_days in self.frequency_categories:
-                if avg_interval <= max_days:
-                    freq_name = name
-                    break
-
-            self.customer.frequency = freq_name
-            self.customer.frequency_days = avg_interval
-            self.customer.purchase_frequency_category = freq_name.title()
-            self.customer.purchase_frequency_days = f"cada {avg_interval} días"
+        self.customer.frequency = freq_name
+        self.customer.frequency_days = avg_interval
+        self.customer.purchase_frequency_category = freq_name.title()
+        self.customer.purchase_frequency_days = f"cada {avg_interval} días" if avg_interval > 0 else ''
 
         #consumed relevant classes count
-        classes_count = (
-            filtered_txs.filter(
-                net_amount__gt=0,
-                product_class_id__in=self.relevant_classes
-            )
-            .values('product_class_id')
-            .distinct()
-            .count()
-        )
+        classes_map = self._calculate_product_classes_consumption([self.customer.id])
+        classes_dict = classes_map.get(self.customer.id, {})
+        self.customer.product_classes_consumed = classes_dict
+        classes_count = len(classes_dict)
         self.customer.consumed_classes = classes_count
         self.customer.product_classes_with_consumption = classes_count
 

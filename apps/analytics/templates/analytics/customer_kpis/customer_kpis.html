@@ -45,22 +45,22 @@ KPIs por Clientes
 {% block content %}
     <div class="flex flex-col w-full gap-4">
         <p class="text-title pb-1 border-b border-border">
-            Resumen de contribución {{ selected_start_contrib }} - {{ selected_end_contrib }}
+           Métricas calculadas desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }} <span class="cursor-pointer select-none" title="Métricas calculadas desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}:&#10;• Clientes registrados&#10;• Clientes con consumo&#10;• Clientes sin consumo&#10;• Venta neta / utilidad&#10;• Frecuencia de compra&#10;• Hábito de compra semanal&#10;• Métricas de contribución (todas)&#10;• Clases con consumo">ⓘ</span>
         </p>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <a class="border border-border rounded bg-container p-2  hover:scale-101 transition-transform duration-300 ">
                 <span class="text-sm text-title">
-                    Clientes registrados
+                    Clientes registrados <span class="cursor-pointer select-none" title="Total de clientes registrados en la cartera dentro de los filtros seleccionados, dados de alta hasta la fecha fin del periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">ⓘ</span>
                 </span><br>
                 <span class="text-xl text-title">
                     {{ kpis.registered_customers|default:0|floatformat:0|intcomma }}
                 </span>
             </a>
 
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <a class="border border-border rounded bg-container p-2  hover:scale-101 transition-transform duration-300 ">
                 <span class="text-sm text-title">
-                    Clientes con consumo
+                    Clientes con consumo <span class="cursor-pointer select-none" title="Cantidad y porcentaje de clientes registrados que realizaron al menos una compra dentro del periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">ⓘ</span>
                 </span><br>
                 <span class="text-xl text-emerald-500">
                     {{ kpis.customers_with_consumption|default:0|floatformat:0|intcomma }}
@@ -70,9 +70,9 @@ KPIs por Clientes
                 </span>
             </a>
 
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <a class="border border-border rounded bg-container p-2  hover:scale-101 transition-transform duration-300 ">
                 <span class="text-sm text-title">
-                    Clientes sin consumo
+                    Clientes sin consumo <span class="cursor-pointer select-none" title="Cantidad y porcentaje de clientes registrados que no registraron compras dentro del periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">ⓘ</span>
                 </span><br>
                 <span class="text-xl text-red-500">
                     {{ kpis.customers_without_consumption|default:0|floatformat:0|intcomma }}
@@ -82,9 +82,13 @@ KPIs por Clientes
                 </span>
             </a>
 
-            <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <a class="border border-border rounded bg-container p-2  hover:scale-101 transition-transform duration-300 ">
                 <span class="text-sm text-title">
-                    {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}Utilidad{% else %}Venta neta{% endif %}
+                    {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}
+                        Utilidad <span class="cursor-pointer select-none" title="Suma total de la utilidad generada por las compras de los clientes en el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}). Criterio activo de ordenamiento.">ⓘ</span>
+                    {% else %}
+                        Venta neta <span class="cursor-pointer select-none" title="Suma total del importe neto facturado a los clientes en el periodo evaluado tras notas de crédito (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}). Criterio activo de ordenamiento.">ⓘ</span>
+                    {% endif %}
                 </span><br>
                 <span class="text-xl {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}text-emerald-500{% else %}text-blue-500{% endif %}">
                     $ {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}{{ kpis.profit|default:0|floatformat:2|intcomma }}{% else %}{{ kpis.net_amount|default:0|floatformat:2|intcomma }}{% endif %}
@@ -107,85 +111,26 @@ KPIs por Clientes
                         <th colspan="4" class="seccion-metricas p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Métricas de consumo</th>
 
 
-                        <!-- metricas de contribución y filtro desplegable -->
-                        <th colspan="3" class="p-1 border-r border-border sticky top-0 z-30 bg-page h-8 relative whitespace-nowrap">
-                            <details class="group relative inline-block">
-                                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center gap-2 justify-center cursor-pointer select-none hover:text-primary transition-colors">
-                                    <span>
-                                        Métricas de contribución del {{ selected_start_contrib|date:"Y-m-d" }} al {{ selected_end_contrib|date:"Y-m-d" }}
-                                    </span>
-                                    <span class="p-1 rounded transition-colors hover:text-hover" title="Configurar análisis de contribución">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                            class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
-                                            <path d="M10 5H3" />
-                                            <path d="M12 19H3" />
-                                            <path d="M14 3v4" />
-                                            <path d="M16 17v4" />
-                                            <path d="M21 12h-9" />
-                                            <path d="M21 19h-5" />
-                                            <path d="M21 5h-7" />
-                                            <path d="M8 10v4" />
-                                            <path d="M8 12H3" />
-                                        </svg>
-                                    </span>
-                                </summary>
-                                
-                                <div class="absolute left-1/2 -translate-x-1/2 top-full mt-8 w-80 p-2 bg-page border border-border rounded text-left font-normal z-50 normal-case">
-                                    <form method="get" action="{% url 'analytics:customer_kpis_view' %}" class="flex flex-col gap-3">
-                                        {% for key, values in request.GET.lists %}
-                                            {% if key != 'order_contrib' and key != 'start_contrib' and key != 'end_contrib' and key != 'page' %}
-                                                {% for val in values %}
-                                                    <input type="hidden" name="{{ key }}" value="{{ val }}">
-                                                {% endfor %}
-                                            {% endif %}
-                                        {% endfor %}
-
-                                        <div class="flex items-center justify-between border-b border-border pb-1.5">
-                                            <span class="font-semibold text-title text-xs">Configurar contribución</span>
-                                            <span class="text-[10px] text-muted font-mono">Criterio & Periodo</span>
-                                        </div>
-
-                                        {% if not request.user|has_group:"vendedor" %}
-                                        <div class="flex flex-col gap-1">
-                                            <label class="text-[11px] font-semibold text-title">Ordenar y evaluar por:</label>
-                                            <div class="grid grid-cols-2 gap-2">
-                                                <label class="flex items-center gap-1.5 p-1.5 rounded border border-border bg-page hover:bg-hover cursor-pointer text-xs">
-                                                    <input type="radio" name="order_contrib" value="net_amount" {% if order_contrib == 'net_amount' or not order_contrib %}checked{% endif %} class="accent-primary">
-                                                    <span class="text-title">Venta neta</span>
-                                                </label>
-                                                <label class="flex items-center gap-1.5 p-1.5 rounded border border-border bg-page hover:bg-hover cursor-pointer text-xs">
-                                                    <input type="radio" name="order_contrib" value="profit" {% if order_contrib == 'profit' %}checked{% endif %} class="accent-primary">
-                                                    <span class="text-title">Utilidad</span>
-                                                </label>
-                                            </div>
-                                        </div>
-                                        {% else %}
-                                        <input type="hidden" name="order_contrib" value="net_amount">
-                                        {% endif %}
-
-                                        <div class="flex flex-col gap-1">
-                                            <label class="text-[11px] font-semibold text-title">Periodo de análisis:</label>
-                                            <div class="grid grid-cols-2 gap-2">
-                                                <div class="flex flex-col gap-0.5">
-                                                    <span class="text-[10px] text-muted">Desde:</span>
-                                                    <input type="date" name="start_contrib" value="{{ selected_start_contrib|date:'Y-m-d' }}" class="w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
-                                                </div>
-                                                <div class="flex flex-col gap-0.5">
-                                                    <span class="text-[10px] text-muted">Hasta:</span>
-                                                    <input type="date" name="end_contrib" value="{{ selected_end_contrib|date:'Y-m-d' }}" class="w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="pt-1 border-t border-border">
-                                            <button type="submit" class="w-full bg-container border border-border text-strong hover:bg-hover py-1.5 px-3 rounded text-xs transition-colors cursor-pointer text-center font-medium">
-                                                Aplicar filtros
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </details>
+                        <!-- metricas de contribución -->
+                        <th colspan="3" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">
+                            <span class="inline-flex items-center gap-1.5 justify-center">
+                                Métricas de contribución ({{ selected_start_contrib|date:"d/m/Y" }} al {{ selected_end_contrib|date:"d/m/Y" }})
+                                <button type="button" onclick="toggleFilters()" class="hover:text-hover text-muted transition-colors cursor-pointer" title="Configurar periodo o criterio en el panel de filtros">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                        class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal">
+                                        <path d="M10 5H3" />
+                                        <path d="M12 19H3" />
+                                        <path d="M14 3v4" />
+                                        <path d="M16 17v4" />
+                                        <path d="M21 12h-9" />
+                                        <path d="M21 19h-5" />
+                                        <path d="M21 5h-7" />
+                                        <path d="M8 10v4" />
+                                        <path d="M8 12H3" />
+                                    </svg>
+                                </button>
+                            </span>
                         </th>
 
                         <th colspan="12"
@@ -198,71 +143,71 @@ KPIs por Clientes
                         <!-- identificacion -->
 
                         <th class="min-w-[240px] max-w-[240px] w-[240px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-0 z-35 bg-page">
-                            Cliente
+                            Cliente <span class="cursor-pointer select-none" title="Cliente: Identificación del cliente (ID y nombre/razón social con acceso a su perfil), junto con su ruta y gerencia asignadas actualmente">ⓘ</span>
                         </th>
                         <!-- segmentacion -->
 
                         <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Tipo de cliente
+                            Tipo de cliente <span class="cursor-pointer select-none" title="Tipo de cliente: Clasificación del cliente según su rubro, giro comercial o industria">ⓘ</span>
                         </th>
 
                         <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Categoría
+                            Categoría <span class="cursor-pointer select-none" title="Categoría: Clasificación del cliente (Diamante, Oro, AA, A, C) basada en su promedio mensual de consumo neto durante el último trimestre cerrado">ⓘ</span>
                         </th>
 
                         <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Frecuencia de compra
+                            Frecuencia de compra <span class="cursor-pointer select-none" title="Frecuencia de compra: Clasificación basada en el promedio de días transcurridos entre compras con venta mayor a $0 en el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">ⓘ</span>
                         </th>
 
                         <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Hábito de compra semanal
+                            Hábito de compra semanal <span class="cursor-pointer select-none" title="Hábito de compra semanal: Distribución porcentual de las compras del cliente divididas en 4 semanas por mes durante el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• Sem 1: Días 1 al 7&#10;• Sem 2: Días 8 al 14&#10;• Sem 3: Días 15 al 21&#10;• Sem 4: Días 22 al fin de mes">ⓘ</span>
                         </th>
 
                         <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Líder de opinión
+                            Líder de opinión <span class="cursor-pointer select-none" title="Líder de opinión: Clientes que cuentan con alta influencia en el sector, no necesariamente asociados a un alto volumen de compras">ⓘ</span>
                         </th>
 
                         <!-- cobranza -->
                         <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Crédito y uso
+                            Crédito y uso <span class="cursor-pointer select-none" title="Crédito y uso: Límite de crédito asignado al cliente y porcentaje actual de uso sobre su saldo total deudor (Saldo total / Límite de crédito)">ⓘ</span>
                         </th>
 
                         <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Saldo al corriente
+                            Saldo al corriente <span class="cursor-pointer select-none" title="Saldo al corriente: Monto de deuda viva en cuentas por cobrar que aún se encuentra dentro del plazo de vencimiento al día de hoy">ⓘ</span>
                         </th>
 
                         <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Saldo vencido
+                            Saldo vencido <span class="cursor-pointer select-none" title="Saldo vencido: Monto de deuda en cuentas por cobrar cuya fecha límite de pago ya expiró y sigue pendiente de liquidar al día de hoy">ⓘ</span>
                         </th>
 
                         <!-- métricas de consumo y promedios -->
                         <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Convenios activos
+                            Convenios activos <span class="cursor-pointer select-none" title="Convenios activos: Acuerdos comerciales vigentes donde el cliente obtiene beneficios preferenciales a cambio de un compromiso formal de consumo con periodicidad estricta">ⓘ</span>
                         </th>
 
                         <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Clases con consumo
+                            Clases con consumo <span class="cursor-pointer select-none" title="Número de clases de producto relevantes con ventas mayores a $0 en el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">ⓘ</span>
                         </th>
 
                         <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Promedio anual
+                            Promedio anual <span class="cursor-pointer select-none" title="Promedio anual: Comparativa del consumo promedio mensual del año anterior vs. año actual. El divisor pondera únicamente los meses activos según la fecha de alta del cliente (por ejemplo, si se registró en noviembre, se promedia entre 2 meses)">ⓘ</span>
                         </th>
 
                         <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Promedio último trimestre
+                            Promedio último trimestre <span class="cursor-pointer select-none" title="Promedio último trimestre: Consumo promedio mensual durante el último trimestre cerrado completo, ponderando los meses activos si el cliente fue dado de alta dentro de dicho trimestre">ⓘ</span>
                         </th>
 
                         <!-- metricas de contribución -->
                         <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Contribución monetaria
+                            Contribución monetaria <span class="cursor-pointer select-none" title="Contribución monetaria: Dinero generado por el cliente en el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• Venta neta: Facturación total neta descontando notas de crédito&#10;• Utilidad: Ganancia bruta real generada (Venta neta menos costo de mercancía)">ⓘ</span>
                         </th>
 
                         <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Contribución porcentual
+                            Contribución porcentual <span class="cursor-pointer select-none" title="Contribución porcentual: Participación del cliente sobre los totales globales del periodo (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• % Venta neta: Porcentaje de las ventas globales aportado por este cliente&#10;• % Utilidad: Porcentaje de la ganancia global aportado por este cliente">ⓘ</span>
                         </th>
 
                         <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Contribución acumulada
+                            Contribución acumulada <span class="cursor-pointer select-none" title="Contribución acumulada (Análisis de Pareto): Suma progresiva de los clientes ordenados de mayor a menor en el periodo (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• % Acumulado: Porcentaje acumulado de venta o utilidad hasta esta fila (resaltando en naranja al alcanzar el 80%)&#10;• Clientes y % Cartera: Total acumulado de clientes y porcentaje que representan de la cartera activa">ⓘ</span>
                         </th>
 
                         {% for month in month_headers %}
@@ -290,10 +235,57 @@ KPIs por Clientes
       class="flex flex-col gap-4">
 
 
-    <!-- Mantener parámetros de contribución activos -->
-    <input type="hidden" name="order_contrib" value="{{ order_contrib|default:'net_amount' }}">
-    <input type="hidden" name="start_contrib" value="{{ selected_start_contrib|date:'Y-m-d' }}">
-    <input type="hidden" name="end_contrib" value="{{ selected_end_contrib|date:'Y-m-d' }}">
+    <!-- Periodo de análisis y criterio de contribución -->
+    <div class="flex flex-col gap-2 p-2 rounded border border-border bg-page">
+        <div class="flex items-center justify-between border-b border-border pb-1">
+            <span class="font-semibold text-title text-xs flex items-center gap-1">
+                Periodo de análisis
+                <span class="cursor-pointer select-none text-muted"
+                      title="Rango de fechas para evaluar las métricas dinámicas del reporte:&#10;• Venta neta y Utilidad global&#10;• Clientes registrados (dados de alta hasta la fecha fin)&#10;• Clientes con y sin consumo&#10;• Frecuencia de compra&#10;• Hábito de compra semanal&#10;• Clases con consumo&#10;• Métricas de contribución monetaria, porcentual y acumulada">ⓘ</span>
+            </span>
+            <span class="text-[10px] text-muted font-mono">Dinámico</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+            <div class="flex flex-col gap-0.5">
+                <label for="id_start_contrib" class="text-[11px] text-muted">Desde:</label>
+                <input type="date" id="id_start_contrib" name="start_contrib"
+                       value="{{ selected_start_contrib|date:'Y-m-d' }}"
+                       class="w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
+            </div>
+            <div class="flex flex-col gap-0.5">
+                <label for="id_end_contrib" class="text-[11px] text-muted">Hasta:</label>
+                <input type="date" id="id_end_contrib" name="end_contrib"
+                       value="{{ selected_end_contrib|date:'Y-m-d' }}"
+                       class="w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
+            </div>
+        </div>
+
+        {% if not request.user|has_group:"vendedor" %}
+        <div class="flex flex-col gap-1 mt-1 pt-1 border-t border-border">
+            <label class="text-[11px] font-semibold text-title flex items-center gap-1">
+                Evaluar y ordenar contribución por:
+                <span class="cursor-pointer select-none text-muted" title="Determina si el listado y el porcentaje acumulado de Pareto se evalúan en función de la Venta Neta o de la Utilidad Bruta">ⓘ</span>
+            </label>
+            <div class="grid grid-cols-2 gap-2">
+                <label class="flex items-center gap-1 p-1 rounded border border-border bg-container hover:bg-hover cursor-pointer text-xs">
+                    <input type="radio" name="order_contrib" value="net_amount" {% if order_contrib == 'net_amount' or not order_contrib %}checked{% endif %} class="accent-primary">
+                    <span class="text-title">Venta neta</span>
+                </label>
+                <label class="flex items-center gap-1 p-1 rounded border border-border bg-container hover:bg-hover cursor-pointer text-xs">
+                    <input type="radio" name="order_contrib" value="profit" {% if order_contrib == 'profit' %}checked{% endif %} class="accent-primary">
+                    <span class="text-title">Utilidad</span>
+                </label>
+            </div>
+        </div>
+        {% else %}
+        <input type="hidden" name="order_contrib" value="net_amount">
+        {% endif %}
+
+        <p class="text-[10px] text-muted leading-tight mt-0.5">
+            <strong>Métricas afectadas por este periodo:</strong> Venta neta, Utilidad, Clientes con/sin consumo, Frecuencia de compra, Hábito semanal, Clases con consumo y Contribución.
+        </p>
+    </div>
 
     <!-- Búsqueda por cliente -->
     <div class="flex flex-col gap-1">
