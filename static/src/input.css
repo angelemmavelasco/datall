@@ -17,6 +17,8 @@
     --color-hover: var(--theme-hover);
     --color-container: var(--theme-container);
     --color-page: var(--theme-page);
+    --color-brand: var(--theme-brand);
+    --color-neutral-quaternary: var(--theme-neutral-quaternary);
 }
 
 :root {
@@ -28,6 +30,8 @@
     --theme-hover: #5d6e87;
     --theme-container: #f1f5f9;
     --theme-page: #f8fafc;
+    --theme-brand: #2563eb;
+    --theme-neutral-quaternary: #e2e8f0;
 }
 
 :root.dark {
@@ -39,4 +43,6 @@
     --theme-hover: oklch(70.7% 0.022 261.325);
     --theme-container: oklch(18% 0.033 260);
     --theme-page: oklch(13% 0.028 261.692);
+    --theme-brand: #3b82f6;
+    --theme-neutral-quaternary: oklch(27.9% 0.041 260.031);
 }

@@ -45,6 +45,57 @@
         {{ customer.frequency|title }} <br>
         Cada: {{ customer.frequency_days|default:0|floatformat:0|intcomma }} días
     </td>
+
+    <td class="p-1 text-center">
+        {% if customer.habit_has_purchases %}
+        <div class="flex flex-col items-center justify-center w-full max-w-[160px] mx-auto select-none">
+            <div class="flex items-end justify-center w-full h-8 border-b-2 border-slate-700 dark:border-slate-300">
+                <!-- sem1 -->
+                <div class="flex items-end justify-center flex-1 h-full group/bar cursor-pointer"
+                     title="Semana 1 (Días 1 al 7)&#10;• Porcentaje: {{ customer.habit_w1_pct|floatformat:2 }}%&#10;• Cantidad: ${{ customer.buying_habit.w1_net|floatformat:2|intcomma }}">
+                    <div class="w-full transition-colors group-hover/bar:brightness-150 {% if customer.habit_w1_pct > 0 %}bg-[#1976d2] dark:bg-blue-500 {% endif %}"
+                         style="height: {{ customer.habit_w1_pct|stringformat:'.2f' }}%; min-height: {% if customer.habit_w1_pct > 0 %}3px{% else %}0px{% endif %};"></div>
+                </div>
+                <!-- sem2 -->
+                <div class="flex items-end justify-center flex-1 h-full group/bar cursor-pointer -ml-[2px]"
+                     title="Semana 2 (Días 8 al 14)&#10;• Porcentaje: {{ customer.habit_w2_pct|floatformat:2 }}%&#10;• Cantidad: ${{ customer.buying_habit.w2_net|floatformat:2|intcomma }}">
+                    <div class="w-full transition-colors group-hover/bar:brightness-150 {% if customer.habit_w2_pct > 0 %}bg-[#1976d2] dark:bg-blue-500 {% endif %}"
+                         style="height: {{ customer.habit_w2_pct|stringformat:'.2f' }}%; min-height: {% if customer.habit_w2_pct > 0 %}3px{% else %}0px{% endif %};"></div>
+                </div>
+                <!-- sem3 -->
+                <div class="flex items-end justify-center flex-1 h-full group/bar cursor-pointer -ml-[2px]"
+                     title="Semana 3 (Días 15 al 21)&#10;• Porcentaje: {{ customer.habit_w3_pct|floatformat:2 }}%&#10;• Cantidad: ${{ customer.buying_habit.w3_net|floatformat:2|intcomma }}">
+                    <div class="w-full transition-colors group-hover/bar:brightness-150 {% if customer.habit_w3_pct > 0 %}bg-[#1976d2] dark:bg-blue-500 {% endif %}"
+                         style="height: {{ customer.habit_w3_pct|stringformat:'.2f' }}%; min-height: {% if customer.habit_w3_pct > 0 %}3px{% else %}0px{% endif %};"></div>
+                </div>
+                <!-- sem4 -->
+                <div class="flex items-end justify-center flex-1 h-full group/bar cursor-pointer -ml-[2px]"
+                     title="Semana 4 (Días 22 al fin de mes)&#10;• Porcentaje: {{ customer.habit_w4_pct|floatformat:2 }}%&#10;• Cantidad: ${{ customer.buying_habit.w4_net|floatformat:2|intcomma }}">
+                    <div class="w-full transition-colors group-hover/bar:brightness-150 {% if customer.habit_w4_pct > 0 %}bg-[#1976d2] dark:bg-blue-500 {% endif %}"
+                         style="height: {{ customer.habit_w4_pct|stringformat:'.2f' }}%; min-height: {% if customer.habit_w4_pct > 0 %}3px{% else %}0px{% endif %};"></div>
+                </div>
+
+            </div>
+            <!-- eje semanal -->
+            <div class="flex items-center justify-center w-full pt-1">
+                <span class="flex-1 text-center text-[9px] font-bold text-muted dark:text-muted leading-none cursor-pointer hover:text-title transition-colors"
+                      title="Semana 1 (Días 1 al 7)&#10;• Porcentaje: {{ customer.habit_w1_pct|floatformat:2 }}%&#10;• Cantidad: ${{ customer.buying_habit.w1_net|floatformat:2|intcomma }}">S1</span>
+                <span class="flex-1 text-center text-[9px] font-bold text-muted dark:text-muted leading-none cursor-pointer hover:text-title transition-colors"
+                      title="Semana 2 (Días 8 al 14)&#10;• Porcentaje: {{ customer.habit_w2_pct|floatformat:2 }}%&#10;• Cantidad: ${{ customer.buying_habit.w2_net|floatformat:2|intcomma }}">S2</span>
+                <span class="flex-1 text-center text-[9px] font-bold text-muted dark:text-muted leading-none cursor-pointer hover:text-title transition-colors"
+                      title="Semana 3 (Días 15 al 21)&#10;• Porcentaje: {{ customer.habit_w3_pct|floatformat:2 }}%&#10;• Cantidad: ${{ customer.buying_habit.w3_net|floatformat:2|intcomma }}">S3</span>
+                <span class="flex-1 text-center text-[9px] font-bold text-muted dark:text-muted leading-none cursor-pointer hover:text-title transition-colors"
+                      title="Semana 4 (Días 22 al fin de mes)&#10;• Porcentaje: {{ customer.habit_w4_pct|floatformat:2 }}%&#10;• Cantidad: ${{ customer.buying_habit.w4_net|floatformat:2|intcomma }}">S4</span>
+            </div>
+
+        </div>
+        {% else %}
+        <div class="flex items-center justify-center h-10 text-muted text-[11px] italic" title="Sin compras registradas en el periodo seleccionado">
+            - Sin compras -
+        </div>
+        {% endif %}
+    </td>
+
     <td class="p-2 truncate text-center border-r border-border">
         {% if customer.opinion_leader %}
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500 mx-auto"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>

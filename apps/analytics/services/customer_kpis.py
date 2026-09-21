@@ -37,8 +37,7 @@ class CustomerKpisService:
     frequency_categories: list[tuple[str, int]] = field(default_factory=list, init=False)
     relevant_classes: list[tuple[str, str]] = field(default_factory=list, init=False)
     class_names: dict[str, str] = field(default_factory=dict, init=False)
-    _cached_stats: dict[str, Any] | None = field(default=None, init=False)
-    _cached_target_customers: list[Any] | None = field(default=None, init=False)
+    stats: dict[str, Any] | None = field(default=None, init=False)
 
     def __post_init__(self):
         self._init_dates()
@@ -163,17 +162,13 @@ class CustomerKpisService:
         returns customers from self.customers_qs who were registered on or before self.date_end
         (or historical customers with no registration_date).
         """
-        if self._cached_target_customers is not None:
-            return self._cached_target_customers
-
         # filter directly at database level and clear heavy assignment prefetching
         filtered_qs = (
             self.customers_qs
             .filter(Q(registration_date__isnull=True) | Q(registration_date__lte=self.date_end))
             .prefetch_related(None)
         )
-        self._cached_target_customers = list(filtered_qs)
-        return self._cached_target_customers
+        return list(filtered_qs)
 
     def _get_sales_metrics(self, customer_ids: list[Any]) -> dict[Any, dict[str, Any]]:
         """
@@ -208,6 +203,10 @@ class CustomerKpisService:
             'prev_year': Sum('net_amount', filter=Q(sale_date__year=previous_year)),
             'contrib_net': Sum('net_amount', filter=Q(sale_date__gte=self.date_start, sale_date__lte=self.date_end)),
             'contrib_profit': Sum('profit', filter=Q(sale_date__gte=self.date_start, sale_date__lte=self.date_end)),
+            'w1_net': Sum('net_amount', filter=Q(sale_date__gte=self.date_start, sale_date__lte=self.date_end, sale_date__day__lte=7)),
+            'w2_net': Sum('net_amount', filter=Q(sale_date__gte=self.date_start, sale_date__lte=self.date_end, sale_date__day__gte=8, sale_date__day__lte=14)),
+            'w3_net': Sum('net_amount', filter=Q(sale_date__gte=self.date_start, sale_date__lte=self.date_end, sale_date__day__gte=15, sale_date__day__lte=21)),
+            'w4_net': Sum('net_amount', filter=Q(sale_date__gte=self.date_start, sale_date__lte=self.date_end, sale_date__day__gte=22)),
         }
         for m in range(1, 13):
             annotations[f'm_{m}'] = Sum('net_amount', filter=Q(sale_date__year=current_year, sale_date__month=m))
@@ -242,6 +241,14 @@ class CustomerKpisService:
                 c_entry['contrib_net'] = r['contrib_net']
             if r.get('contrib_profit') is not None:
                 c_entry['contrib_profit'] = r['contrib_profit']
+            if r.get('w1_net') is not None:
+                c_entry['w1_net'] = r['w1_net']
+            if r.get('w2_net') is not None:
+                c_entry['w2_net'] = r['w2_net']
+            if r.get('w3_net') is not None:
+                c_entry['w3_net'] = r['w3_net']
+            if r.get('w4_net') is not None:
+                c_entry['w4_net'] = r['w4_net']
             if 'prev_q' in r and r.get('prev_q') is not None:
                 c_entry['prev_q'] = r['prev_q']
             if 'prev_m' in r and r.get('prev_m') is not None:
@@ -335,6 +342,68 @@ class CustomerKpisService:
             freq_map[c_id] = {'name': freq_name, 'days': avg_interval}
 
         return freq_map
+
+    def _calculate_buying_habit(self, customer_ids: list[Any], sales_metrics_map: dict[Any, dict[str, Any]] | None = None) -> dict[Any, dict[str, Any]]:
+        """
+        calculates weekly buying habit distribution across the selected period (date_start to date_end).
+        partitions monthly timeframe into 4 standard weeks:
+          - S1: days 1 to 7
+          - S2: days 8 to 14
+          - S3: days 15 to 21
+          - S4: days 22 to end of month (22 to 31)
+        returns {customer_id: {'has_purchases': bool, 'w1_pct': Decimal, 'w2_pct': Decimal, 'w3_pct': Decimal, 'w4_pct': Decimal, 'w1_net': Decimal, ...}}
+        """
+        if not customer_ids:
+            return {}
+
+        metrics_map = sales_metrics_map if sales_metrics_map is not None else self._get_sales_metrics(customer_ids)
+        habit_map = {}
+
+        for cid in customer_ids:
+            c_metrics = metrics_map.get(cid, {})
+            w1_net = c_metrics.get('w1_net') or Decimal('0.00')
+            w2_net = c_metrics.get('w2_net') or Decimal('0.00')
+            w3_net = c_metrics.get('w3_net') or Decimal('0.00')
+            w4_net = c_metrics.get('w4_net') or Decimal('0.00')
+            total_net = c_metrics.get('contrib_net') or (w1_net + w2_net + w3_net + w4_net)
+
+            if total_net > Decimal('0.00'):
+                w1_pct = round((w1_net / total_net) * Decimal('100.00'), 2)
+                w2_pct = round((w2_net / total_net) * Decimal('100.00'), 2)
+                w3_pct = round((w3_net / total_net) * Decimal('100.00'), 2)
+                w4_pct = round((w4_net / total_net) * Decimal('100.00'), 2)
+
+                weeks = [
+                    ('Semana 1', w1_net),
+                    ('Semana 2', w2_net),
+                    ('Semana 3', w3_net),
+                    ('Semana 4', w4_net),
+                ]
+                dominant_week = max(weeks, key=lambda x: x[1])[0]
+                has_purchases = True
+            else:
+                w1_pct = Decimal('0.00')
+                w2_pct = Decimal('0.00')
+                w3_pct = Decimal('0.00')
+                w4_pct = Decimal('0.00')
+                dominant_week = 'Sin compras'
+                has_purchases = False
+
+            habit_map[cid] = {
+                'has_purchases': has_purchases,
+                'w1_net': w1_net,
+                'w2_net': w2_net,
+                'w3_net': w3_net,
+                'w4_net': w4_net,
+                'total_net': total_net,
+                'w1_pct': w1_pct,
+                'w2_pct': w2_pct,
+                'w3_pct': w3_pct,
+                'w4_pct': w4_pct,
+                'dominant_week': dominant_week,
+            }
+
+        return habit_map
 
     def _calculate_product_classes_consumption(self, customer_ids: list[Any]) -> dict[Any, dict[str, Any]]:
         """
@@ -471,11 +540,11 @@ class CustomerKpisService:
         returns high-level summary KPIs for the header cards in the template.
         only considers target customers registered on or before date_end.
         """
-        if self._cached_stats is not None:
-            return self._cached_stats
+        if self.stats is not None:
+            return self.stats
 
         self.read_customer_kpis()
-        return self._cached_stats
+        return self.stats
 
     def read_customer_kpis(self) -> list:
         """Builds and returns fully enriched customer records sorted by Pareto criterion"""
@@ -485,6 +554,7 @@ class CustomerKpisService:
         #single consolidated sales metrics query + supporting queries
         sales_metrics_map = self._get_sales_metrics(customer_ids)
         freq_sales_map = self._calculate_sale_frequency(customer_ids)
+        habit_sales_map = self._calculate_buying_habit(customer_ids, sales_metrics_map=sales_metrics_map)
         classes_consumption_map = self._calculate_product_classes_consumption(customer_ids)
         collections_map = self._get_collections_info(customer_ids)
         needs_routes = not bool(customers and hasattr(customers[0], 'current_route_id') and customers[0].current_route_id is not None)
@@ -501,9 +571,22 @@ class CustomerKpisService:
             {'month_number': m, 'date': month_dates[m - 1], 'sale': Decimal('0.00'), 'growth_vs_previous_month': Decimal('0.00')}
             for m in range(1, 13)
         ]
-        cat_cache = {c[0]: self.CategoryObj(c[0]) for c in self.categories}
-        cat_cache['c'] = self.CategoryObj('c')
+        cat_map = {c[0]: self.CategoryObj(c[0]) for c in self.categories}
+        cat_map['c'] = self.CategoryObj('c')
         default_freq = {'name': 'nula', 'days': 0}
+        default_habit = {
+            'has_purchases': False,
+            'w1_net': Decimal('0.00'),
+            'w2_net': Decimal('0.00'),
+            'w3_net': Decimal('0.00'),
+            'w4_net': Decimal('0.00'),
+            'total_net': Decimal('0.00'),
+            'w1_pct': Decimal('0.00'),
+            'w2_pct': Decimal('0.00'),
+            'w3_pct': Decimal('0.00'),
+            'w4_pct': Decimal('0.00'),
+            'dominant_week': 'Sin compras',
+        }
         default_col = {
             'current_balance': Decimal('0.00'),
             'overdue_balance': Decimal('0.00'),
@@ -573,14 +656,23 @@ class CustomerKpisService:
             customer.current_year_avg = self._calculate_period_avg(customer.current_year_total, start_curr_y, end_curr_y, reg_date)
 
             # categories according to prev periods sales
-            customer.category_prev_year = cat_cache.get(self._calculate_category(customer.previous_year_avg), cat_cache['c'])
-            customer.category_prev_quarter = cat_cache.get(self._calculate_category(customer.previous_quarter_avg), cat_cache['c'])
-            customer.category_prev_month = cat_cache.get(self._calculate_category(customer.previous_month_total), cat_cache['c'])
+            customer.category_prev_year = cat_map.get(self._calculate_category(customer.previous_year_avg), cat_map['c'])
+            customer.category_prev_quarter = cat_map.get(self._calculate_category(customer.previous_quarter_avg), cat_map['c'])
+            customer.category_prev_month = cat_map.get(self._calculate_category(customer.previous_month_total), cat_map['c'])
 
             # sale freq
             c_freq = freq_sales_map.get(c_id, default_freq)
             customer.frequency = c_freq['name']
             customer.frequency_days = c_freq['days']
+
+            # buying habit
+            c_habit = habit_sales_map.get(c_id, default_habit)
+            customer.buying_habit = c_habit
+            customer.habit_w1_pct = c_habit['w1_pct']
+            customer.habit_w2_pct = c_habit['w2_pct']
+            customer.habit_w3_pct = c_habit['w3_pct']
+            customer.habit_w4_pct = c_habit['w4_pct']
+            customer.habit_has_purchases = c_habit['has_purchases']
 
             # collections
             col_info = collections_map.get(c_id, default_col)
@@ -653,7 +745,7 @@ class CustomerKpisService:
         customers_with_consumption = total_active_customers
         customers_without_consumption = max(registered_customers - customers_with_consumption, 0)
 
-        self._cached_stats = {
+        self.stats = {
             'registered_customers': registered_customers,
             'customers_with_consumption': customers_with_consumption,
             'customers_with_consumption_pct': (Decimal(customers_with_consumption) / Decimal(registered_customers) * Decimal('100.00')) if registered_customers > 0 else Decimal('0.00'),
@@ -800,11 +892,11 @@ class CustomerKpisExports:
         if is_vendor:
             superheaders = [
                 ("Identificación", 1, 4),# cols 1-4 (A-D)
-                ("Segmentación", 5, 9), # cols 5-9 (E-I)
-                ("Cobranza", 10, 14),   # cols 10-14 (J-N)
-                ("Métricas de Consumo", 15, 19), # cols 15-19 (O-S)
-                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 20, 24),  # cols 20-24 (T-X)
-                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 25, 36), # cols 25-36 (Y-AJ)
+                ("Segmentación", 5, 13), # cols 5-13 (E-M)
+                ("Cobranza", 14, 18),   # cols 14-18 (N-R)
+                ("Métricas de Consumo", 19, 23), # cols 19-23 (S-W)
+                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 24, 28),  # cols 24-28 (X-AB)
+                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 29, 40), # cols 29-40 (AC-AN)
             ]
             contrib_headers = [
                 "Venta Neta Periodo",
@@ -816,11 +908,11 @@ class CustomerKpisExports:
         else:
             superheaders = [
                 ("Identificación", 1, 4),# cols 1-4 (A-D)
-                ("Segmentación", 5, 9), # cols 5-9 (E-I)
-                ("Cobranza", 10, 14),   # cols 10-14 (J-N)
-                ("Métricas de Consumo", 15, 19), # cols 15-19 (O-S)
-                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 20, 26),  # cols 20-26 (T-Z)
-                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 27, 38), # cols 27-38 (AA-AL)
+                ("Segmentación", 5, 13), # cols 5-13 (E-M)
+                ("Cobranza", 14, 18),   # cols 14-18 (N-R)
+                ("Métricas de Consumo", 19, 23), # cols 19-23 (S-W)
+                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 24, 30),  # cols 24-30 (X-AD)
+                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 31, 42), # cols 31-42 (AE-AP)
             ]
             contrib_headers = [
                 "Venta Neta Periodo",
@@ -857,19 +949,23 @@ class CustomerKpisExports:
             "Nombre Cliente",
             "Ruta",
             "Gerencia",
-            # segment (5-9)
+            # segment (5-13)
             "Tipo de Cliente",
             "Categoría",
             "Frecuencia de Compra",
             "Frecuencia (Días)",
+            "% Compra Sem 1 (1-7)",
+            "% Compra Sem 2 (8-14)",
+            "% Compra Sem 3 (15-21)",
+            "% Compra Sem 4 (22-fin)",
             "Líder de Opinión",
-            # collections (10-14)
+            # collections (14-18)
             "Límite de Crédito",
             "% Uso de Crédito",
             "Saldo al Corriente",
             "Saldo Vencido",
             "Saldo Total",
-            # consumption metrics (15-19)
+            # consumption metrics (19-23)
             "Convenios Activos",
             "Clases con Consumo",
             "Promedio Mensual Año Previo",
@@ -903,6 +999,13 @@ class CustomerKpisExports:
             freq_name = (getattr(c, 'frequency', '') or '').title()
             freq_days = int(getattr(c, 'frequency_days', 0) or 0)
             op_leader = "Sí" if getattr(c, 'opinion_leader', False) else "No"
+
+            habit = getattr(c, 'buying_habit', {})
+            has_p = habit.get('has_purchases', False)
+            w1_val = float(habit.get('w1_pct', 0) or 0) / 100.0 if has_p else 0.0
+            w2_val = float(habit.get('w2_pct', 0) or 0) / 100.0 if has_p else 0.0
+            w3_val = float(habit.get('w3_pct', 0) or 0) / 100.0 if has_p else 0.0
+            w4_val = float(habit.get('w4_pct', 0) or 0) / 100.0 if has_p else 0.0
 
             credit_limit = float(getattr(c, 'credit_limit', 0) or 0)
             credit_usage = float(getattr(c, 'credit_usage', 0) or 0) / 100.0
@@ -960,6 +1063,10 @@ class CustomerKpisExports:
                 (cat_name, '@', align_center),
                 (freq_name, None, align_left),
                 (freq_days, int_format, align_right),
+                (w1_val, pct_format, align_right),
+                (w2_val, pct_format, align_right),
+                (w3_val, pct_format, align_right),
+                (w4_val, pct_format, align_right),
                 (op_leader, '@', align_center),
                 # collections
                 (credit_limit, currency_format, align_right),
@@ -996,7 +1103,7 @@ class CustomerKpisExports:
         if is_vendor:
             customer_col_widths = [
                 14, 38, 12, 22, # id, name, route, bu
-                18, 14, 18, 16, 16, # type, cat, freq, days, leader
+                18, 14, 18, 16, 14, 14, 14, 14, 16, # type, cat, freq, days, sem1, sem2, sem3, sem4, leader
                 18, 16, 18, 18, 18, # credit limit, usage, curr, overdue, total
                 16, 18, 20, 20, 20, # agreements, classes, prev_y, curr_y, prev_q
                 18, 20, 20, 18, 18, # contrib net, % net, % cum, count, % port
@@ -1005,7 +1112,7 @@ class CustomerKpisExports:
         else:
             customer_col_widths = [
                 14, 38, 12, 22, # id, name, route, bu
-                18, 14, 18, 16, 16, # type, cat, freq, days, leader
+                18, 14, 18, 16, 14, 14, 14, 14, 16, # type, cat, freq, days, sem1, sem2, sem3, sem4, leader
                 18, 16, 18, 18, 18, # credit limit, usage, curr, overdue, total
                 16, 18, 20, 20, 20, # agreements, classes, prev_y, curr_y, prev_q
                 18, 18, 20, 20, 20, 18, 18, # contrib net, profit, % net, % profit, % cum, count, % port
