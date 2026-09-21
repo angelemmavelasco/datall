@@ -23,9 +23,6 @@ class Customer(models.Model):
     credit_days = models.IntegerField(default=0, help_text='Dias de credito del cliente')
     customer_type = models.ForeignKey('CustomerType', on_delete=models.PROTECT, related_name='customers', help_text='Tipo de cliente')
     opinion_leader = models.BooleanField(default=False, help_text='Indica si el cliente es un lider de opinion')
-    # tax_entities = models.JSONField(default=list, blank=True, validators=[validate_tax_entities], help_text='Información fiscal')
-    # delivery_addresses = models.JSONField(default=list, blank=True, validators=[validate_delivery_addresses], help_text='Direcciones de entrega')
-    # contacts = models.JSONField(default=list, blank=True, validators=[validate_contacts], help_text='Contactos')
 
     class Meta:
         verbose_name = 'Cliente'
@@ -34,6 +31,30 @@ class Customer(models.Model):
 
     def __str__(self):
         return f'{self.id.upper()} - {self.name.title()}'
+
+class CustomerContactRole(models.TextChoices):
+    OWNER = 'owner', 'Dueño / Dirección'
+    PURCHASING = 'purchasing', 'Compras / Adquisiciones'
+    COLLECTION = 'collection', 'Pagos / Cuentas por pagar'
+    WAREHOUSE = 'warehouse', 'Almacén / Recepción'
+    GENERAL = 'general', 'Contacto general'
+
+class CustomerContact(models.Model):
+    customer = models.ForeignKey('Customer', on_delete=models.CASCADE, related_name='contacts', help_text='Cliente al que pertenece el contacto')
+    name = models.CharField(max_length=200, help_text='Nombre completo del contacto')
+    role = models.CharField(max_length=30, choices=CustomerContactRole.choices, default=CustomerContactRole.GENERAL, help_text='Función o área del contacto')
+    phone = models.CharField(max_length=50, blank=True, null=True, help_text='Teléfono de oficina o directo')
+    mobile = models.CharField(max_length=50, blank=True, null=True, help_text='Celular / WhatsApp')
+    email = models.EmailField(blank=True, null=True, help_text='Correo electrónico')
+    is_primary = models.BooleanField(default=False, help_text='Indica si es el contacto principal')
+    notes = models.CharField(max_length=255, blank=True, null=True, help_text='Notas breves')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Contacto de cliente'
+        verbose_name_plural = 'Contactos de clientes'
+        ordering = ['-is_primary', 'name']
+
 
 class CustomerAssignment(models.Model):
     customer = models.ForeignKey('Customer', on_delete=models.CASCADE, related_name='assignments', help_text='Cliente a asignar')
