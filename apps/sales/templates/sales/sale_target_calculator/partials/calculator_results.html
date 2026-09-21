@@ -147,8 +147,7 @@
                                                data-class-id="{{ cls.class_id }}"
                                                data-month="{{ m.month_num }}"
                                                data-eff-month="{{ r.effective_month_num }}"
-                                               oninput="handleBaseAmountChange(this)"
-                                               title="Monto base mensual de inicio">
+                                               oninput="handleBaseAmountChange(this)">
                                     </div>
                                 {% else %}
                                     <div class="flex flex-row gap-1 items-center">
@@ -176,7 +175,6 @@
 
                                         <button type="button" 
                                                 class="self-end mb-1 p-1 rounded hover:bg-container text-muted hover:text-title transition-colors cursor-pointer shrink-0"
-                                                title="Opciones de autocompletado"
                                                 onclick="openTargetAutocompleteMenu(event, '{{ cls.class_id }}', {{ m.month_num }}, '{{ cls.class_name|escapejs }}', '{{ m.date|date:"M Y"|title }}')">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-ellipsis"><circle cx="12" cy="12" r="10"/><path d="M17 12h.01"/><path d="M12 12h.01"/><path d="M7 12h.01"/></svg>
                                         </button>
@@ -244,7 +242,7 @@
                             <span id="menu-context-info" class="text-[10px] text-muted leading-tight font-mono">--</span>
                         </div>
                     </div>
-                    <button type="button" onclick="closeTargetAutocompleteMenu()" class="text-muted hover:text-title p-1 rounded hover:bg-page transition-colors cursor-pointer" title="Cerrar">
+                    <button type="button" onclick="closeTargetAutocompleteMenu()" class="text-muted hover:text-title p-1 rounded hover:bg-page transition-colors cursor-pointer">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                     </button>
                 </div>

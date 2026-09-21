@@ -76,8 +76,7 @@ class OrgChartService(UsersService):
                 f'data-email="{email}" '
                 f'data-phone="{phone}" '
                 f'data-empid="{emp_id}" '
-                f'data-canview="{can_view}" '
-                f'title="Ver contacto de {full_name}">{pos}</button> » {bu}, dpto. {dept}: <span class="text-blue-500 font-medium">{full_name}</span>'
+                f'data-canview="{can_view}">{pos}</button> » {bu}, dpto. {dept}: <span class="text-blue-500 font-medium">{full_name}</span>'
             )
         return f"{pos}, {dept} (gerencia: {bu}): {full_name}"
 
@@ -140,7 +139,7 @@ class OrgChartService(UsersService):
             rotate_class = "rotate-90" if is_open else ""
             toggle_html = (
                 f'<button type="button" class="tree-toggle-btn w-5 h-5 flex items-center justify-center rounded hover:bg-hover text-muted hover:text-title transition-colors cursor-pointer shrink-0" '
-                f'onclick="toggleTreeNode(this.closest(\'.tree-node-row\'), event)" title="Expandir/Colapsar equipo">'
+                f'onclick="toggleTreeNode(this.closest(\'.tree-node-row\'), event)">'
                 f'<svg class="tree-toggle-icon w-3.5 h-3.5 transition-transform duration-200 {rotate_class}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
                 f'<path d="m9 18 6-6-6-6"/>'
                 f'</svg>'
@@ -159,8 +158,7 @@ class OrgChartService(UsersService):
             f'data-email="{email}" '
             f'data-phone="{phone}" '
             f'data-empid="{emp_id}" '
-            f'data-canview="{can_view}" '
-            f'title="Ver contacto de {full_name}">{pos}</button>'
+            f'data-canview="{can_view}">{pos}</button>'
         )
 
         cursor_class = "cursor-pointer" if has_children else "cursor-default"

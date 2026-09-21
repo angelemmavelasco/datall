@@ -276,8 +276,7 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
                             <div class="flex items-center gap-1">
                                 <button type="button"
                                     onclick="openEditContactModal('{{ contact.pk }}', '{{ contact.name|escapejs }}', '{{ contact.role }}', '{{ contact.phone|default:''|escapejs }}', '{{ contact.mobile|default:''|escapejs }}', '{{ contact.email|default:''|escapejs }}', {{ contact.is_primary|yesno:'true,false' }}, '{{ contact.notes|default:''|escapejs }}')"
-                                    class="text-secondary hover:text-hover p-1 transition-colors cursor-pointer"
-                                    title="Editar contacto">
+                                    class="text-secondary hover:text-hover p-1 transition-colors cursor-pointer">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
                                 </button>
                                 <form method="POST" action="{% url 'customers:customer_delete_contact_view' customer.pk contact.pk %}" onsubmit="return confirm('¿Estás seguro de eliminar al contacto {{ contact.name|escapejs }}?');" class="inline">
@@ -299,7 +298,7 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
                         {% endif %}
 
                         {% if contact.mobile %}
-                            <a href="https://wa.me/{{ contact.mobile|cut:' '|cut:'-'|cut:'+' }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 hover:text-emerald-500 font-mono" title="Enviar WhatsApp">
+                            <a href="https://wa.me/{{ contact.mobile|cut:' '|cut:'-'|cut:'+' }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 hover:text-emerald-500 font-mono">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-smartphone"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
                                 <span>{{ contact.mobile }}</span>
                             </a>

@@ -135,8 +135,7 @@ Soporte y documentación
                         </a>
                         <div class="flex items-center justify-between text-xs pt-1 border-t border-border">
                             <button type="button" onclick="copyToClipboard('3313254445', 'phone')"
-                                class="text-secondary hover:text-hover cursor-pointer flex items-center gap-1 transition-colors"
-                                title="Copiar teléfono">
+                                class="text-secondary hover:text-hover cursor-pointer flex items-center gap-1 transition-colors">
                                 <svg id="icon-copy-phone" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                                 <svg id="icon-check-phone" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check text-emerald-500 hidden"><polyline points="20 6 9 17 4 12"/></svg>
                                 <span class="text-[11px]">Copiar</span>
@@ -160,8 +159,7 @@ Soporte y documentación
                         </a>
                         <div class="flex items-center justify-between text-xs pt-1 border-t border-border">
                             <button type="button" onclick="copyToClipboard('angel.emma.velasco@gmail.com', 'email')"
-                                class="text-secondary hover:text-hover cursor-pointer flex items-center gap-1 transition-colors"
-                                title="Copiar correo">
+                                class="text-secondary hover:text-hover cursor-pointer flex items-center gap-1 transition-colors">
                                 <svg id="icon-copy-email" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                                 <svg id="icon-check-email" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check text-emerald-500 hidden"><polyline points="20 6 9 17 4 12"/></svg>
                                 <span class="text-[11px]">Copiar</span>
@@ -278,8 +276,7 @@ Soporte y documentación
                             artículos</span>
                         {% if request.user.is_staff %}
                         <a href="{% url 'admin:core_supportcategory_change' category.pk %}" target="_blank"
-                            class="text-[10px] text-secondary hover:text-hover underline transition-colors"
-                            title="Editar categoría">
+                            class="text-[10px] text-secondary hover:text-hover underline transition-colors">
                             Editar
                         </a>
                         {% endif %}
