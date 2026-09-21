@@ -127,27 +127,10 @@
     </td>
     <td class="p-2 text-right text-title">
         {% if customer.product_classes_with_consumption > 0 %}
-        <details class="group relative inline-block cursor-pointer">
-            <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-end gap-1 hover:text-primary transition-colors select-none">
-                <span>{{ customer.product_classes_with_consumption|default:0|floatformat:0|intcomma }}</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down-icon lucide-circle-chevron-down text-muted transition-transform group-open:rotate-180"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg>
-            </summary>
-
-            <div class="absolute right-0 top-full mt-1 w-64 p-1 bg-page border border-border rounded text-left text-xs z-50">
-                <div class="text-title border-b border-border pb-1 mb-1 flex justify-between items-center">
-                    <span>Clases con consumo</span>
-                    <span class="text-muted text-[10px] font-normal">({{ customer.product_classes_with_consumption }})</span>
-                </div>
-                <ul class="space-y-1 max-h-48 overflow-y-auto">
-                    {% for class_id, info in customer.product_classes_consumed.items %}
-                    <li class="flex items-center justify-between gap-2 border-b border-border/40 pb-1 last:border-0 last:pb-0">
-                        <span class="text-title truncate" title="{{ info.name }}">{{ info.name|title }}</span>
-                        <span class="text-muted text-[10px] font-mono shrink-0">$ {{ info.total|floatformat:2|intcomma }}</span>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </details>
+        <span class="cursor-pointer hover:underline"
+              title="Clases con consumo ({{ customer.product_classes_with_consumption }}):{% for class_id, info in customer.product_classes_consumed.items %}&#10;• {{ info.name|title }}: ${{ info.total|floatformat:2|intcomma }}{% endfor %}">
+            {{ customer.product_classes_with_consumption|default:0|floatformat:0|intcomma }} ⓘ
+        </span>
         {% else %}
         <span class="text-muted">0</span>
         {% endif %}
