@@ -481,10 +481,11 @@ class CustomerAgreementFilter(django_filters.FilterSet):
         label='Tipo de convenio',
         empty_label='Todos los tipos',
     )
-    benefit = django_filters.ModelChoiceFilter(
+    benefit = django_filters.ModelMultipleChoiceFilter(
+        method='filter_benefit',
         queryset=CommercialBenefit.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
         label='Beneficio comercial',
-        empty_label='Todos los beneficios',
     )
     status = django_filters.ChoiceFilter(
         method='filter_status',
@@ -601,6 +602,11 @@ class CustomerAgreementFilter(django_filters.FilterSet):
         elif value == 'false':
             return queryset.filter(benefit_already_provided=False)
         return queryset
+
+    def filter_benefit(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        return queryset.filter(benefit__in=value).distinct()
 
     def filter_route(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
         if not value:

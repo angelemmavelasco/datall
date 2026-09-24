@@ -339,6 +339,20 @@ class CustomerAgreementViewsTests(TestCase):
         f_no_match = CustomerAgreementFilter(data={'start_date_gte': '2026-03'}, queryset=CustomerAgreement.objects.all())
         self.assertNotIn(self.agreement, f_no_match.qs)
 
+    def test_customer_agreement_filter_multicheck_and_status(self):
+        f_benefit = CustomerAgreementFilter(data={'benefit': [self.benefit.pk]}, queryset=CustomerAgreement.objects.all())
+        self.assertIn(self.agreement, f_benefit.qs)
+
+        other_benefit = CommercialBenefit.objects.create(name='Other Benefit', cost=Decimal('100.00'))
+        f_other_benefit = CustomerAgreementFilter(data={'benefit': [other_benefit.pk]}, queryset=CustomerAgreement.objects.all())
+        self.assertNotIn(self.agreement, f_other_benefit.qs)
+
+        f_signed = CustomerAgreementFilter(data={'signed': 'false'}, queryset=CustomerAgreement.objects.all())
+        self.assertIn(self.agreement, f_signed.qs)
+
+        f_signed_true = CustomerAgreementFilter(data={'signed': 'true'}, queryset=CustomerAgreement.objects.all())
+        self.assertNotIn(self.agreement, f_signed_true.qs)
+
     def test_validate_margin_breakdown_mandatory_and_complementary(self):
         #setup classes and minimum margins
         cat = ProductCategory.objects.create(id='CAT_TEST', name='Test Category')

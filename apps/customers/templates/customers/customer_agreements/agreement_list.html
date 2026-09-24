@@ -23,30 +23,74 @@ Convenios comerciales
 {% endblock %}
 
 {% block filters %}
-<form hx-get="{% url 'customers:customer_agreement_list_view' %}" hx-target="#agreement-list-content" hx-swap="outerHTML" hx-push-url="true" class="flex flex-col gap-4">
+<form method="GET"
+      action="{% url 'customers:customer_agreement_list_view' %}"
+      hx-get="{% url 'customers:customer_agreement_list_view' %}"
+      hx-target="#agreement-list-content"
+      hx-swap="outerHTML"
+      hx-push-url="true"
+      class="flex flex-col gap-4">
+
+    <!-- Búsqueda general -->
     <div class="flex flex-col gap-1">
         <label for="{{ filter.form.search.id_for_label }}" class="text-title">{{ filter.form.search.label|default:'Búsqueda general' }}</label>
         {% render_field filter.form.search class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs" placeholder="Folio, ID o nombre del cliente" %}
     </div>
 
+    <!-- Estado de vigencia -->
     <div class="flex flex-col gap-1">
         <label for="{{ filter.form.status.id_for_label }}" class="text-title">{{ filter.form.status.label|default:'Estado de vigencia' }}</label>
         {% render_field filter.form.status class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs" %}
     </div>
 
+    <!-- Tipo de convenio -->
     <div class="flex flex-col gap-1">
         <label for="{{ filter.form.agreement_type.id_for_label }}" class="text-title">{{ filter.form.agreement_type.label|default:'Tipo de convenio' }}</label>
         {% render_field filter.form.agreement_type class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs" %}
     </div>
 
+    <!-- Beneficio comercial -->
+    {% if filter.form.benefit %}
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.benefit.label|default:'Beneficio comercial' }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar beneficio">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.benefit %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Firma de convenio -->
     <div class="flex flex-col gap-1">
-        <label for="{{ filter.form.benefit.id_for_label }}" class="text-title">{{ filter.form.benefit.label|default:'Beneficio comercial' }}</label>
-        {% render_field filter.form.benefit class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs" %}
+        <label for="{{ filter.form.signed.id_for_label }}" class="text-title">{{ filter.form.signed.label|default:'Firma de convenio' }}</label>
+        {% render_field filter.form.signed class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs" %}
     </div>
 
+    <!-- Entrega de beneficio -->
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.benefit_already_provided.id_for_label }}" class="text-title">{{ filter.form.benefit_already_provided.label|default:'Entrega de beneficio' }}</label>
+        {% render_field filter.form.benefit_already_provided class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs" %}
+    </div>
+
+    <!-- Mes de inicio -->
     <div class="flex flex-col gap-1">
         <label class="text-title">Mes de inicio</label>
-        <div class="grid grid-cols-2 gap-1.5">
+        <div class="grid grid-cols-2 gap-1">
             <div class="flex flex-col gap-0.5">
                 <span class="text-[10px] text-secondary">Desde</span>
                 {% render_field filter.form.start_date_gte type="month" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title font-mono" %}
@@ -58,9 +102,10 @@ Convenios comerciales
         </div>
     </div>
 
+    <!-- Mes de fin -->
     <div class="flex flex-col gap-1">
         <label class="text-title">Mes de fin</label>
-        <div class="grid grid-cols-2 gap-1.5">
+        <div class="grid grid-cols-2 gap-1">
             <div class="flex flex-col gap-0.5">
                 <span class="text-[10px] text-secondary">Desde</span>
                 {% render_field filter.form.end_date_gte type="month" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title font-mono" %}
@@ -72,48 +117,85 @@ Convenios comerciales
         </div>
     </div>
 
-    {% if filter.form.region %}
-    <div class="flex flex-col gap-1">
-        <label class="text-title">Región</label>
-        <div class="max-h-28 overflow-y-auto border border-border rounded p-1 bg-page flex flex-col gap-1 text-xs">
-            {% for choice in filter.form.region %}
-                <label class="flex items-center gap-1.5 cursor-pointer hover:text-hover">
-                    {{ choice.tag }}
-                    <span>{{ choice.choice_label }}</span>
-                </label>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-
-    {% if filter.form.business_unit %}
-    <div class="flex flex-col gap-1">
-        <label class="text-title">Gerencia</label>
-        <div class="max-h-28 overflow-y-auto border border-border rounded p-1 bg-page flex flex-col gap-1 text-xs">
-            {% for choice in filter.form.business_unit %}
-                <label class="flex items-center gap-1.5 cursor-pointer hover:text-hover">
-                    {{ choice.tag }}
-                    <span>{{ choice.choice_label }}</span>
-                </label>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-
+    <!-- Ruta -->
     {% if filter.form.route %}
-    <div class="flex flex-col gap-1">
-        <label class="text-title">Ruta</label>
-        <div class="max-h-36 overflow-y-auto border border-border rounded p-1 bg-page flex flex-col gap-1 text-xs">
-            {% for choice in filter.form.route %}
-                <label class="flex items-center gap-1.5 cursor-pointer hover:text-hover">
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.route.label|default:'Ruta' }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar ruta">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.route %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
                     {{ choice.tag }}
-                    <span class="truncate">{{ choice.choice_label }}</span>
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
                 </label>
-            {% endfor %}
+                {% endfor %}
+            </div>
         </div>
     </div>
     {% endif %}
 
+    <!-- Gerencia -->
+    {% if filter.form.business_unit %}
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.business_unit.label|default:'Gerencia' }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar gerencia">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.business_unit %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Región -->
+    {% if filter.form.region %}
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.region.label|default:'Región' }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar región">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.region %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Botones de acción -->
     <div class="flex gap-2 flex-col mt-2">
         <button type="submit"
             class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
@@ -122,6 +204,107 @@ Convenios comerciales
             class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
             filtros</a>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const normalizeString = (str) => {
+                return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            };
+
+            const debounce = (fn, delay = 120) => {
+                let timeout;
+                return (...args) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => fn(...args), delay);
+                };
+            };
+
+            const initFilters = () => {
+                const filterGroups = document.querySelectorAll('.filter-group');
+
+                filterGroups.forEach(group => {
+                    if (group.dataset.filtersInit === 'true') return;
+                    group.dataset.filtersInit = 'true';
+
+                    const searchInput = group.querySelector('.filter-search');
+                    const selectAllCheckbox = group.querySelector('.filter-select-all');
+
+                    const getItems = () => {
+                        return Array.from(group.querySelectorAll('.filter-option')).map(option => {
+                            const label = option.querySelector('.option-label');
+                            const checkbox = option.querySelector('input[type="checkbox"]');
+                            return {
+                                el: option,
+                                checkbox: checkbox,
+                                text: normalizeString(label ? label.textContent : '')
+                            };
+                        });
+                    };
+
+                    const updateSelectAllState = () => {
+                        if (!selectAllCheckbox) return;
+                        let visibleCount = 0;
+                        let checkedCount = 0;
+                        const items = getItems();
+
+                        for (let i = 0; i < items.length; i++) {
+                            if (items[i].el.style.display !== 'none') {
+                                visibleCount++;
+                                if (items[i].checkbox && items[i].checkbox.checked) {
+                                    checkedCount++;
+                                }
+                            }
+                        }
+                        selectAllCheckbox.checked = visibleCount > 0 && visibleCount === checkedCount;
+                    };
+
+                    if (searchInput) {
+                        const performSearch = (term) => {
+                            const items = getItems();
+                            for (let i = 0; i < items.length; i++) {
+                                const item = items[i];
+                                const matches = !term || item.text.includes(term);
+                                item.el.style.display = matches ? '' : 'none';
+                            }
+                            updateSelectAllState();
+                        };
+
+                        searchInput.addEventListener('input', debounce(function (e) {
+                            const term = normalizeString(e.target.value.trim());
+                            performSearch(term);
+                        }, 120));
+                    }
+
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.addEventListener('change', function (e) {
+                            const isChecked = e.target.checked;
+                            const items = getItems();
+                            for (let i = 0; i < items.length; i++) {
+                                if (items[i].el.style.display !== 'none' && items[i].checkbox && !items[i].checkbox.disabled) {
+                                    items[i].checkbox.checked = isChecked;
+                                }
+                            }
+                        });
+                    }
+
+                    group.addEventListener('change', function(e) {
+                        if (e.target.matches('.filter-option input[type="checkbox"]')) {
+                            updateSelectAllState();
+                        }
+                    });
+
+                    group.addEventListener('htmx:afterSwap', function() {
+                        updateSelectAllState();
+                    });
+
+                    updateSelectAllState();
+                });
+            };
+
+            initFilters();
+            document.body.addEventListener('htmx:afterSwap', initFilters);
+        });
+    </script>
 </form>
 {% endblock %}
 
