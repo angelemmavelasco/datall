@@ -308,10 +308,20 @@ function printAgreementContract() {
 </script>
 
 <style>
+.contract-page-sheet {
+    max-width: 215.9mm;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 @media print {
     @page {
         size: letter portrait;
         margin: 10mm 15mm 10mm 15mm;
+    }
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
     body * {
         visibility: hidden;
@@ -324,10 +334,11 @@ function printAgreementContract() {
         position: absolute;
         left: 0;
         top: 0;
-        width: 100%;
+        width: 100% !important;
+        max-width: 185.9mm !important;
         border: none !important;
         box-shadow: none !important;
-        margin: 0 !important;
+        margin: 0 auto !important;
         padding: 0 !important;
         background: white !important;
     }
@@ -339,11 +350,25 @@ function printAgreementContract() {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
         padding: 0 !important;
-        margin: 0 !important;
+        margin: 0 auto !important;
         box-shadow: none !important;
         border: none !important;
-        min-height: 240mm;
+        width: 185.9mm !important;
+        max-width: 185.9mm !important;
+        height: 246mm !important;
+        max-height: 248mm !important;
         box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+    #contract-page-1 {
+        page-break-after: always !important;
+        break-after: page !important;
+    }
+    #contract-page-2 {
+        page-break-before: always !important;
+        break-before: page !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
     }
     #sidebar, header, aside, button, nav, .print\:hidden, #projection-matrix-container, .print\:hidden * {
         display: none !important;
