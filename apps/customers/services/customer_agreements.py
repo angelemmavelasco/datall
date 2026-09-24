@@ -24,7 +24,7 @@ from django.db.models import (
 )
 from django.utils import timezone
 
-from apps.core.models import PeriodicityChoices
+from apps.core.models import PeriodicityChoices, Reference
 from apps.core.services.users import UsersService
 from apps.customers.models import (
     Customer,
@@ -162,6 +162,22 @@ class CustomerAgreementsService(UsersService):
     def is_seller(self) -> bool:
         return self.user.groups.filter(name='vendedor').exists()
 
+    @property
+    def can_edit_agreement(self) -> bool:
+        """
+        determines whether the user has permission to modify the agreement's
+        execution parameters (signed, benefit_already_provided, and related_doc).
+        allowed users are those with full access (superuser, staff, or configured
+        full-access groups) or users belonging to any group defined in Reference
+        with key='can_edit_customer_agreement'.
+        """
+        if self.has_full_access:
+            return True
+        allowed_groups = list(Reference.objects.filter(key='can_edit_customer_agreement').values_list('value', flat=True))
+        if not allowed_groups:
+            return False
+        return self.user.groups.filter(name__in=allowed_groups).exists()
+
     def get_allowed_agreements(self) -> QuerySet:
         """
         agreements visible to a user are those whose customers are currently
@@ -251,6 +267,7 @@ class CustomerAgreementsService(UsersService):
             'class_margins': class_margins,
             'eval_periods': eval_periods,
             'is_seller': is_seller_user,
+            'can_edit': self.can_edit_agreement,
         }
 
     def validate_agreement_margin(
@@ -1016,6 +1033,8 @@ class CustomerAgreementsService(UsersService):
         growth_frequency: str | None = None,
         penalty_amount: Decimal = Decimal('0.00'),
         related_doc: Any = None,
+        signed: bool = False,
+        benefit_already_provided: bool = False,
         doc_id: str | None = None,
         participating_classes_data: list[dict[str, Any]] | None = None,
         margin_warning_accepted: bool = False,
@@ -1054,6 +1073,10 @@ class CustomerAgreementsService(UsersService):
             payload['penalty_amount'] = penalty_amount
         if related_doc is not None:
             payload['related_doc'] = related_doc
+        if signed is not None:
+            payload['signed'] = signed
+        if benefit_already_provided is not None:
+            payload['benefit_already_provided'] = benefit_already_provided
         if doc_id is not None:
             payload['doc_id'] = doc_id
 
@@ -1122,6 +1145,8 @@ class CustomerAgreementsService(UsersService):
             growth_value=Decimal(str(data.get('growth_value') or '0')),
             growth_frequency=data.get('growth_frequency') or '',
             related_doc=data.get('related_doc'),
+            signed=bool(data.get('signed', False)),
+            benefit_already_provided=bool(data.get('benefit_already_provided', False)),
             margin_warning_accepted=margin_warning_accepted,
             created_by=user,
         )
@@ -1194,18 +1219,52 @@ class CustomerAgreementsService(UsersService):
 
         return agreement
 
+    @transaction.atomic
+    def update_agreement_execution(
+        self,
+        *,
+        pk: int | str,
+        signed: Optional[bool] = None,
+        benefit_already_provided: Optional[bool] = None,
+        file_obj: Any = None,
+        related_doc: Any = None,
+    ) -> CustomerAgreement:
+        """
+        updates execution state (signed, benefit_already_provided, and/or related_doc)
+        of an existing agreement. only authorized users (can_edit_agreement) can perform this.
+        """
+        if not self.can_edit_agreement:
+            raise PermissionsError("No tienes permiso para modificar el convenio ni su documentación.")
+
+        agreement = self.read_agreement(pk)
+        update_fields = ['updated_at']
+
+        if signed is not None:
+            agreement.signed = bool(signed)
+            update_fields.append('signed')
+
+        if benefit_already_provided is not None:
+            agreement.benefit_already_provided = bool(benefit_already_provided)
+            update_fields.append('benefit_already_provided')
+
+        doc = file_obj if file_obj is not None else related_doc
+        if doc is not None:
+            agreement.related_doc = doc
+            update_fields.append('related_doc')
+
+        agreement.save(update_fields=list(set(update_fields)))
+        return agreement
+
     def update_agreement_document(self, *, pk: int | str, file_obj: Any = None, related_doc: Any = None) -> CustomerAgreement:
         """
-        only the related_doc file can be modified on an existing agreement.
+        only the related_doc file is updated on the existing agreement.
+        enforces can_edit_agreement permission.
         """
-        agreement = self.read_agreement(pk)
         doc = file_obj if file_obj is not None else related_doc
         if not doc:
             raise ValidationError("No se proporcionó ningún archivo para actualizar.")
 
-        agreement.related_doc = doc
-        agreement.save(update_fields=['related_doc', 'updated_at'])
-        return agreement
+        return self.update_agreement_execution(pk=pk, file_obj=doc)
 
     @transaction.atomic
     def evaluate_pending_periods(self, agreement_id: int | str | None = None, pk: int | str | None = None) -> tuple[int, int]:

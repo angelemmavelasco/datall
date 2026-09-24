@@ -691,6 +691,7 @@ def customer_agreement_detail_view(request, pk: int):
         'class_targets': class_targets,
         'doc_form': doc_form,
         'is_seller': is_seller,
+        'can_edit': service.can_edit_agreement,
         'available_actions': available_actions,
     }
     return render(request, template, context)
@@ -1026,15 +1027,32 @@ def customer_agreement_preview_view(request):
 @require_POST
 def customer_agreement_update_document_view(request, pk: int):
     service = CustomerAgreementsService(user=request.user)
-    form = CustomerAgreementDocumentForm(request.POST, request.FILES)
+    if not service.can_edit_agreement:
+        messages.error(request, "No tienes permiso para modificar este convenio.")
+        return redirect('customers:customer_agreement_detail_view', pk=pk)
+
+    try:
+        agreement = service.read_agreement(pk)
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect('customers:customer_agreement_list_view')
+
+    form = CustomerAgreementDocumentForm(request.POST, request.FILES, instance=agreement)
     if form.is_valid():
         try:
-            service.update_agreement_document(pk=pk, related_doc=request.FILES.get('related_doc'))
-            messages.success(request, "Documento adjunto actualizado correctamente.")
+            service.update_agreement_execution(
+                pk=pk,
+                signed=form.cleaned_data.get('signed'),
+                benefit_already_provided=form.cleaned_data.get('benefit_already_provided'),
+                file_obj=request.FILES.get('related_doc'),
+            )
+            messages.success(request, "Convenio actualizado correctamente.")
+        except PermissionsError as pe:
+            messages.error(request, str(pe))
         except Exception as e:
-            messages.error(request, f"Error al actualizar el documento: {str(e)}")
+            messages.error(request, f"Error al actualizar el convenio: {str(e)}")
     else:
-        messages.error(request, "Archivo inválido.")
+        messages.error(request, "Datos de formulario inválidos.")
     return redirect('customers:customer_agreement_detail_view', pk=pk)
 
 

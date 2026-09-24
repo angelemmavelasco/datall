@@ -150,25 +150,87 @@ Convenio comercial: {{ agreement.doc_id }}
             {% endif %}
         </div>
 
+        <span class="text-title">Firma de convenio</span>
+        <div class="flex items-center gap-1.5 font-medium">
+            {% if agreement.signed %}
+                <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    Firmado
+                </span>
+            {% else %}
+                <span class="inline-flex items-center gap-1 text-amber-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Pendiente de firma
+                </span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Entrega de beneficio</span>
+        <div class="flex items-center gap-1.5 font-medium">
+            {% if agreement.benefit_already_provided %}
+                <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    Entregado
+                </span>
+            {% else %}
+                <span class="inline-flex items-center gap-1 text-amber-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Pendiente de entrega
+                </span>
+            {% endif %}
+        </div>
+
         <span class="text-title">Fecha de registro</span>
         <div class="text-secondary font-mono">
             {{ agreement.created_at|date:"d/m/Y H:i" }}
         </div>
     </div>
 
-    <!-- form para subir / actualizar documento adjunto -->
-    <form method="POST" action="{% url 'customers:customer_agreement_update_document_view' agreement.pk %}" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded text-xs">
+    {% if can_edit %}
+    <p class="text-title pb-1 border-b border-border">
+        Gestión operativa del convenio
+    </p>
+
+    <!-- form para actualizar estado de firma, entrega de beneficio y documento adjunto -->
+    <form method="POST" action="{% url 'customers:customer_agreement_update_document_view' agreement.pk %}" enctype="multipart/form-data" class="bg-container border border-border p-3 rounded text-xs flex flex-col gap-3">
         {% csrf_token %}
-        <span class="text-title flex items-center gap-1">
-            {% if agreement.related_doc %}Reemplazar documento{% else %}Adjuntar documento escaneado{% endif %}
-        </span>
-        <div class="flex items-center gap-2">
-            <input type="file" name="related_doc" required class="w-full bg-page border border-border rounded p-1 text-xs text-secondary file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:bg-container file:text-title hover:file:bg-hover cursor-pointer">
-            <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-1 rounded transition-colors cursor-pointer text-xs shrink-0">
-                Subir
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            <div class="flex flex-col gap-2.5">
+                <span class="text-title font-medium text-xs">Estatus de ejecución</span>
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" name="signed" {% if agreement.signed %}checked{% endif %} class="rounded border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer">
+                    <span class="text-title">Convenio firmado por el cliente</span>
+                </label>
+
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" name="benefit_already_provided" {% if agreement.benefit_already_provided %}checked{% endif %} class="rounded border-border text-primary focus:ring-primary w-4 h-4 cursor-pointer">
+                    <span class="text-title">Beneficio comercial entregado</span>
+                </label>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <span class="text-title font-medium text-xs">
+                    {% if agreement.related_doc %}Reemplazar documento escaneado{% else %}Adjuntar documento escaneado{% endif %}
+                </span>
+                <div class="flex items-center gap-2">
+                    <input type="file" name="related_doc" class="w-full bg-page border border-border rounded p-1 text-xs text-secondary file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:bg-container file:text-title hover:file:bg-hover cursor-pointer">
+                </div>
+                {% if agreement.related_doc %}
+                <span class="text-secondary text-[11px]">
+                    Archivo actual: <a href="{{ agreement.related_doc.url }}" target="_blank" class="underline hover:text-hover">{{ agreement.related_doc.name }}</a>
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="flex justify-end pt-2 border-t border-border">
+            <button type="submit" class="bg-container border border-border text-strong hover:bg-hover px-3 py-1 rounded transition-colors cursor-pointer text-xs flex items-center gap-1.5 font-medium">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                <span>Guardar cambios</span>
             </button>
         </div>
     </form>
+    {% endif %}
 
     <p class="text-title pb-1 border-b border-border">
         Clases de producto participantes

@@ -290,6 +290,8 @@ class CustomerAgreementCreateForm(forms.ModelForm):
             'doc_id',
             'related_doc',
             'margin_warning_accepted',
+            'signed',
+            'benefit_already_provided',
         ]
         widgets = {
             'customer': forms.Select(attrs={
@@ -331,6 +333,12 @@ class CustomerAgreementCreateForm(forms.ModelForm):
             'margin_warning_accepted': forms.CheckboxInput(attrs={
                 'class': 'rounded border-border text-primary focus:ring-primary',
             }),
+            'signed': forms.CheckboxInput(attrs={
+                'class': 'rounded border-border text-primary focus:ring-primary',
+            }),
+            'benefit_already_provided': forms.CheckboxInput(attrs={
+                'class': 'rounded border-border text-primary focus:ring-primary',
+            }),
         }
 
     def __init__(self, *args, **kwargs):
@@ -343,6 +351,8 @@ class CustomerAgreementCreateForm(forms.ModelForm):
         self.fields['growth_value'].required = False
         self.fields['related_doc'].required = False
         self.fields['penalty_amount'].required = False
+        self.fields['signed'].required = False
+        self.fields['benefit_already_provided'].required = False
 
         if self.instance and self.instance.pk:
             if self.instance.start_date:
@@ -391,12 +401,29 @@ class CustomerAgreementCreateForm(forms.ModelForm):
 class CustomerAgreementDocumentForm(forms.ModelForm):
     class Meta:
         model = CustomerAgreement
-        fields = ['related_doc']
+        fields = ['signed', 'benefit_already_provided', 'related_doc']
+        labels = {
+            'signed': 'Convenio firmado por el cliente',
+            'benefit_already_provided': 'Beneficio comercial entregado',
+            'related_doc': 'Documento o contrato escaneado',
+        }
         widgets = {
+            'signed': forms.CheckboxInput(attrs={
+                'class': 'rounded border-border text-primary focus:ring-primary w-4 h-4',
+            }),
+            'benefit_already_provided': forms.CheckboxInput(attrs={
+                'class': 'rounded border-border text-primary focus:ring-primary w-4 h-4',
+            }),
             'related_doc': forms.FileInput(attrs={
-                'class': 'w-full bg-container border border-border rounded p-2 text-sm text-title focus:outline-none focus:border-strong',
+                'class': 'w-full bg-page border border-border rounded p-1 text-xs text-secondary file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:bg-container file:text-title hover:file:bg-hover cursor-pointer',
             }),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['related_doc'].required = False
+        self.fields['signed'].required = False
+        self.fields['benefit_already_provided'].required = False
 
 
 

@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase, Client
 from django.urls import reverse
 
-from apps.core.models import User, PeriodicityChoices
+from apps.core.models import User, PeriodicityChoices, Reference
 from django.contrib.auth.models import Group
 from apps.customers.models import (
     Customer,
@@ -23,6 +23,7 @@ from apps.customers.services.customer_agreements import (
     CustomerAgreementsService,
     CustomerAgreementsStats,
     CustomerAgreementNotFound,
+    PermissionsError,
     parse_month_input,
 )
 from apps.customers.forms import CustomerAgreementCreateForm
@@ -494,6 +495,150 @@ class CustomerAgreementViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Carlos Alberto Sánchez Mora')
         self.assertContains(response, f'Ruta: {self.route.id}')
+
+    def test_agreement_signed_and_benefit_fields_defaults(self):
+        self.assertFalse(self.agreement.signed)
+        self.assertFalse(self.agreement.benefit_already_provided)
+
+    def test_agreement_clean_allows_updating_execution_fields(self):
+        # Modifying execution fields (signed, benefit_already_provided, related_doc) is allowed by clean()
+        self.agreement.signed = True
+        self.agreement.benefit_already_provided = True
+        try:
+            self.agreement.clean()
+        except ValidationError:
+            self.fail("clean() should not raise ValidationError when updating signed or benefit_already_provided.")
+
+        # Modifying immutable fields like doc_id raises ValidationError
+        self.agreement.doc_id = 'DIFF1'
+        with self.assertRaises(ValidationError):
+            self.agreement.clean()
+
+    def test_can_edit_agreement_reference_and_full_access(self):
+        # 1. Superuser has full access -> True
+        self.assertTrue(self.service.can_edit_agreement)
+
+        # 2. Regular user without reference group -> False
+        regular_user = User.objects.create_user(username='regular_test')
+        regular_service = CustomerAgreementsService(user=regular_user)
+        self.assertFalse(regular_service.can_edit_agreement)
+
+        # 3. User in group configured via Reference(key='can_edit_customer_agreement') -> True
+        cedis_group, _ = Group.objects.get_or_create(name='gerente_cedis')
+        cedis_user = User.objects.create_user(username='cedis_manager')
+        cedis_user.groups.add(cedis_group)
+
+        Reference.objects.get_or_create(
+            key='can_edit_customer_agreement',
+            value='gerente_cedis',
+        )
+
+        cedis_service = CustomerAgreementsService(user=cedis_user)
+        self.assertTrue(cedis_service.can_edit_agreement)
+
+    def test_update_agreement_execution_service_permissions(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        fake_file = SimpleUploadedFile("contrato_firmado.pdf", b"%PDF-1.4 dummy", content_type="application/pdf")
+
+        # Unauthorized user raises PermissionsError
+        regular_user = User.objects.create_user(username='unauth_test')
+        regular_service = CustomerAgreementsService(user=regular_user)
+        with self.assertRaises(PermissionsError):
+            regular_service.update_agreement_execution(
+                pk=self.agreement.pk,
+                signed=True,
+                benefit_already_provided=True,
+                file_obj=fake_file,
+            )
+
+        # Authorized user succeeds
+        updated = self.service.update_agreement_execution(
+            pk=self.agreement.pk,
+            signed=True,
+            benefit_already_provided=True,
+            file_obj=fake_file,
+        )
+        self.assertTrue(updated.signed)
+        self.assertTrue(updated.benefit_already_provided)
+        self.assertTrue(bool(updated.related_doc))
+
+    def test_agreement_detail_view_permissions_and_template(self):
+        from apps.sales.models import UserRouteAccess
+        # Create a seller user without can_edit_agreement
+        seller_group, _ = Group.objects.get_or_create(name='vendedor')
+        seller_user = User.objects.create_user(username='seller_view_test')
+        seller_user.groups.add(seller_group)
+        UserRouteAccess.objects.create(user=seller_user, route=self.route, can_view=True)
+
+        self.client.force_login(seller_user)
+        url = reverse('customers:customer_agreement_detail_view', kwargs={'pk': self.agreement.pk})
+        resp_seller = self.client.get(url)
+        self.assertEqual(resp_seller.status_code, 200)
+        self.assertFalse(resp_seller.context['can_edit'])
+        # The management form should not be present for seller
+        self.assertNotContains(resp_seller, 'Gestión operativa del convenio')
+        self.assertContains(resp_seller, 'Pendiente de firma')
+        self.assertContains(resp_seller, 'Pendiente de entrega')
+
+        # Create a manager user in gerente_cedis group
+        cedis_group, _ = Group.objects.get_or_create(name='gerente_cedis')
+        Reference.objects.get_or_create(
+            key='can_edit_customer_agreement',
+            value='gerente_cedis',
+        )
+        manager_user = User.objects.create_user(username='manager_view_test')
+        manager_user.groups.add(cedis_group)
+        UserRouteAccess.objects.create(user=manager_user, route=self.route, can_view=True)
+
+        self.client.force_login(manager_user)
+        resp_manager = self.client.get(url)
+        self.assertEqual(resp_manager.status_code, 200)
+        self.assertTrue(resp_manager.context['can_edit'])
+        # The management form should be visible
+        self.assertContains(resp_manager, 'Gestión operativa del convenio')
+        self.assertContains(resp_manager, 'name="signed"')
+        self.assertContains(resp_manager, 'name="benefit_already_provided"')
+
+    def test_agreement_update_document_view_post_permissions(self):
+        from apps.sales.models import UserRouteAccess
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        post_url = reverse('customers:customer_agreement_update_document_view', kwargs={'pk': self.agreement.pk})
+
+        # 1. Unauthorized user attempt
+        seller_user = User.objects.create_user(username='unauth_post_user')
+        UserRouteAccess.objects.create(user=seller_user, route=self.route, can_view=True)
+        self.client.force_login(seller_user)
+
+        r_unauth = self.client.post(post_url, {'signed': 'on', 'benefit_already_provided': 'on'})
+        self.assertEqual(r_unauth.status_code, 302)
+        self.agreement.refresh_from_db()
+        self.assertFalse(self.agreement.signed)
+        self.assertFalse(self.agreement.benefit_already_provided)
+
+        # 2. Authorized user attempt (gerente_cedis via Reference)
+        cedis_group, _ = Group.objects.get_or_create(name='gerente_cedis')
+        Reference.objects.get_or_create(
+            key='can_edit_customer_agreement',
+            value='gerente_cedis',
+        )
+        manager_user = User.objects.create_user(username='auth_post_user')
+        manager_user.groups.add(cedis_group)
+        UserRouteAccess.objects.create(user=manager_user, route=self.route, can_view=True)
+        self.client.force_login(manager_user)
+
+        fake_pdf = SimpleUploadedFile("convenio_firmado.pdf", b"%PDF-1.4 test", content_type="application/pdf")
+        r_auth = self.client.post(post_url, {
+            'signed': 'on',
+            'benefit_already_provided': 'on',
+            'related_doc': fake_pdf,
+        })
+        self.assertEqual(r_auth.status_code, 302)
+        self.agreement.refresh_from_db()
+        self.assertTrue(self.agreement.signed)
+        self.assertTrue(self.agreement.benefit_already_provided)
+        self.assertTrue(bool(self.agreement.related_doc))
+
 
 
 

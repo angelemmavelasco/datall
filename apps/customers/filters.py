@@ -534,6 +534,24 @@ class CustomerAgreementFilter(django_filters.FilterSet):
         label='Mes de fin (Hasta)',
         widget=forms.TextInput(attrs={'type': 'month'})
     )
+    signed = django_filters.ChoiceFilter(
+        choices=[
+            ('true', 'Firmado'),
+            ('false', 'Pendiente de firma'),
+        ],
+        method='filter_signed',
+        label='Firma de convenio',
+        empty_label='Todos',
+    )
+    benefit_already_provided = django_filters.ChoiceFilter(
+        choices=[
+            ('true', 'Entregado'),
+            ('false', 'Pendiente de entrega'),
+        ],
+        method='filter_benefit_provided',
+        label='Entrega de beneficio',
+        empty_label='Todos',
+    )
 
     class Meta:
         model = CustomerAgreement
@@ -568,6 +586,20 @@ class CustomerAgreementFilter(django_filters.FilterSet):
             return queryset.filter(end_date__lt=today)
         elif value == 'upcoming':
             return queryset.filter(start_date__gt=today)
+        return queryset
+
+    def filter_signed(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if value == 'true':
+            return queryset.filter(signed=True)
+        elif value == 'false':
+            return queryset.filter(signed=False)
+        return queryset
+
+    def filter_benefit_provided(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if value == 'true':
+            return queryset.filter(benefit_already_provided=True)
+        elif value == 'false':
+            return queryset.filter(benefit_already_provided=False)
         return queryset
 
     def filter_route(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:

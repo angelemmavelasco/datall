@@ -291,7 +291,17 @@ class CustomerAgreement(models.Model):
         upload_to='customer_agreements/documents/',
         null=True,
         blank=True,
-        help_text='Archivo escaneado o digital del convenio firmado (único campo editable en la app regular)'
+        help_text='Archivo escaneado o digital del convenio firmado'
+    )
+    signed = models.BooleanField(
+        default=False,
+        verbose_name='Firmado',
+        help_text='Indica si el cliente ya firmó el documento o contrato del convenio'
+    )
+    benefit_already_provided = models.BooleanField(
+        default=False,
+        verbose_name='Beneficio entregado',
+        help_text='Indica si el beneficio comercial ya fue entregado al cliente'
     )
     margin_warning_accepted = models.BooleanField(
         default=False,
@@ -337,7 +347,7 @@ class CustomerAgreement(models.Model):
             for field in immutable_fields:
                 if getattr(self, field) != getattr(original, field):
                     raise ValidationError(
-                        f"El campo '{field}' es inmutable tras la creación del convenio. Únicamente se permite modificar el documento adjunto."
+                        f"El campo '{field}' es inmutable tras la creación del convenio. Únicamente se permite modificar el estado de firma, entrega del beneficio y documento adjunto."
                     )
 
     def save(self, *args, **kwargs):
