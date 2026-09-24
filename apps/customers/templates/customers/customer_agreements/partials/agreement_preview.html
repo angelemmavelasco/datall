@@ -9,16 +9,22 @@
 <div class="bg-container border border-border rounded overflow-hidden text-title my-4" id="printable-contract-container">
 
     <!-- acciones para pantalla -->
-    <div class="p-2 bg-container border-b border-border flex items-center justify-between print:hidden">
+    <div class="p-2 bg-container border-b border-border flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div class="flex items-center gap-2 text-xs text-secondary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer text-title"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text text-title"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
             <span class="text-title font-medium">Vista previa de contrato comercial</span>
             <span>· Folio: <span class="font-mono text-title">{{ preview.doc_id }}</span></span>
         </div>
-        <button type="button" onclick="printAgreementContract()" class="bg-container border border-border text-strong hover:bg-hover px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
-            <span>Imprimir contrato</span>
-        </button>
+        <div class="flex items-center gap-2">
+            <button type="button" id="btn-download-agreement-pdf" onclick="downloadAgreementPDF()" class="bg-container border border-border text-strong hover:bg-hover px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                <span>Descargar PDF</span>
+            </button>
+            <!-- <button type="button" id="btn-print-agreement-contract" onclick="printAgreementContract()" class="bg-container border border-border text-strong hover:bg-hover px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer" title="Imprimir contrato tamaño Carta">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                <span>Imprimir contrato</span>
+            </button> -->
+        </div>
     </div>
 
     <div class="p-6 md:p-8 bg-page text-title font-sans print:p-0 print:m-0 space-y-6 print:space-y-0" id="contract-paper">
@@ -294,9 +300,258 @@
     </div>
 </div>
 
+<script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@latest/dist/html2canvas-pro.min.js"></script>
+
 <script>
-function printAgreementContract() {
-    window.print();
+function loadScriptAsync(src) {
+    return new Promise((resolve, reject) => {
+        const existing = document.querySelector(`script[src="${src}"]`);
+        if (existing) {
+            if (existing.dataset.loaded === 'true' || window.jspdf || window.html2canvas) {
+                resolve();
+                return;
+            }
+            existing.addEventListener('load', () => resolve());
+            existing.addEventListener('error', (e) => reject(e));
+            setTimeout(resolve, 800);
+            return;
+        }
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.onload = () => {
+            s.dataset.loaded = 'true';
+            resolve();
+        };
+        s.onerror = (e) => reject(e);
+        document.head.appendChild(s);
+    });
+}
+
+async function ensurePdfLibrariesReady() {
+    const promises = [];
+    if (!window.jspdf && !window.jsPDF) {
+        promises.push(loadScriptAsync('https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js'));
+    }
+    if (!window.html2canvas && !window.html2canvasPro) {
+        promises.push(loadScriptAsync('https://cdn.jsdelivr.net/npm/html2canvas-pro@latest/dist/html2canvas-pro.min.js'));
+    }
+    if (promises.length > 0) {
+        await Promise.all(promises);
+    }
+}
+
+async function buildAgreementPDF() {
+    const page1 = document.getElementById('contract-page-1');
+    const page2 = document.getElementById('contract-page-2');
+    if (!page1 || !page2) {
+        throw new Error('No se encontraron las páginas del contrato.');
+    }
+
+    await ensurePdfLibrariesReady();
+
+    if (document.fonts && document.fonts.ready) {
+        try {
+            await document.fonts.ready;
+        } catch (e) {
+            console.warn('fonts.ready skipped:', e);
+        }
+    }
+
+    const jsPdfConstructor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
+    const h2c = window.html2canvas || window.html2canvasPro;
+
+    if (!jsPdfConstructor || !h2c) {
+        throw new Error('Las librerías de generación PDF no están disponibles.');
+    }
+
+    // Contenedor sandbox para renderizar a tamaño estándar Carta (816px x 1056px a 96 DPI = 8.5in x 11in)
+    // Garantiza que tanto en celular como en computadora se renderice con exactamente las mismas proporciones
+    const sandbox = document.createElement('div');
+    sandbox.id = 'contract-pdf-sandbox';
+    sandbox.style.position = 'fixed';
+    sandbox.style.left = '-99999px';
+    sandbox.style.top = '0';
+    sandbox.style.width = '816px';
+    sandbox.style.zIndex = '-99999';
+    sandbox.style.pointerEvents = 'none';
+    sandbox.style.backgroundColor = '#ffffff';
+    sandbox.style.color = '#0f172a';
+    sandbox.style.fontFamily = 'ui-sans-serif, system-ui, sans-serif';
+
+    // Variables de tema limpias para contrato oficial impreso
+    sandbox.style.setProperty('--theme-body', '#0f172a');
+    sandbox.style.setProperty('--theme-title', '#334155');
+    sandbox.style.setProperty('--theme-border', '#cbd5e1');
+    sandbox.style.setProperty('--theme-hover', '#5d6e87');
+    sandbox.style.setProperty('--theme-container', '#f8fafc');
+    sandbox.style.setProperty('--theme-page', '#ffffff');
+
+    const clone1 = page1.cloneNode(true);
+    const clone2 = page2.cloneNode(true);
+
+    const configureSheetClone = (sheet) => {
+        sheet.id = sheet.id + '-pdf-clone';
+        sheet.style.width = '816px';
+        sheet.style.minWidth = '816px';
+        sheet.style.maxWidth = '816px';
+        sheet.style.height = '1056px';
+        sheet.style.minHeight = '1056px';
+        sheet.style.maxHeight = '1056px';
+        sheet.style.boxSizing = 'border-box';
+        sheet.style.padding = '32px'; // Mantiene exactamente el padding p-8 de pantalla
+        sheet.style.margin = '0';
+        sheet.style.border = 'none';
+        sheet.style.borderRadius = '0';
+        sheet.style.boxShadow = 'none';
+        sheet.style.backgroundColor = '#ffffff';
+        sheet.style.color = '#0f172a';
+        sheet.style.display = 'flex';
+        sheet.style.flexDirection = 'column';
+        sheet.style.justifyContent = 'space-between';
+        sheet.style.overflow = 'hidden';
+    };
+
+    configureSheetClone(clone1);
+    configureSheetClone(clone2);
+
+    sandbox.appendChild(clone1);
+    sandbox.appendChild(clone2);
+    document.body.appendChild(sandbox);
+
+    try {
+        const renderOpts = {
+            scale: 2.2, // Alta resolución para nitidez tipográfica
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            width: 816,
+            height: 1056,
+            windowWidth: 816,
+            windowHeight: 1056
+        };
+
+        const [canvas1, canvas2] = await Promise.all([
+            h2c(clone1, renderOpts),
+            h2c(clone2, renderOpts)
+        ]);
+
+        const pdf = new jsPdfConstructor({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'letter',
+            compress: true
+        });
+
+        // Carta: 215.9mm de ancho x 279.4mm de alto
+        const img1 = canvas1.toDataURL('image/jpeg', 0.96);
+        pdf.addImage(img1, 'JPEG', 0, 0, 215.9, 279.4, undefined, 'FAST');
+
+        pdf.addPage('letter', 'portrait');
+        const img2 = canvas2.toDataURL('image/jpeg', 0.96);
+        pdf.addImage(img2, 'JPEG', 0, 0, 215.9, 279.4, undefined, 'FAST');
+
+        return pdf;
+    } finally {
+        if (sandbox && sandbox.parentNode) {
+            sandbox.parentNode.removeChild(sandbox);
+        }
+    }
+}
+
+async function printAgreementContract() {
+    const btn = document.getElementById('btn-print-agreement-contract');
+    const originalContent = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-70', 'cursor-not-allowed');
+        btn.innerHTML = `
+            <svg class="animate-spin h-3.5 w-3.5 text-current inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Preparando...</span>
+        `;
+    }
+
+    try {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const pdf = await buildAgreementPDF();
+        const blobUrl = pdf.output('bloburl');
+
+        if (isMobile) {
+            // En móvil se abre el visor nativo con AirPrint / Guardar / Compartir
+            window.open(blobUrl, '_blank');
+        } else {
+            // En computadora se invoca el diálogo de impresión con iframe oculto
+            const printIframe = document.createElement('iframe');
+            printIframe.style.position = 'fixed';
+            printIframe.style.right = '0';
+            printIframe.style.bottom = '0';
+            printIframe.style.width = '0';
+            printIframe.style.height = '0';
+            printIframe.style.border = 'none';
+            printIframe.src = blobUrl;
+            document.body.appendChild(printIframe);
+
+            printIframe.onload = function() {
+                setTimeout(() => {
+                    try {
+                        printIframe.contentWindow.focus();
+                        printIframe.contentWindow.print();
+                    } catch (e) {
+                        window.open(blobUrl, '_blank');
+                    } finally {
+                        setTimeout(() => {
+                            if (printIframe.parentNode) printIframe.parentNode.removeChild(printIframe);
+                        }, 60000);
+                    }
+                }, 300);
+            };
+        }
+    } catch (err) {
+        console.error('Error generando PDF para impresión:', err);
+        window.print();
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-70', 'cursor-not-allowed');
+            btn.innerHTML = originalContent;
+        }
+    }
+}
+
+async function downloadAgreementPDF() {
+    const btn = document.getElementById('btn-download-agreement-pdf');
+    const originalContent = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-70', 'cursor-not-allowed');
+        btn.innerHTML = `
+            <svg class="animate-spin h-3.5 w-3.5 text-current inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Generando...</span>
+        `;
+    }
+
+    try {
+        const pdf = await buildAgreementPDF();
+        const docId = '{{ preview.doc_id|default:"contrato" }}';
+        pdf.save(`Contrato_Comercial_${docId}.pdf`);
+    } catch (err) {
+        console.error('Error descargando PDF:', err);
+        window.print();
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-70', 'cursor-not-allowed');
+            btn.innerHTML = originalContent;
+        }
+    }
 }
 
 (function() {
@@ -317,11 +572,18 @@ function printAgreementContract() {
 @media print {
     @page {
         size: letter portrait;
-        margin: 10mm 15mm 10mm 15mm;
+        margin: 0;
     }
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+    }
+    html, body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
     }
     body * {
         visibility: hidden;
@@ -331,33 +593,38 @@ function printAgreementContract() {
         visibility: visible;
     }
     #printable-contract-container {
-        position: absolute;
-        left: 0;
-        top: 0;
+        position: static !important;
         width: 100% !important;
-        max-width: 185.9mm !important;
+        max-width: 100% !important;
         border: none !important;
         box-shadow: none !important;
-        margin: 0 auto !important;
+        margin: 0 !important;
         padding: 0 !important;
-        background: white !important;
+        background: #ffffff !important;
     }
-    .page-break-before {
-        page-break-before: always !important;
-        break-before: page !important;
+    #contract-paper {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: #ffffff !important;
     }
     .contract-page-sheet {
+        width: 215.9mm !important;
+        max-width: 215.9mm !important;
+        height: 279.4mm !important;
+        min-height: 279.4mm !important;
+        max-height: 279.4mm !important;
+        padding: 2rem !important; /* Preserva exactamente los paddings p-8 */
+        margin: 0 auto !important;
+        box-sizing: border-box !important;
+        background: #ffffff !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
-        padding: 0 !important;
-        margin: 0 auto !important;
-        box-shadow: none !important;
-        border: none !important;
-        width: 185.9mm !important;
-        max-width: 185.9mm !important;
-        height: 246mm !important;
-        max-height: 248mm !important;
-        box-sizing: border-box !important;
         overflow: hidden !important;
     }
     #contract-page-1 {
