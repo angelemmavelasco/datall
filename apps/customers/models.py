@@ -448,6 +448,12 @@ class AgreementEvaluationPeriod(models.Model):
     )
     observations = models.TextField(blank=True, default='', help_text='Detalles u observaciones del periodo')
 
+    @property
+    def compliance_pct(self) -> Decimal:
+        if self.expected_global_target and self.expected_global_target > 0:
+            return ((self.achieved_global_sales / self.expected_global_target) * Decimal('100.00')).quantize(Decimal('0.1'))
+        return Decimal('0.0')
+
     class Meta:
         verbose_name = 'Periodo de evaluación de convenio'
         verbose_name_plural = 'Periodos de evaluación de convenios'

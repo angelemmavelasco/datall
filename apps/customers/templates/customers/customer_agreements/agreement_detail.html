@@ -315,9 +315,9 @@ Convenio comercial: {{ agreement.doc_id }}
                     </td>
                     {% else %}
                     <td class="p-2 truncate text-center">
-                        {% if p.status == 'COMPLETED' %}
+                        {% if p.status == 'achieved' or p.status == 'ACHIEVED' or p.status == 'COMPLETED' %}
                             <span class="text-emerald-500">Óptimo</span>
-                        {% elif p.status == 'FAILED' %}
+                        {% elif p.status == 'failed' or p.status == 'FAILED' %}
                             <span class="text-red-500">Malo</span>
                         {% else %}
                             <span class="text-secondary">En curso</span>
@@ -325,10 +325,12 @@ Convenio comercial: {{ agreement.doc_id }}
                     </td>
                     {% endif %}
                     <td class="p-2 truncate text-center">
-                        {% if p.status == 'COMPLETED' %}
+                        {% if p.status == 'achieved' or p.status == 'ACHIEVED' or p.status == 'COMPLETED' %}
                             <span class="text-emerald-500">Cumplido</span>
-                        {% elif p.status == 'FAILED' %}
+                        {% elif p.status == 'failed' or p.status == 'FAILED' %}
                             <span class="text-red-500">No cumplido</span>
+                        {% elif p.status == 'evaluating' or p.status == 'EVALUATING' %}
+                            <span class="text-amber-500">En evaluación</span>
                         {% else %}
                             <span class="text-secondary">Pendiente</span>
                         {% endif %}
