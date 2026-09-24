@@ -4,7 +4,7 @@
         <span class="truncate" title="{{ customer.name|title }} ({{ customer.id }})">
             {{ customer.name|title }} <span class="text-secondary font-mono text-[11px]">({{ customer.id }})</span>
             {% if customer.current_route_id %}
-                <span class="text-secondary text-[10px] ml-1">· R{{ customer.current_route_id }}</span>
+                <span class="text-secondary text-[10px] ml-1">· Ruta {{ customer.current_route_id }}</span>
             {% endif %}
         </span>
         {% if customer.id|stringformat:"s" == selected_id|stringformat:"s" %}

@@ -2273,6 +2273,9 @@
   .text-body {
     color: var(--theme-body);
   }
+  .text-current {
+    color: currentcolor;
+  }
   .text-cyan-500 {
     color: var(--color-cyan-500);
   }
@@ -2430,6 +2433,9 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  .opacity-25 {
+    opacity: 25%;
+  }
   .opacity-30 {
     opacity: 30%;
   }
@@ -2438,6 +2444,9 @@
   }
   .opacity-50 {
     opacity: 50%;
+  }
+  .opacity-70 {
+    opacity: 70%;
   }
   .opacity-75 {
     opacity: 75%;
