@@ -1,0 +1,623 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}
+Nuevo convenio comercial
+{% endblock %}
+
+{% block module_name %}
+Nuevo convenio comercial
+{% endblock %}
+
+{% block module_actions %}
+<a href="{% url 'customers:customer_agreement_list_view' %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+    <span>Volver</span>
+</a>
+{% endblock %}
+
+{% block content %}
+
+<form id="create-agreement-form" method="POST" action="{% url 'customers:customer_agreement_create_view' %}" enctype="multipart/form-data" class="flex flex-col gap-4">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <p class="text-red-500 text-xs flex flex-col gap-1">
+        {% for error in form.non_field_errors %}
+        <span class="block">• {{ error }}</span>
+        {% endfor %}
+    </p>
+    {% endif %}
+
+    <p class="text-title text-sm">Información general</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <!-- cliente -->
+        <span class="text-title flex items-center gap-1">Cliente
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            <details class="group relative w-full custom-search-dropdown">
+                <summary class="list-none [&::-webkit-details-marker]:hidden flex items-center justify-between w-full bg-page border {% if form.customer.errors %}border-red-500 ring-1 ring-red-500{% else %}border-border{% endif %} rounded p-1 cursor-pointer select-none text-xs text-title focus:outline-none h-8">
+                    <span id="label_customer" class="truncate">
+                        {% if form.instance.customer %}
+                            {{ form.instance.customer.name|title }} ({{ form.instance.customer.id }})
+                        {% elif form.customer.value %}
+                            {% for c in initial_customers %}
+                                {% if c.id|stringformat:"s" == form.customer.value|stringformat:"s" %}
+                                    {{ c.name|title }} ({{ c.id }})
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            Seleccionar cliente...
+                        {% endif %}
+                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-open:rotate-180 text-muted shrink-0 ml-1"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
+
+                <input type="hidden"
+                       name="customer"
+                       id="id_customer"
+                       value="{{ form.customer.value|default:'' }}">
+
+                <div class="absolute left-0 top-full mt-1 w-full p-2 bg-page border border-border rounded shadow-lg z-50 flex flex-col gap-2 max-h-56">
+                    <input type="text"
+                           name="q_customer"
+                           hx-get="{% url 'customers:customer_options_view' %}?field_name=customer"
+                           hx-trigger="input delay:300ms, focus"
+                           hx-target="#options-customer"
+                           hx-swap="innerHTML"
+                           hx-push-url="false"
+                           autocomplete="off"
+                           class="w-full border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                           placeholder="Buscar por ID o nombre...">
+
+                    <div id="options-customer" class="h-36 overflow-y-auto flex flex-col gap-1">
+                        {% include "customers/partials/customer_options.html" with customers=initial_customers field_name="customer" selected_id=form.customer.value %}
+                    </div>
+                </div>
+            </details>
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.customer.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <!-- Beneficio -->
+        <span class="text-title flex items-center gap-1">Beneficio comercial
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.benefit class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.benefit.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <!-- Tipo de convenio -->
+        <span class="text-title flex items-center gap-1">Tipo de convenio
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.agreement_type class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.agreement_type.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <!-- Folio de convenio -->
+        <span class="text-title flex items-center gap-1">Folio</span>
+        <div>
+            {% render_field form.doc_id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title' placeholder='Opcional: autogenerado si se omite' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.doc_id.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <!-- Mes de inicio -->
+        <span class="text-title flex items-center gap-1">Mes de inicio
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.start_date type='month' class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.start_date.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <!-- Mes de fin -->
+        <span class="text-title flex items-center gap-1">Mes de fin
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.end_date type='month' class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.end_date.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <!-- Documento adjunto -->
+        <span class="text-title flex items-center gap-1">Documento adjunto</span>
+        <div>
+            {% render_field form.related_doc class='w-full bg-page border border-border rounded p-1 text-xs text-secondary file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:bg-container file:text-title hover:file:bg-hover cursor-pointer' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.related_doc.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+
+    <p class="text-title text-sm mt-2">Compromisos financieros y metas</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+        <!-- Cuota global base -->
+        <span class="text-title flex items-center gap-1">Cuota global ($)
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.global_target_amount class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title' placeholder='0.00' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.global_target_amount.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <!-- Frecuencia de evaluación -->
+        <span class="text-title flex items-center gap-1">Frecuencia de evaluación
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.target_frequency class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.target_frequency.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <!-- Penalización por incumplimiento -->
+        <span class="text-title flex items-center gap-1">Penalización ($)</span>
+        <div>
+            {% render_field form.penalty_amount class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title' placeholder='0.00' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.penalty_amount.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <!-- Tasa de crecimiento -->
+        <span class="text-title flex items-center gap-1">Crecimiento (%)</span>
+        <div>
+            {% render_field form.growth_value class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title' placeholder='0.00' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.growth_value.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <!-- Frecuencia de crecimiento -->
+        <span class="text-title flex items-center gap-1">Frecuencia de crecimiento</span>
+        <div>
+            {% render_field form.growth_frequency class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.growth_frequency.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+
+    <p class="text-title text-sm mt-2">Clases de producto participantes</p>
+    <hr class="border-border border">
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[50vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-[95px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page select-none">
+                        <label class="flex items-center justify-center gap-1.5 cursor-pointer m-0">
+                            <input type="checkbox" id="select-all-participates" class="rounded border-border text-primary cursor-pointer" onchange="toggleSelectAllParticipates(this.checked)" title="Seleccionar todas las clases">
+                            <span>Participa</span>
+                        </label>
+                    </th>
+                    <th class="w-[105px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page select-none">
+                        <label class="flex items-center justify-center gap-1.5 cursor-pointer m-0">
+                            <input type="checkbox" id="select-all-mandatory" class="rounded border-border text-primary cursor-pointer disabled:opacity-30" onchange="toggleSelectAllMandatory(this.checked)" title="Marcar todas como obligatorias">
+                            <span>Obligatoria</span>
+                        </label>
+                    </th>
+                    <th class="w-[240px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Clase de producto
+                    </th>
+                    <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Categoría
+                    </th>
+                    <th class="w-[160px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Cuota asignada ($)
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pc in product_classes %}
+                <tr>
+                    <td class="p-2 truncate text-center">
+                        <input type="checkbox" name="participating_classes" value="{{ pc.id }}" id="part_{{ pc.id }}"
+                               class="participates-check rounded border-border text-primary cursor-pointer"
+                               onchange="handleParticipatesChange('{{ pc.id }}')">
+                    </td>
+                    <td class="p-2 truncate text-center">
+                        <input type="checkbox" name="mandatory_classes" value="{{ pc.id }}" id="mand_{{ pc.id }}"
+                               class="mandatory-check rounded border-border text-primary cursor-pointer disabled:opacity-30"
+                               disabled
+                               onchange="handleMandatoryChange('{{ pc.id }}')">
+                    </td>
+                    <td class="p-2 truncate text-left text-title">
+                        <label for="part_{{ pc.id }}" class="cursor-pointer">{{ pc.name|title }}</label>
+                    </td>
+                    <td class="p-2 truncate text-left text-secondary text-xs">
+                        {{ pc.product_category.name|default:'-'|title }}
+                    </td>
+                    <td class="p-2 text-right">
+                        <input type="number" step="0.01" min="0" name="mandatory_target_{{ pc.id }}" id="target_{{ pc.id }}"
+                               class="target-input w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong focus:ring-strong font-mono text-right disabled:opacity-30 disabled:bg-transparent"
+                               placeholder="0.00" disabled
+                               oninput="calculateClassTotals()">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-container p-2 rounded border border-border text-xs text-title">
+        <div>
+            <span class="text-secondary block">Clases participantes</span>
+            <span id="selected-classes-count" class="font-mono text-sm">0</span>
+        </div>
+        <div>
+            <span class="text-secondary block">Clases obligatorias</span>
+            <span id="mandatory-classes-count" class="font-mono text-sm">0</span>
+        </div>
+        <div>
+            <span class="text-secondary block">Suma obligatorias</span>
+            <span id="mandatory-sum" class="font-mono text-sm text-title">$0.00</span>
+        </div>
+        <div>
+            <span class="text-secondary block">Remanente global</span>
+            <span id="complementary-sum" class="font-mono text-sm text-title">$0.00</span>
+        </div>
+    </div>
+
+    <p class="text-title text-sm mt-2">Simulación financiera de margen</p>
+    <hr class="border-border border">
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end bg-container p-2 rounded">
+        <div class="flex flex-col gap-1">
+            <label class="text-title text-xs">Histórico desde</label>
+            <input type="month" name="eval_start" id="eval_start" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title">
+        </div>
+        <div class="flex flex-col gap-1">
+            <label class="text-title text-xs">Histórico hasta</label>
+            <input type="month" name="eval_end" id="eval_end" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title">
+        </div>
+        <div>
+            <button type="button"
+                    hx-post="{% url 'customers:customer_agreement_validate_margin_view' %}"
+                    hx-include="#create-agreement-form"
+                    hx-target="#margin-alert-container"
+                    class="w-full bg-page border border-border text-title hover:bg-hover p-1.5 rounded transition-colors cursor-pointer flex items-center justify-center gap-2 text-xs">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calculator"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
+                <span>Simular margen</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="margin-alert-container">
+        <div class="p-2 border border-border rounded bg-container text-secondary text-xs text-center">
+            Presiona "Simular margen" para proyectar la viabilidad financiera del convenio.
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-2 mt-4">
+        <button type="button"
+                hx-post="{% url 'customers:customer_agreement_preview_view' %}"
+                hx-include="#create-agreement-form"
+                hx-target="#preview-container"
+                onclick="setTimeout(() => { document.getElementById('preview-container').scrollIntoView({behavior: 'smooth'}) }, 200)"
+                class="border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2 text-xs">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+            Generar previo y contrato
+        </button>
+
+        <button type="submit"
+                class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2 text-xs">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            Confirmar
+        </button>
+
+        <a href="{% url 'customers:customer_agreement_list_view' %}"
+           class="border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full flex items-center justify-center gap-2 text-xs">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+            Cancelar
+        </a>
+    </div>
+
+</form>
+
+<!-- Contenedor del previo contractual -->
+<div id="preview-container" class="mt-4"></div>
+
+<script>
+function selectDropdownOption(fieldName, optionId, optionLabel, element) {
+    const input = document.getElementById('id_' + fieldName);
+    const label = document.getElementById('label_' + fieldName);
+    if (input) input.value = optionId;
+    if (label) label.textContent = optionLabel;
+
+    const details = element.closest('details');
+    if (details) details.removeAttribute('open');
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('.custom-search-dropdown[open]').forEach(function(details) {
+        if (!details.contains(e.target)) {
+            details.removeAttribute('open');
+        }
+    });
+});
+
+// Autocompletar fechas de evaluación histórica por defecto al cargar (últimos 3 meses terminados)
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const startMonth = new Date(today.getFullYear(), today.getMonth() - 4, 1);
+
+    const formatMonth = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        return `${y}-${m}`;
+    };
+
+    const evalStart = document.getElementById('eval_start');
+    const evalEnd = document.getElementById('eval_end');
+    if (evalStart && !evalStart.value) evalStart.value = formatMonth(startMonth);
+    if (evalEnd && !evalEnd.value) evalEnd.value = formatMonth(prevMonth);
+    syncSelectAllHeaders();
+});
+
+// Control de checkboxes de clases participantes y obligatorias
+function handleParticipatesChange(classId) {
+    const partCheck = document.getElementById('part_' + classId);
+    const mandCheck = document.getElementById('mand_' + classId);
+    const targetInput = document.getElementById('target_' + classId);
+
+    if (partCheck.checked) {
+        mandCheck.disabled = false;
+    } else {
+        mandCheck.checked = false;
+        mandCheck.disabled = true;
+        targetInput.value = '';
+        targetInput.disabled = true;
+    }
+    syncSelectAllHeaders();
+    calculateClassTotals();
+}
+
+function handleMandatoryChange(classId) {
+    const mandCheck = document.getElementById('mand_' + classId);
+    const targetInput = document.getElementById('target_' + classId);
+
+    if (mandCheck.checked) {
+        targetInput.disabled = false;
+        targetInput.focus();
+    } else {
+        targetInput.value = '';
+        targetInput.disabled = true;
+    }
+    syncSelectAllHeaders();
+    calculateClassTotals();
+}
+
+function toggleSelectAllParticipates(checked) {
+    const partChecks = document.querySelectorAll('.participates-check');
+    const mandChecks = document.querySelectorAll('.mandatory-check');
+    const targetInputs = document.querySelectorAll('.target-input');
+    const allMandatoryHeader = document.getElementById('select-all-mandatory');
+
+    partChecks.forEach(cb => {
+        cb.checked = checked;
+    });
+
+    if (checked) {
+        mandChecks.forEach(cb => {
+            cb.disabled = false;
+        });
+        if (allMandatoryHeader) allMandatoryHeader.disabled = false;
+    } else {
+        mandChecks.forEach(cb => {
+            cb.checked = false;
+            cb.disabled = true;
+        });
+        targetInputs.forEach(input => {
+            input.value = '';
+            input.disabled = true;
+        });
+        if (allMandatoryHeader) {
+            allMandatoryHeader.checked = false;
+            allMandatoryHeader.disabled = true;
+        }
+    }
+
+    syncSelectAllHeaders();
+    calculateClassTotals();
+}
+
+function toggleSelectAllMandatory(checked) {
+    const partChecks = document.querySelectorAll('.participates-check');
+    const mandChecks = document.querySelectorAll('.mandatory-check');
+    const targetInputs = document.querySelectorAll('.target-input');
+    const allParticipatesHeader = document.getElementById('select-all-participates');
+
+    if (checked) {
+        partChecks.forEach(cb => {
+            cb.checked = true;
+        });
+        if (allParticipatesHeader) {
+            allParticipatesHeader.checked = true;
+            allParticipatesHeader.indeterminate = false;
+        }
+
+        mandChecks.forEach(cb => {
+            cb.disabled = false;
+            cb.checked = true;
+        });
+
+        targetInputs.forEach(input => {
+            input.disabled = false;
+        });
+    } else {
+        mandChecks.forEach(cb => {
+            cb.checked = false;
+        });
+        targetInputs.forEach(input => {
+            input.value = '';
+            input.disabled = true;
+        });
+    }
+
+    syncSelectAllHeaders();
+    calculateClassTotals();
+}
+
+function syncSelectAllHeaders() {
+    const partChecks = Array.from(document.querySelectorAll('.participates-check'));
+    const mandChecks = Array.from(document.querySelectorAll('.mandatory-check'));
+    const allPartHeader = document.getElementById('select-all-participates');
+    const allMandHeader = document.getElementById('select-all-mandatory');
+
+    if (!partChecks.length) return;
+
+    const checkedPartCount = partChecks.filter(cb => cb.checked).length;
+    if (allPartHeader) {
+        if (checkedPartCount === 0) {
+            allPartHeader.checked = false;
+            allPartHeader.indeterminate = false;
+        } else if (checkedPartCount === partChecks.length) {
+            allPartHeader.checked = true;
+            allPartHeader.indeterminate = false;
+        } else {
+            allPartHeader.checked = false;
+            allPartHeader.indeterminate = true;
+        }
+    }
+
+    const checkedMandCount = mandChecks.filter(cb => cb.checked).length;
+    if (allMandHeader) {
+        if (checkedPartCount === 0) {
+            allMandHeader.disabled = true;
+            allMandHeader.checked = false;
+            allMandHeader.indeterminate = false;
+        } else {
+            allMandHeader.disabled = false;
+            if (checkedMandCount === 0) {
+                allMandHeader.checked = false;
+                allMandHeader.indeterminate = false;
+            } else if (checkedMandCount === mandChecks.length) {
+                allMandHeader.checked = true;
+                allMandHeader.indeterminate = false;
+            } else {
+                allMandHeader.checked = false;
+                allMandHeader.indeterminate = true;
+            }
+        }
+    }
+}
+
+function calculateClassTotals() {
+    const participating = document.querySelectorAll('.participates-check:checked');
+    const mandatory = document.querySelectorAll('.mandatory-check:checked');
+    const targetInputs = document.querySelectorAll('.target-input:not(:disabled)');
+
+    let mandatorySum = 0;
+    targetInputs.forEach(input => {
+        const val = parseFloat(input.value) || 0;
+        mandatorySum += val;
+    });
+
+    const globalTargetInput = document.getElementById('id_global_target_amount');
+    const globalVal = parseFloat(globalTargetInput ? globalTargetInput.value : 0) || 0;
+    const complementarySum = Math.max(0, globalVal - mandatorySum);
+
+    document.getElementById('selected-classes-count').textContent = participating.length;
+    document.getElementById('mandatory-classes-count').textContent = mandatory.length;
+    document.getElementById('mandatory-sum').textContent = '$' + mandatorySum.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('complementary-sum').textContent = '$' + complementarySum.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+const globalTargetElem = document.getElementById('id_global_target_amount');
+if (globalTargetElem) {
+    globalTargetElem.addEventListener('input', calculateClassTotals);
+}
+</script>
+
+{% endblock %}

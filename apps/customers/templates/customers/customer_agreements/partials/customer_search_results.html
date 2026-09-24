@@ -1,0 +1,19 @@
+{% for cust in customers %}
+<div class="p-2 border-b border-border/50 hover:bg-hover cursor-pointer transition-colors flex items-center justify-between text-xs"
+     onclick="selectCustomer('{{ cust.id }}', '{{ cust.name|escapejs }}', '{{ cust.current_route_id|default:'' }}', '{{ cust.current_route_name|default:''|escapejs }}')">
+    <div class="flex flex-col">
+        <span class="font-medium text-title">{{ cust.name|title }}</span>
+        <span class="text-[10px] text-secondary font-mono">{{ cust.id }}</span>
+    </div>
+    {% if cust.current_route_id %}
+    <span class="text-[10px] px-1.5 py-0.5 rounded bg-container border border-border text-secondary font-mono">
+        Ruta {{ cust.current_route_id }}
+    </span>
+    {% endif %}
+</div>
+{% empty %}
+<div class="p-3 text-center text-xs text-secondary italic">
+    No se encontraron clientes coincidentes.
+</div>
+{% endfor %}
+

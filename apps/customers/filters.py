@@ -9,7 +9,15 @@ from apps.human_resources.services.business_units import BusinessUnitsService
 from apps.sales.models import Route, SaleTransaction
 from apps.sales.services.routes import RoutesService
 from apps.products.models import ProductClass, ProductCategory
-from .models import Customer, CustomerType, CustomerAssignment
+from .models import (
+    Customer,
+    CustomerType,
+    CustomerAssignment,
+    CustomerAgreement,
+    CommercialBenefit,
+    AgreementTypeChoices,
+)
+from .services.customer_agreements import parse_month_input
 
 
 class BusinessUnitMultipleChoiceField(forms.ModelMultipleChoiceField):
@@ -461,4 +469,178 @@ class CustomerProfileFilter(django_filters.FilterSet):
             return queryset
         bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in value]
         return queryset.filter(route__business_unit_id__in=bu_ids)
+
+
+class CustomerAgreementFilter(django_filters.FilterSet):
+    search = django_filters.CharFilter(
+        method='filter_search',
+        label='Buscar (Folio, ID o Nombre de cliente)'
+    )
+    agreement_type = django_filters.ChoiceFilter(
+        choices=AgreementTypeChoices.choices,
+        label='Tipo de convenio',
+        empty_label='Todos los tipos',
+    )
+    benefit = django_filters.ModelChoiceFilter(
+        queryset=CommercialBenefit.objects.none(),
+        label='Beneficio comercial',
+        empty_label='Todos los beneficios',
+    )
+    status = django_filters.ChoiceFilter(
+        method='filter_status',
+        choices=[
+            ('active', 'Vigente / Activo'),
+            ('expired', 'Concluido / Vencido'),
+            ('upcoming', 'Próximo a iniciar'),
+        ],
+        label='Estado de vigencia',
+        empty_label='Todos los estados',
+    )
+    region = BusinessUnitMultipleChoiceFilter(
+        method='filter_region',
+        queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION),
+        widget=forms.CheckboxSelectMultiple,
+        label='Región'
+    )
+    business_unit = BusinessUnitMultipleChoiceFilter(
+        method='filter_business_unit',
+        queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT),
+        widget=forms.CheckboxSelectMultiple,
+        label='Gerencia'
+    )
+    route = django_filters.ModelMultipleChoiceFilter(
+        method='filter_route',
+        queryset=Route.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Ruta'
+    )
+    start_date_gte = django_filters.CharFilter(
+        method='filter_start_date_gte',
+        label='Mes de inicio (Desde)',
+        widget=forms.TextInput(attrs={'type': 'month'})
+    )
+    start_date_lte = django_filters.CharFilter(
+        method='filter_start_date_lte',
+        label='Mes de inicio (Hasta)',
+        widget=forms.TextInput(attrs={'type': 'month'})
+    )
+    end_date_gte = django_filters.CharFilter(
+        method='filter_end_date_gte',
+        label='Mes de fin (Desde)',
+        widget=forms.TextInput(attrs={'type': 'month'})
+    )
+    end_date_lte = django_filters.CharFilter(
+        method='filter_end_date_lte',
+        label='Mes de fin (Hasta)',
+        widget=forms.TextInput(attrs={'type': 'month'})
+    )
+
+    class Meta:
+        model = CustomerAgreement
+        fields = []
+
+    def __init__(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+        self.filters['benefit'].queryset = CommercialBenefit.objects.filter(is_active=True).order_by('name')
+        if request:
+            user = request.user if hasattr(request, 'user') else request
+            bu_service = BusinessUnitsService(user=user)
+            self.filters['region'].queryset = bu_service.read_regions()
+            self.filters['business_unit'].queryset = bu_service.read_units()
+            self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
+
+    def filter_search(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        val = str(value).strip()
+        return queryset.filter(
+            Q(doc_id__icontains=val) |
+            Q(customer__id__icontains=val) |
+            Q(customer__name__icontains=val)
+        ).distinct()
+
+    def filter_status(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        today = timezone.now().date()
+        if value == 'active':
+            return queryset.filter(start_date__lte=today, end_date__gte=today)
+        elif value == 'expired':
+            return queryset.filter(end_date__lt=today)
+        elif value == 'upcoming':
+            return queryset.filter(start_date__gt=today)
+        return queryset
+
+    def filter_route(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        today = timezone.now().date()
+        return queryset.filter(
+            Q(route__in=value) |
+            (
+                Q(customer__assignments__route__in=value) &
+                (Q(customer__assignments__end_date__isnull=True) | Q(customer__assignments__end_date__gte=today))
+            )
+        ).distinct()
+
+    def filter_region(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        selected_region_ids = set(r.pk if hasattr(r, 'pk') else r for r in value)
+        all_bu_ids = set(selected_region_ids)
+        current_parents = set(selected_region_ids)
+        while current_parents:
+            child_ids = set(
+                BusinessUnit.objects.filter(parent_id__in=current_parents).values_list('id', flat=True)
+            )
+            new_ids = child_ids - all_bu_ids
+            if not new_ids:
+                break
+            all_bu_ids.update(new_ids)
+            current_parents = new_ids
+
+        today = timezone.now().date()
+        return queryset.filter(
+            Q(route__business_unit_id__in=all_bu_ids) |
+            (
+                Q(customer__assignments__route__business_unit_id__in=all_bu_ids) &
+                (Q(customer__assignments__end_date__isnull=True) | Q(customer__assignments__end_date__gte=today))
+            )
+        ).distinct()
+
+    def filter_business_unit(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in value]
+        today = timezone.now().date()
+        return queryset.filter(
+            Q(route__business_unit_id__in=bu_ids) |
+            (
+                Q(customer__assignments__route__business_unit_id__in=bu_ids) &
+                (Q(customer__assignments__end_date__isnull=True) | Q(customer__assignments__end_date__gte=today))
+            )
+        ).distinct()
+
+    def filter_start_date_gte(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        d = parse_month_input(value, is_end=False)
+        return queryset.filter(start_date__gte=d) if d else queryset
+
+    def filter_start_date_lte(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        d = parse_month_input(value, is_end=True)
+        return queryset.filter(start_date__lte=d) if d else queryset
+
+    def filter_end_date_gte(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        d = parse_month_input(value, is_end=False)
+        return queryset.filter(end_date__gte=d) if d else queryset
+
+    def filter_end_date_lte(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        d = parse_month_input(value, is_end=True)
+        return queryset.filter(end_date__lte=d) if d else queryset
 

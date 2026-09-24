@@ -1,0 +1,391 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}
+Convenio comercial {{ agreement.doc_id }}
+{% endblock %}
+
+{% block module_name %}
+Convenio comercial: {{ agreement.doc_id }}
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+
+    <button type="button" onclick="toggleContractPreviewModal()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+        <span>Contrato</span>
+    </button>
+
+    <a href="{% url 'customers:customer_agreement_list_view' %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+        <span>Volver</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-4">
+
+    <p class="text-title pb-1 border-b border-border">
+        Resumen
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="border border-border rounded bg-container p-2">
+            <span class="text-sm text-title">
+                Folio de convenio
+            </span><br>
+            <span class="text-xl text-title font-mono">
+                {{ agreement.doc_id }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2">
+            <span class="text-sm text-title">
+                Estado de vigencia
+            </span><br>
+            <span class="text-xl font-mono">
+                {% now "Y-m-d" as current_date_str %}
+                {% if agreement.end_date|date:"Y-m-d" < current_date_str %}
+                    <span class="text-secondary">Concluido</span>
+                {% elif agreement.start_date|date:"Y-m-d" > current_date_str %}
+                    <span class="text-amber-500">Próximo</span>
+                {% else %}
+                    <span class="text-emerald-500">Vigente</span>
+                {% endif %}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2">
+            <span class="text-sm text-title">
+                Cuota global base
+            </span><br>
+            <span class="text-xl text-title font-mono">
+                $ {{ agreement.global_target_amount|floatformat:2|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2">
+            <span class="text-sm text-title">
+                Beneficio comercial
+            </span><br>
+            <span class="text-xl text-title truncate block">
+                {{ agreement.benefit.name|title }}
+            </span>
+        </div>
+    </div>
+
+    <p class="text-title pb-1 border-b border-border">
+        Información general
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded text-xs">
+        <span class="text-title">Cliente</span>
+        <div>
+            <a href="{% url 'customers:customer_detail_view' agreement.customer.pk %}" class="underline hover:text-hover transition-colors">
+                {{ agreement.customer.name|title }}
+            </a>
+            <span class="text-secondary font-mono">({{ agreement.customer.id }})</span>
+        </div>
+
+        <span class="text-title">Ruta y asesor</span>
+        <div class="text-title">
+            {% if agreement.route %}
+                <span class="font-mono">{{ agreement.route.id }}</span>
+                {% if advisor_name %}
+                    - {{ advisor_name|title }}
+                {% else %}
+                    - {{ agreement.route.name|title }}
+                {% endif %}
+            {% else %}
+                <span class="text-secondary">-</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Tipo de convenio</span>
+        <div class="text-title">
+            {{ agreement.get_agreement_type_display|title }}
+        </div>
+
+        <span class="text-title">Beneficio otorgado</span>
+        <div class="text-title">
+            {{ agreement.benefit.name|title }}
+            <span class="text-secondary">({{ agreement.benefit.get_benefit_type_display|title }}{% if not is_seller %} - ${{ agreement.benefit.cost|floatformat:2|intcomma }}{% endif %})</span>
+        </div>
+
+        <span class="text-title">Vigencia</span>
+        <div class="text-title font-mono">
+            {{ agreement.start_date|date:"m/Y" }} al {{ agreement.end_date|date:"m/Y" }}
+        </div>
+
+        <span class="text-title">Frecuencia de evaluación</span>
+        <div class="text-title">
+            {{ agreement.get_target_frequency_display|title }}
+        </div>
+
+        <span class="text-title">Penalización</span>
+        <div class="text-title font-mono">
+            $ {{ agreement.penalty_amount|floatformat:2|intcomma }}
+        </div>
+
+        <span class="text-title">Tasa de crecimiento</span>
+        <div class="text-title font-mono">
+            {% if agreement.growth_value > 0 %}
+                {{ agreement.growth_value }}% ({{ agreement.get_growth_frequency_display|default:''|title }})
+            {% else %}
+                -
+            {% endif %}
+        </div>
+
+        <span class="text-title">Documento adjunto</span>
+        <div>
+            {% if agreement.related_doc %}
+                <a href="{{ agreement.related_doc.url }}" target="_blank" class="underline hover:text-hover transition-colors">
+                    Descargar archivo
+                </a>
+            {% else %}
+                <span class="text-secondary italic">Sin documento adjunto</span>
+            {% endif %}
+        </div>
+
+        <span class="text-title">Fecha de registro</span>
+        <div class="text-secondary font-mono">
+            {{ agreement.created_at|date:"d/m/Y H:i" }}
+        </div>
+    </div>
+
+    <!-- form para subir / actualizar documento adjunto -->
+    <form method="POST" action="{% url 'customers:customer_agreement_update_document_view' agreement.pk %}" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded text-xs">
+        {% csrf_token %}
+        <span class="text-title flex items-center gap-1">
+            {% if agreement.related_doc %}Reemplazar documento{% else %}Adjuntar documento escaneado{% endif %}
+        </span>
+        <div class="flex items-center gap-2">
+            <input type="file" name="related_doc" required class="w-full bg-page border border-border rounded p-1 text-xs text-secondary file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:bg-container file:text-title hover:file:bg-hover cursor-pointer">
+            <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-1 rounded transition-colors cursor-pointer text-xs shrink-0">
+                Subir
+            </button>
+        </div>
+    </form>
+
+    <p class="text-title pb-1 border-b border-border">
+        Clases de producto participantes
+    </p>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[50vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-[240px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Clase de producto
+                    </th>
+                    <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Categoría
+                    </th>
+                    <th class="w-[140px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Tipo en convenio
+                    </th>
+                    <th class="w-[160px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Cuota asignada base
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ct in class_targets %}
+                <tr>
+                    <td class="p-2 truncate text-left text-title">
+                        {{ ct.product_class.name|title }}
+                    </td>
+                    <td class="p-2 truncate text-left text-secondary">
+                        {{ ct.product_class.product_category.name|default:'-'|title }}
+                    </td>
+                    <td class="p-2 truncate text-center">
+                        {% if ct.is_mandatory %}
+                            <span class="text-amber-500">Obligatoria</span>
+                        {% else %}
+                            <span class="text-secondary">Complementaria</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-2 truncate text-right font-mono">
+                        {% if ct.is_mandatory %}
+                            $ {{ ct.required_target|floatformat:2|intcomma }}
+                        {% else %}
+                            <span class="text-secondary">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="100%" class="py-50">
+                        <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                            {% include 'layouts/data_not_found.html' %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="flex items-center justify-between pb-1 border-b border-border mt-2">
+        <p class="text-title">
+            Periodos de evaluación y seguimiento
+        </p>
+
+        <form method="POST" action="{% url 'customers:customer_agreement_evaluate_action_view' agreement.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="bg-container border border-border text-strong hover:bg-hover p-1.5 rounded transition-colors cursor-pointer text-xs flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                <span>Evaluar periodos</span>
+            </button>
+        </form>
+    </div>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-[80px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Periodo
+                    </th>
+                    <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Vigencia
+                    </th>
+                    <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Cuota esperada
+                    </th>
+                    <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Venta real
+                    </th>
+                    <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        % Cumpl.
+                    </th>
+                    {% if not is_seller %}
+                    <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Amort. beneficio
+                    </th>
+                    <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Utilidad
+                    </th>
+                    <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Margen
+                    </th>
+                    {% else %}
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Rentabilidad
+                    </th>
+                    {% endif %}
+                    <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Estado
+                    </th>
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Penalización
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in periods %}
+                <tr>
+                    <td class="p-2 truncate text-center font-mono">
+                        {{ p.period_number }}
+                    </td>
+                    <td class="p-2 truncate text-center font-mono">
+                        {{ p.start_date|date:"m/Y" }} - {{ p.end_date|date:"m/Y" }}
+                    </td>
+                    <td class="p-2 truncate text-right font-mono">
+                        $ {{ p.expected_global_target|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-2 truncate text-right font-mono">
+                        $ {{ p.achieved_global_sales|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-2 truncate text-right font-mono {% if p.compliance_pct >= 100 %}text-emerald-500{% elif p.compliance_pct >= 85 %}text-amber-500{% else %}text-red-500{% endif %}">
+                        {{ p.compliance_pct|floatformat:1 }}%
+                    </td>
+                    {% if not is_seller %}
+                    <td class="p-2 truncate text-right font-mono">
+                        $ {{ p.amortized_benefit_cost|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-2 truncate text-right font-mono {% if p.period_profit >= 0 %}text-title{% else %}text-red-500{% endif %}">
+                        $ {{ p.period_profit|floatformat:2|intcomma }}
+                    </td>
+                    <td class="p-2 truncate text-right font-mono {% if p.period_margin and p.period_margin >= 25 %}text-emerald-500{% elif p.period_margin and p.period_margin >= 15 %}text-amber-500{% else %}text-red-500{% endif %}">
+                        {% if p.period_margin %}{{ p.period_margin|floatformat:1 }}%{% else %}-{% endif %}
+                    </td>
+                    {% else %}
+                    <td class="p-2 truncate text-center">
+                        {% if p.status == 'COMPLETED' %}
+                            <span class="text-emerald-500">Óptimo</span>
+                        {% elif p.status == 'FAILED' %}
+                            <span class="text-red-500">Malo</span>
+                        {% else %}
+                            <span class="text-secondary">En curso</span>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td class="p-2 truncate text-center">
+                        {% if p.status == 'COMPLETED' %}
+                            <span class="text-emerald-500">Cumplido</span>
+                        {% elif p.status == 'FAILED' %}
+                            <span class="text-red-500">No cumplido</span>
+                        {% else %}
+                            <span class="text-secondary">Pendiente</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-2 truncate text-right font-mono">
+                        {% if p.penalty_applied %}
+                            <span class="text-red-500">$ {{ agreement.penalty_amount|floatformat:2|intcomma }}</span>
+                        {% else %}
+                            <span class="text-secondary">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="100%" class="py-50">
+                        <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                            {% include 'layouts/data_not_found.html' %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- modal para formato imprimible de contrato -->
+<div id="contract-modal" class="fixed inset-0 z-50 bg-black/60 hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-container border border-border rounded max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-xl relative">
+        <div class="sticky top-0 bg-container border-b border-border p-2 flex items-center justify-between z-10 print:hidden">
+            <span class="text-title text-sm">Contrato comercial</span>
+            <button type="button" onclick="toggleContractPreviewModal()" class="text-secondary hover:text-hover cursor-pointer p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+
+        <div id="contract-modal-content" class="p-4"
+             hx-get="{% url 'customers:customer_agreement_preview_view' %}?customer={{ agreement.customer.id }}&benefit={{ agreement.benefit.id }}&agreement_type={{ agreement.agreement_type }}&start_date={{ agreement.start_date|date:'Y-m' }}&end_date={{ agreement.end_date|date:'Y-m' }}&target_frequency={{ agreement.target_frequency }}&global_target_amount={{ agreement.global_target_amount }}&growth_value={{ agreement.growth_value }}&growth_frequency={{ agreement.growth_frequency|default:'' }}&penalty_amount={{ agreement.penalty_amount }}&doc_id={{ agreement.doc_id }}{% for ct in class_targets %}&participating_classes={{ ct.product_class.id }}{% if ct.is_mandatory %}&mandatory_target_{{ ct.product_class.id }}={{ ct.required_target }}{% endif %}{% endfor %}"
+             hx-trigger="load">
+            <div class="p-8 text-center text-xs text-secondary italic">
+                Cargando formato contractual...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleContractPreviewModal() {
+    const modal = document.getElementById('contract-modal');
+    if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    } else {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }
+}
+</script>
+{% endblock %}

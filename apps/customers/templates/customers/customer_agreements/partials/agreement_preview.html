@@ -1,0 +1,354 @@
+{% load humanize %}
+
+{% if error %}
+<div class="p-2 border border-border rounded bg-container text-red-500 text-xs flex items-center gap-2">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-circle shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+    <span>{{ error }}</span>
+</div>
+{% elif preview %}
+<div class="bg-container border border-border rounded overflow-hidden text-title my-4" id="printable-contract-container">
+
+    <!-- acciones para pantalla -->
+    <div class="p-2 bg-container border-b border-border flex items-center justify-between print:hidden">
+        <div class="flex items-center gap-2 text-xs text-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer text-title"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+            <span class="text-title font-medium">Vista previa de contrato comercial</span>
+            <span>· Folio: <span class="font-mono text-title">{{ preview.doc_id }}</span></span>
+        </div>
+        <button type="button" onclick="printAgreementContract()" class="bg-container border border-border text-strong hover:bg-hover px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+            <span>Imprimir contrato</span>
+        </button>
+    </div>
+
+    <div class="p-6 md:p-8 bg-page text-title font-sans print:p-0 print:m-0 space-y-6 print:space-y-0" id="contract-paper">
+
+        <div class="print:hidden flex items-center justify-between text-xs text-secondary px-1">
+            <span class="font-medium text-title">Hoja 1: Carta Comercial y Compromiso</span>
+            <span class="font-mono text-[11px]">Formato: Carta (Letter)</span>
+        </div>
+        <div class="contract-page-sheet bg-page p-6 md:p-8 border border-border print:border-none rounded print:rounded-none flex flex-col justify-between" id="contract-page-1">
+            <div>
+                <!-- header corporativo institucional -->
+                <div class="flex items-start justify-between border-b border-border mb-4 rounded print:rounded-none">
+                    <div>
+                        <h1 class="text-lg font-bold tracking-wide uppercase">
+                            Contrato Comercial
+                        </h1>
+                        <p class="text-xs mt-0.5 text-title leading-tight">
+                            Instrumento privado de compromiso comercial y otorgamiento de beneficios <br>
+                            URVET MÉXICO, S.A. DE C.V. <br>
+                            <span class="text-[10px]">AV. SAN MIGUEL 143, SAN JUAN DE OCOTÁN, GUADALAJARA, JALISCO C.P. 45019</span>
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <p class="inline-block font-mono text-xs font-semibold">
+                            Folio: {{ preview.doc_id }}
+                        </p>
+                        <p class="text-xs mt-1 text-title">Guadalajara, Jalisco a {% now "j \d\e F \d\e Y" %}</p>
+                        <p class="text-[9px]">Página 1 de 2</p>
+                    </div>
+                </div>
+
+                <!-- header de partes -->
+                <div class="grid grid-cols-2 gap-3 p-2.5 bg-container border border-border rounded text-xs mb-4">
+                    <div>
+                        <span class="block text-secondary text-[11px]">Cliente</span>
+                        <span class="text-title font-semibold">{{ preview.customer.name|upper }}</span>
+                        <span class="block font-mono text-secondary text-[11px]">Clave: {{ preview.customer.id }}</span>
+                    </div>
+                    <div>
+                        <span class="block text-secondary text-[11px]">Asesor comercial</span>
+                        <span class="text-title font-semibold">{{ preview.advisor_name|default:'Asesor Comercial'|upper }}</span>
+                        <span class="block font-mono text-secondary text-[11px]">Ruta: {{ preview.route.id }}</span>
+                    </div>
+                </div>
+
+                <!-- redaccion amigable -->
+                <div class="space-y-3 text-xs leading-relaxed text-title text-justify">
+                    <p>
+                        Con el gusto de saludarlo y dándole seguimiento a nuestras negociaciones previas, nos es grato plasmarle por escrito el <strong>Contrato Comercial</strong> que hemos acordado. Dicho contrato tiene el objetivo y finalidad de lograr el crecimiento mutuo, posicionar nuestra marca y brindar calidad y servicio a nuestro cliente final.
+                    </p>
+
+                    <p>
+                        El contrato tendrá una duración de <strong>{{ preview.duration_months }} meses</strong> iniciando el <strong>{{ preview.start_date|date:"j \d\e F \d\e Y" }}</strong> con vigencia al <strong>{{ preview.end_date|date:"j \d\e F \d\e Y" }}</strong> <span class="font-bold text-[#018e88]">[1]</span>. Como parte de este acuerdo comercial, usted será acreedor a <strong>{{ preview.benefit.name|title }}</strong> (con valor de referencia de <strong>${{ preview.benefit.cost|floatformat:2|intcomma }} MXN</strong>) <span class="font-bold text-[#018e88]">[2]</span>.
+                    </p>
+
+                    <p>
+                        Para hacerse acreedor de los beneficios de nuestro contrato comercial, usted deberá cumplir con el objetivo {{ preview.target_frequency_name|lower }} de compras netas de <strong>${{ preview.global_target_amount|floatformat:2|intcomma }} MXN</strong>, dando un acumulado de compras netas por {{ preview.duration_months }} meses de <strong>${{ preview.total_accumulated_target|floatformat:2|intcomma }} MXN</strong> <span class="font-bold text-[#018e88]">[3]</span>, así como mantener el cumplimiento de sus pagos conforme a sus días de crédito otorgados (<strong>{{ preview.customer.credit_days|default:0 }} días</strong>) <span class="font-bold text-[#018e88]">[4]</span>.
+                    </p>
+
+                    <p>
+                        {% if preview.projection_matrix.mandatory_rows %}
+                        Este acuerdo contempla compras obligatorias en las líneas: <strong>{% for r in preview.projection_matrix.mandatory_rows %}{{ r.product_class.name|title }} (${{ r.total_class_target|floatformat:2|intcomma }} MXN){% if not forloop.last %}, {% endif %}{% endfor %}</strong>, y el remanente en las líneas complementarias participantes <span class="font-bold text-[#018e88]">[5]</span>, computadas en compras netas antes de IVA.
+                        {% else %}
+                        Este acuerdo es en todas nuestras líneas comerciales participantes <span class="font-bold text-[#018e88]">[5]</span> en compras netas antes de IVA.
+                        {% endif %}
+                        {% if preview.growth_value > 0 %}
+                        Asimismo, se establece una tasa de incremento de cuota del <strong>{{ preview.growth_value }}%</strong> con frecuencia {{ preview.growth_freq_display|lower }}.
+                        {% endif %}
+                    </p>
+
+                    <div class="p-3 bg-container border border-border rounded space-y-1.5 text-[11px] leading-relaxed">
+                        <p class="font-semibold text-title">Compromisos de compra y penalizaciones en caso de incumplimiento:</p>
+                        <p>
+                            • En caso de no cumplir con la cuota de compra establecida en el contrato comercial, me comprometo a pagar la factura que se genere por penalización de incumplimiento de cuota acumulada antes mencionada, por el monto convenido de <strong>${{ preview.penalty_amount|floatformat:2|intcomma }} MXN</strong> <span class="font-bold text-[#018e88]">[6]</span>.
+                        </p>
+                        <p>
+                            • En dado caso de no cumplir con las cuotas establecidas, me comprometo a pagar el valor comercial íntegro de dicho producto o beneficio otorgado.
+                        </p>
+                        <p>
+                            • En caso de negarme a realizar los pagos, estoy de acuerdo en que se me rescinda el presente convenio y se me restituya o embargue el beneficio otorgado <span class="font-bold text-[#018e88]">[7]</span>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- aceptacion firmas -->
+            <div class="mt-6 pt-4 border-t border-border">
+                <p class="text-center text-xs font-semibold text-title mb-6 uppercase tracking-wide">
+                    Firmas de Compromiso / Aceptación
+                </p>
+
+                <div class="grid grid-cols-2 gap-10 text-center text-xs">
+                    <div>
+                        <div class="border-b border-border mb-1.5 h-12"></div>
+                        <span class="text-title font-semibold block">{{ preview.customer.name|upper }}</span>
+                        <span class="text-secondary text-[11px]">Nombre y Firma del Cliente (Acepto de conformidad)</span>
+                    </div>
+                    <div>
+                        <div class="border-b border-border mb-1.5 h-12"></div>
+                        <span class="text-title font-semibold block">URVET MÉXICO S.A. DE C.V.</span>
+                        <span class="text-secondary text-[11px]">{{ preview.advisor_name|default:'Asesor Comercial'|title }} / Ruta {{ preview.route.id }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="print:hidden flex items-center justify-between text-xs text-secondary px-1 pt-2">
+            <span class="font-medium text-title">Hoja 2: Anexo de Cláusulas Legales y Ratificación</span>
+            <span class="font-mono text-[11px]">Formato: Carta (Letter)</span>
+        </div>
+        <div class="contract-page-sheet page-break-before bg-page p-6 md:p-8 border border-border print:border-none rounded print:rounded-none flex flex-col justify-between" id="contract-page-2">
+            <div>
+                <!-- header -->
+                <div class="flex items-center justify-between border-b border-border pb-3 mb-4">
+                    <div>
+                        <h2 class="text-sm md:text-base font-bold text-title uppercase">
+                            Términos y Cláusulas Legales del Convenio Comercial
+                        </h2>
+                        <p class="text-[11px] text-secondary">
+                            Anexo normativo correspondiente al Convenio Comercial · URVET MÉXICO, S.A. DE C.V.
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <p class="inline-block font-mono text-xs font-semibold">
+                            Folio: {{ preview.doc_id }}
+                        </p>
+                        <p class="text-[10px] text-secondary mt-0.5">Página 2 de 2</p>
+                    </div>
+                </div>
+
+                <!-- clausulas -->
+                <div class="space-y-2.5 text-xs leading-relaxed">
+                    {% for clause in preview.clauses %}
+                    <div class="border-b border-border/50 pb-2">
+                        <span class="font-bold text-title text-[11px]">{{ clause.title }}:</span>
+                        <p class="text-justify text-title text-[11px] mt-0.5">{{ clause.text }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- firmas definitivas -->
+            <div class="mt-6 pt-3 border-t border-border">
+                <p class="text-center text-[11px] text-secondary mb-5 italic">
+                    Leído que fue el presente instrumento y enteradas las partes de su contenido, fuerza y alcance legal, lo firman y ratifican por duplicado en Guadalajara, Jalisco a {% now "j \d\e F \d\e Y" %}.
+                </p>
+
+                <div class="grid grid-cols-3 gap-6 text-center text-xs">
+                    <div>
+                        <div class="border-b border-border mb-1.5 h-10"></div>
+                        <span class="text-title font-semibold block text-[11px]">{{ preview.customer.name|title }}</span>
+                        <span class="text-secondary text-[10px]">Por el Cliente / Titular (Clave: {{ preview.customer.id }})</span>
+                    </div>
+                    <div>
+                        <div class="border-b border-border mb-1.5 h-10"></div>
+                        <span class="text-title font-semibold block text-[11px]">{{ preview.advisor_name|default:'Asesor Comercial'|title }}</span>
+                        <span class="text-secondary text-[10px]">Por el Asesor Comercial / Ruta {{ preview.route.id }}</span>
+                    </div>
+                    <div>
+                        <div class="border-b border-border mb-1.5 h-10"></div>
+                        <span class="text-title font-semibold block text-[11px]">Dirección Comercial</span>
+                        <span class="text-secondary text-[10px]">Por URVET MÉXICO S.A. DE C.V.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- matriz de consumos proyectados -->
+
+    <div class="p-6 md:p-8 bg-container border-t border-border print:hidden" id="projection-matrix-container">
+        <div class="flex items-center justify-between mb-2">
+            <p class="text-title pb-1 border-b border-border w-full flex items-center justify-between">
+                <span class="font-medium text-xs">Matriz de desglose de consumos proyectados (Consulta interna)</span>
+                <span class="text-xs text-secondary font-mono">
+                    Frecuencia de metas: {{ preview.target_frequency_name|title }}
+                </span>
+            </p>
+        </div>
+
+        <p class="text-xs text-secondary mb-3">
+            Proyección cronológica periodo por periodo para consulta interna de cumplimiento.
+        </p>
+
+        <div class="w-full overflow-auto border border-border rounded bg-page">
+            <table class="w-max min-w-full border-separate border-spacing-0 table-fixed text-xs">
+                <thead>
+                    <tr class="border-b border-border text-xs">
+                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Clase / Concepto
+                        </th>
+                        <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Tipo
+                        </th>
+                        {% for period in preview.projection_matrix.periods %}
+                        <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page font-mono">
+                            <div>Periodo {{ period.period_number }}</div>
+                            <div class="text-[10px] text-secondary font-normal">{{ period.start_date|date:"m/Y" }} - {{ period.end_date|date:"m/Y" }}</div>
+                        </th>
+                        {% endfor %}
+                        <th class="w-[130px] p-1 text-center text-title border-t border-b border-border sticky top-0 z-30 bg-page font-mono">
+                            Total proyectado
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- clases obligatorias -->
+                    {% for row in preview.projection_matrix.mandatory_rows %}
+                    <tr>
+                        <td class="p-2 truncate text-left text-title border-r border-b border-border">
+                            {{ row.product_class.name|title }}
+                        </td>
+                        <td class="p-2 truncate text-center border-r border-b border-border">
+                            <span class="text-amber-500">Obligatoria</span>
+                        </td>
+                        {% for val in row.targets %}
+                        <td class="p-2 truncate text-right font-mono text-title border-r border-b border-border">
+                            $ {{ val|floatformat:2|intcomma }}
+                        </td>
+                        {% endfor %}
+                        <td class="p-2 truncate text-right font-mono text-title border-b border-border">
+                            $ {{ row.total_class_target|floatformat:2|intcomma }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    <!-- clases complementarias agrupadas -->
+                    {% if preview.projection_matrix.complementary_row %}
+                    <tr>
+                        <td class="p-2 truncate text-left border-r border-b border-border">
+                            <span class="text-title">Clases complementarias</span>
+                            <span class="block text-[10px] text-secondary">
+                                Participantes: {{ preview.projection_matrix.complementary_classes_names|join:", "|default:"Ninguna" }}
+                            </span>
+                        </td>
+                        <td class="p-2 truncate text-center border-r border-b border-border">
+                            <span class="text-secondary">Complementaria</span>
+                        </td>
+                        {% for val in preview.projection_matrix.complementary_row.targets %}
+                        <td class="p-2 truncate text-right font-mono text-title border-r border-b border-border">
+                            $ {{ val|floatformat:2|intcomma }}
+                        </td>
+                        {% endfor %}
+                        <td class="p-2 truncate text-right font-mono text-title border-b border-border">
+                            $ {{ preview.projection_matrix.complementary_row.total_complementary_target|floatformat:2|intcomma }}
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- total cuota global -->
+                    <tr>
+                        <td colspan="2" class="p-2 text-title border-r border-b border-border font-medium">
+                            Cuota global comprometida
+                        </td>
+                        {% for period in preview.projection_matrix.periods %}
+                        <td class="p-2 truncate text-right font-mono text-title border-r border-b border-border">
+                            $ {{ period.target_amount|floatformat:2|intcomma }}
+                            {% if period.growth_pct > 0 %}
+                                <span class="block text-[10px] text-emerald-500 font-normal">(+{{ period.growth_pct|floatformat:1 }}%)</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                        <td class="p-2 truncate text-right font-mono text-title border-b border-border font-medium">
+                            $ {{ preview.projection_matrix.grand_total_target|floatformat:2|intcomma }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function printAgreementContract() {
+    window.print();
+}
+
+(function() {
+    const docInput = document.getElementById('id_doc_id');
+    if (docInput && !docInput.value.trim() && '{{ preview.doc_id }}') {
+        docInput.value = '{{ preview.doc_id }}';
+    }
+})();
+</script>
+
+<style>
+@media print {
+    @page {
+        size: letter portrait;
+        margin: 10mm 15mm 10mm 15mm;
+    }
+    body * {
+        visibility: hidden;
+    }
+    #printable-contract-container,
+    #printable-contract-container * {
+        visibility: visible;
+    }
+    #printable-contract-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+    }
+    .page-break-before {
+        page-break-before: always !important;
+        break-before: page !important;
+    }
+    .contract-page-sheet {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        min-height: 240mm;
+        box-sizing: border-box !important;
+    }
+    #sidebar, header, aside, button, nav, .print\:hidden, #projection-matrix-container, .print\:hidden * {
+        display: none !important;
+        visibility: hidden !important;
+    }
+}
+</style>
+{% endif %}

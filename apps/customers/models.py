@@ -2,6 +2,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from decimal import Decimal
 from django.db.models import Q, F
+from apps.core.models import PeriodicityChoices
 
 class CustomerType(models.Model):
     id = models.CharField(max_length=100, primary_key=True, help_text='Identificador unico del tipo de cliente')
@@ -187,5 +188,308 @@ class AccountsReceivable(models.Model):
 
     def __str__(self):
         return f'{self.customer_id}: total balance $ {self.total_balance}'
+
+
+class CommercialBenefitTypeChoices(models.TextChoices):
+    PHYSICAL_ITEM = 'physical', 'Artículo'
+    FIXED_DISCOUNT = 'fixed_discount', 'Descuento fijo'
+    PERCENTAGE_DISCOUNT = 'percentage_discount', 'Descuento porcentual'
+
+
+class CommercialBenefit(models.Model):
+    benefit_type = models.CharField(max_length=25,choices=CommercialBenefitTypeChoices.choices,default=CommercialBenefitTypeChoices.PHYSICAL_ITEM,help_text='Tipo de beneficio comercial')
+    name = models.CharField(max_length=255, help_text='Nombre descriptivo del beneficio comercial')
+    cost = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Costo total del beneficio para la empresa'
+    )
+    is_active = models.BooleanField(default=True, help_text='Indica si el beneficio está disponible')
+
+    class Meta:
+        verbose_name = 'Beneficio comercial'
+        verbose_name_plural = 'Beneficios comerciales'
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name.title()} ({self.get_benefit_type_display()}) - ${self.cost:,.2f}"
+
+
+class AgreementTypeChoices(models.TextChoices):
+    SHORT_TERM = 'st', 'Corto plazo'
+    MEDIUM_TERM = 'mt', 'Medio plazo'
+    LONG_TERM = 'lt', 'Largo plazo'
+
+
+class CustomerAgreement(models.Model):
+    customer = models.ForeignKey(
+        'Customer',
+        on_delete=models.PROTECT,
+        related_name='agreements',
+        help_text='Cliente al que se le otorga el convenio'
+    )
+    route = models.ForeignKey(
+        'sales.Route',
+        on_delete=models.PROTECT,
+        related_name='customer_agreements',
+        help_text='Ruta que originó el convenio'
+    )
+    benefit = models.ForeignKey(
+        'CommercialBenefit',
+        on_delete=models.PROTECT,
+        related_name='agreements',
+        help_text='Beneficio comercial pactado'
+    )
+    doc_id = models.CharField(
+        max_length=50,
+        unique=True,
+        blank=True,
+        help_text='Folio único del convenio (autogenerado de 5 caracteres si se omite)'
+    )
+    agreement_type = models.CharField(
+        max_length=5,
+        choices=AgreementTypeChoices.choices,
+        default=AgreementTypeChoices.SHORT_TERM,
+        help_text='Clasificación de plazo del convenio'
+    )
+    start_date = models.DateField(help_text='Fecha de inicio del convenio (primer día del mes)')
+    end_date = models.DateField(null=True, blank=True, help_text='Fecha de fin del convenio (último día del mes)')
+
+    global_target_amount = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Monto objetivo global por periodo de evaluación'
+    )
+    target_frequency = models.CharField(
+        max_length=3,
+        choices=PeriodicityChoices.choices,
+        default=PeriodicityChoices.MONTHLY,
+        help_text='Frecuencia de evaluación y penalización de ventas vs objetivo'
+    )
+    penalty_amount = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Monto de penalización en caso de incumplimiento del periodo'
+    )
+    growth_value = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Porcentaje de crecimiento periódico exigido (ej. 5.00 para 5%)'
+    )
+    growth_frequency = models.CharField(
+        max_length=3,
+        choices=PeriodicityChoices.choices,
+        blank=True,
+        default='',
+        help_text='Frecuencia en la que se incrementa la cuota de ventas'
+    )
+    related_doc = models.FileField(
+        upload_to='customer_agreements/documents/',
+        null=True,
+        blank=True,
+        help_text='Archivo escaneado o digital del convenio firmado (único campo editable en la app regular)'
+    )
+    margin_warning_accepted = models.BooleanField(
+        default=False,
+        help_text='Indica si el usuario autorizó la creación aun con alerta de margen bajo'
+    )
+    created_by = models.ForeignKey(
+        'core.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_agreements',
+        help_text='Usuario que registró el convenio'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Convenio comercial'
+        verbose_name_plural = 'Convenios comerciales'
+        ordering = ['-start_date', '-created_at']
+        indexes = [
+            models.Index(fields=['customer', 'start_date', 'end_date']),
+            models.Index(fields=['doc_id']),
+            models.Index(fields=['route', 'start_date']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(end_date__isnull=True) | Q(end_date__gte=F('start_date')),
+                name='customer_agreement_end_date_gte_start_date'
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.pk:
+            original = CustomerAgreement.objects.get(pk=self.pk)
+            immutable_fields = [
+                'customer_id', 'route_id', 'benefit_id', 'doc_id',
+                'agreement_type', 'start_date', 'end_date', 'global_target_amount',
+                'target_frequency', 'penalty_amount',
+                'growth_value', 'growth_frequency', 'margin_warning_accepted'
+            ]
+            for field in immutable_fields:
+                if getattr(self, field) != getattr(original, field):
+                    raise ValidationError(
+                        f"El campo '{field}' es inmutable tras la creación del convenio. Únicamente se permite modificar el documento adjunto."
+                    )
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        if not self.doc_id:
+            import random, string
+            while True:
+                candidate = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+                if not CustomerAgreement.objects.filter(doc_id=candidate).exists():
+                    self.doc_id = candidate
+                    break
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Convenio {self.doc_id} - {self.customer.id.upper()} ({self.route.id.upper()})"
+
+
+class AgreementClassTarget(models.Model):
+    agreement = models.ForeignKey(
+        CustomerAgreement,
+        on_delete=models.CASCADE,
+        related_name='class_targets',
+        help_text='Convenio al que aplica el objetivo por clase'
+    )
+    product_class = models.ForeignKey(
+        'products.ProductClass',
+        on_delete=models.PROTECT,
+        related_name='agreement_targets',
+        help_text='Clase de producto participante'
+    )
+    required_target = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Objetivo de compra individual para esta clase de producto'
+    )
+    is_mandatory = models.BooleanField(
+        default=True,
+        help_text='Si es verdadero, el no alcanzar este objetivo individual invalida el periodo'
+    )
+
+    class Meta:
+        verbose_name = 'Objetivo por clase de producto'
+        verbose_name_plural = 'Objetivos por clase de producto'
+        unique_together = ('agreement', 'product_class')
+
+    def __str__(self):
+        return f"{self.agreement.doc_id} - {self.product_class.id.upper()} (${self.required_target:,.2f})"
+
+
+class PeriodStatusChoices(models.TextChoices):
+    PENDING = 'pending', 'En progreso'
+    EVALUATING = 'evaluating', 'En evaluación'
+    ACHIEVED = 'achieved', 'Alcanzado'
+    FAILED = 'failed', 'No alcanzado'
+
+
+class AgreementEvaluationPeriod(models.Model):
+    agreement = models.ForeignKey(
+        CustomerAgreement,
+        on_delete=models.CASCADE,
+        related_name='evaluation_periods',
+        help_text='Convenio asociado'
+    )
+    period_number = models.PositiveIntegerField(help_text='Número secuencial del periodo (1, 2, ...)')
+    start_date = models.DateField(help_text='Fecha inicial del periodo de evaluación')
+    end_date = models.DateField(help_text='Fecha final del periodo de evaluación')
+    expected_global_target = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Objetivo global esperado para este periodo (con crecimiento aplicado si aplica)'
+    )
+    achieved_global_sales = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Ventas netas globales alcanzadas en el periodo'
+    )
+    amortized_benefit_cost = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Costo del beneficio amortizado en este periodo'
+    )
+    period_profit = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Utilidad neta del periodo considerando amortización de beneficio'
+    )
+    period_margin = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Margen porcentual neto del periodo'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=PeriodStatusChoices.choices,
+        default=PeriodStatusChoices.PENDING,
+        help_text='Estado de cumplimiento del periodo'
+    )
+    penalty_applied = models.BooleanField(
+        default=False,
+        help_text='Indica si se aplicó penalización por incumplimiento'
+    )
+    observations = models.TextField(blank=True, default='', help_text='Detalles u observaciones del periodo')
+
+    class Meta:
+        verbose_name = 'Periodo de evaluación de convenio'
+        verbose_name_plural = 'Periodos de evaluación de convenios'
+        unique_together = ('agreement', 'period_number')
+        ordering = ['agreement', 'period_number']
+
+    def __str__(self):
+        return f"{self.agreement.doc_id} - Periodo {self.period_number} ({self.get_status_display()})"
+
+
+class AgreementPeriodClassResult(models.Model):
+    evaluation_period = models.ForeignKey(
+        AgreementEvaluationPeriod,
+        on_delete=models.CASCADE,
+        related_name='class_results',
+        help_text='Periodo de evaluación'
+    )
+    product_class = models.ForeignKey(
+        'products.ProductClass',
+        on_delete=models.PROTECT,
+        related_name='period_class_results',
+        help_text='Clase de producto evaluada'
+    )
+    expected_class_target = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Objetivo individual esperado para esta clase en el periodo'
+    )
+    achieved_class_sales = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Venta neta real alcanzada en esta clase en el periodo'
+    )
+
+    class Meta:
+        verbose_name = 'Resultado de clase por periodo'
+        verbose_name_plural = 'Resultados de clase por periodo'
+        unique_together = ('evaluation_period', 'product_class')
+
+    def __str__(self):
+        return f"{self.evaluation_period.agreement.doc_id} - P{self.evaluation_period.period_number} - {self.product_class.id.upper()}: ${self.achieved_class_sales:,.2f} / ${self.expected_class_target:,.2f}"
 
 

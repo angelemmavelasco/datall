@@ -13,6 +13,13 @@ from .accounts_receivables import (
     AccountsReceivablesExports,
     AccountsReceivableNotFound,
 )
+from .customer_agreements import (
+    CustomerAgreementsService,
+    CustomerAgreementsStats,
+    CustomerAgreementNotFound,
+    CommercialBenefitNotFound,
+    MarginValidationException,
+)
 
 __all__ = [
     'CustomersService',
@@ -26,4 +33,9 @@ __all__ = [
     'AccountsReceivablesStats',
     'AccountsReceivablesExports',
     'AccountsReceivableNotFound',
+    'CustomerAgreementsService',
+    'CustomerAgreementsStats',
+    'CustomerAgreementNotFound',
+    'CommercialBenefitNotFound',
+    'MarginValidationException',
 ]

@@ -1,0 +1,125 @@
+{% load humanize %}
+
+<div class="flex flex-col w-full gap-4" id="agreement-list-content">
+    <p class="text-title pb-1 border-b border-border">
+        Resumen
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Total convenios
+            </span><br>
+            <span class="text-xl text-title">
+                {{ kpis.total_agreements|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Convenios vigentes
+            </span><br>
+            <span class="text-xl text-emerald-500">
+                {{ kpis.active_agreements|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Cuota global comprometida
+            </span><br>
+            <span class="text-xl text-title">
+                $ {{ kpis.total_expected_target|default:0|floatformat:2|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+            <span class="text-sm text-title">
+                Cumplimiento global
+            </span><br>
+            <span class="text-xl {% if kpis.overall_compliance_pct >= 100 %}text-emerald-500{% elif kpis.overall_compliance_pct >= 85 %}text-amber-500{% else %}text-red-500{% endif %}">
+                {{ kpis.overall_compliance_pct|default:0|floatformat:1 }}%
+            </span>
+        </a>
+    </div>
+
+    <p class="text-title pb-1 border-b border-border">
+        Listado
+    </p>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Folio
+                    </th>
+
+                    <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Cliente
+                    </th>
+
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Tipo
+                    </th>
+
+                    <th class="w-[160px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Beneficio
+                    </th>
+
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Ruta
+                    </th>
+
+                    <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Vigencia
+                    </th>
+
+                    <th class="w-[140px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Cuota base
+                    </th>
+
+                    <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Estado
+                    </th>
+
+                    <th class="w-[60px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Doc
+                    </th>
+                </tr>
+            </thead>
+
+            <tbody id="agreement-table-rows">
+                {% include "customers/customer_agreements/partials/agreement_list_rows.html" %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="flex items-center justify-between py-2 border-t border-border text-xs text-secondary">
+        <div>
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </div>
+        <div class="flex items-center gap-1">
+            {% if page_obj.has_previous %}
+            <a hx-get="{% url 'customers:customer_agreement_list_view' %}?{{ query_string }}&page={{ page_obj.previous_page_number }}"
+               hx-target="#agreement-list-content"
+               hx-swap="outerHTML"
+               class="px-2 py-1 border border-border rounded bg-page hover:bg-hover text-title cursor-pointer transition-colors">
+                Anterior
+            </a>
+            {% endif %}
+
+            {% if page_obj.has_next %}
+            <a hx-get="{% url 'customers:customer_agreement_list_view' %}?{{ query_string }}&page={{ page_obj.next_page_number }}"
+               hx-target="#agreement-list-content"
+               hx-swap="outerHTML"
+               class="px-2 py-1 border border-border rounded bg-page hover:bg-hover text-title cursor-pointer transition-colors">
+                Siguiente
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>

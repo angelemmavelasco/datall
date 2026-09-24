@@ -6,6 +6,10 @@ from .models import (
     CustomerClassMargin,
     AccountsReceivable,
     CustomerNote,
+    CommercialBenefit,
+    CustomerAgreement,
+    AgreementClassTarget,
+    AgreementEvaluationPeriod,
 )
 
 
@@ -155,4 +159,76 @@ class CustomerNoteAdmin(admin.ModelAdmin):
         if not obj.content:
             return ''
         return obj.content[:60] + ('...' if len(obj.content) > 60 else '')
+
+
+class AgreementClassTargetInline(admin.TabularInline):
+    model = AgreementClassTarget
+    extra = 0
+    fields = ('product_class', 'is_mandatory', 'required_target')
+    autocomplete_fields = ['product_class']
+    show_change_link = True
+
+
+class AgreementEvaluationPeriodInline(admin.TabularInline):
+    model = AgreementEvaluationPeriod
+    extra = 0
+    fields = (
+        'period_number',
+        'start_date',
+        'end_date',
+        'expected_global_target',
+        'achieved_global_sales',
+        'amortized_benefit_cost',
+        'period_profit',
+        'period_margin',
+        'status',
+        'penalty_applied',
+    )
+    readonly_fields = ('period_number', 'start_date', 'end_date', 'expected_global_target')
+    show_change_link = True
+
+
+@admin.register(CommercialBenefit)
+class CommercialBenefitAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'benefit_type', 'cost', 'is_active')
+    list_filter = ('benefit_type', 'is_active')
+    search_fields = ('name',)
+    ordering = ('name',)
+
+
+@admin.register(CustomerAgreement)
+class CustomerAgreementAdmin(admin.ModelAdmin):
+    list_display = (
+        'doc_id',
+        'customer',
+        'route',
+        'benefit',
+        'agreement_type',
+        'start_date',
+        'end_date',
+        'global_target_amount',
+        'target_frequency',
+        'penalty_amount',
+        'created_at',
+    )
+    list_filter = (
+        'agreement_type',
+        'target_frequency',
+        'start_date',
+        'end_date',
+        'benefit',
+        'route__business_unit',
+    )
+    search_fields = (
+        'doc_id',
+        'customer__id',
+        'customer__name',
+        'route__id',
+        'route__name',
+        'benefit__name',
+    )
+    autocomplete_fields = ['customer', 'route', 'benefit', 'created_by']
+    readonly_fields = ('created_at', 'updated_at')
+    inlines = [AgreementClassTargetInline, AgreementEvaluationPeriodInline]
+    ordering = ('-start_date', '-created_at')
 

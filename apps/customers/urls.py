@@ -12,11 +12,21 @@ from .views import (
     ar_list_view,
     ar_detail_view,
     export_ars_view,
+    customer_agreement_list_view,
+    customer_agreement_detail_view,
+    customer_agreement_create_view,
+    customer_agreement_validate_margin_view,
+    customer_agreement_preview_view,
+    customer_agreement_search_customers_view,
+    customer_agreement_update_document_view,
+    customer_agreement_evaluate_action_view,
+    customer_options_view,
 )
 
 app_name = 'customers'
 
 urlpatterns = [
+    path('customers/options/', customer_options_view, name='customer_options_view'),
     path('filter-options/', customer_filter_options_view, name='customer_filter_options_view'),
     path('customers/', customer_list_view, name='customer_list_view'),
     path('customers/create/', customer_create_view, name='customer_create_view'),
@@ -29,4 +39,13 @@ urlpatterns = [
     path('accounts-receivable/', ar_list_view, name='ar_list_view'),
     path('accounts-receivable/export/', export_ars_view, name='export_ars_view'),
     path('accounts-receivable/<str:pk>/', ar_detail_view, name='ar_detail_view'),
+    
+    path('agreements/', customer_agreement_list_view, name='customer_agreement_list_view'),
+    path('agreements/create/', customer_agreement_create_view, name='customer_agreement_create_view'),
+    path('agreements/validate-margin/', customer_agreement_validate_margin_view, name='customer_agreement_validate_margin_view'),
+    path('agreements/preview/', customer_agreement_preview_view, name='customer_agreement_preview_view'),
+    path('agreements/search-customers/', customer_agreement_search_customers_view, name='customer_agreement_search_customers_view'),
+    path('agreements/<int:pk>/', customer_agreement_detail_view, name='customer_agreement_detail_view'),
+    path('agreements/<int:pk>/document/', customer_agreement_update_document_view, name='customer_agreement_update_document_view'),
+    path('agreements/<int:pk>/evaluate/', customer_agreement_evaluate_action_view, name='customer_agreement_evaluate_action_view'),
 ]

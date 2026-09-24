@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}
+Convenios comerciales
+{% endblock %}
+
+{% block module_name %}
+Convenios comerciales
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+
+    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+{% endblock %}
+
+{% block filters %}
+<form hx-get="{% url 'customers:customer_agreement_list_view' %}" hx-target="#agreement-list-content" hx-swap="outerHTML" hx-push-url="true" class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.search.id_for_label }}" class="text-title">{{ filter.form.search.label|default:'Búsqueda general' }}</label>
+        {% render_field filter.form.search class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs" placeholder="Folio, ID o nombre del cliente" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.status.id_for_label }}" class="text-title">{{ filter.form.status.label|default:'Estado de vigencia' }}</label>
+        {% render_field filter.form.status class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.agreement_type.id_for_label }}" class="text-title">{{ filter.form.agreement_type.label|default:'Tipo de convenio' }}</label>
+        {% render_field filter.form.agreement_type class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.benefit.id_for_label }}" class="text-title">{{ filter.form.benefit.label|default:'Beneficio comercial' }}</label>
+        {% render_field filter.form.benefit class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label class="text-title">Mes de inicio</label>
+        <div class="grid grid-cols-2 gap-1.5">
+            <div class="flex flex-col gap-0.5">
+                <span class="text-[10px] text-secondary">Desde</span>
+                {% render_field filter.form.start_date_gte type="month" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title font-mono" %}
+            </div>
+            <div class="flex flex-col gap-0.5">
+                <span class="text-[10px] text-secondary">Hasta</span>
+                {% render_field filter.form.start_date_lte type="month" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title font-mono" %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label class="text-title">Mes de fin</label>
+        <div class="grid grid-cols-2 gap-1.5">
+            <div class="flex flex-col gap-0.5">
+                <span class="text-[10px] text-secondary">Desde</span>
+                {% render_field filter.form.end_date_gte type="month" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title font-mono" %}
+            </div>
+            <div class="flex flex-col gap-0.5">
+                <span class="text-[10px] text-secondary">Hasta</span>
+                {% render_field filter.form.end_date_lte type="month" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title font-mono" %}
+            </div>
+        </div>
+    </div>
+
+    {% if filter.form.region %}
+    <div class="flex flex-col gap-1">
+        <label class="text-title">Región</label>
+        <div class="max-h-28 overflow-y-auto border border-border rounded p-1 bg-page flex flex-col gap-1 text-xs">
+            {% for choice in filter.form.region %}
+                <label class="flex items-center gap-1.5 cursor-pointer hover:text-hover">
+                    {{ choice.tag }}
+                    <span>{{ choice.choice_label }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if filter.form.business_unit %}
+    <div class="flex flex-col gap-1">
+        <label class="text-title">Gerencia</label>
+        <div class="max-h-28 overflow-y-auto border border-border rounded p-1 bg-page flex flex-col gap-1 text-xs">
+            {% for choice in filter.form.business_unit %}
+                <label class="flex items-center gap-1.5 cursor-pointer hover:text-hover">
+                    {{ choice.tag }}
+                    <span>{{ choice.choice_label }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if filter.form.route %}
+    <div class="flex flex-col gap-1">
+        <label class="text-title">Ruta</label>
+        <div class="max-h-36 overflow-y-auto border border-border rounded p-1 bg-page flex flex-col gap-1 text-xs">
+            {% for choice in filter.form.route %}
+                <label class="flex items-center gap-1.5 cursor-pointer hover:text-hover">
+                    {{ choice.tag }}
+                    <span class="truncate">{{ choice.choice_label }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block content %}
+    {% include "customers/customer_agreements/partials/agreement_list_content.html" %}
+{% endblock %}

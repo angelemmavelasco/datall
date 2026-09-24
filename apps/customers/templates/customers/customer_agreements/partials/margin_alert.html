@@ -1,0 +1,265 @@
+{% load humanize %}
+
+{% if error %}
+<div class="p-2 border border-border rounded bg-container text-red-500 text-xs flex items-start gap-2">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-alert-triangle shrink-0 mt-0.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+    <div class="flex-1">
+        <span class="block mb-0.5 text-title">Atención en simulación financiera</span>
+        <p class="text-secondary">{{ error }}</p>
+    </div>
+</div>
+{% elif result %}
+<div class="p-2 border border-border rounded bg-container text-xs flex flex-col gap-2">
+    <div class="flex items-center justify-between pb-1 border-b border-border">
+        <div class="flex items-center gap-2">
+            {% if result.is_valid %}
+                <span class="text-emerald-500 flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Margen viable para convenio</span>
+                </span>
+            {% else %}
+                <span class="text-red-500 flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    <span>Margen financiero no alcanzado</span>
+                </span>
+            {% endif %}
+        </div>
+
+        <div>
+            <span class="{{ result.traffic_light.color_class|default:'text-title' }} font-medium">
+                {{ result.traffic_light.label|default:result.traffic_light|title }}
+            </span>
+        </div>
+    </div>
+
+    {% if result.volatility_alert %}
+    <div class="p-1.5 border border-border rounded bg-page text-amber-500 text-xs flex items-center gap-1.5">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <span>
+            Alerta de volatilidad comercial: El margen acumulado cae por debajo del umbral, pero el promedio periódico proyectado sí lo cumple debido a variaciones temporales.
+        </span>
+    </div>
+    {% endif %}
+
+    {% if not result.is_seller %}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-xs">
+        <div>
+            <span class="text-secondary block font-sans">Margen simulado neto</span>
+            <span class="text-title">{{ result.simulated_margin|default:0|floatformat:2 }}%</span>
+            <span class="text-[10px] text-secondary font-sans block">Con beneficio amortizado</span>
+        </div>
+        <div>
+            <span class="text-secondary block font-sans">Margen histórico global</span>
+            <span class="text-title">{{ result.historic_margin|default:0|floatformat:2 }}%</span>
+            <span class="text-[10px] text-secondary font-sans block">Prom. subperíodos: {{ result.avg_hist_period_margin|default:0|floatformat:2 }}%</span>
+        </div>
+        <div>
+            <span class="text-secondary block font-sans">Amortización beneficio (CME)</span>
+            <span class="text-title">${{ result.amortized_benefit_cost|default:0|floatformat:2|intcomma }}</span>
+            <span class="text-[10px] text-secondary font-sans block">Por periodo de evaluación</span>
+        </div>
+        <div>
+            <span class="text-secondary block font-sans">Venta neta histórica</span>
+            <span class="text-title">${{ result.total_net|default:0|floatformat:2|intcomma }}</span>
+            <span class="text-[10px] text-secondary font-sans block">{{ result.participating_classes_count|default:0 }} clases evaluadas</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-2 flex flex-col gap-1.5">
+        <div class="flex items-center justify-between pb-1 border-b border-border">
+            <span class="text-xs text-title font-medium">Desglose de márgenes por clase de producto</span>
+            <span class="text-[11px] text-secondary">
+                Periodo evaluado: {{ result.duration_months }} mes(es) · Frecuencia: {{ result.periodicity_months }} mes(es)
+            </span>
+        </div>
+
+        <div class="w-full overflow-auto border border-border rounded bg-container max-h-72">
+            <table class="w-max min-w-full border-separate border-spacing-0 table-fixed text-xs">
+                <thead>
+                    <tr class="border-b border-border text-xs">
+                        <th class="w-[220px] p-1 text-left text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Clase de producto
+                        </th>
+                        <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Condición
+                        </th>
+                        <th class="w-[110px] p-1 text-right text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page font-mono">
+                            Margen mín.
+                        </th>
+                        <th class="w-[120px] p-1 text-right text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page font-mono">
+                            Promedio período
+                        </th>
+                        <th class="w-[120px] p-1 text-right text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page font-mono">
+                            Total período
+                        </th>
+                        <th class="w-[130px] p-1 text-right text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page font-mono">
+                            Venta neta hist.
+                        </th>
+                        <th class="w-[110px] p-1 text-center text-title border-t border-b border-border sticky top-0 z-30 bg-page">
+                            Estado
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if result.has_mandatory %}
+                    <tr class="bg-page/60">
+                        <td colspan="7" class="p-1 px-2 text-[11px] font-medium text-title border-b border-border">
+                            Clases obligatorias (evaluación individual con cuota asignada)
+                        </td>
+                    </tr>
+                    {% for row in result.mandatory_breakdown %}
+                    <tr>
+                        <td class="p-2 truncate text-left text-title border-r border-b border-border">
+                            {{ row.product_class_name }}
+                        </td>
+                        <td class="p-2 truncate text-center border-r border-b border-border">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] bg-page border border-border text-title">Obligatoria</span>
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            {{ row.min_margin|floatformat:2 }}%
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            {% if row.has_sales %}{{ row.avg_period_margin|floatformat:2 }}%{% else %}-{% endif %}
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            {% if row.has_sales %}{{ row.period_margin|floatformat:2 }}%{% else %}-{% endif %}
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            ${{ row.total_net|floatformat:2|intcomma }}
+                        </td>
+                        <td class="p-2 truncate text-center border-b border-border">
+                            {% if not row.has_sales %}
+                                <span class="text-secondary text-[11px]">Sin ventas</span>
+                            {% elif row.is_valid %}
+                                <span class="text-emerald-500 font-medium">Cumple</span>
+                            {% elif row.volatility_alert %}
+                                <span class="text-amber-500 font-medium">Volatilidad</span>
+                            {% else %}
+                                <span class="text-red-500 font-medium">No cumple</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% endif %}
+
+                    {% if result.has_complementary %}
+                    <tr class="bg-page/60">
+                        <td colspan="7" class="p-1 px-2 text-[11px] font-medium text-title border-b border-border">
+                            Clases que solo participan (bolsa común para remanente global)
+                        </td>
+                    </tr>
+                    {% for row in result.complementary_pool.classes %}
+                    <tr>
+                        <td class="p-2 truncate text-left text-title border-r border-b border-border">
+                            <div class="flex items-center justify-between gap-1">
+                                <span class="truncate">{{ row.product_class_name }}</span>
+                                {% if row.is_most_restrictive and row.min_margin > 0 %}
+                                <span class="text-[9px] text-amber-500 border border-amber-500/40 bg-page px-1 py-0.2 rounded shrink-0">Más restrictiva</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="p-2 truncate text-center border-r border-b border-border">
+                            <span class="text-secondary text-[10px]">Solo participa</span>
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            {{ row.min_margin|floatformat:2 }}%
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            {% if row.has_sales %}{{ row.avg_period_margin|floatformat:2 }}%{% else %}-{% endif %}
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            {% if row.has_sales %}{{ row.period_margin|floatformat:2 }}%{% else %}-{% endif %}
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            ${{ row.total_net|floatformat:2|intcomma }}
+                        </td>
+                        <td class="p-2 truncate text-center border-b border-border text-secondary text-[11px]">
+                            {% if not row.has_sales %}
+                                Sin ventas
+                            {% elif row.period_margin >= row.min_margin %}
+                                <span class="text-emerald-500">Cumple</span>
+                            {% else %}
+                                Referencia
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    <tr class="bg-page font-medium">
+                        <td class="p-2 truncate text-left text-title border-r border-b border-border">
+                            <span class="font-medium text-title">Bolsa complementaria consolidada</span>
+                            <span class="block text-[10px] text-secondary font-normal font-sans">
+                                {% if result.most_restrictive_class_name and result.most_restrictive_min_margin > 0 %}
+                                    Rige mín. de: {{ result.most_restrictive_class_name }}
+                                {% else %}
+                                    Sin margen mín. específico
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="p-2 truncate text-center border-r border-b border-border">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] bg-container border border-border text-title">Bolsa común</span>
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border text-amber-500 font-bold">
+                            {{ result.complementary_pool.most_restrictive_min_margin|floatformat:2 }}%
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            {% if result.complementary_pool.has_sales %}{{ result.complementary_pool.avg_period_margin|floatformat:2 }}%{% else %}-{% endif %}
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            {% if result.complementary_pool.has_sales %}{{ result.complementary_pool.period_margin|floatformat:2 }}%{% else %}-{% endif %}
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            ${{ result.complementary_pool.total_net|floatformat:2|intcomma }}
+                        </td>
+                        <td class="p-2 truncate text-center border-b border-border">
+                            {% if not result.complementary_pool.has_sales %}
+                                <span class="text-secondary text-[11px]">Sin ventas</span>
+                            {% elif result.complementary_pool.is_valid %}
+                                <span class="text-emerald-500 font-medium">Cumple</span>
+                            {% elif result.complementary_pool.volatility_alert %}
+                                <span class="text-amber-500 font-medium">Volatilidad</span>
+                            {% else %}
+                                <span class="text-red-500 font-medium">No cumple</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if result.has_complementary %}
+        <div class="mt-1 p-2 rounded bg-page border border-border text-[11px] text-secondary leading-relaxed flex flex-col gap-0.5">
+            <p>
+                <span class="text-title font-medium">Criterio de evaluación para clases complementarias:</span>
+                Al consolidar el grupo de clases con participación complementaria ({{ result.complementary_pool.count }} clases agrupadas), se toma como referencia de rentabilidad el umbral de la clase más restrictiva:
+                {% if result.most_restrictive_class_name and result.most_restrictive_min_margin > 0 %}
+                    <span class="text-title font-medium">{{ result.most_restrictive_class_name }}</span> con un margen mínimo del <span class="font-mono text-title">{{ result.most_restrictive_min_margin|floatformat:2 }}%</span>.
+                    La bolsa conjunta alcanza un margen acumulado de <span class="font-mono text-title">{{ result.complementary_pool.period_margin|floatformat:2 }}%</span>
+                    {% if result.complementary_pool.is_valid %}
+                        (<span class="text-emerald-500 font-medium">cumple con el umbral exigido</span>).
+                    {% elif result.complementary_pool.volatility_alert %}
+                        (<span class="text-amber-500 font-medium">cumple en promedio periódico pero no en el total del período</span>).
+                    {% else %}
+                        (<span class="text-red-500 font-medium">no alcanza el umbral de la clase más restrictiva</span>).
+                    {% endif %}
+                {% else %}
+                    <span class="text-title">Ninguna de las clases complementarias cuenta con un margen mínimo específico registrado en el perfil del cliente</span> (umbral base de referencia: 0.00%).
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if not result.is_valid %}
+    <div class="mt-2 flex items-center gap-2 pt-2 border-t border-border">
+        <input type="checkbox" name="margin_warning_accepted" id="id_margin_warning_accepted" class="rounded border-border text-primary focus:ring-primary">
+        <label for="id_margin_warning_accepted" class="text-xs text-red-500 cursor-pointer">
+            Acepto el riesgo financiero y deseo registrar el convenio a pesar de no cumplir el margen objetivo recomendado.
+        </label>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+

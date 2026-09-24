@@ -1,0 +1,71 @@
+{% load humanize %}
+
+{% for agreement in agreements %}
+<tr>
+    <td class="p-2 truncate text-center">
+        <a href="{% url 'customers:customer_agreement_detail_view' agreement.pk %}" class="underline hover:text-hover transition-colors font-mono">
+            {{ agreement.doc_id }}
+        </a>
+    </td>
+
+    <td class="p-2 truncate text-left">
+        <a href="{% url 'customers:customer_detail_view' agreement.customer.pk %}" class="underline hover:text-hover transition-colors">
+            {{ agreement.customer.name|title }}
+        </a>
+        <span class="text-secondary text-xs">({{ agreement.customer.id }})</span>
+    </td>
+
+    <td class="p-2 truncate text-center">
+        {{ agreement.get_agreement_type_display|title }}
+    </td>
+
+    <td class="p-2 truncate text-left">
+        {{ agreement.benefit.name|title }}
+    </td>
+
+    <td class="p-2 truncate text-center">
+        {% if agreement.route %}
+            {{ agreement.route.id }} - {{ agreement.route.name|title }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+
+    <td class="p-2 truncate text-center font-mono">
+        {{ agreement.start_date|date:"m/Y" }} - {{ agreement.end_date|date:"m/Y" }}
+    </td>
+
+    <td class="p-2 truncate text-right font-mono">
+        $ {{ agreement.global_target_amount|floatformat:2|intcomma }}
+    </td>
+
+    <td class="p-2 truncate text-center">
+        {% now "Y-m-d" as current_date_str %}
+        {% if agreement.end_date|date:"Y-m-d" < current_date_str %}
+            <span class="text-secondary">Concluido</span>
+        {% elif agreement.start_date|date:"Y-m-d" > current_date_str %}
+            <span class="text-amber-500">Próximo</span>
+        {% else %}
+            <span class="text-emerald-500">Vigente</span>
+        {% endif %}
+    </td>
+
+    <td class="p-2 truncate text-center">
+        {% if agreement.related_doc %}
+            <a href="{{ agreement.related_doc.url }}" target="_blank" class="hover:text-hover transition-colors inline-block" title="Descargar documento">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+            </a>
+        {% else %}
+            -
+        {% endif %}
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="100%" class="py-50">
+        <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+            {% include 'layouts/data_not_found.html' %}
+        </div>
+    </td>
+</tr>
+{% endfor %}

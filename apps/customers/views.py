@@ -8,6 +8,15 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from .exports import *
 
+import json
+from decimal import Decimal
+from django.db.models import Q
+from dateutil.relativedelta import relativedelta
+from apps.core.models import PeriodicityChoices
+from apps.products.models import ProductClass
+from .models import Customer, CommercialBenefit, CustomerAgreement, AgreementTypeChoices
+from .services.customer_agreements import parse_month_input
+
 from .services import (
     CustomersService,
     CustomersStats,
@@ -18,9 +27,14 @@ from .services import (
     AccountsReceivablesService,
     AccountsReceivablesStats,
     AccountsReceivableNotFound,
+    CustomerAgreementsService,
+    CustomerAgreementsStats,
+    CustomerAgreementNotFound,
+    CommercialBenefitNotFound,
+    MarginValidationException,
 )
 from apps.mapser.models import CustomerGeoProfile
-from .filters import CustomerFilter, AccountsReceivableFilter, CustomerProfileFilter
+from .filters import CustomerFilter, AccountsReceivableFilter, CustomerProfileFilter, CustomerAgreementFilter
 from .forms import (
     CustomerForm,
     CustomerAssignmentFormSet,
@@ -28,6 +42,8 @@ from .forms import (
     CustomerGeoProfileForm,
     CustomerNoteForm,
     CustomerContactForm,
+    CustomerAgreementCreateForm,
+    CustomerAgreementDocumentForm,
 )
 from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.analytics.services.customer_kpis import CustomerProfileService
@@ -599,3 +615,482 @@ def ar_detail_view(request, pk: str | int):
         'available_actions': available_actions,
     }
     return render(request, template, context)
+
+@login_required
+def customer_agreement_list_view(request):
+    template = 'customers/customer_agreements/agreement_list.html'
+    service = CustomerAgreementsService(user=request.user)
+    stats_service = CustomerAgreementsStats(agreements_service=service)
+
+    available_actions = None
+    if service.has_full_access:
+        available_actions = 'customers/customer_agreements/partials/agreement_list__actions.html'
+
+    agreements_qs = service.read_agreements()
+    agreement_filter = CustomerAgreementFilter(request.GET, queryset=agreements_qs, request=request)
+    agreements_qs = agreement_filter.qs
+
+    paginator = Paginator(agreements_qs, 50)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    query_dict = request.GET.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
+
+    agreements = page_obj.object_list
+    kpis = stats_service.stats(qs=agreements_qs)
+
+    context = {
+        'agreements': agreements,
+        'kpis': kpis,
+        'query_string': query_dict.urlencode(),
+        'page_obj': page_obj,
+        'available_actions': available_actions,
+        'filter': agreement_filter,
+    }
+
+    if request.htmx:
+        target = request.headers.get('HX-Target')
+        if target == 'agreement-list-content':
+            return render(request, 'customers/customer_agreements/partials/agreement_list_content.html', context)
+        return render(request, 'customers/customer_agreements/partials/agreement_list_rows.html', context)
+
+    return render(request, template, context)
+
+
+@login_required
+def customer_agreement_detail_view(request, pk: int):
+    template = 'customers/customer_agreements/agreement_detail.html'
+    service = CustomerAgreementsService(user=request.user)
+
+    try:
+        agreement = service.read_agreement(pk=pk)
+    except (CustomerAgreementNotFound, PermissionsError) as e:
+        messages.error(request, str(e))
+        return redirect('customers:customer_agreement_list_view')
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al cargar el convenio: {str(e)}")
+        return redirect('customers:customer_agreement_list_view')
+
+    is_seller = request.user.groups.filter(name='vendedor').exists()
+    periods = agreement.evaluation_periods.all().prefetch_related('class_results__product_class')
+    class_targets = agreement.class_targets.all().select_related('product_class')
+    doc_form = CustomerAgreementDocumentForm(instance=agreement)
+
+    available_actions = None
+    if service.has_full_access:
+        available_actions = 'customers/customer_agreements/partials/agreement_detail__actions.html'
+
+    advisor_name = service.get_assigned_advisor_name(agreement.route, target_date=agreement.start_date)
+
+    context = {
+        'agreement': agreement,
+        'advisor_name': advisor_name,
+        'periods': periods,
+        'class_targets': class_targets,
+        'doc_form': doc_form,
+        'is_seller': is_seller,
+        'available_actions': available_actions,
+    }
+    return render(request, template, context)
+
+
+@login_required
+def customer_agreement_create_view(request):
+    template = 'customers/customer_agreements/agreement_create.html'
+    service = CustomerAgreementsService(user=request.user)
+    cust_service = CustomersService(user=request.user)
+
+    if not service.has_full_access:
+        messages.error(request, "No tienes permisos para crear convenios comerciales.")
+        return redirect('customers:customer_agreement_list_view')
+
+    allowed_customers = cust_service.read_customers().order_by('name', 'id')
+    initial_customers = allowed_customers[:30]
+    product_classes = ProductClass.objects.all().order_by('name', 'id')
+    benefits = CommercialBenefit.objects.filter(is_active=True).order_by('name')
+
+    if request.method == 'POST':
+        form = CustomerAgreementCreateForm(request.POST, request.FILES, allowed_customers=allowed_customers)
+        if form.is_valid():
+            try:
+                participating_class_ids = request.POST.getlist('participating_classes')
+                if not participating_class_ids and request.POST.get('participating_classes_json'):
+                    try:
+                        participating_class_ids = json.loads(request.POST.get('participating_classes_json'))
+                    except Exception:
+                        participating_class_ids = []
+
+                mandatory_targets = {}
+                for key, val in request.POST.items():
+                    if key.startswith('mandatory_target_') and val:
+                        try:
+                            cid = key.replace('mandatory_target_', '')
+                            amt = Decimal(str(val))
+                            if amt > 0:
+                                mandatory_targets[cid] = amt
+                        except Exception:
+                            pass
+
+                if not mandatory_targets and request.POST.get('mandatory_targets_json'):
+                    try:
+                        raw_mt = json.loads(request.POST.get('mandatory_targets_json'))
+                        mandatory_targets = {k: Decimal(str(v)) for k, v in raw_mt.items() if Decimal(str(v)) > 0}
+                    except Exception:
+                        pass
+
+                participating_classes_data = []
+                for p_id in participating_class_ids:
+                    p_id_str = str(p_id)
+                    is_mand = p_id_str in mandatory_targets
+                    req_target = mandatory_targets.get(p_id_str, Decimal('0.00'))
+                    participating_classes_data.append({
+                        'product_class_id': p_id_str,
+                        'is_mandatory': is_mand,
+                        'required_target': req_target,
+                    })
+
+                agreement = service.create_customer_agreement(
+                    customer_id=form.cleaned_data['customer'].pk,
+                    benefit_id=form.cleaned_data['benefit'].pk,
+                    agreement_type=form.cleaned_data['agreement_type'],
+                    start_date=form.cleaned_data['start_date'],
+                    end_date=form.cleaned_data['end_date'],
+                    global_target_amount=form.cleaned_data['global_target_amount'],
+                    target_frequency=form.cleaned_data['target_frequency'],
+                    growth_value=form.cleaned_data.get('growth_value') or Decimal('0.00'),
+                    growth_frequency=form.cleaned_data.get('growth_frequency'),
+                    penalty_amount=form.cleaned_data.get('penalty_amount') or Decimal('0.00'),
+                    related_doc=request.FILES.get('related_doc'),
+                    doc_id=form.cleaned_data.get('doc_id') or None,
+                    participating_classes_data=participating_classes_data,
+                    margin_warning_accepted=form.cleaned_data.get('margin_warning_accepted', False),
+                )
+                messages.success(request, f"Convenio {agreement.doc_id} creado exitosamente con {agreement.evaluation_periods.count()} periodos generados.")
+                return redirect('customers:customer_agreement_detail_view', pk=agreement.pk)
+
+            except MarginValidationException as e:
+                form.add_error(None, f"Alerta de Margen: {e.message}")
+                context = {
+                    'form': form,
+                    'benefits': benefits,
+                    'product_classes': product_classes,
+                    'initial_customers': initial_customers,
+                    'margin_error': str(e),
+                    'simulated_margin': e.simulated_margin,
+                    'min_margin': e.min_margin,
+                }
+                return render(request, template, context)
+            except ServiceError as e:
+                form.add_error(None, str(e))
+            except Exception as e:
+                form.add_error(None, f"Ocurrió un error inesperado: {str(e)}")
+    else:
+        form = CustomerAgreementCreateForm(allowed_customers=allowed_customers)
+
+    context = {
+        'form': form,
+        'benefits': benefits,
+        'product_classes': product_classes,
+        'initial_customers': initial_customers,
+    }
+    return render(request, template, context)
+
+@login_required
+def customer_agreement_validate_margin_view(request):
+    """
+    endpoint called dynamically from create form to evaluate customer margin.
+    """
+    service = CustomerAgreementsService(user=request.user)
+    data = request.POST if request.method == 'POST' else request.GET
+
+    customer_id = data.get('customer') or data.get('q')
+    if customer_id:
+        customer_id = str(customer_id).strip()
+        cust_match = Customer.objects.filter(Q(id=customer_id) | Q(name__iexact=customer_id)).first()
+        if not cust_match and len(customer_id) > 2:
+            cust_match = Customer.objects.filter(Q(id__icontains=customer_id) | Q(name__icontains=customer_id)).first()
+        if cust_match:
+            customer_id = cust_match.id
+
+    benefit_id = data.get('benefit')
+    eval_start = data.get('eval_start')
+    eval_end = data.get('eval_end')
+    agreement_start_date = data.get('start_date')
+    agreement_end_date = data.get('end_date')
+    target_frequency = data.get('target_frequency')
+    global_target = data.get('global_target_amount')
+    growth_value = data.get('growth_value') or '0'
+    growth_frequency = data.get('growth_frequency')
+
+    # defst for evaluation dates if empty
+    if not eval_end:
+        today = timezone.localdate()
+        prev_month = today.replace(day=1) - timedelta(days=1)
+        eval_end = prev_month.strftime('%Y-%m')
+    if not eval_start:
+        end_d = parse_month_input(eval_end, is_end=True) or timezone.localdate()
+        start_d = end_d - relativedelta(months=3)
+        eval_start = start_d.strftime('%Y-%m')
+
+    missing_fields = []
+    if not customer_id:
+        missing_fields.append("Cliente (búscalo y selecciónalo en el paso 1)")
+    if not benefit_id:
+        missing_fields.append("Beneficio comercial")
+    if not agreement_start_date:
+        missing_fields.append("Mes de inicio de vigencia")
+    if not agreement_end_date:
+        missing_fields.append("Mes de fin de vigencia")
+    if not target_frequency:
+        missing_fields.append("Frecuencia de evaluación")
+
+    if missing_fields:
+        return render(request, 'customers/customer_agreements/partials/margin_alert.html', {
+            'error': f"Para simular el margen financiero, completa los siguientes campos: {', '.join(missing_fields)}.",
+        })
+
+    participating_class_ids = data.getlist('participating_classes')
+    if not participating_class_ids and data.get('participating_classes_json'):
+        try:
+            participating_class_ids = json.loads(data.get('participating_classes_json'))
+        except Exception:
+            participating_class_ids = []
+
+    mandatory_class_ids = set(data.getlist('mandatory_classes'))
+    mandatory_targets = {}
+    for key, val in data.items():
+        if key.startswith('mandatory_target_') and val:
+            try:
+                cid = key.replace('mandatory_target_', '')
+                amt = Decimal(str(val))
+                if amt > 0:
+                    mandatory_targets[cid] = amt
+            except Exception:
+                pass
+
+    try:
+        participating_classes_data = []
+        for p_id in participating_class_ids:
+            p_id_str = str(p_id)
+            is_mand = (p_id_str in mandatory_class_ids) or (p_id_str in mandatory_targets)
+            req_target = mandatory_targets.get(p_id_str, Decimal('0.00'))
+            participating_classes_data.append({
+                'product_class_id': p_id_str,
+                'is_mandatory': is_mand,
+                'required_target': req_target,
+            })
+
+        val_result = service.validate_agreement_margin(
+            customer_id=customer_id,
+            benefit_id=int(benefit_id),
+            eval_start=eval_start,
+            eval_end=eval_end,
+            agreement_start_date=agreement_start_date,
+            agreement_end_date=agreement_end_date,
+            target_frequency=target_frequency,
+            global_target_amount=Decimal(str(global_target)) if global_target else Decimal('0.00'),
+            growth_value=Decimal(str(growth_value)) if growth_value else Decimal('0.00'),
+            growth_frequency=growth_frequency,
+            participating_classes_data=participating_classes_data,
+        )
+
+        if isinstance(val_result, tuple):
+            is_valid, sim_margin, min_margin, vol_alert, res_dict = val_result
+            res_dict['is_valid'] = is_valid
+            res_dict['simulated_margin'] = sim_margin
+            res_dict['min_margin'] = min_margin
+            res_dict['volatility_alert'] = vol_alert
+            result_context = res_dict
+        else:
+            result_context = val_result
+
+        return render(request, 'customers/customer_agreements/partials/margin_alert.html', {
+            'result': result_context,
+        })
+    except Exception as e:
+        return render(request, 'customers/customer_agreements/partials/margin_alert.html', {
+            'error': str(e),
+        })
+
+
+@login_required
+def customer_agreement_preview_view(request):
+    """
+    modal endpoint returning printable contract preview and expected consumption matrix.
+    """
+    service = CustomerAgreementsService(user=request.user)
+    data = request.POST if request.method == 'POST' else request.GET
+
+    customer_id = data.get('customer') or data.get('q')
+    if customer_id:
+        customer_id = str(customer_id).strip()
+        cust_match = Customer.objects.filter(Q(id=customer_id) | Q(name__iexact=customer_id)).first()
+        if not cust_match and len(customer_id) > 2:
+            cust_match = Customer.objects.filter(Q(id__icontains=customer_id) | Q(name__icontains=customer_id)).first()
+        if cust_match:
+            customer_id = cust_match.id
+
+    benefit_id = data.get('benefit')
+    agreement_type = data.get('agreement_type', AgreementTypeChoices.SHORT_TERM)
+    start_date = data.get('start_date')
+    end_date = data.get('end_date')
+    target_frequency = data.get('target_frequency', PeriodicityChoices.MONTHLY)
+    global_target = data.get('global_target_amount')
+    growth_value = data.get('growth_value') or '0'
+    growth_frequency = data.get('growth_frequency')
+    penalty_amount = data.get('penalty_amount') or '0'
+    route_id = data.get('route') or data.get('route_id')
+    doc_id = data.get('doc_id')
+    if doc_id and str(doc_id).strip():
+        doc_id = str(doc_id).strip().upper()
+    else:
+        doc_id = service.generate_random_doc_id()
+
+    missing_fields = []
+    if not customer_id:
+        missing_fields.append("Cliente (búscalo y selecciónalo en el paso 1)")
+    if not benefit_id:
+        missing_fields.append("Beneficio comercial")
+    if not start_date:
+        missing_fields.append("Mes de inicio")
+    if not end_date:
+        missing_fields.append("Mes de fin")
+    if not global_target:
+        missing_fields.append("Cuota global")
+
+    if missing_fields:
+        return render(request, 'customers/customer_agreements/partials/agreement_preview.html', {
+            'error': f"Para generar el previo, completa los siguientes campos: {', '.join(missing_fields)}.",
+        })
+
+    participating_class_ids = data.getlist('participating_classes')
+    if not participating_class_ids and data.get('participating_classes_json'):
+        try:
+            participating_class_ids = json.loads(data.get('participating_classes_json'))
+        except Exception:
+            participating_class_ids = []
+
+    mandatory_class_ids = set(data.getlist('mandatory_classes'))
+    mandatory_targets = {}
+    for key, val in data.items():
+        if key.startswith('mandatory_target_') and val:
+            try:
+                cid = key.replace('mandatory_target_', '')
+                amt = Decimal(str(val))
+                if amt > 0:
+                    mandatory_targets[cid] = amt
+            except Exception:
+                pass
+
+    try:
+        participating_classes_data = []
+        for p_id in participating_class_ids:
+            p_id_str = str(p_id)
+            is_mand = (p_id_str in mandatory_class_ids) or (p_id_str in mandatory_targets)
+            req_target = mandatory_targets.get(p_id_str, Decimal('0.00'))
+            participating_classes_data.append({
+                'product_class_id': p_id_str,
+                'is_mandatory': is_mand,
+                'required_target': req_target,
+            })
+
+        preview_data = service.generate_agreement_preview(
+            customer_id=customer_id,
+            benefit_id=int(benefit_id),
+            agreement_type=agreement_type,
+            start_date=start_date,
+            end_date=end_date,
+            global_target_amount=Decimal(str(global_target)),
+            target_frequency=target_frequency,
+            growth_value=Decimal(str(growth_value)) if growth_value else Decimal('0.00'),
+            growth_frequency=growth_frequency,
+            penalty_amount=Decimal(str(penalty_amount)) if penalty_amount else Decimal('0.00'),
+            doc_id=doc_id,
+            route_id=route_id,
+            participating_classes_data=participating_classes_data,
+        )
+
+        return render(request, 'customers/customer_agreements/partials/agreement_preview.html', {
+            'preview': preview_data,
+        })
+    except Exception as e:
+        return render(request, 'customers/customer_agreements/partials/agreement_preview.html', {
+            'error': str(e),
+        })
+
+
+
+@login_required
+@require_POST
+def customer_agreement_update_document_view(request, pk: int):
+    service = CustomerAgreementsService(user=request.user)
+    form = CustomerAgreementDocumentForm(request.POST, request.FILES)
+    if form.is_valid():
+        try:
+            service.update_agreement_document(pk=pk, related_doc=request.FILES.get('related_doc'))
+            messages.success(request, "Documento adjunto actualizado correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al actualizar el documento: {str(e)}")
+    else:
+        messages.error(request, "Archivo inválido.")
+    return redirect('customers:customer_agreement_detail_view', pk=pk)
+
+
+@login_required
+@require_POST
+def customer_agreement_evaluate_action_view(request, pk: int):
+    service = CustomerAgreementsService(user=request.user)
+    try:
+        periods_count, _ = service.evaluate_pending_periods(pk=pk)
+        messages.success(request, f"Evaluación completada: {periods_count} periodos analizados con ventas reales.")
+    except Exception as e:
+        messages.error(request, f"Error durante la evaluación: {str(e)}")
+    return redirect('customers:customer_agreement_detail_view', pk=pk)
+
+
+
+@login_required
+def customer_agreement_search_customers_view(request):
+    query = request.GET.get('q', '').strip()
+    cust_service = CustomersService(user=request.user)
+    customers_qs = cust_service.read_customers()
+    if query:
+        customers_qs = customers_qs.filter(Q(id__icontains=query) | Q(name__icontains=query))
+    customers = customers_qs.order_by('name', 'id')[:25]
+    return render(request, 'customers/customer_agreements/partials/customer_search_results.html', {
+        'customers': customers,
+    })
+
+
+# used universally
+@login_required
+def customer_options_view(request):
+    """
+    Returns HTML option items for searchable customer dropdowns via HTMX.
+    """
+    q = request.GET.get('q_customer', request.GET.get('q', '')).strip()
+    field_name = request.GET.get('field_name', 'customer')
+    selected_id = request.GET.get('selected_id', '')
+
+    cust_service = CustomersService(user=request.user)
+    base_qs = cust_service.read_customers()
+
+    if q:
+        base_qs = base_qs.filter(
+            Q(id__icontains=q) |
+            Q(name__icontains=q)
+        )
+
+    customers = base_qs.order_by('name', 'id')[:30]
+
+    return render(
+        request,
+        'customers/partials/customer_options.html',
+        {
+            'customers': customers,
+            'field_name': field_name,
+            'selected_id': str(selected_id),
+        }
+    )
