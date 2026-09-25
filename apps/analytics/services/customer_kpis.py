@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from dateutil.relativedelta import relativedelta
-from django.db.models import QuerySet, Sum, Q
+from django.db.models import QuerySet, Sum, Q, Count
 from django.utils import timezone
 from collections import defaultdict
 from django.db.models.functions import TruncMonth
@@ -14,7 +14,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 from apps.core.models import Reference
-from apps.customers.models import CustomerAssignment
+from apps.customers.models import CustomerAssignment, CustomerAgreement
 from apps.products.models import ProductClass
 
 @dataclass
@@ -505,6 +505,27 @@ class CustomerKpisService:
             }
         return route_map
 
+    def _get_active_agreements_map(self, customer_ids: list[Any]) -> dict[Any, int]:
+        """
+        ret. count of active agreements as of today for each target customer.
+        unaffected by date/transaction filters.
+        """
+        if not customer_ids:
+            return {}
+        counts = (
+            CustomerAgreement.objects
+            .filter(
+                customer_id__in=customer_ids,
+                start_date__lte=self.today
+            )
+            .filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=self.today)
+            )
+            .values('customer_id')
+            .annotate(total=Count('id'))
+        )
+        return {item['customer_id']: item['total'] for item in counts}
+
     def _get_monthly_consumption(self, customer_ids: list[Any]) -> dict[Any, list[dict[str, Any]]]:
         """
         calculates 12 monthly consumption slots for the current year,
@@ -565,6 +586,7 @@ class CustomerKpisService:
         collections_map = self._get_collections_info(customer_ids)
         needs_routes = not bool(customers and hasattr(customers[0], 'current_route_id') and customers[0].current_route_id is not None)
         routes_map = self._get_customer_assignments_map(customer_ids) if needs_routes else {}
+        agreements_map = self._get_active_agreements_map(customer_ids)
 
         #period ranges
         start_prev_y = date(self.previous_year, 1, 1)
@@ -693,7 +715,7 @@ class CustomerKpisService:
                 customer.credit_usage = Decimal('0.00')
 
             # agreements
-            customer.active_agreements = 0
+            customer.active_agreements = agreements_map.get(c_id, 0)
 
             # classes consumption
             customer.product_classes_consumed = classes_consumption_map.get(c_id, {})
@@ -1240,6 +1262,19 @@ class CustomerProfileService(CustomerKpisService):
         classes_count = len(classes_dict)
         self.customer.consumed_classes = classes_count
         self.customer.product_classes_with_consumption = classes_count
+
+        # active agreements
+        self.customer.active_agreements = (
+            CustomerAgreement.objects
+            .filter(
+                customer=self.customer,
+                start_date__lte=self.today
+            )
+            .filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=self.today)
+            )
+            .count()
+        )
 
         #most consumed class in previous quarter
         from apps.sales.services.sale_transactions import SaleTransactionsService

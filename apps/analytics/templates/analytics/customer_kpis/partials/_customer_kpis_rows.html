@@ -122,8 +122,14 @@
         $ {{ customer.overdue_balance|default:0|floatformat:2|intcomma }}
     </td>
 
-    <td class="p-2 text-right text-title ">
-        {{ customer.active_agreements|default:0|floatformat:0|intcomma }}
+    <td class="p-2 text-right text-title">
+        {% if customer.active_agreements > 0 %}
+        <a href="{% url 'customers:customer_detail_view' customer.id %}" target="_blank" class="font-bold underline hover:text-hover" title="Ver convenios de {{ customer.name|title }}">
+            {{ customer.active_agreements|floatformat:0|intcomma }}
+        </a>
+        {% else %}
+        <span class="text-muted">0</span>
+        {% endif %}
     </td>
     <td class="p-2 text-right text-title">
         {% if customer.product_classes_with_consumption > 0 %}

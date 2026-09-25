@@ -5,11 +5,14 @@ tests made with ia to make sure the code is correct and all environment works co
 
 import csv
 import io
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
+import openpyxl
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Sum
+from django.template.loader import render_to_string
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.analytics.filters import YearlySaleBreakdownFilter
@@ -17,7 +20,12 @@ from apps.analytics.services.yearly_sale_breakdown import (
     YearlySaleBreakdownExports,
     YearlySaleBreakdownService,
 )
-from apps.customers.models import Customer, CustomerAssignment, CustomerType
+from apps.analytics.services.customer_kpis import (
+    CustomerKpisService,
+    CustomerProfileService,
+    CustomerKpisExports,
+)
+from apps.customers.models import Customer, CustomerAssignment, CustomerType, CustomerAgreement, CommercialBenefit, AccountsReceivable
 from apps.human_resources.models import BusinessUnit
 from apps.products.models import Product, ProductClass, ProductCategory
 from apps.sales.models import Route, RouteType, SaleChannel, SaleTransaction, Warehouse
@@ -35,7 +43,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        # 1. User
+        
         cls.user = User.objects.create_user(
             username='analytics_admin',
             email='admin@datall.local',
@@ -43,7 +51,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             is_staff=True,
         )
 
-        # 2. Geography / Org structure
+        
         cls.region_north = BusinessUnit.objects.create(
             id='reg_norte',
             name='Región Norte',
@@ -68,7 +76,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             parent=cls.region_south,
         )
 
-        # 3. Route setup
+        
         cls.route_type = RouteType.objects.create(id='rt_std', name='Preventa')
         cls.sale_channel = SaleChannel.objects.create(id='sc_trad', name='Tradicional')
         cls.warehouse = Warehouse.objects.create(id='wh_main', name='Almacén Central')
@@ -90,7 +98,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             is_active=True,
         )
 
-        # 4. Products setup
+        
         cls.category = ProductCategory.objects.create(id='cat_farma', name='Farmacéuticos')
         cls.class_analgesic = ProductClass.objects.create(
             id='pc_analg', name='Analgésicos', product_category=cls.category
@@ -109,7 +117,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             id='P-003', name='Amoxicilina 500mg', product_class=cls.class_antibiotic
         )
 
-        # 5. Customers & Assignments
+        
         cls.customer_type = CustomerType.objects.create(id='ct_ind', name='Independiente')
 
         cls.customer_1 = Customer.objects.create(
@@ -131,7 +139,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             customer_type=cls.customer_type,
         )
 
-        # Customer 1: Previously assigned to Route B in 2024, currently assigned to Route A (active)
+        
         CustomerAssignment.objects.create(
             customer=cls.customer_1,
             route=cls.route_b,
@@ -142,10 +150,10 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             customer=cls.customer_1,
             route=cls.route_a,
             start_date=date(2025, 1, 1),
-            end_date=None,  # Active
+            end_date=None,  
         )
 
-        # Customer 2: Assigned to Route A in 2024, but assignment ended (inactive on Route A)
+        
         CustomerAssignment.objects.create(
             customer=cls.customer_2,
             route=cls.route_a,
@@ -153,16 +161,16 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             end_date=date(2024, 12, 31),
         )
 
-        # Customer 3: Active assignment to Route B
+        
         CustomerAssignment.objects.create(
             customer=cls.customer_3,
             route=cls.route_b,
             start_date=date(2024, 1, 1),
-            end_date=None,  # Active
+            end_date=None,  
         )
 
-        # 6. Transactions
-        # Customer 1 - 2024: Sold under Route B (historical)
+        
+        
         cls.tx1 = SaleTransaction.objects.create(
             doc_id='FAC-1001',
             sale_date=date(2024, 3, 15),
@@ -192,7 +200,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             quantity=Decimal('50.00'),
         )
 
-        # Customer 1 - 2025: Sold under Route A
+        
         cls.tx3 = SaleTransaction.objects.create(
             doc_id='FAC-1003',
             sale_date=date(2025, 2, 10),
@@ -208,7 +216,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             quantity=Decimal('120.00'),
         )
 
-        # Customer 2 - 2024: Sold under Route A
+        
         cls.tx4 = SaleTransaction.objects.create(
             doc_id='FAC-2001',
             sale_date=date(2024, 5, 12),
@@ -224,7 +232,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             quantity=Decimal('50.00'),
         )
 
-        # Customer 3 - 2025: Sold under Route B
+        
         cls.tx5 = SaleTransaction.objects.create(
             doc_id='FAC-3001',
             sale_date=date(2025, 4, 18),
@@ -265,7 +273,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             cleaned_data=filter_set.form.cleaned_data,
         )
 
-        # Direct DB aggregate for comparison
+        
         active_customer_ids = list(
             CustomerAssignment.objects.filter(route=self.route_a)
             .filter(Q(end_date__isnull=True) | Q(end_date__gte=today))
@@ -280,7 +288,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             profit_total=Sum('profit'),
         )
 
-        # Check Level 1 items from service
+        
         l1_qs = service.get_level_1_queryset()
         l1_ids = [item['customer_id'] for item in l1_qs]
         self.assertEqual(l1_ids, [self.customer_1.id])
@@ -293,7 +301,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
 
         totals_by_year = {t['year']: t for t in c1_item['totals']}
 
-        # Direct DB aggregates per year for Customer 1
+        
         for year in [2024, 2025]:
             db_year = SaleTransaction.objects.filter(
                 customer=self.customer_1, sale_date__year=year
@@ -307,7 +315,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             self.assertAlmostEqual(actual_net, expected_net, places=2)
             self.assertAlmostEqual(actual_profit, expected_profit, places=2)
 
-        # Overall net amount matching direct DB aggregate: 10000 + 6000 + 15000 = 31000
+        
         total_service_net = sum(t['net'] for t in c1_item['totals'])
         total_service_profit = sum(t['profit'] for t in c1_item['totals'])
         self.assertAlmostEqual(total_service_net, float(db_aggregates['net_total']), places=2)
@@ -334,12 +342,12 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             cleaned_data=filter_set.form.cleaned_data,
         )
 
-        # 1. Level 2 (Product Class) children for Customer 1
+        
         l2_children = service.get_level_children(
             target_level=2,
             parent_filters={'l1_id': self.customer_1.id, 'parent_node_id': f'n1_{self.customer_1.id}'},
         )
-        self.assertEqual(len(l2_children), 2)  # Analgesics and Antibiotics
+        self.assertEqual(len(l2_children), 2)  
 
         for child in l2_children:
             pc_id = child['id']
@@ -358,7 +366,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
                 self.assertAlmostEqual(totals_by_year[year]['net'], expected_net, places=2)
                 self.assertAlmostEqual(totals_by_year[year]['profit'], expected_profit, places=2)
 
-        # 2. Level 3 (Product) children under Analgesics
+        
         l3_children = service.get_level_children(
             target_level=3,
             parent_filters={
@@ -367,7 +375,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
                 'parent_node_id': f'n1_{self.customer_1.id}_{self.class_analgesic.id}',
             },
         )
-        self.assertEqual(len(l3_children), 2)  # Paracetamol (2024) and Ibuprofen (2025)
+        self.assertEqual(len(l3_children), 2)  
 
         for prod_child in l3_children:
             prod_id = prod_child['id']
@@ -418,7 +426,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         route_a_item = items[0]
         totals_by_year = {t['year']: t for t in route_a_item['totals']}
 
-        # Direct DB aggregates for transactions emitted by Route A
+        
         for year in [2024, 2025]:
             db_route_year = SaleTransaction.objects.filter(
                 route=self.route_a, sale_date__year=year
@@ -430,9 +438,9 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
             self.assertAlmostEqual(totals_by_year[year]['net'], expected_net, places=2)
             self.assertAlmostEqual(totals_by_year[year]['profit'], expected_profit, places=2)
 
-        # 2024 on Route A is strictly 5000 (Customer 2), NOT Customer 1's 16000 under Route B!
+        
         self.assertAlmostEqual(totals_by_year[2024]['net'], 5000.0, places=2)
-        # 2025 on Route A is strictly 15000 (Customer 1)
+        
         self.assertAlmostEqual(totals_by_year[2025]['net'], 15000.0, places=2)
 
     def test_business_unit_and_region_filters_vs_db_raw(self):
@@ -444,7 +452,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         tx_service = SaleTransactionsService(user=self.user)
         base_tx_qs = tx_service.read_transactions_by_allowed_customers()
 
-        # 1. Filter by Business Unit (bu_1 -> route_a -> customer_1)
+        
         filter_bu = YearlySaleBreakdownFilter(
             data={'dimension': 'customer_productclass_product', 'business_unit': [self.bu_1.id]},
             queryset=base_tx_qs,
@@ -474,7 +482,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         service_bu1_net = sum(sum(t['net'] for t in item['totals']) for item in items_bu1)
         self.assertAlmostEqual(service_bu1_net, float(db_bu1_total['net']), places=2)
 
-        # 2. Filter by Region (reg_north -> bu_1 -> route_a -> customer_1)
+        
         filter_reg = YearlySaleBreakdownFilter(
             data={'dimension': 'customer_productclass_product', 'region': [self.region_north.id]},
             queryset=base_tx_qs,
@@ -530,7 +538,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         self.assertIn('Ruta Asignada', headers)
         self.assertIn('Gerencia de Ruta', headers)
 
-        # Locate indices
+        
         idx_cid = headers.index('ID Cliente')
         idx_rid = headers.index('ID Ruta Asignada')
         idx_rname = headers.index('Ruta Asignada')
@@ -539,7 +547,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         data_rows = reader[1:]
         self.assertTrue(len(data_rows) > 0)
 
-        # All rows for Customer 1 must report Route A and Gerencia Monterrey
+        
         for row in data_rows:
             self.assertEqual(row[idx_cid], self.customer_1.id)
             self.assertEqual(row[idx_rid], self.route_a.id)
@@ -554,7 +562,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         tx_service = SaleTransactionsService(user=self.user)
         base_tx_qs = tx_service.read_transactions_by_allowed_customers()
 
-        # Month 3 (March): only tx1 occurred in March (net: 10000, profit: 2000)
+        
         filter_set = YearlySaleBreakdownFilter(
             data={
                 'dimension': 'customer_productclass_product',
@@ -587,7 +595,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         self.assertIn(2024, totals_by_year)
         self.assertAlmostEqual(totals_by_year[2024]['net'], float(db_march_total['net']), places=2)
         self.assertAlmostEqual(totals_by_year[2024]['profit'], float(db_march_total['profit']), places=2)
-        # In filtered queryset there are no 2025 March transactions, so 2025 is not in sorted years
+        
         self.assertNotIn(2025, totals_by_year)
 
     def test_seller_export_aggregates_vs_db_raw(self):
@@ -619,13 +627,13 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         reader = list(csv.reader(io.StringIO(csv_content)))
         headers = reader[0]
 
-        # For sellers, Margen is qualitative label and numeric profit/percentage is omitted
+        
         for y in service.sorted_years:
             self.assertIn(f'Margen {y}', headers)
             self.assertNotIn(f'Margen % {y}', headers)
             self.assertNotIn(f'Clasificación Margen {y}', headers)
 
-        # Sum of net sales in CSV rows vs DB aggregate
+        
         idx_net_2024 = headers.index('Venta Neta 2024')
         idx_margin_label_2024 = headers.index('Margen 2024')
 
@@ -639,7 +647,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
 
         self.assertAlmostEqual(total_csv_net_2024, float(db_aggregates_2024['net']), places=2)
 
-        # Margin column for sellers must be qualitative string (e.g. 'Muy malo', 'Regular', etc.)
+        
         for r in data_rows:
             self.assertIn(r[idx_margin_label_2024], ['Excelente', 'Óptimo', 'Regular', 'Malo', 'Muy malo'])
 
@@ -676,7 +684,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         )
         self.assertEqual(active_customer_ids, [self.customer_1.id])
 
-        # Level 1 items (ProductClass)
+        
         l1_qs = service.get_level_1_queryset()
         l1_ids = [item['product_class_id'] for item in l1_qs]
         self.assertIn(self.class_analgesic.id, l1_ids)
@@ -685,8 +693,8 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         items = service.get_level_1_items(l1_ids)
         items_map = {item['id']: item for item in items}
 
-        # Validate Analgesics L1 totals vs DB raw (Customer 1 only: 10000 in 2024 under Route B + 15000 in 2025 under Route A = 25000)
-        # Note: Customer 2 also had 5000 in 2024 under Route A, but Customer 2 is inactive so it must NOT be included!
+        
+        
         analg_item = items_map[self.class_analgesic.id]
         analg_totals = {t['year']: t for t in analg_item['totals']}
 
@@ -703,11 +711,11 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         ).aggregate(net=Sum('net_amount'), profit=Sum('profit'))
 
         self.assertAlmostEqual(analg_totals[2024]['net'], float(db_analg_2024['net']), places=2)
-        self.assertAlmostEqual(analg_totals[2024]['net'], 10000.0, places=2)  # Customer 1 only
+        self.assertAlmostEqual(analg_totals[2024]['net'], 10000.0, places=2)  
         self.assertAlmostEqual(analg_totals[2025]['net'], float(db_analg_2025['net']), places=2)
         self.assertAlmostEqual(analg_totals[2025]['net'], 15000.0, places=2)
 
-        # Level 2 children (Customer) under Analgesics
+        
         l2_children = service.get_level_children(
             target_level=2,
             parent_filters={'l1_id': self.class_analgesic.id, 'parent_node_id': f'n1_{self.class_analgesic.id}'},
@@ -721,7 +729,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         self.assertAlmostEqual(c1_l2_totals[2024]['net'], 10000.0, places=2)
         self.assertAlmostEqual(c1_l2_totals[2025]['net'], 15000.0, places=2)
 
-        # Level 3 children (Product) under Customer 1 under Analgesics
+        
         l3_children = service.get_level_children(
             target_level=3,
             parent_filters={
@@ -813,7 +821,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         )
         self.assertEqual(active_customer_ids, [self.customer_1.id])
 
-        # Level 1 items (Products)
+        
         l1_qs = service.get_level_1_queryset()
         l1_ids = [item['product_id'] for item in l1_qs]
         self.assertIn(self.prod_paracetamol.id, l1_ids)
@@ -823,8 +831,8 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         items = service.get_level_1_items(l1_ids)
         items_map = {item['id']: item for item in items}
 
-        # Validate Paracetamol totals vs DB raw (Customer 1 only: 10000 in 2024 under Route B)
-        # Customer 2's 5000 in 2024 under Route A must NOT appear
+        
+        
         paracetamol_item = items_map[self.prod_paracetamol.id]
         paracetamol_totals = {t['year']: t for t in paracetamol_item['totals']}
 
@@ -837,7 +845,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         self.assertAlmostEqual(paracetamol_totals[2024]['net'], float(db_paracetamol_2024['net']), places=2)
         self.assertAlmostEqual(paracetamol_totals[2024]['net'], 10000.0, places=2)
 
-        # Level 2 children (Customer) under Paracetamol
+        
         l2_children = service.get_level_children(
             target_level=2,
             parent_filters={'l1_id': self.prod_paracetamol.id, 'parent_node_id': f'n1_{self.prod_paracetamol.id}'},
@@ -846,7 +854,7 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         self.assertEqual(l2_customer_ids, [self.customer_1.id])
         self.assertNotIn(self.customer_2.id, l2_customer_ids)
 
-        # CSV export for product_customer
+        
         exporter = YearlySaleBreakdownExports(breakdown_service=service)
         csv_buffer = exporter.export_yearly_sale_breakdown_csv(is_seller=False)
         reader = list(csv.reader(io.StringIO(csv_buffer.getvalue().decode('utf-8-sig'))))
@@ -865,6 +873,200 @@ class YearlySaleBreakdownAggregatesTestCase(TestCase):
         for row in reader[1:]:
             self.assertEqual(row[idx_cid], self.customer_1.id)
             self.assertEqual(row[idx_rid], self.route_a.id)
+
+
+class CustomerKpisAgreementsTestCase(TestCase):
+    """
+    test suite verifying that CustomerKpisService and CustomerProfileService
+    dynamically calculate active customer agreements independent of filters,
+    and verify template and export output.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username='analytics_agreements_tester',
+            email='tester@datall.local',
+            is_superuser=True,
+            is_staff=True,
+        )
+        cls.bu = BusinessUnit.objects.create(
+            id='bu_kpis',
+            name='Unidad KPIs',
+            business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT,
+        )
+        cls.route_type = RouteType.objects.create(id='rt_kpi', name='Ruta KPI')
+        cls.sale_channel = SaleChannel.objects.create(id='sc_kpi', name='Canal KPI')
+        cls.route = Route.objects.create(
+            id='R-KPI-1',
+            name='Ruta KPI 1',
+            business_unit=cls.bu,
+            route_type=cls.route_type,
+            sale_channel=cls.sale_channel,
+            is_active=True,
+        )
+        cls.benefit = CommercialBenefit.objects.create(
+            name='Descuento Especial',
+            benefit_type='fixed_discount',
+            cost=Decimal('500.00'),
+            is_active=True,
+        )
+        cls.customer_type = CustomerType.objects.create(id='ct_kpi', name='Tipo KPI')
+        today = timezone.localdate()
+        cls.today = today
+
+        cls.c_active = Customer.objects.create(
+            id='C-ACT',
+            name='Cliente Con Convenios Activos',
+            registration_date=today - timedelta(days=365),
+            customer_type=cls.customer_type,
+        )
+        cls.c_expired = Customer.objects.create(
+            id='C-EXP',
+            name='Cliente Solo Vencidos',
+            registration_date=today - timedelta(days=365),
+            customer_type=cls.customer_type,
+        )
+        cls.c_none = Customer.objects.create(
+            id='C-NONE',
+            name='Cliente Sin Convenios',
+            registration_date=today - timedelta(days=365),
+            customer_type=cls.customer_type,
+        )
+
+        
+        CustomerAgreement.objects.create(
+            customer=cls.c_active,
+            route=cls.route,
+            benefit=cls.benefit,
+            start_date=today - timedelta(days=30),
+            end_date=today + timedelta(days=30),
+        )
+        CustomerAgreement.objects.create(
+            customer=cls.c_active,
+            route=cls.route,
+            benefit=cls.benefit,
+            start_date=today - timedelta(days=10),
+            end_date=None,
+        )
+        CustomerAgreement.objects.create(
+            customer=cls.c_active,
+            route=cls.route,
+            benefit=cls.benefit,
+            start_date=today - timedelta(days=90),
+            end_date=today - timedelta(days=1),
+        )
+        CustomerAgreement.objects.create(
+            customer=cls.c_active,
+            route=cls.route,
+            benefit=cls.benefit,
+            start_date=today + timedelta(days=10),
+            end_date=today + timedelta(days=60),
+        )
+
+        
+        CustomerAgreement.objects.create(
+            customer=cls.c_expired,
+            route=cls.route,
+            benefit=cls.benefit,
+            start_date=today - timedelta(days=100),
+            end_date=today - timedelta(days=10),
+        )
+
+    def _get_service(self, date_start=None, date_end=None):
+        return CustomerKpisService(
+            user=self.user,
+            customers_qs=Customer.objects.filter(id__in=[self.c_active.id, self.c_expired.id, self.c_none.id]),
+            transactions_qs=SaleTransaction.objects.none(),
+            ars_qs=AccountsReceivable.objects.none(),
+            date_start=date_start,
+            date_end=date_end,
+        )
+
+    def test_get_active_agreements_map(self):
+        service = self._get_service()
+        agreements_map = service._get_active_agreements_map([
+            self.c_active.id,
+            self.c_expired.id,
+            self.c_none.id,
+        ])
+        self.assertEqual(agreements_map.get(self.c_active.id), 2)
+        self.assertIsNone(agreements_map.get(self.c_expired.id))
+        self.assertIsNone(agreements_map.get(self.c_none.id))
+
+    def test_read_customer_kpis_populates_active_agreements(self):
+        service = self._get_service()
+        results = service.read_customer_kpis()
+        by_id = {c.id: c for c in results}
+
+        self.assertEqual(by_id[self.c_active.id].active_agreements, 2)
+        self.assertEqual(by_id[self.c_expired.id].active_agreements, 0)
+        self.assertEqual(by_id[self.c_none.id].active_agreements, 0)
+
+    def test_active_agreements_unaffected_by_date_filters(self):
+        
+        past_start = self.today - timedelta(days=60)
+        past_end = self.today - timedelta(days=30)
+        service = self._get_service(date_start=past_start, date_end=past_end)
+        results = service.read_customer_kpis()
+        by_id = {c.id: c for c in results}
+
+        self.assertEqual(by_id[self.c_active.id].active_agreements, 2)
+        self.assertEqual(by_id[self.c_expired.id].active_agreements, 0)
+        self.assertEqual(by_id[self.c_none.id].active_agreements, 0)
+
+    def test_customer_profile_service_sets_active_agreements(self):
+        profile_service = CustomerProfileService(
+            user=self.user,
+            customer=self.c_active,
+            customers_qs=Customer.objects.filter(id=self.c_active.id),
+            transactions_qs=SaleTransaction.objects.none(),
+            ars_qs=AccountsReceivable.objects.none(),
+        )
+        customer = profile_service.build_profile()
+        self.assertEqual(customer.active_agreements, 2)
+
+        expired_service = CustomerProfileService(
+            user=self.user,
+            customer=self.c_expired,
+            customers_qs=Customer.objects.filter(id=self.c_expired.id),
+            transactions_qs=SaleTransaction.objects.none(),
+            ars_qs=AccountsReceivable.objects.none(),
+        )
+        expired_customer = expired_service.build_profile()
+        self.assertEqual(expired_customer.active_agreements, 0)
+
+    def test_customer_kpis_exports_excel_active_agreements(self):
+        service = self._get_service()
+        exporter = CustomerKpisExports(customer_kpis_service=service)
+        excel_buffer = exporter.export_customer_kpis_report()
+        wb = openpyxl.load_workbook(excel_buffer)
+        ws = wb['Listado de Clientes']
+
+        
+        found = False
+        for row in range(3, ws.max_row + 1):
+            if ws.cell(row=row, column=1).value == self.c_active.id:
+                
+                self.assertEqual(ws.cell(row=row, column=19).value, 2)
+                found = True
+                break
+        self.assertTrue(found, "Customer C-ACT was not found in exported Excel")
+
+    def test_template_rows_renders_active_agreements_link(self):
+        service = self._get_service()
+        results = service.read_customer_kpis()
+
+        rendered = render_to_string(
+            'analytics/customer_kpis/partials/_customer_kpis_rows.html',
+            {'customers': results}
+        )
+
+        detail_url = reverse('customers:customer_detail_view', kwargs={'pk': self.c_active.id})
+        self.assertIn(detail_url, rendered)
+        self.assertIn('Ver convenios de Cliente Con Convenios Activos', rendered)
+        self.assertIn('<span class="text-muted">0</span>', rendered)
+
 
 
 
