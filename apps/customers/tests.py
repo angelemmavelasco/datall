@@ -756,6 +756,51 @@ class CustomerAgreementViewsTests(TestCase):
         self.assertEqual(periods[0].status, PeriodStatusChoices.FAILED)
         self.assertFalse(periods[0].penalty_applied)
 
+    def test_agreement_preview_friendly_wording_periodic_and_at_end(self):
+        url = reverse('customers:customer_agreement_preview_view')
+
+        
+        post_periodic = {
+            'customer': self.customer.id,
+            'benefit': self.benefit.id,
+            'agreement_type': AgreementTypeChoices.SHORT_TERM,
+            'evaluation_mode': EvaluationModeChoices.PERIODIC,
+            'start_date': '2026-01',
+            'end_date': '2026-06',
+            'global_target_amount': '250000.00',
+            'target_frequency': '1M',
+            'penalty_amount': '15000.00',
+        }
+        res_periodic = self.client.post(url, post_periodic)
+        self.assertEqual(res_periodic.status_code, 200)
+        content_periodic = res_periodic.content.decode()
+        self.assertIn('un consumo <strong>cada mes</strong> de compras netas de <strong>$250,000.00 MXN</strong>', content_periodic)
+        self.assertIn('6 meses</strong> en total, divididos en <strong>6 periodos</strong>', content_periodic)
+        self.assertIn('al corte de cada periodo de evaluación', content_periodic)
+        self.assertIn('Penalización por periodo:', content_periodic)
+
+        
+        post_at_end = {
+            'customer': self.customer.id,
+            'benefit': self.benefit.id,
+            'agreement_type': AgreementTypeChoices.SHORT_TERM,
+            'evaluation_mode': EvaluationModeChoices.AT_END,
+            'start_date': '2026-01',
+            'end_date': '2026-12',
+            'global_target_amount': '250000.00',
+            'target_frequency': '1M',
+            'penalty_amount': '50000.00',
+        }
+        res_at_end = self.client.post(url, post_at_end)
+        self.assertEqual(res_at_end.status_code, 200)
+        content_at_end = res_at_end.content.decode()
+        self.assertIn('un consumo <strong>cada mes</strong> de compras netas de <strong>$250,000.00 MXN</strong>', content_at_end)
+        self.assertIn('(como guía y referencia de comportamiento)', content_at_end)
+        self.assertIn('12 meses</strong> en total, divididos en <strong>12 periodos</strong>', content_at_end)
+        self.assertIn('al finalizar el convenio</strong> sobre el acumulado total comprometido', content_at_end)
+        self.assertIn('Penalización al término del convenio:', content_at_end)
+
+
 
 
 

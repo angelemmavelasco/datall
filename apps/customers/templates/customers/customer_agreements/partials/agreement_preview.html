@@ -81,7 +81,17 @@
                     </p>
 
                     <p>
-                        Para hacerse acreedor de los beneficios de nuestro contrato comercial, usted deberá cumplir con el objetivo {{ preview.target_frequency_name|lower }} de compras netas de <strong>${{ preview.global_target_amount|floatformat:2|intcomma }} MXN</strong>, dando un acumulado de compras netas por {{ preview.duration_months }} meses de <strong>${{ preview.total_accumulated_target|floatformat:2|intcomma }} MXN</strong> <span class="font-bold text-[#018e88]">[3]</span>, así como mantener el cumplimiento de sus pagos conforme a sus días de crédito otorgados (<strong>{{ preview.customer.credit_days|default:0 }} días</strong>) <span class="font-bold text-[#018e88]">[4]</span>.
+                        Para hacerse acreedor de los beneficios de nuestro contrato comercial, usted deberá cumplir con 
+                        {% if preview.is_end_frequency or preview.total_periods == 1 %}
+                            un consumo total de compras netas de <strong>${{ preview.global_target_amount|floatformat:2|intcomma }} MXN</strong> durante los <strong>{{ preview.duration_months }} meses</strong> que dura el convenio (<strong>1 periodo único de evaluación</strong>) <span class="font-bold text-[#018e88]">[3]</span>
+                        {% else %}
+                            un consumo <strong>{{ preview.frequency_phrase }}</strong> de compras netas de <strong>${{ preview.global_target_amount|floatformat:2|intcomma }} MXN</strong>{% if preview.evaluation_mode == 'at_end' %} (como guía y referencia de comportamiento){% endif %}, durante el tiempo que dura el convenio (<strong>{{ preview.duration_months }} meses</strong> en total, divididos en <strong>{{ preview.total_periods }} periodos</strong>), dando un acumulado total de compras netas de <strong>${{ preview.total_accumulated_target|floatformat:2|intcomma }} MXN</strong> <span class="font-bold text-[#018e88]">[3]</span>
+                        {% endif %}, así como mantener el cumplimiento puntual de sus pagos conforme a sus días de crédito otorgados (<strong>{{ preview.customer.credit_days|default:0 }} días</strong>) <span class="font-bold text-[#018e88]">[4]</span>.
+                        {% if preview.evaluation_mode == 'at_end' or preview.is_end_frequency or preview.total_periods == 1 %}
+                            La evaluación de cumplimiento y la penalización se aplicarán <strong>al finalizar el convenio</strong> sobre el acumulado total comprometido si el cliente no cumple.
+                        {% else %}
+                            La evaluación de cumplimiento y la penalización se aplicarán <strong>al corte de cada periodo de evaluación</strong> si el cliente no cumple con la cuota establecida.
+                        {% endif %}
                     </p>
 
                     <p>
@@ -97,14 +107,20 @@
 
                     <div class="p-3 bg-container border border-border rounded space-y-1.5 text-[11px] leading-relaxed">
                         <p class="font-semibold text-title">Compromisos de compra y penalizaciones en caso de incumplimiento:</p>
+                        {% if preview.evaluation_mode == 'at_end' or preview.is_end_frequency or preview.total_periods == 1 %}
                         <p>
-                            • En caso de no cumplir con la cuota de compra establecida en el contrato comercial, me comprometo a pagar la factura que se genere por penalización de incumplimiento de cuota acumulada antes mencionada, por el monto convenido de <strong>${{ preview.penalty_amount|floatformat:2|intcomma }} MXN</strong> <span class="font-bold text-[#018e88]">[6]</span>.
+                            • <strong>Penalización al término del convenio:</strong> La evaluación y penalización se aplicarán al finalizar el convenio. En caso de no cumplir con la cuota total acumulada de compras netas de <strong>${{ preview.total_accumulated_target|floatformat:2|intcomma }} MXN</strong> al término del contrato comercial, me comprometo a pagar la factura que se genere por penalización de incumplimiento de cuota acumulada, por el monto convenido de <strong>${{ preview.penalty_amount|floatformat:2|intcomma }} MXN</strong> <span class="font-bold text-[#018e88]">[6]</span>.
+                        </p>
+                        {% else %}
+                        <p>
+                            • <strong>Penalización por periodo:</strong> La evaluación y penalización se aplicarán al corte de cada periodo de evaluación ({{ preview.frequency_phrase }}). En caso de no cumplir con la cuota de compra establecida en cualquiera de los periodos de evaluación, me comprometo a pagar la factura que se genere por penalización de incumplimiento por cada periodo no cubierto, por el monto convenido de <strong>${{ preview.penalty_amount|floatformat:2|intcomma }} MXN</strong> <span class="font-bold text-[#018e88]">[6]</span>.
+                        </p>
+                        {% endif %}
+                        <p>
+                            • <strong>Valor comercial del beneficio:</strong> En dado caso de no cumplir con las cuotas establecidas o en caso de rescisión anticipada, me comprometo a pagar el valor comercial íntegro de dicho producto o beneficio otorgado.
                         </p>
                         <p>
-                            • En dado caso de no cumplir con las cuotas establecidas, me comprometo a pagar el valor comercial íntegro de dicho producto o beneficio otorgado.
-                        </p>
-                        <p>
-                            • En caso de negarme a realizar los pagos, estoy de acuerdo en que se me rescinda el presente convenio y se me restituya o embargue el beneficio otorgado <span class="font-bold text-[#018e88]">[7]</span>.
+                            • <strong>Rescisión y restitución:</strong> En caso de negarme a realizar los pagos o liquidar las penalizaciones, estoy de acuerdo en que se me rescinda el presente convenio y se me restituya o embargue el beneficio comercial otorgado <span class="font-bold text-[#018e88]">[7]</span>.
                         </p>
                     </div>
                 </div>

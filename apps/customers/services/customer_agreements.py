@@ -758,6 +758,35 @@ class CustomerAgreementsService(UsersService):
                 freq_delta = relativedelta(months=1)
                 target_freq_display = '1 mes'
 
+        tf_clean = str(target_frequency or '').lower().strip()
+        if tf_clean in ('end', 'at_end') or target_frequency == PeriodicityChoices.AT_END:
+            frequency_phrase = 'al término del convenio'
+            is_end_frequency = True
+        elif tf_clean in ('1m', 'monthly'):
+            frequency_phrase = 'cada mes'
+            is_end_frequency = False
+        elif tf_clean.endswith('m') and tf_clean[:-1].isdigit():
+            frequency_phrase = f"cada {tf_clean[:-1]} meses"
+            is_end_frequency = False
+        elif tf_clean in ('1y', '12m', 'annual'):
+            frequency_phrase = 'cada año (12 meses)'
+            is_end_frequency = False
+        elif tf_clean == '1w':
+            frequency_phrase = 'cada semana'
+            is_end_frequency = False
+        elif tf_clean.endswith('w') and tf_clean[:-1].isdigit():
+            frequency_phrase = f"cada {tf_clean[:-1]} semanas"
+            is_end_frequency = False
+        elif tf_clean == '1d':
+            frequency_phrase = 'cada día'
+            is_end_frequency = False
+        elif tf_clean.endswith('d') and tf_clean[:-1].isdigit():
+            frequency_phrase = f"cada {tf_clean[:-1]} días"
+            is_end_frequency = False
+        else:
+            frequency_phrase = f"cada {target_freq_display.lower()}"
+            is_end_frequency = False
+
         growth_freq_display = ''
         g_delta = None
         if growth_value > 0 and growth_frequency:
@@ -880,9 +909,9 @@ class CustomerAgreementsService(UsersService):
                 'text': (
                     f"El presente convenio tendrá una vigencia improrrogable del {start_date.strftime('%m/%Y')} al {end_date.strftime('%m/%Y')}. "
                     + (
-                        f"El periodo total comprende {duration_months} meses con desglose mensual de seguimiento de comportamiento y evaluación/penalización acumulada al término del convenio."
+                        f"El periodo total comprende {duration_months} meses con desglose de metas periódicas ({frequency_phrase}) como guía y seguimiento de comportamiento, realizándose la evaluación definitiva y eventual penalización al término del convenio sobre el monto acumulado."
                         if evaluation_mode == EvaluationModeChoices.AT_END else
-                        f"El periodo total comprende {duration_months} meses divididos en {total_periods} periodo(s) de evaluación con periodicidad {target_freq_display.lower()}."
+                        f"El periodo total comprende {duration_months} meses divididos en {total_periods} periodo(s) de evaluación con frecuencia {frequency_phrase}."
                     )
                 ),
             },
@@ -902,8 +931,13 @@ class CustomerAgreementsService(UsersService):
                 'citation': '[3]',
                 'title': 'CLÁUSULA TERCERA [3] — CUOTA PERIÓDICA, META GLOBAL Y CONSUMO COMPROMETIDO',
                 'text': (
-                    f"El cliente se obliga a mantener una cuota de compras netas base de ${global_target_amount:,.2f} MXN por cada periodo de evaluación {target_freq_display.lower()}, "
-                    f"alcanzando un acumulado total comprometido de ${total_accumulated_target:,.2f} MXN durante la vigencia del contrato. "
+                    (
+                        f"El cliente se obliga a mantener una cuota de compras netas de ${global_target_amount:,.2f} MXN {frequency_phrase} como guía de comportamiento, "
+                        f"alcanzando un acumulado total comprometido de ${total_accumulated_target:,.2f} MXN durante los {duration_months} meses de vigencia del contrato ({total_periods} periodos en total), evaluable al término del convenio. "
+                        if evaluation_mode == EvaluationModeChoices.AT_END else
+                        f"El cliente se obliga a mantener una cuota de compras netas base de ${global_target_amount:,.2f} MXN por cada periodo de evaluación ({frequency_phrase}), "
+                        f"alcanzando un acumulado total comprometido de ${total_accumulated_target:,.2f} MXN durante los {duration_months} meses de vigencia del contrato ({total_periods} periodo(s) en total). "
+                    )
                     + (
                         f"Asimismo, se estipula una tasa de crecimiento proyectada del {growth_value}% con periodicidad {growth_freq_display.lower()} sobre las cuotas subsecuentes."
                         if growth_value > 0 and growth_freq_display else
@@ -947,9 +981,9 @@ class CustomerAgreementsService(UsersService):
                         f"En caso de que el cliente no alcance el 100% de la cuota global acumulada comprometida de ${total_accumulated_target:,.2f} MXN al término de la vigencia del convenio, "
                         f"se generará y emitirá una factura por concepto de penalización por la cantidad de ${penalty_amount:,.2f} MXN "
                         f"que el cliente se obliga incondicionalmente a liquidar dentro de los plazos comerciales acordados."
-                        if evaluation_mode == EvaluationModeChoices.AT_END else
-                        f"En caso de que el cliente no alcance el 100% de la cuota pactada o del acumulado comprometido, "
-                        f"se generará y emitirá una factura por concepto de penalización por la cantidad de ${penalty_amount:,.2f} MXN "
+                        if (evaluation_mode == EvaluationModeChoices.AT_END or is_end_frequency or total_periods == 1) else
+                        f"En caso de que el cliente no alcance el 100% de la cuota pactada en cualquiera de los periodos de evaluación ({frequency_phrase}), "
+                        f"se generará y emitirá una factura por concepto de penalización por la cantidad de ${penalty_amount:,.2f} MXN por cada periodo no cubierto, "
                         f"que el cliente se obliga incondicionalmente a liquidar dentro de los plazos comerciales acordados."
                     )
                     if penalty_amount > 0 else
@@ -1024,8 +1058,11 @@ class CustomerAgreementsService(UsersService):
             'end_date': end_date,
             'duration_months': duration_months,
             'total_periods': total_periods,
+            'target_frequency': target_frequency,
             'target_freq_display': target_freq_display,
             'target_frequency_name': target_freq_display,
+            'frequency_phrase': frequency_phrase,
+            'is_end_frequency': is_end_frequency,
             'global_target_amount': global_target_amount,
             'total_accumulated_target': total_accumulated_target,
             'penalty_amount': penalty_amount,
