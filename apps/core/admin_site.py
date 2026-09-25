@@ -88,6 +88,7 @@ class ThemedAdminSite(admin.AdminSite):
                 'models': [
                     'Customer',
                     'CustomerType',
+                    'CustomerContact',
                     'CustomerAssignment',
                     'CustomerClassMargin',
                     'AccountsReceivable',
@@ -97,7 +98,12 @@ class ThemedAdminSite(admin.AdminSite):
             {
                 'name': 'Convenios',
                 'app_label': 'customers_convenios',
-                'models': []
+                'models': [
+                    'CustomerAgreement',
+                    'CommercialBenefit',
+                    'AgreementEvaluationPeriod',
+                    'AgreementClassTarget',
+                ]
             },
             {
                 'name': 'Configuración del Sistema',
@@ -111,6 +117,7 @@ class ThemedAdminSite(admin.AdminSite):
                     'SupportArticle',
                     'User',
                     'Group',
+                    'ActivityLog',
                 ]
             }
         ]

@@ -1041,8 +1041,6 @@ def customer_agreement_preview_view(request):
             'error': str(e),
         })
 
-
-
 @login_required
 @require_POST
 def customer_agreement_update_document_view(request, pk: int):
@@ -1086,7 +1084,6 @@ def customer_agreement_evaluate_action_view(request, pk: int):
     except Exception as e:
         messages.error(request, f"Error durante la evaluación: {str(e)}")
     return redirect('customers:customer_agreement_detail_view', pk=pk)
-
 
 
 @login_required

@@ -2,6 +2,7 @@ from django.contrib import admin
 from .models import (
     CustomerType,
     Customer,
+    CustomerContact,
     CustomerAssignment,
     CustomerClassMargin,
     AccountsReceivable,
@@ -10,7 +11,15 @@ from .models import (
     CustomerAgreement,
     AgreementClassTarget,
     AgreementEvaluationPeriod,
+    AgreementPeriodClassResult,
 )
+
+
+class CustomerContactInline(admin.TabularInline):
+    model = CustomerContact
+    extra = 1
+    fields = ('name', 'role', 'phone', 'mobile', 'email', 'is_primary', 'notes')
+    show_change_link = True
 
 
 class CustomerAssignmentInline(admin.TabularInline):
@@ -60,7 +69,36 @@ class CustomerAdmin(admin.ModelAdmin):
     search_fields = ('id', 'name')
     autocomplete_fields = ['customer_type']
     ordering = ('id',)
-    inlines = [CustomerAssignmentInline, CustomerClassMarginInline, CustomerNoteInline]
+    inlines = [
+        CustomerContactInline,
+        CustomerAssignmentInline,
+        CustomerClassMarginInline,
+        CustomerNoteInline,
+    ]
+
+
+@admin.register(CustomerContact)
+class CustomerContactAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+        'customer',
+        'role',
+        'phone',
+        'mobile',
+        'email',
+        'is_primary',
+    )
+    list_filter = ('role', 'is_primary')
+    search_fields = (
+        'name',
+        'customer__id',
+        'customer__name',
+        'phone',
+        'mobile',
+        'email',
+    )
+    autocomplete_fields = ['customer']
+    ordering = ('customer', '-is_primary', 'name')
 
 
 @admin.register(CustomerAssignment)
@@ -169,6 +207,15 @@ class AgreementClassTargetInline(admin.TabularInline):
     show_change_link = True
 
 
+class AgreementPeriodClassResultInline(admin.TabularInline):
+    model = AgreementPeriodClassResult
+    extra = 0
+    fields = ('product_class', 'expected_class_target', 'achieved_class_sales')
+    readonly_fields = ('product_class', 'expected_class_target', 'achieved_class_sales')
+    can_delete = False
+    show_change_link = True
+
+
 class AgreementEvaluationPeriodInline(admin.TabularInline):
     model = AgreementEvaluationPeriod
     extra = 0
@@ -209,11 +256,15 @@ class CustomerAgreementAdmin(admin.ModelAdmin):
         'global_target_amount',
         'target_frequency',
         'penalty_amount',
+        'signed',
+        'benefit_already_provided',
         'created_at',
     )
     list_filter = (
         'agreement_type',
         'target_frequency',
+        'signed',
+        'benefit_already_provided',
         'start_date',
         'end_date',
         'benefit',
@@ -232,3 +283,72 @@ class CustomerAgreementAdmin(admin.ModelAdmin):
     inlines = [AgreementClassTargetInline, AgreementEvaluationPeriodInline]
     ordering = ('-start_date', '-created_at')
 
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return self.readonly_fields + (
+                'customer',
+                'route',
+                'benefit',
+                'doc_id',
+                'agreement_type',
+                'start_date',
+                'end_date',
+                'global_target_amount',
+                'target_frequency',
+                'penalty_amount',
+                'growth_value',
+                'growth_frequency',
+                'margin_warning_accepted',
+                'created_by',
+            )
+        return self.readonly_fields
+
+
+@admin.register(AgreementEvaluationPeriod)
+class AgreementEvaluationPeriodAdmin(admin.ModelAdmin):
+    list_display = (
+        'agreement',
+        'period_number',
+        'start_date',
+        'end_date',
+        'expected_global_target',
+        'achieved_global_sales',
+        'period_profit',
+        'status',
+        'penalty_applied',
+    )
+    list_filter = ('status', 'penalty_applied', 'start_date', 'end_date')
+    search_fields = (
+        'agreement__doc_id',
+        'agreement__customer__id',
+        'agreement__customer__name',
+    )
+    autocomplete_fields = ['agreement']
+    readonly_fields = (
+        'agreement',
+        'period_number',
+        'start_date',
+        'end_date',
+        'expected_global_target',
+        'achieved_global_sales',
+        'amortized_benefit_cost',
+        'period_profit',
+        'period_margin',
+    )
+    inlines = [AgreementPeriodClassResultInline]
+    ordering = ('-start_date', 'period_number')
+
+
+@admin.register(AgreementClassTarget)
+class AgreementClassTargetAdmin(admin.ModelAdmin):
+    list_display = ('agreement', 'product_class', 'required_target', 'is_mandatory')
+    list_filter = ('is_mandatory', 'product_class')
+    search_fields = (
+        'agreement__doc_id',
+        'agreement__customer__id',
+        'agreement__customer__name',
+        'product_class__id',
+        'product_class__name',
+    )
+    autocomplete_fields = ['agreement', 'product_class']
+    ordering = ('agreement', 'product_class')
