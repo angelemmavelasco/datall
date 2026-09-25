@@ -129,12 +129,20 @@ class AppVersionAdmin(admin.ModelAdmin):
                     pass
             raise
 
+class SupportArticleInline(admin.StackedInline):
+    model = SupportArticle
+    extra = 0
+    fields = (('title', 'order'), ('is_published', 'is_highlighted'), 'content')
+    show_change_link = True
+
+
 @admin.register(SupportCategory)
 class SupportCategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'order', 'icon', 'is_active', 'articles_count')
     list_display_links = ('name',)
     list_editable = ('order', 'is_active')
     search_fields = ('name', 'description')
+    inlines = [SupportArticleInline]
 
     def articles_count(self, obj):
         return obj.articles.count()
