@@ -529,7 +529,14 @@ class RouteKpisService:
             from apps.sales.models import RouteAssignment
             assignment = (
                 RouteAssignment.objects
-                .filter(route_id=self.route_id, date_end__isnull=True)
+                .filter(
+                    route_id=self.route_id,
+                    date_start__lte=self.today,
+                )
+                .filter(
+                    Q(date_end__isnull=True) | Q(date_end__gte=self.today)
+                )
+                .order_by('-date_start')
                 .select_related('employee__user')
                 .first()
             )

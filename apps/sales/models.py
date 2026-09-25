@@ -1,6 +1,8 @@
 from django.db import models
 from django.db.models import Q
 from decimal import Decimal
+from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 class Warehouse(models.Model):
     class WarehouseTypeChoices(models.TextChoices):
@@ -82,6 +84,38 @@ class RouteAssignment(models.Model):
                 name="sales_unique_active_assignment_per_route"
             ),
         ]
+
+    def clean(self):
+        super().clean()
+        if self.date_start and self.date_end and self.date_end < self.date_start:
+            raise ValidationError({'date_end': 'La fecha de fin no puede ser anterior a la fecha de inicio.'})
+
+    @property
+    def is_active(self) -> bool:
+        today = timezone.localdate()
+        if self.date_start > today:
+            return False
+        if self.date_end and self.date_end < today:
+            return False
+        return True
+
+    @property
+    def is_future(self) -> bool:
+        today = timezone.localdate()
+        return self.date_start > today
+
+    @property
+    def is_ended(self) -> bool:
+        today = timezone.localdate()
+        return bool(self.date_end and self.date_end < today)
+
+    @property
+    def status_label(self) -> str:
+        if self.is_future:
+            return 'Programada'
+        if self.is_active:
+            return 'Activa actualmente'
+        return 'Finalizada'
 
     def __str__(self):
         return f'{self.route.id.upper()} {self.route.name.title()} -> {self.employee.user.first_name.title()} {self.employee.user.last_name.title()}'

@@ -90,7 +90,7 @@ class RoutesService(UsersService):
                 can_edit=Value(True, output_field=BooleanField()),
             )
 
-        today = timezone.now().date()
+        today = timezone.localdate()
         user_employees = Employee.objects.filter(user=self.user)
         tree_ids = set()
         for emp in user_employees:
@@ -122,6 +122,7 @@ class RoutesService(UsersService):
                 self.route_assignment_model.objects.filter(
                     route=OuterRef('pk'),
                     employee_id__in=tree_ids,
+                    date_start__lte=today,
                 ).filter(
                     Q(date_end__isnull=True) | Q(date_end__gte=today)
                 )
@@ -160,10 +161,11 @@ class RoutesService(UsersService):
         --------
             QuerySet: filtered queryset
         """
-        today = timezone.now().date()
+        today = timezone.localdate()
 
         active_assignment_qs = self.route_assignment_model.objects.filter(
-            route=OuterRef('pk')
+            route=OuterRef('pk'),
+            date_start__lte=today,
         ).filter(
             Q(date_end__isnull=True) | Q(date_end__gte=today)
         ).order_by('-date_start')

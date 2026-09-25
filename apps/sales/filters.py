@@ -117,9 +117,10 @@ class RouteFilter(django_filters.FilterSet):
     def filter_employee(self, queryset, name, value):
         if not value:
             return queryset
-        today = timezone.now().date()
+        today = timezone.localdate()
         return queryset.filter(
             Q(route_assignments__employee__in=value) &
+            Q(route_assignments__date_start__lte=today) &
             (Q(route_assignments__date_end__isnull=True) | Q(route_assignments__date_end__gte=today))
         ).distinct()
 

@@ -100,8 +100,10 @@ Ruta {{ route.id|upper }} - {{ route.name|title }}
                                 {{ a.employee.id|upper }} {{ a.employee.user.first_name|title }} {{ a.employee.user.last_name|title }}
                             </a>
                         </p>
-                        {% if not a.date_end %}
+                        {% if a.is_active %}
                             <span class="text-xs text-emerald-500 font-medium">Activa actualmente</span>
+                        {% elif a.is_future %}
+                            <span class="text-xs text-blue-500 font-medium">Programada</span>
                         {% else %}
                             <span class="text-xs text-secondary">Finalizada</span>
                         {% endif %}

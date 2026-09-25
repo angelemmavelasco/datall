@@ -654,20 +654,15 @@ class CustomerAgreementsService(UsersService):
         if not route:
             return ""
 
+        check_date = target_date or timezone.localdate()
+
         active_assign = (
-            RouteAssignment.objects.filter(route=route, date_end__isnull=True)
+            RouteAssignment.objects.filter(route=route, date_start__lte=check_date)
+            .filter(Q(date_end__isnull=True) | Q(date_end__gte=check_date))
+            .order_by('-date_start')
             .select_related('employee__user')
             .first()
         )
-
-        if not active_assign and target_date:
-            active_assign = (
-                RouteAssignment.objects.filter(route=route, date_start__lte=target_date)
-                .filter(Q(date_end__isnull=True) | Q(date_end__gte=target_date))
-                .order_by('-date_start')
-                .select_related('employee__user')
-                .first()
-            )
 
         if not active_assign:
             active_assign = (

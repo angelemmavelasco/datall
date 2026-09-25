@@ -1,15 +1,18 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.template.loader import render_to_string
+from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 from apps.core.models import User
 from apps.customers.models import Customer, CustomerType, CustomerAssignment
 from apps.products.models import ProductClass, ProductCategory, Product
-from apps.human_resources.models import BusinessUnit
-from apps.sales.models import Route, RouteType, SaleChannel, SaleTransaction
-from apps.sales.filters import SaleTransactionFilter
+from apps.human_resources.models import BusinessUnit, Department, Position, Employee
+from apps.sales.models import Route, RouteType, SaleChannel, SaleTransaction, RouteAssignment, UserRouteAccess
+from apps.sales.services.routes import RoutesService
+from apps.sales.filters import SaleTransactionFilter, RouteFilter
 
 
 class SaleTransactionTests(TestCase):
@@ -159,3 +162,211 @@ class SaleTransactionTests(TestCase):
         )
         self.assertIn('text-red-500', rendered_zero)
         self.assertIn('$0.00', rendered_zero)
+
+
+class RouteAssignmentAccessTests(TestCase):
+    def setUp(self):
+        self.dept = Department.objects.create(id='DEP', name='Ventas')
+        self.pos = Position.objects.create(id='POS01', name='Vendedor', department=self.dept)
+
+        self.user_regular = User.objects.create_user(
+            username='seller1',
+            password='password123',
+            email='seller1@test.com',
+            first_name='Luis',
+            last_name='Borrego'
+        )
+        self.emp = Employee.objects.create(
+            id='EMP01',
+            user=self.user_regular,
+            position=self.pos,
+            hire_date=date(2025, 1, 1),
+        )
+
+        self.route_type = RouteType.objects.create(id='RT01', name='Ruta Local')
+        self.channel = SaleChannel.objects.create(id='SC01', name='Canal Tradicional')
+        self.route = Route.objects.create(
+            id='R_TEST',
+            name='Ruta Prueba',
+            route_type=self.route_type,
+            sale_channel=self.channel,
+            is_active=True,
+        )
+
+    def test_route_assignment_properties(self):
+        today = timezone.localdate()
+
+        # Past assignment
+        past_assign = RouteAssignment(
+            route=self.route,
+            employee=self.emp,
+            date_start=today - timedelta(days=60),
+            date_end=today - timedelta(days=10),
+        )
+        self.assertFalse(past_assign.is_active)
+        self.assertFalse(past_assign.is_future)
+        self.assertTrue(past_assign.is_ended)
+        self.assertEqual(past_assign.status_label, 'Finalizada')
+
+        # Active assignment (ongoing, no date_end)
+        active_assign = RouteAssignment(
+            route=self.route,
+            employee=self.emp,
+            date_start=today - timedelta(days=5),
+            date_end=None,
+        )
+        self.assertTrue(active_assign.is_active)
+        self.assertFalse(active_assign.is_future)
+        self.assertFalse(active_assign.is_ended)
+        self.assertEqual(active_assign.status_label, 'Activa actualmente')
+
+        # Active assignment (with future date_end)
+        active_with_end = RouteAssignment(
+            route=self.route,
+            employee=self.emp,
+            date_start=today - timedelta(days=5),
+            date_end=today + timedelta(days=20),
+        )
+        self.assertTrue(active_with_end.is_active)
+        self.assertFalse(active_with_end.is_future)
+        self.assertFalse(active_with_end.is_ended)
+        self.assertEqual(active_with_end.status_label, 'Activa actualmente')
+
+        # Future assignment
+        future_assign = RouteAssignment(
+            route=self.route,
+            employee=self.emp,
+            date_start=today + timedelta(days=10),
+            date_end=None,
+        )
+        self.assertFalse(future_assign.is_active)
+        self.assertTrue(future_assign.is_future)
+        self.assertFalse(future_assign.is_ended)
+        self.assertEqual(future_assign.status_label, 'Programada')
+
+    def test_route_assignment_clean_validation(self):
+        today = timezone.localdate()
+        invalid_assign = RouteAssignment(
+            route=self.route,
+            employee=self.emp,
+            date_start=today,
+            date_end=today - timedelta(days=1),
+        )
+        with self.assertRaises(ValidationError):
+            invalid_assign.clean()
+
+    def test_future_assignment_without_specific_access_denies_view(self):
+        today = timezone.localdate()
+        # Assignment starting in the future
+        RouteAssignment.objects.create(
+            route=self.route,
+            employee=self.emp,
+            date_start=today + timedelta(days=5),
+            date_end=None,
+        )
+
+        service = RoutesService(user=self.user_regular)
+        allowed_routes = service.get_allowed_routes(can_view=True)
+        self.assertNotIn(self.route, allowed_routes)
+
+    def test_future_assignment_with_specific_access_grants_view(self):
+        today = timezone.localdate()
+        # Assignment starting in the future
+        RouteAssignment.objects.create(
+            route=self.route,
+            employee=self.emp,
+            date_start=today + timedelta(days=5),
+            date_end=None,
+        )
+        # Specific access granted
+        UserRouteAccess.objects.create(
+            user=self.user_regular,
+            route=self.route,
+            can_view=True,
+            can_edit=False,
+        )
+
+        service = RoutesService(user=self.user_regular)
+        allowed_routes = service.get_allowed_routes(can_view=True)
+        self.assertIn(self.route, allowed_routes)
+
+    def test_active_assignment_grants_view_without_specific_access(self):
+        today = timezone.localdate()
+        # Assignment active today
+        RouteAssignment.objects.create(
+            route=self.route,
+            employee=self.emp,
+            date_start=today - timedelta(days=1),
+            date_end=None,
+        )
+
+        service = RoutesService(user=self.user_regular)
+        allowed_routes = service.get_allowed_routes(can_view=True)
+        self.assertIn(self.route, allowed_routes)
+
+    def test_read_routes_annotation_active_vs_future(self):
+        today = timezone.localdate()
+        admin_user = User.objects.create_superuser(
+            username='admin_test',
+            password='password123',
+            email='admin_test@test.com'
+        )
+
+        # Route 1 has only future assignment
+        RouteAssignment.objects.create(
+            route=self.route,
+            employee=self.emp,
+            date_start=today + timedelta(days=7),
+            date_end=None,
+        )
+
+        # Route 2 has active assignment
+        route2 = Route.objects.create(
+            id='R_ACTIVE',
+            name='Ruta Activa',
+            route_type=self.route_type,
+            sale_channel=self.channel,
+            is_active=True,
+        )
+        RouteAssignment.objects.create(
+            route=route2,
+            employee=self.emp,
+            date_start=today - timedelta(days=7),
+            date_end=None,
+        )
+
+        service = RoutesService(user=admin_user)
+        routes_annotated = {r.id: r for r in service.read_routes()}
+
+        self.assertIsNone(routes_annotated[self.route.id].current_employee_id)
+        self.assertEqual(routes_annotated[route2.id].current_employee_id, self.emp.id)
+
+    def test_route_detail_template_badges(self):
+        today = timezone.localdate()
+        # Past assignment
+        past_emp_user = User.objects.create_user(username='past_emp', password='password123')
+        past_emp = Employee.objects.create(
+            id='EMP02', user=past_emp_user, position=self.pos, hire_date=date(2024, 1, 1)
+        )
+        RouteAssignment.objects.create(
+            route=self.route,
+            employee=past_emp,
+            date_start=today - timedelta(days=60),
+            date_end=today - timedelta(days=10),
+        )
+        # Future assignment
+        RouteAssignment.objects.create(
+            route=self.route,
+            employee=self.emp,
+            date_start=today + timedelta(days=5),
+            date_end=None,
+        )
+
+        admin_user = User.objects.create_superuser(username='adm2', password='123', email='adm2@t.com')
+        client = Client()
+        client.force_login(admin_user)
+        response = client.get(reverse('sales:route_detail_view', args=[self.route.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Programada')
+        self.assertContains(response, 'Finalizada')
+        self.assertNotContains(response, 'Activa actualmente')
