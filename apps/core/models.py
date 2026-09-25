@@ -73,12 +73,15 @@ class PeriodicityChoices(models.TextChoices):
     TEN_MONTHS = '10m', '10 meses'
     ELEVEN_MONTHS = '11m', '11 meses'
     ANNUAL = '1y', '1 año'
+    AT_END = 'end', 'Al término'
 
     def get_relativedelta(self) -> relativedelta:
         '''
         calculates the relativedelta based on the numeric and key ref value, example : 1d -> 1 day, 11m -> 11 months, 1y -> 1 year
         '''
         val = str(self.value)
+        if val == 'end':
+            return relativedelta()
         amount = int(val[:-1])
         unit = val[-1].lower()
 

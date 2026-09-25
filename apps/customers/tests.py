@@ -138,7 +138,7 @@ class CustomerAgreementServiceTests(TestCase):
         self.assertEqual(agreement.evaluation_periods.count(), 3)
         self.assertEqual(agreement.class_targets.count(), 2)
 
-        # compound growth across periods:
+        
         p1, p2, p3 = agreement.evaluation_periods.order_by('period_number')
         self.assertEqual(p1.expected_global_target, Decimal('50000.00'))
         self.assertEqual(p2.expected_global_target, Decimal('55000.00'))
@@ -362,9 +362,9 @@ class CustomerAgreementViewsTests(TestCase):
 
         CustomerClassMargin.objects.create(customer=self.customer, product_class=class_mand, min_margin_percentage=Decimal('35.00'))
         CustomerClassMargin.objects.create(customer=self.customer, product_class=class_comp1, min_margin_percentage=Decimal('20.00'))
-        CustomerClassMargin.objects.create(customer=self.customer, product_class=class_comp2, min_margin_percentage=Decimal('42.00'))  # Most restrictive!
+        CustomerClassMargin.objects.create(customer=self.customer, product_class=class_comp2, min_margin_percentage=Decimal('42.00'))  
 
-        # 2. Call validate_agreement_margin service directly
+        
         participating_data = [
             {'product_class_id': 'CLASS_MAND', 'is_mandatory': True, 'required_target': Decimal('20000.00')},
             {'product_class_id': 'CLASS_COMP1', 'is_mandatory': False, 'required_target': Decimal('0.00')},
@@ -391,11 +391,11 @@ class CustomerAgreementViewsTests(TestCase):
 
         self.assertTrue(res_dict['has_complementary'])
         self.assertEqual(res_dict['complementary_pool']['count'], 2)
-        # Verify the most restrictive class is CLASS_COMP2 with 42%
+        
         self.assertEqual(res_dict['most_restrictive_min_margin'], Decimal('42.00'))
         self.assertEqual(res_dict['most_restrictive_class_name'], 'Vacuna Triple')
 
-        # 3. Test HTTP view response rendering the detailed table and explanation
+        
         url = reverse('customers:customer_agreement_validate_margin_view')
         post_data = {
             'customer': self.customer.id,
@@ -447,7 +447,7 @@ class CustomerAgreementViewsTests(TestCase):
             'global_target_amount': '60000.00',
             'target_frequency': '1M',
         }
-        # 1. No doc_id provided: generates 5-char random folio
+        
         response = self.client.post(url, post_data)
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
@@ -455,7 +455,7 @@ class CustomerAgreementViewsTests(TestCase):
         self.assertIn('id_doc_id', content)
         self.assertIn('Vista previa de contrato comercial', content)
 
-        # 2. Provided custom doc_id: preserved
+        
         post_data['doc_id'] = 'CUST5'
         response2 = self.client.post(url, post_data)
         self.assertEqual(response2.status_code, 200)
@@ -515,7 +515,7 @@ class CustomerAgreementViewsTests(TestCase):
         self.assertFalse(self.agreement.benefit_already_provided)
 
     def test_agreement_clean_allows_updating_execution_fields(self):
-        # Modifying execution fields (signed, benefit_already_provided, related_doc) is allowed by clean()
+        
         self.agreement.signed = True
         self.agreement.benefit_already_provided = True
         try:
@@ -523,21 +523,21 @@ class CustomerAgreementViewsTests(TestCase):
         except ValidationError:
             self.fail("clean() should not raise ValidationError when updating signed or benefit_already_provided.")
 
-        # Modifying immutable fields like doc_id raises ValidationError
+        
         self.agreement.doc_id = 'DIFF1'
         with self.assertRaises(ValidationError):
             self.agreement.clean()
 
     def test_can_edit_agreement_reference_and_full_access(self):
-        # 1. Superuser has full access -> True
+        
         self.assertTrue(self.service.can_edit_agreement)
 
-        # 2. Regular user without reference group -> False
+        
         regular_user = User.objects.create_user(username='regular_test')
         regular_service = CustomerAgreementsService(user=regular_user)
         self.assertFalse(regular_service.can_edit_agreement)
 
-        # 3. User in group configured via Reference(key='can_edit_customer_agreement') -> True
+        
         cedis_group, _ = Group.objects.get_or_create(name='gerente_cedis')
         cedis_user = User.objects.create_user(username='cedis_manager')
         cedis_user.groups.add(cedis_group)
@@ -554,7 +554,7 @@ class CustomerAgreementViewsTests(TestCase):
         from django.core.files.uploadedfile import SimpleUploadedFile
         fake_file = SimpleUploadedFile("contrato_firmado.pdf", b"%PDF-1.4 dummy", content_type="application/pdf")
 
-        # Unauthorized user raises PermissionsError
+        
         regular_user = User.objects.create_user(username='unauth_test')
         regular_service = CustomerAgreementsService(user=regular_user)
         with self.assertRaises(PermissionsError):
@@ -565,7 +565,7 @@ class CustomerAgreementViewsTests(TestCase):
                 file_obj=fake_file,
             )
 
-        # Authorized user succeeds
+        
         updated = self.service.update_agreement_execution(
             pk=self.agreement.pk,
             signed=True,
@@ -578,7 +578,7 @@ class CustomerAgreementViewsTests(TestCase):
 
     def test_agreement_detail_view_permissions_and_template(self):
         from apps.sales.models import UserRouteAccess
-        # Create a seller user without can_edit_agreement
+        
         seller_group, _ = Group.objects.get_or_create(name='vendedor')
         seller_user = User.objects.create_user(username='seller_view_test')
         seller_user.groups.add(seller_group)
@@ -589,12 +589,12 @@ class CustomerAgreementViewsTests(TestCase):
         resp_seller = self.client.get(url)
         self.assertEqual(resp_seller.status_code, 200)
         self.assertFalse(resp_seller.context['can_edit'])
-        # The management form should not be present for seller
+        
         self.assertNotContains(resp_seller, 'Gestión operativa del convenio')
         self.assertContains(resp_seller, 'Pendiente de firma')
         self.assertContains(resp_seller, 'Pendiente de entrega')
 
-        # Create a manager user in gerente_cedis group
+        
         cedis_group, _ = Group.objects.get_or_create(name='gerente_cedis')
         Reference.objects.get_or_create(
             key='can_edit_customer_agreement',
@@ -608,7 +608,7 @@ class CustomerAgreementViewsTests(TestCase):
         resp_manager = self.client.get(url)
         self.assertEqual(resp_manager.status_code, 200)
         self.assertTrue(resp_manager.context['can_edit'])
-        # The management form should be visible
+        
         self.assertContains(resp_manager, 'Gestión operativa del convenio')
         self.assertContains(resp_manager, 'name="signed"')
         self.assertContains(resp_manager, 'name="benefit_already_provided"')
@@ -619,7 +619,7 @@ class CustomerAgreementViewsTests(TestCase):
 
         post_url = reverse('customers:customer_agreement_update_document_view', kwargs={'pk': self.agreement.pk})
 
-        # 1. Unauthorized user attempt
+        
         seller_user = User.objects.create_user(username='unauth_post_user')
         UserRouteAccess.objects.create(user=seller_user, route=self.route, can_view=True)
         self.client.force_login(seller_user)
@@ -630,7 +630,7 @@ class CustomerAgreementViewsTests(TestCase):
         self.assertFalse(self.agreement.signed)
         self.assertFalse(self.agreement.benefit_already_provided)
 
-        # 2. Authorized user attempt (gerente_cedis via Reference)
+        
         cedis_group, _ = Group.objects.get_or_create(name='gerente_cedis')
         Reference.objects.get_or_create(
             key='can_edit_customer_agreement',
@@ -652,6 +652,59 @@ class CustomerAgreementViewsTests(TestCase):
         self.assertTrue(self.agreement.signed)
         self.assertTrue(self.agreement.benefit_already_provided)
         self.assertTrue(bool(self.agreement.related_doc))
+
+    def test_at_end_periodicity_creates_single_period(self):
+        from apps.customers.services.customer_agreements import get_periods_count
+
+        
+        start_d = date(2026, 1, 1)
+        end_d = date(2028, 7, 31)  
+        self.assertEqual(get_periods_count(start_d, end_d, PeriodicityChoices.AT_END), 1)
+
+        
+        preview = self.service.generate_agreement_preview(
+            customer_id=self.customer.id,
+            benefit_id=self.benefit.id,
+            start_date=start_d,
+            end_date=end_d,
+            target_frequency=PeriodicityChoices.AT_END,
+            global_target_amount=Decimal('310000.00'),
+            participating_classes_data=[{
+                'product_class_id': self.product_class.id,
+                'is_mandatory': True,
+                'required_target': Decimal('155000.00'),
+            }],
+        )
+        self.assertEqual(preview['total_periods'], 1)
+        self.assertEqual(preview['target_frequency_name'], 'al término del convenio')
+        self.assertEqual(len(preview['period_columns']), 1)
+        self.assertEqual(preview['period_columns'][0]['start_date'], start_d)
+        self.assertEqual(preview['period_columns'][0]['end_date'], end_d)
+
+        
+        agr_end = self.service.create_customer_agreement(
+            customer_id=self.customer.id,
+            benefit_id=self.benefit.id,
+            start_date=start_d,
+            end_date=end_d,
+            target_frequency=PeriodicityChoices.AT_END,
+            global_target_amount=Decimal('310000.00'),
+            participating_classes_data=[{
+                'product_class_id': self.product_class.id,
+                'is_mandatory': True,
+                'required_target': Decimal('155000.00'),
+            }],
+        )
+        self.assertEqual(agr_end.target_frequency, PeriodicityChoices.AT_END)
+        eval_periods = agr_end.evaluation_periods.all()
+        self.assertEqual(eval_periods.count(), 1)
+        period1 = eval_periods.first()
+        self.assertEqual(period1.period_number, 1)
+        self.assertEqual(period1.start_date, start_d)
+        self.assertEqual(period1.end_date, end_d)
+        self.assertEqual(period1.expected_global_target, Decimal('310000.00'))
+        self.assertEqual(period1.amortized_benefit_cost, self.benefit.cost)
+
 
 
 

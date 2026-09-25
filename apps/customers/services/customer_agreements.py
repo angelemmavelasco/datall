@@ -109,6 +109,8 @@ def get_periods_count(start_date: date, end_date: Optional[date], freq_val: str)
     """
     if not end_date or start_date > end_date:
         return 1
+    if freq_val in (PeriodicityChoices.AT_END, 'end'):
+        return 1
     try:
         delta = PeriodicityChoices(freq_val).get_relativedelta()
     except (ValueError, KeyError):
@@ -351,12 +353,16 @@ class CustomerAgreementsService(UsersService):
         delta_agr = relativedelta(agr_end + timedelta(days=1), agr_start)
         agr_duration_months = delta_agr.years * 12 + delta_agr.months
 
-        try:
-            freq_delta = PeriodicityChoices(target_frequency).get_relativedelta()
-            periodicity_months = freq_delta.months + (freq_delta.years * 12) if (freq_delta.months or freq_delta.years) else 1
-        except Exception:
-            freq_delta = relativedelta(months=1)
-            periodicity_months = 1
+        if target_frequency in (PeriodicityChoices.AT_END, 'end'):
+            freq_delta = relativedelta(end_date + timedelta(days=1), start_date)
+            periodicity_months = hist_months
+        else:
+            try:
+                freq_delta = PeriodicityChoices(target_frequency).get_relativedelta()
+                periodicity_months = freq_delta.months + (freq_delta.years * 12) if (freq_delta.months or freq_delta.years) else 1
+            except Exception:
+                freq_delta = relativedelta(months=1)
+                periodicity_months = 1
 
         has_partial_periods = (hist_months % periodicity_months != 0)
 
@@ -739,12 +745,16 @@ class CustomerAgreementsService(UsersService):
         duration_months = delta_agr.years * 12 + delta_agr.months
         total_periods = get_periods_count(start_date, end_date, target_frequency)
 
-        try:
-            freq_delta = PeriodicityChoices(target_frequency).get_relativedelta()
-            target_freq_display = PeriodicityChoices(target_frequency).label
-        except Exception:
-            freq_delta = relativedelta(months=1)
-            target_freq_display = '1 mes'
+        if target_frequency in (PeriodicityChoices.AT_END, 'end'):
+            freq_delta = relativedelta(end_date + timedelta(days=1), start_date)
+            target_freq_display = 'al término'
+        else:
+            try:
+                freq_delta = PeriodicityChoices(target_frequency).get_relativedelta()
+                target_freq_display = PeriodicityChoices(target_frequency).label
+            except Exception:
+                freq_delta = relativedelta(months=1)
+                target_freq_display = '1 mes'
 
         growth_freq_display = ''
         g_delta = None
@@ -1170,10 +1180,13 @@ class CustomerAgreementsService(UsersService):
         total_periods = get_periods_count(start_date, end_date, agreement.target_frequency)
         amortized_cost = (benefit.cost / Decimal(str(total_periods))).quantize(Decimal('0.01')) if total_periods > 0 else Decimal('0.00')
 
-        try:
-            freq_delta = PeriodicityChoices(agreement.target_frequency).get_relativedelta()
-        except Exception:
-            freq_delta = relativedelta(months=1)
+        if agreement.target_frequency in (PeriodicityChoices.AT_END, 'end'):
+            freq_delta = relativedelta(end_date + timedelta(days=1), start_date)
+        else:
+            try:
+                freq_delta = PeriodicityChoices(agreement.target_frequency).get_relativedelta()
+            except Exception:
+                freq_delta = relativedelta(months=1)
 
         g_delta = None
         if agreement.growth_value > 0 and agreement.growth_frequency:
