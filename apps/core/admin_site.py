@@ -118,6 +118,7 @@ class ThemedAdminSite(admin.AdminSite):
                     'User',
                     'Group',
                     'ActivityLog',
+                    'GeneratedReport',
                 ]
             }
         ]

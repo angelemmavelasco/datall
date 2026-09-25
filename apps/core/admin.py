@@ -3,7 +3,17 @@ import traceback
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.utils.safestring import mark_safe
-from .models import User, Module, Submodule, Reference, AppVersion, SupportCategory, SupportArticle, ActivityLog
+from .models import (
+    User,
+    Module,
+    Submodule,
+    Reference,
+    AppVersion,
+    SupportCategory,
+    SupportArticle,
+    ActivityLog,
+    GeneratedReport,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -168,3 +178,39 @@ class ActivityLogAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(GeneratedReport)
+class GeneratedReportAdmin(admin.ModelAdmin):
+    list_display = (
+        'title',
+        'user',
+        'module_name',
+        'status',
+        'human_file_size',
+        'is_seen',
+        'created_at',
+        'completed_at',
+    )
+    list_filter = ('status', 'module_name', 'is_seen', 'created_at')
+    search_fields = (
+        'title',
+        'user__username',
+        'user__first_name',
+        'user__last_name',
+        'module_name',
+    )
+    autocomplete_fields = ['user']
+    readonly_fields = ('created_at', 'completed_at', 'file_size', 'human_file_size')
+    ordering = ('-created_at',)
+
+    @admin.display(description='Tamaño')
+    def human_file_size(self, obj):
+        if not obj.file_size:
+            return '-'
+        bytes_val = float(obj.file_size)
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if bytes_val < 1024.0:
+                return f"{bytes_val:.1f} {unit}"
+            bytes_val /= 1024.0
+        return f"{bytes_val:.1f} TB"
