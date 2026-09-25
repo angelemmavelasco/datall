@@ -44,23 +44,23 @@ KPIs por Clientes
 
 {% block content %}
     <div class="flex flex-col w-full gap-4">
-        <p class="text-title pb-1 border-b border-border">
-           Métricas calculadas desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }} <span class="cursor-pointer select-none" title="Métricas calculadas desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}:&#10;• Clientes registrados&#10;• Clientes con consumo&#10;• Clientes sin consumo&#10;• Venta neta / utilidad&#10;• Frecuencia de compra&#10;• Hábito de compra semanal&#10;• Métricas de contribución (todas)&#10;• Clases con consumo">ⓘ</span>
+        <p class="text-title pb-1 border-b border-border" title="Métricas calculadas desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}:&#10;• Clientes registrados&#10;• Clientes con consumo&#10;• Clientes sin consumo&#10;• Venta neta / utilidad&#10;• Frecuencia de compra&#10;• Hábito de compra semanal&#10;• Métricas de contribución (todas)&#10;• Clases con consumo">
+           Métricas calculadas desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }} <span class="cursor-pointer select-none">ⓘ</span>
         </p>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <a class="border border-border rounded bg-container p-2  hover:scale-101 transition-transform duration-300 ">
+            <div class="border border-border rounded bg-container p-2" title="Total de clientes registrados en la cartera dentro de los filtros seleccionados, dados de alta hasta la fecha fin del periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">
                 <span class="text-sm text-title">
-                    Clientes registrados <span class="cursor-pointer select-none" title="Total de clientes registrados en la cartera dentro de los filtros seleccionados, dados de alta hasta la fecha fin del periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">ⓘ</span>
+                    Clientes registrados <span class="cursor-pointer select-none">ⓘ</span>
                 </span><br>
                 <span class="text-xl text-title">
                     {{ kpis.registered_customers|default:0|floatformat:0|intcomma }}
                 </span>
-            </a>
+            </div>
 
-            <a class="border border-border rounded bg-container p-2  hover:scale-101 transition-transform duration-300 ">
+            <div class="border border-border rounded bg-container p-2" title="Cantidad y porcentaje de clientes registrados que realizaron al menos una compra dentro del periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">
                 <span class="text-sm text-title">
-                    Clientes con consumo <span class="cursor-pointer select-none" title="Cantidad y porcentaje de clientes registrados que realizaron al menos una compra dentro del periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">ⓘ</span>
+                    Clientes con consumo <span class="cursor-pointer select-none">ⓘ</span>
                 </span><br>
                 <span class="text-xl text-emerald-500">
                     {{ kpis.customers_with_consumption|default:0|floatformat:0|intcomma }}
@@ -68,11 +68,11 @@ KPIs por Clientes
                 <span class="text-sm text-title">
                     {{ kpis.customers_with_consumption_pct|default:0|floatformat:2|intcomma }}%
                 </span>
-            </a>
+            </div>
 
-            <a class="border border-border rounded bg-container p-2  hover:scale-101 transition-transform duration-300 ">
+            <div class="border border-border rounded bg-container p-2" title="Cantidad y porcentaje de clientes registrados que no registraron compras dentro del periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">
                 <span class="text-sm text-title">
-                    Clientes sin consumo <span class="cursor-pointer select-none" title="Cantidad y porcentaje de clientes registrados que no registraron compras dentro del periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">ⓘ</span>
+                    Clientes sin consumo <span class="cursor-pointer select-none">ⓘ</span>
                 </span><br>
                 <span class="text-xl text-red-500">
                     {{ kpis.customers_without_consumption|default:0|floatformat:0|intcomma }}
@@ -80,20 +80,20 @@ KPIs por Clientes
                 <span class="text-sm text-title">
                     {{ kpis.customers_without_consumption_pct|default:0|floatformat:2|intcomma }}%
                 </span>
-            </a>
+            </div>
 
-            <a class="border border-border rounded bg-container p-2  hover:scale-101 transition-transform duration-300 ">
+            <div class="border border-border rounded bg-container p-2" title="{% if order_contrib == 'profit' and not request.user|has_group:'vendedor' %}Suma total de la utilidad generada por las compras de los clientes en el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}). Criterio activo de ordenamiento.{% else %}Suma total del importe neto facturado a los clientes en el periodo evaluado tras notas de crédito (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}). Criterio activo de ordenamiento.{% endif %}">
                 <span class="text-sm text-title">
                     {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}
-                        Utilidad <span class="cursor-pointer select-none" title="Suma total de la utilidad generada por las compras de los clientes en el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}). Criterio activo de ordenamiento.">ⓘ</span>
+                        Utilidad <span class="cursor-pointer select-none">ⓘ</span>
                     {% else %}
-                        Venta neta <span class="cursor-pointer select-none" title="Suma total del importe neto facturado a los clientes en el periodo evaluado tras notas de crédito (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}). Criterio activo de ordenamiento.">ⓘ</span>
+                        Venta neta <span class="cursor-pointer select-none">ⓘ</span>
                     {% endif %}
                 </span><br>
                 <span class="text-xl {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}text-emerald-500{% else %}text-blue-500{% endif %}">
                     $ {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}{{ kpis.profit|default:0|floatformat:2|intcomma }}{% else %}{{ kpis.net_amount|default:0|floatformat:2|intcomma }}{% endif %}
                 </span>
-            </a>
+            </div>
 
         </div>
 
@@ -142,72 +142,72 @@ KPIs por Clientes
                     <tr class="border-b border-border text-xs">
                         <!-- identificacion -->
 
-                        <th class="min-w-[240px] max-w-[240px] w-[240px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-0 z-35 bg-page">
-                            Cliente <span class="cursor-pointer select-none" title="Cliente: Identificación del cliente (ID y nombre/razón social con acceso a su perfil), junto con su ruta y gerencia asignadas actualmente">ⓘ</span>
+                        <th class="min-w-[240px] max-w-[240px] w-[240px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-0 z-35 bg-page" title="Cliente: Identificación del cliente (ID y nombre/razón social con acceso a su perfil), junto con su ruta y gerencia asignadas actualmente">
+                            Cliente <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
                         <!-- segmentacion -->
 
-                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Tipo de cliente <span class="cursor-pointer select-none" title="Tipo de cliente: Clasificación del cliente según su rubro, giro comercial o industria">ⓘ</span>
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Tipo de cliente: Clasificación del cliente según su rubro, giro comercial o industria">
+                            Tipo de cliente <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
-                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Categoría <span class="cursor-pointer select-none" title="Categoría: Clasificación del cliente (Diamante, Oro, AA, A, C) basada en su promedio mensual de consumo neto durante el último trimestre cerrado">ⓘ</span>
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Categoría: Clasificación del cliente (Diamante, Oro, AA, A, C) basada en su promedio mensual de consumo neto durante el último trimestre cerrado">
+                            Categoría <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
-                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Frecuencia de compra <span class="cursor-pointer select-none" title="Frecuencia de compra: Clasificación basada en el promedio de días transcurridos entre compras con venta mayor a $0 en el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">ⓘ</span>
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Frecuencia de compra: Clasificación basada en el promedio de días transcurridos entre compras con venta mayor a $0 en el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">
+                            Frecuencia de compra <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
-                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Hábito de compra semanal <span class="cursor-pointer select-none" title="Hábito de compra semanal: Distribución porcentual de las compras del cliente divididas en 4 semanas por mes durante el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• Sem 1: Días 1 al 7&#10;• Sem 2: Días 8 al 14&#10;• Sem 3: Días 15 al 21&#10;• Sem 4: Días 22 al fin de mes">ⓘ</span>
+                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Hábito de compra semanal: Distribución porcentual de las compras del cliente divididas en 4 semanas por mes durante el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• Sem 1: Días 1 al 7&#10;• Sem 2: Días 8 al 14&#10;• Sem 3: Días 15 al 21&#10;• Sem 4: Días 22 al fin de mes">
+                            Hábito de compra semanal <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
-                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Líder de opinión <span class="cursor-pointer select-none" title="Líder de opinión: Clientes que cuentan con alta influencia en el sector, no necesariamente asociados a un alto volumen de compras">ⓘ</span>
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Líder de opinión: Clientes que cuentan con alta influencia en el sector, no necesariamente asociados a un alto volumen de compras">
+                            Líder de opinión <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
                         <!-- cobranza -->
-                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Crédito y uso <span class="cursor-pointer select-none" title="Crédito y uso: Límite de crédito asignado al cliente y porcentaje actual de uso sobre su saldo total deudor (Saldo total / Límite de crédito)">ⓘ</span>
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Crédito y uso: Límite de crédito asignado al cliente y porcentaje actual de uso sobre su saldo total deudor (Saldo total / Límite de crédito)">
+                            Crédito y uso <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
-                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Saldo al corriente <span class="cursor-pointer select-none" title="Saldo al corriente: Monto de deuda viva en cuentas por cobrar que aún se encuentra dentro del plazo de vencimiento al día de hoy">ⓘ</span>
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Saldo al corriente: Monto de deuda viva en cuentas por cobrar que aún se encuentra dentro del plazo de vencimiento al día de hoy">
+                            Saldo al corriente <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
-                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Saldo vencido <span class="cursor-pointer select-none" title="Saldo vencido: Monto de deuda en cuentas por cobrar cuya fecha límite de pago ya expiró y sigue pendiente de liquidar al día de hoy">ⓘ</span>
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Saldo vencido: Monto de deuda en cuentas por cobrar cuya fecha límite de pago ya expiró y sigue pendiente de liquidar al día de hoy">
+                            Saldo vencido <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
                         <!-- métricas de consumo y promedios -->
-                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Convenios activos <span class="cursor-pointer select-none" title="Convenios activos: Acuerdos comerciales vigentes donde el cliente obtiene beneficios preferenciales a cambio de un compromiso formal de consumo con periodicidad estricta">ⓘ</span>
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Convenios activos: Acuerdos comerciales vigentes donde el cliente obtiene beneficios preferenciales a cambio de un compromiso formal de consumo con periodicidad estricta">
+                            Convenios activos <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
-                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Clases con consumo <span class="cursor-pointer select-none" title="Número de clases de producto relevantes con ventas mayores a $0 en el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">ⓘ</span>
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Número de clases de producto relevantes con ventas mayores a $0 en el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }})">
+                            Clases con consumo <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
-                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Promedio anual <span class="cursor-pointer select-none" title="Promedio anual: Comparativa del consumo promedio mensual del año anterior vs. año actual. El divisor pondera únicamente los meses activos según la fecha de alta del cliente (por ejemplo, si se registró en noviembre, se promedia entre 2 meses)">ⓘ</span>
+                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Promedio anual: Comparativa del consumo promedio mensual del año anterior vs. año actual. El divisor pondera únicamente los meses activos según la fecha de alta del cliente (por ejemplo, si se registró en noviembre, se promedia entre 2 meses)">
+                            Promedio anual <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
-                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Promedio último trimestre <span class="cursor-pointer select-none" title="Promedio último trimestre: Consumo promedio mensual durante el último trimestre cerrado completo, ponderando los meses activos si el cliente fue dado de alta dentro de dicho trimestre">ⓘ</span>
+                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Promedio último trimestre: Consumo promedio mensual durante el último trimestre cerrado completo, ponderando los meses activos si el cliente fue dado de alta dentro de dicho trimestre">
+                            Promedio último trimestre <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
                         <!-- metricas de contribución -->
-                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Contribución monetaria <span class="cursor-pointer select-none" title="Contribución monetaria: Dinero generado por el cliente en el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• Venta neta: Facturación total neta descontando notas de crédito&#10;• Utilidad: Ganancia bruta real generada (Venta neta menos costo de mercancía)">ⓘ</span>
+                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Contribución monetaria: Dinero generado por el cliente en el periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• Venta neta: Facturación total neta descontando notas de crédito&#10;• Utilidad: Ganancia bruta real generada (Venta neta menos costo de mercancía)">
+                            Contribución monetaria <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
-                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Contribución porcentual <span class="cursor-pointer select-none" title="Contribución porcentual: Participación del cliente sobre los totales globales del periodo (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• % Venta neta: Porcentaje de las ventas globales aportado por este cliente&#10;• % Utilidad: Porcentaje de la ganancia global aportado por este cliente">ⓘ</span>
+                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Contribución porcentual: Participación del cliente sobre los totales globales del periodo (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• % Venta neta: Porcentaje de las ventas globales aportado por este cliente&#10;• % Utilidad: Porcentaje de la ganancia global aportado por este cliente">
+                            Contribución porcentual <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
-                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page">
-                            Contribución acumulada <span class="cursor-pointer select-none" title="Contribución acumulada (Análisis de Pareto): Suma progresiva de los clientes ordenados de mayor a menor en el periodo (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• % Acumulado: Porcentaje acumulado de venta o utilidad hasta esta fila (resaltando en naranja al alcanzar el 80%)&#10;• Clientes y % Cartera: Total acumulado de clientes y porcentaje que representan de la cartera activa">ⓘ</span>
+                        <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Contribución acumulada (Análisis de Pareto): Suma progresiva de los clientes ordenados de mayor a menor en el periodo (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• % Acumulado: Porcentaje acumulado de venta o utilidad hasta esta fila (resaltando en naranja al alcanzar el 80%)&#10;• Clientes y % Cartera: Total acumulado de clientes y porcentaje que representan de la cartera activa">
+                            Contribución acumulada <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
 
                         {% for month in month_headers %}

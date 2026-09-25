@@ -13,6 +13,12 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
     {% if available_actions %}
         {% include available_actions %}
     {% endif %}
+    {% if transactions_url %}
+    <a href="{{ transactions_url }}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors" title="Ver transacciones de venta con los filtros activos">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-receipt-text-icon lucide-receipt-text"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg>
+        <span>Ver transacciones</span>
+    </a>
+    {% endif %}
     <a href="{% url 'customers:customer_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left-icon lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
         <span>Volver al listado</span>

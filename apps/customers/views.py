@@ -5,6 +5,8 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
+from django.urls import reverse
+from django.http import QueryDict
 from django.utils import timezone
 from .exports import *
 
@@ -150,10 +152,28 @@ def customer_detail_view(request, pk: str):
     customer_contacts = service.get_customer_contacts(customer=customer)
     contact_form = CustomerContactForm()
 
+    tx_query_dict = QueryDict(mutable=True)
+    tx_query_dict['customer'] = customer.pk
+
+    date_start_str = get_data.get('date_start')
+    if date_start_str:
+        tx_query_dict['date_from'] = date_start_str
+    date_end_str = get_data.get('date_end')
+    if date_end_str:
+        tx_query_dict['date_to'] = date_end_str
+
+    for key in ['product_class', 'product_category', 'route', 'business_unit', 'region', 'warehouse', 'product']:
+        vals = get_data.getlist(key)
+        if vals:
+            tx_query_dict.setlist(key, vals)
+
+    transactions_url = f"{reverse('sales:sale_transaction_list_view')}?{tx_query_dict.urlencode()}"
+
     context = {
         'customer': customer,
         'filter': profile_filter,
         'available_actions': available_actions,
+        'transactions_url': transactions_url,
         'can_edit_customer': service.has_full_access,
         'can_edit_partially': can_edit_partially,
         'can_edit_geo_profile': can_edit_partially,

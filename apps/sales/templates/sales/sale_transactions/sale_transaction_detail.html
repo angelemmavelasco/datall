@@ -110,7 +110,7 @@ Transacción: {{ transaction.doc_id|upper }}
         </div>
 
         <span class="text-title">Importe neto</span>
-        <div class="w-full text-body flex items-center font-mono font-medium text-emerald-500">
+        <div class="w-full text-body flex items-center font-mono font-medium {% if transaction.net_amount <= 0 %}text-red-500{% else %}text-emerald-500{% endif %}">
             ${{ transaction.net_amount|default:0|floatformat:2|intcomma }}
         </div>
 
@@ -121,7 +121,7 @@ Transacción: {{ transaction.doc_id|upper }}
             </div>
 
             <span class="text-title">Utilidad generada</span>
-            <div class="w-full text-body flex items-center font-mono font-medium text-teal-500">
+            <div class="w-full text-body flex items-center font-mono font-medium {% if transaction.profit <= 0 %}text-red-500{% else %}text-teal-500{% endif %}">
                 ${{ transaction.profit|default:0|floatformat:2|intcomma }}
             </div>
         {% endif %}

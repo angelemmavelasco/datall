@@ -52,12 +52,12 @@
             {{ transaction.quantity|default:0|floatformat:2|intcomma }}
         </td>
 
-        <td class="p-2 truncate text-right font-mono text-xs font-medium">
+        <td class="p-2 truncate text-right font-mono text-xs font-medium {% if transaction.net_amount <= 0 %}text-red-500{% endif %}">
             ${{ transaction.net_amount|default:0|floatformat:2|intcomma }}
         </td>
 
         {% if can_view_cost %}
-            <td class="p-2 truncate text-right font-mono text-xs font-medium text-teal-500">
+            <td class="p-2 truncate text-right font-mono text-xs font-medium {% if transaction.profit <= 0 %}text-red-500{% else %}text-teal-500{% endif %}">
                 ${{ transaction.profit|default:0|floatformat:2|intcomma }}
             </td>
         {% endif %}

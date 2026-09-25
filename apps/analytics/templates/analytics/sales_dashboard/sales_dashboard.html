@@ -35,72 +35,72 @@
     </p>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+        <div class="border border-border rounded bg-container p-2" title="Suma del importe neto facturado de todas las transacciones de venta del periodo seleccionado, deduciendo devoluciones y notas de crédito aplicadas.">
             <span class="text-sm text-title" title="Suma del importe neto facturado de todas las transacciones de venta del periodo seleccionado, deduciendo devoluciones y notas de crédito aplicadas.">
-                Venta neta ⓘ
+                Venta neta <span class="cursor-pointer select-none">ⓘ</span>
             </span><br>
             <span class="text-xl text-emerald-500">
                 $ {{ kpis.net_amount|default:0|floatformat:2|intcomma }}
             </span>
-        </a>
+        </div>
 
-        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+        <div class="border border-border rounded bg-container p-2" title="Suma consolidada de las cuotas o metas comerciales mensuales asignadas a las rutas y periodos seleccionados.">
             <span class="text-sm text-title" title="Suma consolidada de las cuotas o metas comerciales mensuales asignadas a las rutas y periodos seleccionados.">
-                Objetivo de venta ⓘ
+                Objetivo de venta <span class="cursor-pointer select-none">ⓘ</span>
             </span><br>
             <span class="text-xl text-blue-500">
                 $ {{ kpis.sale_target|default:0|floatformat:2|intcomma }}
             </span>
-        </a>
+        </div>
 
-        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+        <div class="border border-border rounded bg-container p-2" title="Porcentaje de cumplimiento de la meta comercial (Venta neta / Objetivo de venta * 100).">
             <span class="text-sm text-title" title="Porcentaje de cumplimiento de la meta comercial (Venta neta / Objetivo de venta * 100).">
-                Alcance ⓘ
+                Alcance <span class="cursor-pointer select-none">ⓘ</span>
             </span><br>
             <span class="text-xl text-violet-500">
                 {{ kpis.target_achivement|default:0|floatformat:2|intcomma }} %
             </span>
-        </a>
+        </div>
 
-        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+        <div class="border border-border rounded bg-container p-2" title="Variación entre lo vendido y la meta fijada (Venta neta - Objetivo de venta). En rojo indica faltante y en verde superávit.">
             <span class="text-sm text-title" title="Variación entre lo vendido y la meta fijada (Venta neta - Objetivo de venta). En rojo indica faltante y en verde superávit.">
-                Diferencia ⓘ
+                Diferencia <span class="cursor-pointer select-none">ⓘ</span>
             </span><br>
             <span class="text-xl {% if kpis.diff_amount < 0 %} text-red-500 {% else %} text-emerald-500 {% endif %}">
                 $ {{ kpis.diff_amount|default:0|floatformat:2|intcomma }}
             </span>
-        </a>
+        </div>
 
-        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+        <div class="border border-border rounded bg-container p-2" title="Suma del importe bruto de las ventas antes de cualquier deducción o descuento comercial aplicado en las transacciones.">
             <span class="text-sm text-title" title="Suma del importe bruto de las ventas antes de cualquier deducción o descuento comercial aplicado en las transacciones.">
-                Venta total ⓘ
+                Venta total <span class="cursor-pointer select-none">ⓘ</span>
             </span><br>
             <span class="text-xl text-emerald-500">
                 $ {{ kpis.gross_amount|default:0|floatformat:2|intcomma }}
             </span>
-        </a>
+        </div>
 
-        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+        <div class="border border-border rounded bg-container p-2" title="Cantidad total acumulada de piezas o unidades de producto vendidas y facturadas durante el periodo seleccionado.">
             <span class="text-sm text-title" title="Cantidad total acumulada de piezas o unidades de producto vendidas y facturadas durante el periodo seleccionado.">
-                Unidades ⓘ
+                Unidades <span class="cursor-pointer select-none">ⓘ</span>
             </span><br>
             <span class="text-xl text-title">
                 {{ kpis.quantity|default:0|floatformat:0|intcomma }}
             </span>
-        </a>
+        </div>
 
-        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+        <div class="border border-border rounded bg-container p-2" title="Cantidad de clientes únicos distintos que realizaron al menos una compra dentro del periodo evaluado (cuentas activadas).">
             <span class="text-sm text-title" title="Cantidad de clientes únicos distintos que realizaron al menos una compra dentro del periodo evaluado (cuentas activadas).">
-                Clientes con compra ⓘ
+                Clientes con compra <span class="cursor-pointer select-none">ⓘ</span>
             </span><br>
             <span class="text-xl text-cyan-500">
                 {{ kpis.occupied_positions_count|default:0|floatformat:0|intcomma }}
             </span>
-        </a>
+        </div>
 
-        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 transition-colors cursor-pointer">
+        <div class="border border-border rounded bg-container p-2" title="Porcentaje de rentabilidad o margen bruto comercial obtenido (Utilidad neta / Venta neta * 100). Para vendedores se muestra por clasificación cualitativa.">
             <span class="text-sm text-title" title="Porcentaje de rentabilidad o margen bruto comercial obtenido (Utilidad neta / Venta neta * 100). Para vendedores se muestra por clasificación cualitativa.">
-                Margen ⓘ
+                Margen <span class="cursor-pointer select-none">ⓘ</span>
             </span><br>
             {% if request.user|has_group:"vendedor" %}
                 {% if kpis.margin >= 43 %}
@@ -132,7 +132,7 @@
                 </span>
             </p>
             {% endif %}
-        </a>
+        </div>
     </div>
 
     <p class="text-title pb-1 border-b border-border" title="Línea de tiempo de doble eje: Venta neta (línea verde), Unidades (línea azul) y Alcance acumulado frente a la meta total.">

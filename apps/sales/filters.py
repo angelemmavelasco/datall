@@ -135,6 +135,12 @@ class SaleTransactionFilter(django_filters.FilterSet):
         widget=forms.CheckboxSelectMultiple,
         label='Ruta'
     )
+    region = django_filters.ModelMultipleChoiceFilter(
+        method='filter_region',
+        queryset=BusinessUnit.objects.filter(business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION),
+        widget=forms.CheckboxSelectMultiple,
+        label='Región'
+    )
     business_unit = django_filters.ModelMultipleChoiceFilter(
         field_name='route__business_unit',
         queryset=BusinessUnit.objects.all(),
@@ -165,6 +171,12 @@ class SaleTransactionFilter(django_filters.FilterSet):
         widget=forms.CheckboxSelectMultiple,
         label='Clase de producto'
     )
+    product_category = django_filters.ModelMultipleChoiceFilter(
+        field_name='product_class__product_category',
+        queryset=ProductCategory.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Categoría de producto'
+    )
     date_from = django_filters.DateFilter(
         field_name='sale_date',
         lookup_expr='gte',
@@ -184,16 +196,54 @@ class SaleTransactionFilter(django_filters.FilterSet):
 
     def __init__(self, *args, **kwargs):
         request = kwargs.pop('request', None)
+
+        if args and args[0] is not None:
+            data = args[0].copy()
+            if 'date_start' in data and 'date_from' not in data:
+                data['date_from'] = data['date_start']
+            if 'date_end' in data and 'date_to' not in data:
+                data['date_to'] = data['date_end']
+            args = (data,) + args[1:]
+        elif 'data' in kwargs and kwargs['data'] is not None:
+            data = kwargs['data'].copy()
+            if 'date_start' in data and 'date_from' not in data:
+                data['date_from'] = data['date_start']
+            if 'date_end' in data and 'date_to' not in data:
+                data['date_to'] = data['date_end']
+            kwargs['data'] = data
+
         super().__init__(*args, **kwargs)
         if request:
             user = request.user if hasattr(request, 'user') else request
             from .services.routes import RoutesService
+            bu_service = BusinessUnitsService(user=user)
+            if 'region' in self.filters:
+                self.filters['region'].queryset = bu_service.read_regions()
             self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
-            self.filters['business_unit'].queryset = BusinessUnitsService(user=user).read_units()
+            self.filters['business_unit'].queryset = bu_service.read_units()
             self.filters['warehouse'].queryset = Warehouse.objects.all().order_by('name', 'id')
             self.filters['customer'].queryset = Customer.objects.all().order_by('name', 'id')
             self.filters['product'].queryset = Product.objects.all().order_by('name', 'id')
+            if 'product_category' in self.filters:
+                self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
             self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
+
+    def filter_region(self, queryset, name, value):
+        if not value:
+            return queryset
+        selected_region_ids = set(r.pk if hasattr(r, 'pk') else r for r in value)
+        all_bu_ids = set(selected_region_ids)
+        current_parents = set(selected_region_ids)
+        while current_parents:
+            child_ids = set(
+                BusinessUnit.objects.filter(parent_id__in=current_parents).values_list('id', flat=True)
+            )
+            new_ids = child_ids - all_bu_ids
+            if not new_ids:
+                break
+            all_bu_ids.update(new_ids)
+            current_parents = new_ids
+        return queryset.filter(route__business_unit_id__in=all_bu_ids)
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(
