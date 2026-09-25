@@ -12,7 +12,10 @@ from .models import (
     CustomerAgreement,
     CommercialBenefit,
     EvaluationModeChoices,
+    CustomerVisitSchedule,
 )
+from apps.core.models import PeriodicityChoices
+from django.utils import timezone
 
 
 class CustomerForm(forms.ModelForm):
@@ -437,6 +440,97 @@ class CustomerAgreementDocumentForm(forms.ModelForm):
         self.fields['related_doc'].required = False
         self.fields['signed'].required = False
         self.fields['benefit_already_provided'].required = False
+
+
+class CustomerVisitScheduleForm(forms.ModelForm):
+    """
+    form for configuring and updating customer visit schedules.
+    uses PeriodicityChoices from core (excluding daily, weekly, and at_end).
+    """
+
+    class Meta:
+        model = CustomerVisitSchedule
+        fields = [
+            'periodicity',
+            'visit_monday',
+            'visit_tuesday',
+            'visit_wednesday',
+            'visit_thursday',
+            'visit_friday',
+            'visit_saturday',
+            'visit_sunday',
+            'start_date',
+            'end_date',
+            'notes',
+        ]
+        widgets = {
+            'periodicity': forms.Select(attrs={
+                'class': 'w-full bg-container border border-border rounded p-1.5 text-xs text-title focus:outline-none focus:border-strong',
+            }),
+            'start_date': forms.DateInput(format='%Y-%m-%d', attrs={
+                'type': 'date',
+                'class': 'w-full bg-container border border-border rounded p-1.5 text-xs text-title font-mono focus:outline-none focus:border-strong',
+            }),
+            'end_date': forms.DateInput(format='%Y-%m-%d', attrs={
+                'type': 'date',
+                'class': 'w-full bg-container border border-border rounded p-1.5 text-xs text-title font-mono focus:outline-none focus:border-strong',
+            }),
+            'notes': forms.Textarea(attrs={
+                'rows': 2,
+                'placeholder': 'Ej. Horario de recepción preferente, días clave...',
+                'class': 'w-full bg-container border border-border rounded p-2 text-xs text-body focus:outline-none focus:border-strong',
+            }),
+            'visit_monday': forms.CheckboxInput(attrs={'class': 'rounded border-border text-strong focus:ring-strong'}),
+            'visit_tuesday': forms.CheckboxInput(attrs={'class': 'rounded border-border text-strong focus:ring-strong'}),
+            'visit_wednesday': forms.CheckboxInput(attrs={'class': 'rounded border-border text-strong focus:ring-strong'}),
+            'visit_thursday': forms.CheckboxInput(attrs={'class': 'rounded border-border text-strong focus:ring-strong'}),
+            'visit_friday': forms.CheckboxInput(attrs={'class': 'rounded border-border text-strong focus:ring-strong'}),
+            'visit_saturday': forms.CheckboxInput(attrs={'class': 'rounded border-border text-strong focus:ring-strong'}),
+            'visit_sunday': forms.CheckboxInput(attrs={'class': 'rounded border-border text-strong focus:ring-strong'}),
+        }
+
+    def __init__(self, *args, allow_empty: bool = False, **kwargs):
+        self.allow_empty = allow_empty
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk and 'start_date' not in self.initial:
+            self.initial['start_date'] = timezone.localdate()
+
+        # periodicity choices with a empty label for weekly
+        valid_choices = [
+            ('', 'Semanal (todas las semanas)')
+        ] + [
+            (c[0], f"Cada {c[1].lower()}")
+            for c in PeriodicityChoices.choices
+            if c[0] not in (PeriodicityChoices.DAILY, PeriodicityChoices.WEEKLY, PeriodicityChoices.AT_END)
+        ]
+        self.fields['periodicity'].choices = valid_choices
+        self.fields['periodicity'].required = False
+        self.fields['end_date'].required = False
+        self.fields['notes'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        days = [
+            cleaned_data.get('visit_monday'),
+            cleaned_data.get('visit_tuesday'),
+            cleaned_data.get('visit_wednesday'),
+            cleaned_data.get('visit_thursday'),
+            cleaned_data.get('visit_friday'),
+            cleaned_data.get('visit_saturday'),
+            cleaned_data.get('visit_sunday'),
+        ]
+        if not any(days):
+            if self.allow_empty:
+                return cleaned_data
+            raise forms.ValidationError("Debes seleccionar al menos un día de la semana para la visita.")
+
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        if start_date and end_date and end_date < start_date:
+            self.add_error('end_date', 'La fecha de fin no puede ser anterior a la fecha de inicio.')
+
+        return cleaned_data
+
 
 
 

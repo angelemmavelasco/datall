@@ -46,9 +46,21 @@ from .forms import (
     CustomerContactForm,
     CustomerAgreementCreateForm,
     CustomerAgreementDocumentForm,
+    CustomerVisitScheduleForm,
 )
 from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.analytics.services.customer_kpis import CustomerProfileService
+
+def _format_validation_error(e: ValidationError) -> str:
+    if hasattr(e, 'message_dict'):
+        msg_list = []
+        for field, errs in e.message_dict.items():
+            for err in errs:
+                msg_list.append(str(err))
+        return " ".join(msg_list)
+    elif hasattr(e, 'messages'):
+        return " ".join([str(m) for m in e.messages])
+    return str(e)
 
 
 @login_required
@@ -177,6 +189,24 @@ def customer_detail_view(request, pk: str):
         .order_by('-start_date', '-id')
     )
 
+    customer_visit_schedules = service.get_customer_visit_schedules(customer=customer)
+    current_visit_schedule = service.get_current_visit_schedule(customer=customer)
+
+    initial_visit_schedule = {'start_date': today}
+    if current_visit_schedule:
+        initial_visit_schedule.update({
+            'periodicity': current_visit_schedule.periodicity,
+            'visit_monday': current_visit_schedule.visit_monday,
+            'visit_tuesday': current_visit_schedule.visit_tuesday,
+            'visit_wednesday': current_visit_schedule.visit_wednesday,
+            'visit_thursday': current_visit_schedule.visit_thursday,
+            'visit_friday': current_visit_schedule.visit_friday,
+            'visit_saturday': current_visit_schedule.visit_saturday,
+            'visit_sunday': current_visit_schedule.visit_sunday,
+            'notes': current_visit_schedule.notes,
+        })
+    visit_schedule_form = CustomerVisitScheduleForm(initial=initial_visit_schedule)
+
     context = {
         'customer': customer,
         'filter': profile_filter,
@@ -191,6 +221,9 @@ def customer_detail_view(request, pk: str):
         'customer_contacts': customer_contacts,
         'contact_form': contact_form,
         'customer_agreements': customer_agreements,
+        'customer_visit_schedules': customer_visit_schedules,
+        'current_visit_schedule': current_visit_schedule,
+        'visit_schedule_form': visit_schedule_form,
     }
     return render(request, template, context)
 
@@ -208,23 +241,36 @@ def customer_create_view(request):
         assignments_formset = CustomerAssignmentFormSet(request.POST, prefix='assignments')
         class_margins_formset = CustomerClassMarginFormSet(request.POST, prefix='class_margins')
         geo_form = CustomerGeoProfileForm(request.POST)
+        visit_schedule_form = CustomerVisitScheduleForm(request.POST, prefix='visit_schedule', allow_empty=True)
 
         if (
             form.is_valid()
             and assignments_formset.is_valid()
             and class_margins_formset.is_valid()
             and geo_form.is_valid()
+            and visit_schedule_form.is_valid()
         ):
             try:
                 assignments_data = [f.cleaned_data for f in assignments_formset if f.cleaned_data]
                 class_margins_data = [f.cleaned_data for f in class_margins_formset if f.cleaned_data]
                 geo_data = geo_form.cleaned_data if any(geo_form.cleaned_data.values()) else None
+                days_checked = any([
+                    visit_schedule_form.cleaned_data.get('visit_monday'),
+                    visit_schedule_form.cleaned_data.get('visit_tuesday'),
+                    visit_schedule_form.cleaned_data.get('visit_wednesday'),
+                    visit_schedule_form.cleaned_data.get('visit_thursday'),
+                    visit_schedule_form.cleaned_data.get('visit_friday'),
+                    visit_schedule_form.cleaned_data.get('visit_saturday'),
+                    visit_schedule_form.cleaned_data.get('visit_sunday'),
+                ])
+                visit_schedule_data = visit_schedule_form.cleaned_data if days_checked else None
 
                 new_customer = service.create_customer(
                     customer_data=form.cleaned_data,
                     assignments_data=assignments_data,
                     class_margins_data=class_margins_data,
                     geo_profile_data=geo_data,
+                    visit_schedule_data=visit_schedule_data,
                 )
                 messages.success(request, f'Cliente {new_customer.id} registrado correctamente.')
                 next_url = request.GET.get('next') or request.POST.get('next')
@@ -232,6 +278,8 @@ def customer_create_view(request):
                     return redirect(next_url)
                 return redirect('customers:customer_detail_view', new_customer.pk)
 
+            except ValidationError as e:
+                messages.error(request, _format_validation_error(e))
             except PermissionsError as e:
                 messages.error(request, str(e))
                 return redirect('customers:customer_list_view')
@@ -248,12 +296,14 @@ def customer_create_view(request):
         assignments_formset = CustomerAssignmentFormSet(prefix='assignments')
         class_margins_formset = CustomerClassMarginFormSet(prefix='class_margins')
         geo_form = CustomerGeoProfileForm()
+        visit_schedule_form = CustomerVisitScheduleForm(prefix='visit_schedule', allow_empty=True)
 
     context = {
         'form': form,
         'assignments_formset': assignments_formset,
         'class_margins_formset': class_margins_formset,
         'geo_form': geo_form,
+        'visit_schedule_form': visit_schedule_form,
         'can_update_access': service.has_full_access,
         'can_edit_customer': True,
         'can_edit_partially': True,
@@ -292,29 +342,46 @@ def customer_update_view(request, pk: str):
 
     if request.method == 'POST':
         if not can_edit_full and can_edit_partially:
-            # user with partial access: can only edit customer geo profile
+            # user with partial access: can edit customer geo profile and visit schedule
             geo_form = CustomerGeoProfileForm(request.POST, instance=geo_profile_instance)
-            if geo_form.is_valid():
+            visit_schedule_form = CustomerVisitScheduleForm(request.POST, prefix='visit_schedule', allow_empty=True)
+            if geo_form.is_valid() and visit_schedule_form.is_valid():
                 try:
-                    service.update_or_create_geo_profile(
-                        customer=customer_instance,
-                        geo_data=geo_form.cleaned_data,
-                    )
-                    messages.success(request, f"Perfil geográfico del cliente {customer_instance.id} actualizado correctamente.")
+                    if geo_form.has_changed():
+                        service.update_or_create_geo_profile(
+                            customer=customer_instance,
+                            geo_data=geo_form.cleaned_data,
+                        )
+                    days_checked = any([
+                        visit_schedule_form.cleaned_data.get('visit_monday'),
+                        visit_schedule_form.cleaned_data.get('visit_tuesday'),
+                        visit_schedule_form.cleaned_data.get('visit_wednesday'),
+                        visit_schedule_form.cleaned_data.get('visit_thursday'),
+                        visit_schedule_form.cleaned_data.get('visit_friday'),
+                        visit_schedule_form.cleaned_data.get('visit_saturday'),
+                        visit_schedule_form.cleaned_data.get('visit_sunday'),
+                    ])
+                    if days_checked:
+                        v_copy = dict(visit_schedule_form.cleaned_data)
+                        service.set_customer_visit_schedule(customer=customer_instance, **v_copy)
+
+                    messages.success(request, f"Datos del cliente {customer_instance.id} actualizados correctamente.")
                     return redirect('customers:customer_detail_view', pk=customer_instance.pk)
+                except ValidationError as e:
+                    messages.error(request, _format_validation_error(e))
                 except ServiceError as e:
                     messages.error(request, str(e))
                 except Exception as e:
-                    messages.error(request, f"Ocurrió un error al actualizar el perfil geográfico: {str(e)}")
+                    messages.error(request, f"Ocurrió un error al actualizar: {str(e)}")
             else:
-                messages.error(request, 'Por favor revisa los errores en el perfil geográfico.')
+                messages.error(request, 'Por favor revisa los errores en el formulario.')
 
             form = CustomerForm(instance=customer_instance)
             assignments_formset = CustomerAssignmentFormSet(instance=customer_instance, prefix='assignments')
             class_margins_formset = CustomerClassMarginFormSet(instance=customer_instance, prefix='class_margins')
 
         else:
-            # full access can edit customer, assignments, margins and geo profile
+            # full access can edit customer, assignments, margins, geo profile and visit schedule
             form = CustomerForm(request.POST, instance=customer_instance)
             assignments_formset = CustomerAssignmentFormSet(
                 request.POST, instance=customer_instance, prefix='assignments'
@@ -323,17 +390,29 @@ def customer_update_view(request, pk: str):
                 request.POST, instance=customer_instance, prefix='class_margins'
             )
             geo_form = CustomerGeoProfileForm(request.POST, instance=geo_profile_instance)
+            visit_schedule_form = CustomerVisitScheduleForm(request.POST, prefix='visit_schedule', allow_empty=True)
 
             if (
                 form.is_valid()
                 and assignments_formset.is_valid()
                 and class_margins_formset.is_valid()
                 and geo_form.is_valid()
+                and visit_schedule_form.is_valid()
             ):
                 try:
                     assignments_data = [f.cleaned_data for f in assignments_formset if f.cleaned_data]
                     class_margins_data = [f.cleaned_data for f in class_margins_formset if f.cleaned_data]
                     geo_data = geo_form.cleaned_data
+                    days_checked = any([
+                        visit_schedule_form.cleaned_data.get('visit_monday'),
+                        visit_schedule_form.cleaned_data.get('visit_tuesday'),
+                        visit_schedule_form.cleaned_data.get('visit_wednesday'),
+                        visit_schedule_form.cleaned_data.get('visit_thursday'),
+                        visit_schedule_form.cleaned_data.get('visit_friday'),
+                        visit_schedule_form.cleaned_data.get('visit_saturday'),
+                        visit_schedule_form.cleaned_data.get('visit_sunday'),
+                    ])
+                    visit_schedule_data = visit_schedule_form.cleaned_data if days_checked else None
 
                     updated_customer = service.update_customer(
                         pk=pk,
@@ -341,17 +420,18 @@ def customer_update_view(request, pk: str):
                         assignments_data=assignments_data,
                         class_margins_data=class_margins_data,
                         geo_profile_data=geo_data,
+                        visit_schedule_data=visit_schedule_data,
                     )
                     messages.success(request, f"Cliente {updated_customer.id} actualizado correctamente.")
                     return redirect('customers:customer_detail_view', updated_customer.pk)
 
+                except ValidationError as e:
+                    messages.error(request, _format_validation_error(e))
                 except PermissionsError as e:
                     messages.error(request, str(e))
                     return redirect('customers:customer_list_view')
-
                 except ServiceError as e:
                     messages.error(request, str(e))
-
                 except Exception as e:
                     messages.error(request, f"Ocurrió un error inesperado al actualizar: {str(e)}")
             else:
@@ -366,12 +446,30 @@ def customer_update_view(request, pk: str):
             instance=customer_instance, prefix='class_margins'
         )
         geo_form = CustomerGeoProfileForm(instance=geo_profile_instance)
+        current_schedule = service.get_current_visit_schedule(customer_instance)
+        initial_schedule = {}
+        if current_schedule:
+            initial_schedule = {
+                'periodicity': current_schedule.periodicity,
+                'visit_monday': current_schedule.visit_monday,
+                'visit_tuesday': current_schedule.visit_tuesday,
+                'visit_wednesday': current_schedule.visit_wednesday,
+                'visit_thursday': current_schedule.visit_thursday,
+                'visit_friday': current_schedule.visit_friday,
+                'visit_saturday': current_schedule.visit_saturday,
+                'visit_sunday': current_schedule.visit_sunday,
+                'start_date': current_schedule.start_date,
+                'end_date': current_schedule.end_date,
+                'notes': current_schedule.notes,
+            }
+        visit_schedule_form = CustomerVisitScheduleForm(initial=initial_schedule, prefix='visit_schedule', allow_empty=True)
 
     context = {
         'form': form,
         'assignments_formset': assignments_formset,
         'class_margins_formset': class_margins_formset,
         'geo_form': geo_form,
+        'visit_schedule_form': visit_schedule_form,
         'updating': customer_instance,
         'can_update_access': can_edit_full,
         'can_edit_customer': can_edit_full,
@@ -416,6 +514,59 @@ def customer_add_note_view(request, pk: str):
             messages.error(request, f"Error al guardar la nota: {str(e)}")
     else:
         messages.error(request, "Por favor completa el contenido de la nota.")
+
+    return redirect('customers:customer_detail_view', pk=pk)
+
+@login_required
+@require_POST
+def customer_set_visit_schedule_view(request, pk: str):
+    """
+    view for creating or updating a customer visit schedule from modal or detail
+    """
+    service = CustomersService(user=request.user)
+    try:
+        customer = service.read_customer(pk=pk)
+    except (CustomerNotFound, PermissionsError) as e:
+        messages.error(request, str(e))
+        return redirect('customers:customer_list_view')
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al cargar el cliente: {str(e)}")
+        return redirect('customers:customer_list_view')
+
+    if not service.can_edit_partially(customer):
+        messages.error(request, "No tienes permisos para modificar el esquema de visitas de este cliente.")
+        return redirect('customers:customer_detail_view', pk=pk)
+
+    form = CustomerVisitScheduleForm(request.POST)
+    if form.is_valid():
+        try:
+            schedule = service.set_customer_visit_schedule(
+                customer=customer,
+                periodicity=form.cleaned_data.get('periodicity'),
+                visit_monday=form.cleaned_data.get('visit_monday', False),
+                visit_tuesday=form.cleaned_data.get('visit_tuesday', False),
+                visit_wednesday=form.cleaned_data.get('visit_wednesday', False),
+                visit_thursday=form.cleaned_data.get('visit_thursday', False),
+                visit_friday=form.cleaned_data.get('visit_friday', False),
+                visit_saturday=form.cleaned_data.get('visit_saturday', False),
+                visit_sunday=form.cleaned_data.get('visit_sunday', False),
+                start_date=form.cleaned_data.get('start_date'),
+                end_date=form.cleaned_data.get('end_date'),
+                notes=form.cleaned_data.get('notes', ''),
+                close_previous=True,
+            )
+            messages.success(request, f"Esquema de visitas registrado: {schedule.summary}.")
+        except PermissionsError as e:
+            messages.error(request, str(e))
+        except ValidationError as e:
+            messages.error(request, _format_validation_error(e))
+        except ServiceError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f"Error al guardar el esquema de visitas: {str(e)}")
+    else:
+        err_msg = form.non_field_errors().as_text() or "; ".join([f"{f}: {e.as_text()}" for f, e in form.errors.items()])
+        messages.error(request, f"Por favor revisa el formulario de visitas: {err_msg}")
 
     return redirect('customers:customer_detail_view', pk=pk)
 

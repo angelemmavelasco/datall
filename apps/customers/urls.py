@@ -21,6 +21,7 @@ from .views import (
     customer_agreement_update_document_view,
     customer_agreement_evaluate_action_view,
     customer_options_view,
+    customer_set_visit_schedule_view,
 )
 
 app_name = 'customers'
@@ -32,6 +33,8 @@ urlpatterns = [
     path('customers/create/', customer_create_view, name='customer_create_view'),
     path('customers/<str:pk>/', customer_detail_view, name='customer_detail_view'),
     path('customers/<str:pk>/update/', customer_update_view, name='customer_update_view'),
+    
+    path('customers/<str:pk>/visit-schedule/set/', customer_set_visit_schedule_view, name='customer_set_visit_schedule_view'),
     path('customers/<str:pk>/notes/add/', customer_add_note_view, name='customer_add_note_view'),
     path('customers/<str:pk>/contacts/add/', customer_add_contact_view, name='customer_add_contact_view'),
     path('customers/<str:pk>/contacts/<int:contact_id>/update/', customer_update_contact_view, name='customer_update_contact_view'),

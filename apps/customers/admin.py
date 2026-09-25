@@ -12,6 +12,7 @@ from .models import (
     AgreementClassTarget,
     AgreementEvaluationPeriod,
     AgreementPeriodClassResult,
+    CustomerVisitSchedule,
 )
 
 
@@ -47,6 +48,14 @@ class CustomerNoteInline(admin.TabularInline):
     show_change_link = True
 
 
+class CustomerVisitScheduleInline(admin.TabularInline):
+    model = CustomerVisitSchedule
+    extra = 0
+    fields = ('periodicity', 'visit_monday', 'visit_tuesday', 'visit_wednesday', 'visit_thursday', 'visit_friday', 'visit_saturday', 'visit_sunday', 'start_date', 'end_date', 'route', 'created_by')
+    autocomplete_fields = ['route', 'created_by']
+    show_change_link = True
+
+
 @admin.register(CustomerType)
 class CustomerTypeAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'description')
@@ -72,6 +81,7 @@ class CustomerAdmin(admin.ModelAdmin):
     inlines = [
         CustomerContactInline,
         CustomerAssignmentInline,
+        CustomerVisitScheduleInline,
         CustomerClassMarginInline,
         CustomerNoteInline,
     ]
@@ -113,6 +123,15 @@ class CustomerAssignmentAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ['customer', 'route']
     ordering = ('-start_date',)
+
+
+@admin.register(CustomerVisitSchedule)
+class CustomerVisitScheduleAdmin(admin.ModelAdmin):
+    list_display = ('customer', 'summary', 'route', 'start_date', 'end_date', 'is_active', 'created_by', 'created_at')
+    list_filter = ('periodicity', 'start_date', 'end_date', 'visit_monday', 'visit_tuesday', 'visit_wednesday', 'visit_thursday', 'visit_friday', 'visit_saturday')
+    search_fields = ('customer__id', 'customer__name', 'route__id', 'route__name')
+    autocomplete_fields = ['customer', 'route', 'created_by']
+    ordering = ('customer', '-start_date')
 
 
 @admin.register(CustomerClassMargin)

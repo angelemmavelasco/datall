@@ -2,6 +2,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from decimal import Decimal
 from django.db.models import Q, F
+from django.utils import timezone
 from apps.core.models import PeriodicityChoices
 
 class CustomerType(models.Model):
@@ -29,6 +30,15 @@ class Customer(models.Model):
         verbose_name = 'Cliente'
         verbose_name_plural = 'Clientes'
         indexes = [models.Index(fields=["registration_date"])]
+
+    @property
+    def current_visit_schedule(self):
+        today = timezone.localdate()
+        return self.visit_schedules.filter(
+            start_date__lte=today
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=today)
+        ).order_by('-start_date', '-id').first()
 
     def __str__(self):
         return f'{self.id.upper()} - {self.name.title()}'
@@ -522,5 +532,199 @@ class AgreementPeriodClassResult(models.Model):
 
     def __str__(self):
         return f"{self.evaluation_period.agreement.doc_id} - P{self.evaluation_period.period_number} - {self.product_class.id.upper()}: ${self.achieved_class_sales:,.2f} / ${self.expected_class_target:,.2f}"
+
+
+class CustomerVisitSchedule(models.Model):
+    customer = models.ForeignKey(
+        'Customer',
+        on_delete=models.CASCADE,
+        related_name='visit_schedules',
+        help_text='Cliente al que pertenece el esquema de visitas'
+    )
+    route = models.ForeignKey(
+        'sales.Route',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customer_visit_schedules',
+        help_text='Ruta activa asignada al cliente al momento de la configuración'
+    )
+    created_by = models.ForeignKey(
+        'core.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_visit_schedules',
+        help_text='Usuario que registró o modificó este esquema de visitas'
+    )
+    periodicity = models.CharField(
+        max_length=5,
+        choices=[
+            (c[0], c[1]) for c in PeriodicityChoices.choices
+            if c[0] not in (PeriodicityChoices.DAILY, PeriodicityChoices.WEEKLY, PeriodicityChoices.AT_END)
+        ],
+        null=True,
+        blank=True,
+        help_text='Periodicidad de la visita comercial según PeriodicityChoices (ej. 2w, 1m). Si se deja en blanco, la visita es semanal en los días asignados.'
+    )
+    visit_monday = models.BooleanField(default=False, verbose_name='Lunes')
+    visit_tuesday = models.BooleanField(default=False, verbose_name='Martes')
+    visit_wednesday = models.BooleanField(default=False, verbose_name='Miércoles')
+    visit_thursday = models.BooleanField(default=False, verbose_name='Jueves')
+    visit_friday = models.BooleanField(default=False, verbose_name='Viernes')
+    visit_saturday = models.BooleanField(default=False, verbose_name='Sábado')
+    visit_sunday = models.BooleanField(default=False, verbose_name='Domingo')
+
+    start_date = models.DateField(help_text='Fecha de inicio de vigencia de este esquema de visitas')
+    end_date = models.DateField(null=True, blank=True, help_text='Fecha de término de vigencia de este esquema de visitas')
+    notes = models.TextField(blank=True, default='', help_text='Observaciones o especificaciones sobre las visitas')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Esquema de visitas de cliente'
+        verbose_name_plural = 'Esquemas de visitas de clientes'
+        ordering = ['-start_date', '-created_at']
+        indexes = [
+            models.Index(fields=['customer', 'start_date', 'end_date']),
+            models.Index(fields=['start_date']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['customer'],
+                condition=Q(end_date__isnull=True),
+                name='unique_active_visit_schedule_per_customer'
+            ),
+            models.CheckConstraint(
+                condition=Q(end_date__isnull=True) | Q(end_date__gte=F('start_date')),
+                name='customer_visit_schedule_end_date_gte_start_date'
+            ),
+        ]
+
+    @property
+    def selected_days(self) -> list[str]:
+        days = []
+        if self.visit_monday:
+            days.append('Lunes')
+        if self.visit_tuesday:
+            days.append('Martes')
+        if self.visit_wednesday:
+            days.append('Miércoles')
+        if self.visit_thursday:
+            days.append('Jueves')
+        if self.visit_friday:
+            days.append('Viernes')
+        if self.visit_saturday:
+            days.append('Sábado')
+        if self.visit_sunday:
+            days.append('Domingo')
+        return days
+
+    @property
+    def days_display(self) -> str:
+        days = self.selected_days
+        if not days:
+            return 'Sin días asignados'
+        if len(days) == 1:
+            return days[0]
+        if len(days) == 2:
+            return f"{days[0]} y {days[1]}"
+        return f"{', '.join(days[:-1])} y {days[-1]}"
+
+    @property
+    def days_short_display(self) -> str:
+        mapping = {
+            'Lunes': 'Lun',
+            'Martes': 'Mar',
+            'Miércoles': 'Mié',
+            'Jueves': 'Jue',
+            'Viernes': 'Vie',
+            'Sábado': 'Sáb',
+            'Domingo': 'Dom',
+        }
+        return ', '.join(mapping.get(d, d) for d in self.selected_days) or '-'
+
+    @property
+    def periodicity_display(self) -> str:
+        if not self.periodicity:
+            return 'Cada semana'
+        try:
+            p_label = PeriodicityChoices(self.periodicity).label.lower()
+            return f"Cada {p_label}"
+        except (ValueError, KeyError):
+            return self.periodicity or 'Cada semana'
+
+    @property
+    def summary(self) -> str:
+        days_str = self.days_display
+        if not self.periodicity:
+            if not self.selected_days:
+                return 'Visitas semanales'
+            return f"{days_str} cada semana"
+
+        try:
+            p_label = PeriodicityChoices(self.periodicity).label.lower()
+            freq_text = 'mes' if p_label == '1 mes' else p_label
+            return f"{days_str} cada {freq_text}"
+        except (ValueError, KeyError):
+            return f"{days_str} ({self.periodicity})"
+
+    @property
+    def is_active(self) -> bool:
+        today = timezone.localdate()
+        if self.start_date > today:
+            return False
+        return self.end_date is None or self.end_date >= today
+
+    def get_relativedelta(self):
+        from dateutil.relativedelta import relativedelta
+        if not self.periodicity:
+            return relativedelta(weeks=1)
+        try:
+            return PeriodicityChoices(self.periodicity).get_relativedelta()
+        except Exception:
+            return relativedelta(weeks=1)
+
+    def clean(self):
+        super().clean()
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError({
+                'end_date': 'La fecha de fin no puede ser anterior a la fecha de inicio.'
+            })
+
+        if not any([
+            self.visit_monday, self.visit_tuesday, self.visit_wednesday,
+            self.visit_thursday, self.visit_friday, self.visit_saturday, self.visit_sunday
+        ]):
+            raise ValidationError(
+                'Debes seleccionar al menos un día de la semana para la visita.'
+            )
+
+        if self.customer_id and self.start_date:
+            qs = CustomerVisitSchedule.objects.filter(customer_id=self.customer_id)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+
+            if not self.end_date:
+                overlapping = qs.filter(
+                    Q(end_date__isnull=True) | Q(end_date__gte=self.start_date)
+                )
+            else:
+                overlapping = qs.filter(
+                    Q(end_date__isnull=True, start_date__lte=self.end_date) |
+                    Q(end_date__isnull=False, start_date__lte=self.end_date, end_date__gte=self.start_date)
+                )
+
+            if overlapping.exists():
+                first_overlap = overlapping.first()
+                start_str = first_overlap.start_date.strftime('%d/%m/%Y') if first_overlap.start_date else ''
+                end_str = first_overlap.end_date.strftime('%d/%m/%Y') if first_overlap.end_date else 'Presente'
+                raise ValidationError(
+                    f'Este cliente ya cuenta con un esquema de visitas ({first_overlap.summary}) programado del {start_str} al {end_str}. Para modificarlo, ajusta las fechas de vigencia o edita el esquema actual.'
+                )
+
+    def __str__(self):
+        return f'{self.customer.id.upper()} - {self.summary} ({self.start_date} - {self.end_date or "Presente"})'
 
 

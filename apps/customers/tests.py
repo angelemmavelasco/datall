@@ -19,6 +19,7 @@ from apps.customers.models import (
     PeriodStatusChoices,
     CustomerClassMargin,
     EvaluationModeChoices,
+    CustomerVisitSchedule,
 )
 from apps.customers.services.customer_agreements import (
     CustomerAgreementsService,
@@ -834,6 +835,231 @@ class CustomerAgreementViewsTests(TestCase):
         res_error = self.client.get(f"{url}?agreement_id=999999")
         self.assertEqual(res_error.status_code, 200)
         self.assertIn("Convenio #999999 no encontrado.", res_error.content.decode())
+
+
+class CustomerVisitScheduleTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(username='admin_vs', email='admin@test.com', password='password123')
+        self.seller = User.objects.create_user(username='seller_vs', email='seller@test.com', password='password123')
+        self.unauth_seller = User.objects.create_user(username='seller_other', email='other@test.com', password='password123')
+
+        vendedor_group, _ = Group.objects.get_or_create(name='vendedor')
+        self.seller.groups.add(vendedor_group)
+        self.unauth_seller.groups.add(vendedor_group)
+
+        self.cust_type = CustomerType.objects.create(id='CT01', name='Distribuidor')
+        self.customer = Customer.objects.create(
+            id='CUST_VS1',
+            name='Abarrotes La Esperanza',
+            customer_type=self.cust_type,
+            registration_date=date(2025, 1, 1),
+        )
+        self.route_type = RouteType.objects.create(id='RT_VS', name='Ruta Local')
+        self.sale_channel = SaleChannel.objects.create(id='SC_VS', name='Canal Local')
+        self.route1 = Route.objects.create(id='R_VS1', name='Ruta 1', route_type=self.route_type, sale_channel=self.sale_channel)
+        self.route2 = Route.objects.create(id='R_VS2', name='Ruta 2', route_type=self.route_type, sale_channel=self.sale_channel)
+
+        # Asignar cliente a ruta 1
+        CustomerAssignment.objects.create(customer=self.customer, route=self.route1, start_date=date(2025, 1, 1))
+
+        # Asignar acceso de ruta a seller
+        from apps.sales.models import UserRouteAccess
+        UserRouteAccess.objects.create(user=self.seller, route=self.route1, can_view=True, can_edit=True)
+
+        # Asignar acceso de ruta 2 a unauth_seller
+        UserRouteAccess.objects.create(user=self.unauth_seller, route=self.route2, can_view=True, can_edit=True)
+
+    def test_visit_schedule_summary_and_days_display(self):
+        # Caso 1: Lunes cada 2 semanas
+        s1 = CustomerVisitSchedule(
+            customer=self.customer,
+            visit_monday=True,
+            periodicity='2w',
+            start_date=date(2026, 1, 1),
+        )
+        self.assertEqual(s1.selected_days, ['Lunes'])
+        self.assertEqual(s1.days_display, 'Lunes')
+        self.assertEqual(s1.summary, 'Lunes cada 2 semanas')
+
+        # Caso 2: Martes y Miércoles cada mes
+        s2 = CustomerVisitSchedule(
+            customer=self.customer,
+            visit_tuesday=True,
+            visit_wednesday=True,
+            periodicity='1m',
+            start_date=date(2026, 1, 1),
+        )
+        self.assertEqual(s2.selected_days, ['Martes', 'Miércoles'])
+        self.assertEqual(s2.days_display, 'Martes y Miércoles')
+        self.assertEqual(s2.summary, 'Martes y Miércoles cada mes')
+
+        # Caso 3: Lunes, Miércoles y Viernes cada semana (periodicity en blanco)
+        s3 = CustomerVisitSchedule(
+            customer=self.customer,
+            visit_monday=True,
+            visit_wednesday=True,
+            visit_friday=True,
+            periodicity='',
+            start_date=date(2026, 1, 1),
+        )
+        self.assertEqual(s3.selected_days, ['Lunes', 'Miércoles', 'Viernes'])
+        self.assertEqual(s3.days_display, 'Lunes, Miércoles y Viernes')
+        self.assertEqual(s3.summary, 'Lunes, Miércoles y Viernes cada semana')
+
+    def test_visit_schedule_validation_no_days(self):
+        s = CustomerVisitSchedule(
+            customer=self.customer,
+            start_date=date(2026, 1, 1),
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            s.clean()
+        self.assertIn('Debes seleccionar al menos un día', str(ctx.exception))
+
+    def test_visit_schedule_validation_end_before_start(self):
+        s = CustomerVisitSchedule(
+            customer=self.customer,
+            visit_monday=True,
+            start_date=date(2026, 5, 1),
+            end_date=date(2026, 4, 1),
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            s.clean()
+        self.assertIn('end_date', ctx.exception.message_dict)
+
+    def test_customers_service_set_visit_schedule_and_auto_close_previous(self):
+        from apps.customers.services.customers import CustomersService
+        service = CustomersService(user=self.seller)
+
+        # Primer esquema: hace 1 año
+        s1 = service.set_customer_visit_schedule(
+            customer=self.customer,
+            visit_monday=True,
+            periodicity='2w',
+            start_date=date(2025, 1, 1),
+        )
+        self.assertEqual(s1.route, self.route1)
+        self.assertEqual(s1.created_by, self.seller)
+        self.assertIsNone(s1.end_date)
+        self.assertEqual(self.customer.current_visit_schedule.id, s1.id)
+
+        # Segundo esquema: actualización hoy
+        today = date.today()
+        s2 = service.set_customer_visit_schedule(
+            customer=self.customer,
+            visit_tuesday=True,
+            visit_wednesday=True,
+            periodicity='1m',
+            start_date=today,
+            close_previous=True,
+        )
+        s1.refresh_from_db()
+        from datetime import timedelta
+        self.assertEqual(s1.end_date, today - timedelta(days=1))
+        self.assertEqual(s2.summary, 'Martes y Miércoles cada mes')
+        self.assertEqual(self.customer.current_visit_schedule.id, s2.id)
+
+        # Tercer esquema: re-actualización en el mismo día (mismo start_date=today) sin error de traslape
+        s3 = service.set_customer_visit_schedule(
+            customer=self.customer,
+            visit_monday=True,
+            visit_friday=True,
+            periodicity='2w',
+            start_date=today,
+            close_previous=True,
+        )
+        self.assertEqual(s3.id, s2.id)
+        self.assertEqual(s3.summary, 'Lunes y Viernes cada 2 semanas')
+        history_after = list(service.get_customer_visit_schedules(self.customer))
+        self.assertEqual(len(history_after), 2)
+
+    def test_visit_schedule_friendly_overlap_error_message(self):
+        # Crear un esquema con fechas fijas
+        CustomerVisitSchedule.objects.create(
+            customer=self.customer,
+            visit_monday=True,
+            periodicity='2w',
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 6, 30),
+        )
+        # Intentar crear otro que se empalme manualmente
+        s_overlap = CustomerVisitSchedule(
+            customer=self.customer,
+            visit_tuesday=True,
+            start_date=date(2026, 3, 1),
+            end_date=date(2026, 9, 30),
+        )
+        with self.assertRaises(ValidationError) as ctx:
+            s_overlap.clean()
+        err_text = str(ctx.exception)
+        self.assertIn('Este cliente ya cuenta con un esquema de visitas', err_text)
+        self.assertIn('Lunes cada 2 semanas', err_text)
+        self.assertIn('01/01/2026 al 30/06/2026', err_text)
+
+    def test_seller_permissions_for_visit_schedule(self):
+        from apps.customers.services.customers import CustomersService, PermissionsError
+        # seller asignado a ruta del cliente tiene permiso
+        service_seller = CustomersService(user=self.seller)
+        self.assertTrue(service_seller.can_edit_partially(self.customer))
+
+        # unauth_seller en otra ruta NO tiene permiso
+        service_unauth = CustomersService(user=self.unauth_seller)
+        self.assertFalse(service_unauth.can_edit_partially(self.customer))
+
+        with self.assertRaises(PermissionsError):
+            service_unauth.set_customer_visit_schedule(
+                customer=self.customer,
+                visit_monday=True,
+                start_date=date.today(),
+            )
+
+    def test_customer_set_visit_schedule_view(self):
+        client = Client()
+        client.force_login(self.seller)
+
+        url = reverse('customers:customer_set_visit_schedule_view', kwargs={'pk': self.customer.pk})
+        post_data = {
+            'visit_monday': 'on',
+            'visit_friday': 'on',
+            'periodicity': '2w',
+            'start_date': date.today().strftime('%Y-%m-%d'),
+            'notes': 'Entrega por la mañana',
+        }
+        response = client.post(url, post_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('customers:customer_detail_view', kwargs={'pk': self.customer.pk}))
+
+        current = self.customer.current_visit_schedule
+        self.assertIsNotNone(current)
+        self.assertEqual(current.summary, 'Lunes y Viernes cada 2 semanas')
+        self.assertEqual(current.notes, 'Entrega por la mañana')
+
+    def test_customer_detail_and_form_rendering(self):
+        from apps.customers.services.customers import CustomersService
+        CustomersService(user=self.admin).set_customer_visit_schedule(
+            customer=self.customer,
+            visit_monday=True,
+            periodicity='2w',
+            start_date=date(2025, 6, 1),
+        )
+
+        client = Client()
+        client.force_login(self.seller)
+
+        # Detalle
+        res_detail = client.get(reverse('customers:customer_detail_view', kwargs={'pk': self.customer.pk}))
+        self.assertEqual(res_detail.status_code, 200)
+        content_detail = res_detail.content.decode()
+        self.assertIn('Esquema de visitas y atención comercial', content_detail)
+        self.assertIn('Lunes cada 2 semanas', content_detail)
+        self.assertIn('visitScheduleModal', content_detail)
+
+        # Formulario de edición
+        res_form = client.get(reverse('customers:customer_update_view', kwargs={'pk': self.customer.pk}))
+        self.assertEqual(res_form.status_code, 200)
+        content_form = res_form.content.decode()
+        self.assertIn('Esquema de visitas comercial', content_form)
+        self.assertIn('visit_monday', content_form)
+
 
 
 

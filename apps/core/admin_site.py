@@ -91,6 +91,7 @@ class ThemedAdminSite(admin.AdminSite):
                     'CustomerContact',
                     'CustomerAssignment',
                     'CustomerClassMargin',
+                    'CustomerVisitSchedule',
                     'AccountsReceivable',
                     'CustomerNote',
                 ]

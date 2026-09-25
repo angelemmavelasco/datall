@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction, IntegrityError
 from django.utils import timezone
 from decimal import Decimal
-from apps.sales.models import RouteAssignment
+from apps.sales.models import Route, RouteAssignment
 from django.db.models import (
     Q,
     QuerySet,
@@ -25,8 +25,8 @@ from django.db.models import (
 from apps.core.services.uploads import BaseETLHelper
 from django.contrib.contenttypes.models import ContentType
 from apps.core.models import Reference
-from apps.sales.models import Route
 import datetime
+from datetime import date, timedelta
 
 from apps.core.services.users import UsersService
 from apps.sales.services.routes import RoutesService
@@ -37,6 +37,7 @@ from ..models import (
     CustomerClassMargin,
     CustomerNote,
     CustomerContact,
+    CustomerVisitSchedule,
 )
 
 class ServiceError(Exception):
@@ -62,6 +63,7 @@ class CustomersService(UsersService):
     customer_class_margin_model: type = CustomerClassMargin
     customer_note_model: type = CustomerNote
     customer_contact_model: type = CustomerContact
+    customer_visit_schedule_model: type = CustomerVisitSchedule
     ACCESS_CONTEXTS: ClassVar[tuple[str, ...]] = (
         'acceso_total_clientes',
         'clientes',
@@ -284,6 +286,130 @@ class CustomersService(UsersService):
         )
         return note
 
+    def get_customer_visit_schedules(self, customer: Customer | str) -> QuerySet:
+        """
+        returns all visit schedules for the customer ordered by -start_date, -created_at.
+        includes route and created_by relations.
+        """
+        customer_id = customer.pk if hasattr(customer, 'pk') else customer
+        return self.customer_visit_schedule_model.objects.filter(
+            customer_id=customer_id
+        ).select_related('route', 'created_by').order_by('-start_date', '-created_at')
+
+    def get_current_visit_schedule(self, customer: Customer | str) -> CustomerVisitSchedule | None:
+        """
+        returns currently active visit schedule for the customer as of today.
+        """
+        customer_id = customer.pk if hasattr(customer, 'pk') else customer
+        today = timezone.localdate()
+        return self.customer_visit_schedule_model.objects.filter(
+            customer_id=customer_id,
+            start_date__lte=today,
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=today)
+        ).select_related('route', 'created_by').order_by('-start_date', '-id').first()
+
+    def set_customer_visit_schedule(
+        self,
+        *,
+        customer: Customer | str,
+        periodicity: str | None = None,
+        visit_monday: bool = False,
+        visit_tuesday: bool = False,
+        visit_wednesday: bool = False,
+        visit_thursday: bool = False,
+        visit_friday: bool = False,
+        visit_saturday: bool = False,
+        visit_sunday: bool = False,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        notes: str = '',
+        route: Route | str | None = None,
+        close_previous: bool = True,
+    ) -> CustomerVisitSchedule:
+        """
+        creates and activates a visit schedule for the customer.
+        if close_previous is true, any overlapping or currently open active schedule
+        is automatically closed the day before start_date to maintain a clean timeline.
+        """
+        customer_obj = customer if isinstance(customer, Customer) else self.customer_model.objects.get(pk=customer)
+
+        if not self.can_edit_partially(customer_obj):
+            raise PermissionsError(f'No tienes permisos para modificar el esquema de visitas del cliente "{customer_obj.id}".')
+
+        start_date = start_date or timezone.localdate()
+
+        current_route = None
+        if route:
+            current_route = route if isinstance(route, Route) else Route.objects.filter(pk=route).first()
+        else:
+            today = timezone.localdate()
+            active_assignment = self.customer_assignment_model.objects.filter(
+                customer=customer_obj,
+                start_date__lte=today,
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=today)
+            ).select_related('route').first()
+            if active_assignment:
+                current_route = active_assignment.route
+
+        if close_previous:
+            existing_same_start = self.customer_visit_schedule_model.objects.filter(
+                customer=customer_obj,
+                start_date=start_date,
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=start_date)
+            ).first()
+
+            if existing_same_start:
+                existing_same_start.periodicity = periodicity or None
+                existing_same_start.visit_monday = visit_monday
+                existing_same_start.visit_tuesday = visit_tuesday
+                existing_same_start.visit_wednesday = visit_wednesday
+                existing_same_start.visit_thursday = visit_thursday
+                existing_same_start.visit_friday = visit_friday
+                existing_same_start.visit_saturday = visit_saturday
+                existing_same_start.visit_sunday = visit_sunday
+                existing_same_start.end_date = end_date or None
+                existing_same_start.notes = notes.strip() if notes else ''
+                if current_route:
+                    existing_same_start.route = current_route
+                existing_same_start.created_by = self.user
+                existing_same_start.full_clean()
+                existing_same_start.save()
+                return existing_same_start
+
+            # Close any previous schedules that started strictly before start_date
+            older_schedules = self.customer_visit_schedule_model.objects.filter(
+                customer=customer_obj,
+                start_date__lt=start_date,
+            ).filter(
+                Q(end_date__isnull=True) | Q(end_date__gte=start_date)
+            )
+            for prev in older_schedules:
+                prev.end_date = start_date - timedelta(days=1)
+                prev.save(update_fields=['end_date', 'updated_at'])
+
+        schedule = self.customer_visit_schedule_model(
+            customer=customer_obj,
+            route=current_route,
+            created_by=self.user,
+            periodicity=periodicity or None,
+            visit_monday=visit_monday,
+            visit_tuesday=visit_tuesday,
+            visit_wednesday=visit_wednesday,
+            visit_thursday=visit_thursday,
+            visit_friday=visit_friday,
+            visit_saturday=visit_saturday,
+            visit_sunday=visit_sunday,
+            start_date=start_date,
+            end_date=end_date or None,
+            notes=notes.strip() if notes else '',
+        )
+        schedule.full_clean()
+        schedule.save()
+        return schedule
+
     def get_customer_contacts(self, customer: Customer | str) -> QuerySet:
         """
         returns all contacts for the specified customer ordered by -is_primary, name.
@@ -487,6 +613,7 @@ class CustomersService(UsersService):
         assignments_data: list = None,
         class_margins_data: list = None,
         geo_profile_data: dict = None,
+        visit_schedule_data: dict = None,
         **kwargs
     ) -> Customer:
         """
@@ -534,6 +661,19 @@ class CustomersService(UsersService):
                         geo_data=geo_profile_data,
                     )
 
+                if visit_schedule_data and any([
+                    visit_schedule_data.get('visit_monday'),
+                    visit_schedule_data.get('visit_tuesday'),
+                    visit_schedule_data.get('visit_wednesday'),
+                    visit_schedule_data.get('visit_thursday'),
+                    visit_schedule_data.get('visit_friday'),
+                    visit_schedule_data.get('visit_saturday'),
+                    visit_schedule_data.get('visit_sunday'),
+                ]):
+                    v_copy = dict(visit_schedule_data)
+                    v_copy.pop('customer', None)
+                    self.set_customer_visit_schedule(customer=new_customer, **v_copy)
+
             return new_customer
 
         except ValidationError as e:
@@ -554,6 +694,7 @@ class CustomersService(UsersService):
         assignments_data: list = None,
         class_margins_data: list = None,
         geo_profile_data: dict = None,
+        visit_schedule_data: dict = None,
         **kwargs
     ) -> Customer:
         """
@@ -634,6 +775,19 @@ class CustomersService(UsersService):
                             new_margin = self.customer_class_margin_model(customer=customer_to_update, **margin_copy)
                             new_margin.full_clean()
                             new_margin.save()
+
+                if visit_schedule_data and any([
+                    visit_schedule_data.get('visit_monday'),
+                    visit_schedule_data.get('visit_tuesday'),
+                    visit_schedule_data.get('visit_wednesday'),
+                    visit_schedule_data.get('visit_thursday'),
+                    visit_schedule_data.get('visit_friday'),
+                    visit_schedule_data.get('visit_saturday'),
+                    visit_schedule_data.get('visit_sunday'),
+                ]):
+                    v_copy = dict(visit_schedule_data)
+                    v_copy.pop('customer', None)
+                    self.set_customer_visit_schedule(customer=customer_to_update, **v_copy)
 
                 if geo_profile_data is not None:
                     self.update_or_create_geo_profile(
