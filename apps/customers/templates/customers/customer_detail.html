@@ -35,40 +35,63 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
 
 {% block content %}
 <div class="flex flex-col gap-4">
-    <p class="text-title  pb-2 border-b border-border">Información general</p>
+    <p class="text-title pb-2 border-b border-border">
+        Información general
+        <span title='Datos generales de identificación, perfil comercial y condiciones de crédito del cliente' class="cursor-pointer">ⓘ</span>
+    </p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
-        <span class="text-title">Identificador</span>
+        <div class="text-title">Identificador
+            <span title='Código único de cliente que lo identifica en el sistema' class="cursor-pointer">ⓘ</span>
+        </div>
         <div class="w-full text-body flex items-center font-mono">
             {{ customer.id|default:"-"|upper }}
         </div>
 
-        <span class="text-title">Nombre / Razón Social</span>
+        <div class="text-title">
+            Nombre / Razón Social
+            <span title='Nombre o razón social. No necesariamente es el nombre comercial.' class="cursor-pointer">ⓘ</span>
+        </div>
         <div class="w-full text-body flex items-center">
             {{ customer.name|default:"-"|title }}
         </div>
 
-        <span class="text-title">Tipo de cliente</span>
+        <div class="text-title">
+            Tipo de cliente
+            <span title='Clasificación del cliente según su rubro, giro comercial o industria' class="cursor-pointer">ⓘ</span>
+        </div>
         <div class="w-full text-body flex items-center">
             {{ customer.customer_type.name|default:"-"|title }}
         </div>
 
-        <span class="text-title">Fecha de registro</span>
+        <div class="text-title">
+            Fecha de registro
+            <span title='Fecha en la que el cliente fue registrado en el sistema' class="cursor-pointer">ⓘ</span>
+        </div>
         <div class="w-full text-body flex items-center">
             {{ customer.registration_date|default:"-"|date:"d M Y" }}
         </div>
 
-        <span class="text-title">Línea de crédito</span>
+        <div class="text-title">
+            Línea de crédito
+            <span title='Límite máximo de crédito que tiene el cliente' class="cursor-pointer">ⓘ</span>
+        </div>
         <div class="w-full text-body flex items-center font-mono">
             ${{ customer.credit_limit|default:0|floatformat:2|intcomma }}
         </div>
 
-        <span class="text-title">Días de crédito</span>
+        <div class="text-title">
+            Días de crédito
+            <span title='Número de días que tiene el cliente para realizar el pago de su factura' class="cursor-pointer">ⓘ</span>
+        </div>
         <div class="w-full text-body flex items-center font-mono">
             {{ customer.credit_days|default:0 }} días
         </div>
 
-        <span class="text-title">Líder de opinión</span>
+        <div class="text-title">
+            Líder de opinión
+            <span title='Líder de opinión: Clientes que cuentan con alta influencia en el sector, no necesariamente asociados a un alto volumen de compras' class="cursor-pointer">ⓘ</span>
+        </div>
         <div class="w-full text-body flex items-center">
             {% if customer.opinion_leader %}
                 <span class="text-violet-500 font-medium">Sí</span>
@@ -77,7 +100,10 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
             {% endif %}
         </div>
 
-        <span class="text-title">Esquema de visitas</span>
+        <div class="text-title">
+            Esquema de visitas
+            <span title='Esquema vigente de vista al cliente. Indica dias específicos y frecuencia' class="cursor-pointer">ⓘ</span>
+        </div>
         <div class="w-full text-body flex items-center">
             {% if current_visit_schedule %}
                 <span class="text-emerald-500 font-medium">{{ current_visit_schedule.summary }}</span>
@@ -87,28 +113,43 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
         </div>
     </div>
 
-    <p class="text-title  pb-2 border-b border-border">Asignación actual de ruta</p>
+    <p class="text-title  pb-2 border-b border-border">
+        Asignación actual de ruta
+        <span title='Muestra los atributos generales de la ruta que tiene actualmente asignada' class="cursor-pointer">ⓘ</span>
+    </p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
         {% if customer.current_route_id %}
-            <span class="text-title">Ruta asignada</span>
+            <span class="text-title">
+                Ruta asignada
+                <span title='Ruta de ventas actualmente asignada para la atención y distribución del cliente' class="cursor-pointer">ⓘ</span>
+            </span>
             <div class="w-full text-body flex items-center">
                 <a href="{% url 'sales:route_detail_view' customer.current_route_id %}" class="underline hover:text-hover transition-colors font-medium">
                     {{ customer.current_route_id|upper }} - {{ customer.current_route_name|title }}
                 </a>
             </div>
 
-            <span class="text-title">Gerencia (Unidad de negocio)</span>
+            <span class="text-title">
+                Gerencia (Unidad de negocio)
+                <span title='Unidad de negocio o gerencia comercial a la que pertenece la ruta asignada' class="cursor-pointer">ⓘ</span>
+            </span>
             <div class="w-full text-body flex items-center">
                 {{ customer.current_route_business_unit|default:"-"|title }}
             </div>
 
-            <span class="text-title">Canal de venta</span>
+            <span class="text-title">
+                Canal de venta
+                <span title='Canal de distribución comercial correspondiente a la ruta asignada' class="cursor-pointer">ⓘ</span>
+            </span>
             <div class="w-full text-body flex items-center">
                 {{ customer.current_route_sale_channel|default:"-"|title }}
             </div>
 
-            <span class="text-title">Fecha de inicio de asignación</span>
+            <span class="text-title">
+                Fecha de inicio de asignación
+                <span title='Fecha en la que entró en vigor la asignación actual del cliente a esta ruta' class="cursor-pointer">ⓘ</span>
+            </span>
             <div class="w-full text-body flex items-center font-mono">
                 {{ customer.current_assignment_start_date|default:"-"|date:"d M Y" }}
             </div>
@@ -119,7 +160,9 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
         {% endif %}
     </div>
 
-    <p class="text-title  pb-2 border-b border-border">Historial de asignaciones</p>
+    <p class="text-title  pb-2 border-b border-border">Historial de asignaciones
+        <span title='Historial general de las asignaciones que ha tenido el cliente a rutas, junto con atributos generales de estas.' class="cursor-pointer">ⓘ</span>
+    </p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
         <span class="text-title md:col-span-2">{{ customer.assignments.all|length|default:0|floatformat:0|intcomma }} asignación(es) registrada(s)</span>
@@ -165,7 +208,10 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
     </div>
 
     <div class="flex justify-between items-center pb-2 border-b border-border">
-        <p class="text-title">Esquema de visitas y atención comercial</p>
+        <p class="text-title">
+            Esquema de visitas y atención comercial
+            <span title='Muestra el esquema actual de visitas junto con el historial de modificaciones del mismo. &#10;Dentro de cada esquema se muestra que ruta estaba activa en ese momento y quien fue el responsable de la modificación.' class="cursor-pointer">ⓘ</span>
+        </p>
         {% if can_edit_customer or can_edit_partially %}
             <button type="button" onclick="openVisitScheduleModal()" class="hover:text-hover transition-colors flex items-center gap-1 text-xs text-secondary cursor-pointer">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-plus">
@@ -320,7 +366,10 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
     </div>
 
     <div class="flex justify-between items-center pb-2 border-b border-border">
-        <p class="text-title">Historial de convenios comerciales</p>
+        <p class="text-title">
+            Historial de convenios comerciales
+            <span title='Muestra el historial general de los convenios comerciales que ha tenido el cliente junto con atributos generales de estos. &#10; Puedes ir al detalle de cada uno al dar clic en el folio del convenio, contrato y crear nuevos.' class="cursor-pointer">ⓘ</span>
+        </p>
         {% if can_create_agreement %}
             <a href="{% url 'customers:customer_agreement_create_view' %}?customer={{ customer.pk }}" class="hover:text-hover transition-colors flex items-center gap-1 text-xs text-secondary">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus">
@@ -413,7 +462,10 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
     </div>
 
     <div class="flex justify-between items-center pb-2 border-b border-border">
-        <p class="text-title">Perfil geográfico y ubicación</p>
+        <p class="text-title">
+            Perfil geográfico y ubicación
+            <span title='Información de localización geográfica, domicilio registrado y coordenadas GPS del cliente' class="cursor-pointer">ⓘ</span>
+        </p>
         {% if can_edit_customer or can_edit_partially %}
             <a href="{% url 'customers:customer_update_view' customer.pk %}" class="hover:text-hover transition-colors flex items-center gap-1 text-xs text-secondary">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-pencil">
@@ -428,32 +480,50 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
         {% if customer.geo_profile %}
-            <span class="text-title">Dirección</span>
+            <span class="text-title">
+                Dirección
+                <span title='Calle y número exterior e interior del domicilio del cliente' class="cursor-pointer">ⓘ</span>
+            </span>
             <div class="w-full text-body flex items-center">
                 {{ customer.geo_profile.street_address|default:"Sin calle registrada"|title }}
             </div>
 
-            <span class="text-title">Colonia</span>
+            <span class="text-title">
+                Colonia
+                <span title='Colonia, asentamiento o fraccionamiento donde se ubica el cliente' class="cursor-pointer">ⓘ</span>
+            </span>
             <div class="w-full text-body flex items-center">
                 {{ customer.geo_profile.neighborhood|default:"-"|title }}
             </div>
 
-            <span class="text-title">Municipio / Alcaldía</span>
+            <span class="text-title">
+                Municipio / Alcaldía
+                <span title='Municipio, alcaldía o demarcación territorial del domicilio' class="cursor-pointer">ⓘ</span>
+            </span>
             <div class="w-full text-body flex items-center">
                 {{ customer.geo_profile.municipality|default:"-"|title }}
             </div>
 
-            <span class="text-title">Entidad Federativa</span>
+            <span class="text-title">
+                Entidad Federativa
+                <span title='Estado o entidad federativa de la República Mexicana' class="cursor-pointer">ⓘ</span>
+            </span>
             <div class="w-full text-body flex items-center">
                 {{ customer.geo_profile.state|default:"-"|title }}
             </div>
 
-            <span class="text-title">Código Postal</span>
+            <span class="text-title">
+                Código Postal
+                <span title='Código postal oficial de 5 dígitos del domicilio' class="cursor-pointer">ⓘ</span>
+            </span>
             <div class="w-full text-body flex items-center font-mono">
                 {{ customer.geo_profile.zip_code|default:"-" }}
             </div>
 
-            <span class="text-title">Coordenadas GPS</span>
+            <span class="text-title">
+                Coordenadas GPS
+                <span title='Latitud y longitud geográficas para localización en mapa y logística de visitas/entregas' class="cursor-pointer">ⓘ</span>
+            </span>
             <div class="w-full text-body flex items-center gap-2 font-mono">
                 {% if customer.geo_profile.has_coordinates %}
                     <span>{{ customer.geo_profile.latitude|floatformat:6 }}, {{ customer.geo_profile.longitude|floatformat:6 }}</span>
@@ -466,7 +536,10 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
                 {% endif %}
             </div>
 
-            <span class="text-title">Fuente y verificación</span>
+            <span class="text-title">
+                Fuente y verificación
+                <span title='Origen del posicionamiento y estado de validación en campo' class="cursor-pointer">ⓘ</span>
+            </span>
             <div class="w-full text-body flex items-center gap-2">
                 <span class="text-xs px-2 py-0.5 rounded bg-page border border-border text-secondary font-mono">
                     {{ customer.geo_profile.get_geocoding_source_display }}
@@ -495,7 +568,10 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
     </div>
 
     <div class="flex justify-between items-center pb-2 border-b border-border">
-        <p class="text-title">Directorio de contactos del cliente</p>
+        <p class="text-title">
+            Directorio de contactos del cliente
+            <span title='Directorio de personas clave del cliente (dueño, compras, cobranza, almacén) con sus datos de contacto directo' class="cursor-pointer">ⓘ</span>
+        </p>
         {% if can_edit_customer or can_edit_partially %}
             <button type="button" onclick="openCreateContactModal()" class="hover:text-hover transition-colors flex items-center gap-1 text-xs text-secondary cursor-pointer">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus">
@@ -594,7 +670,10 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
     </div>
 
     <div class="flex justify-between items-center pb-2 border-b border-border">
-        <p class="text-title">Bitácora y notas del cliente</p>
+        <p class="text-title">
+            Bitácora y notas del cliente
+            <span title='Registro cronológico de notas internas, acuerdos, incidencias y antecedentes relevantes del cliente' class="cursor-pointer">ⓘ</span>
+        </p>
         {% if can_edit_customer or can_edit_partially %}
             <button type="button" onclick="openNoteModal()" class="hover:text-hover transition-colors flex items-center gap-1 text-xs text-secondary cursor-pointer">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus">
@@ -658,7 +737,10 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
 
 
     {% if not request.user|has_group:"vendedor" %}
-    <p class="text-title  pb-2 border-b border-border">Márgenes mínimos por clase de producto</p>
+    <p class="text-title  pb-2 border-b border-border">
+        Márgenes mínimos por clase de producto
+        <span title='Porcentajes de margen de utilidad mínimo requeridos por clase de producto autorizados para este cliente' class="cursor-pointer">ⓘ</span>
+    </p>
 
     <div class="w-full overflow-auto border border-border rounded bg-container max-h-[60vh] relative @container">
         <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
@@ -666,12 +748,15 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
                 <tr class="border-b border-border text-xs">
                     <th class="w-[220px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
                         Clase de producto
+                        <span title='Clasificación de artículos del catálogo' class="cursor-pointer">ⓘ</span>
                     </th>
                     <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
                         Categoría
+                        <span title='Categoría general a la que pertenece la clase de producto' class="cursor-pointer">ⓘ</span>
                     </th>
                     <th class="w-[140px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
                         Margen mínimo
+                        <span title='Porcentaje mínimo de margen comercial pactado para este cliente' class="cursor-pointer">ⓘ</span>
                     </th>
                 </tr>
             </thead>
