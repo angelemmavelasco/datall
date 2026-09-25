@@ -11,6 +11,7 @@ from .models import (
     CustomerContact,
     CustomerAgreement,
     CommercialBenefit,
+    EvaluationModeChoices,
 )
 
 
@@ -280,6 +281,7 @@ class CustomerAgreementCreateForm(forms.ModelForm):
             'customer',
             'benefit',
             'agreement_type',
+            'evaluation_mode',
             'start_date',
             'end_date',
             'global_target_amount',
@@ -301,6 +303,9 @@ class CustomerAgreementCreateForm(forms.ModelForm):
                 'class': 'w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
             }),
             'agreement_type': forms.Select(attrs={
+                'class': 'w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
+            }),
+            'evaluation_mode': forms.Select(attrs={
                 'class': 'w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
             }),
             'global_target_amount': forms.NumberInput(attrs={
@@ -353,12 +358,20 @@ class CustomerAgreementCreateForm(forms.ModelForm):
         self.fields['penalty_amount'].required = False
         self.fields['signed'].required = False
         self.fields['benefit_already_provided'].required = False
+        self.fields['evaluation_mode'].required = False
+        self.fields['evaluation_mode'].initial = EvaluationModeChoices.PERIODIC
 
         if self.instance and self.instance.pk:
             if self.instance.start_date:
                 self.initial['start_date'] = self.instance.start_date.strftime('%Y-%m')
             if self.instance.end_date:
                 self.initial['end_date'] = self.instance.end_date.strftime('%Y-%m')
+
+    def clean_evaluation_mode(self):
+        mode = self.cleaned_data.get('evaluation_mode')
+        if not mode:
+            mode = EvaluationModeChoices.PERIODIC
+        return mode
 
     def clean_doc_id(self):
         doc_id = self.cleaned_data.get('doc_id')

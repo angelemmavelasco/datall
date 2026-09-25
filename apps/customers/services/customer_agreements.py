@@ -37,6 +37,7 @@ from apps.customers.models import (
     AgreementPeriodClassResult,
     PeriodStatusChoices,
     AgreementTypeChoices,
+    EvaluationModeChoices,
 )
 from apps.customers.services.customers import CustomersService
 from apps.products.models import ProductClass
@@ -712,6 +713,7 @@ class CustomerAgreementsService(UsersService):
         customer_id = data.get('customer_id')
         benefit_id = data.get('benefit_id')
         agreement_type = data.get('agreement_type', AgreementTypeChoices.SHORT_TERM)
+        evaluation_mode = data.get('evaluation_mode', EvaluationModeChoices.PERIODIC)
         start_date_str = data.get('start_date')
         end_date_str = data.get('end_date')
         target_frequency = data.get('target_frequency', PeriodicityChoices.MONTHLY)
@@ -877,7 +879,11 @@ class CustomerAgreementsService(UsersService):
                 'title': 'CLÁUSULA PRIMERA [1] — VIGENCIA Y PERIODOS DE EVALUACIÓN',
                 'text': (
                     f"El presente convenio tendrá una vigencia improrrogable del {start_date.strftime('%m/%Y')} al {end_date.strftime('%m/%Y')}. "
-                    f"El periodo total comprende {duration_months} meses divididos en {total_periods} periodo(s) de evaluación con periodicidad {target_freq_display.lower()}."
+                    + (
+                        f"El periodo total comprende {duration_months} meses con desglose mensual de seguimiento de comportamiento y evaluación/penalización acumulada al término del convenio."
+                        if evaluation_mode == EvaluationModeChoices.AT_END else
+                        f"El periodo total comprende {duration_months} meses divididos en {total_periods} periodo(s) de evaluación con periodicidad {target_freq_display.lower()}."
+                    )
                 ),
             },
             {
@@ -937,9 +943,15 @@ class CustomerAgreementsService(UsersService):
                 'citation': '[6]',
                 'title': 'CLÁUSULA SEXTA [6] — FACTURACIÓN POR PENALIZACIÓN DE INCUMPLIMIENTO',
                 'text': (
-                    f"En caso de que el cliente no alcance el 100% de la cuota pactada o del acumulado comprometido, "
-                    f"se generará y emitirá una factura por concepto de penalización por la cantidad de ${penalty_amount:,.2f} MXN "
-                    f"que el cliente se obliga incondicionalmente a liquidar dentro de los plazos comerciales acordados."
+                    (
+                        f"En caso de que el cliente no alcance el 100% de la cuota global acumulada comprometida de ${total_accumulated_target:,.2f} MXN al término de la vigencia del convenio, "
+                        f"se generará y emitirá una factura por concepto de penalización por la cantidad de ${penalty_amount:,.2f} MXN "
+                        f"que el cliente se obliga incondicionalmente a liquidar dentro de los plazos comerciales acordados."
+                        if evaluation_mode == EvaluationModeChoices.AT_END else
+                        f"En caso de que el cliente no alcance el 100% de la cuota pactada o del acumulado comprometido, "
+                        f"se generará y emitirá una factura por concepto de penalización por la cantidad de ${penalty_amount:,.2f} MXN "
+                        f"que el cliente se obliga incondicionalmente a liquidar dentro de los plazos comerciales acordados."
+                    )
                     if penalty_amount > 0 else
                     "El incumplimiento de la meta pactada facultará a la empresa para revocar el beneficio comercial sin responsabilidad adicional."
                 ),
@@ -1027,6 +1039,8 @@ class CustomerAgreementsService(UsersService):
             'clauses': clauses,
             'projection_matrix': projection_matrix,
             'today': timezone.localdate(),
+            'evaluation_mode': evaluation_mode,
+            'evaluation_mode_display': dict(EvaluationModeChoices.choices).get(evaluation_mode, evaluation_mode),
         }
 
     @transaction.atomic
@@ -1035,6 +1049,7 @@ class CustomerAgreementsService(UsersService):
         customer_id: str | None = None,
         benefit_id: int | None = None,
         agreement_type: str = AgreementTypeChoices.SHORT_TERM,
+        evaluation_mode: str = EvaluationModeChoices.PERIODIC,
         start_date: Any = None,
         end_date: Any = None,
         global_target_amount: Decimal | None = None,
@@ -1067,6 +1082,8 @@ class CustomerAgreementsService(UsersService):
             payload['benefit_id'] = benefit_id
         if agreement_type is not None:
             payload['agreement_type'] = agreement_type
+        if evaluation_mode is not None:
+            payload['evaluation_mode'] = evaluation_mode
         if start_date is not None:
             payload['start_date'] = start_date
         if end_date is not None:
@@ -1147,6 +1164,7 @@ class CustomerAgreementsService(UsersService):
             benefit=benefit,
             doc_id=doc_id,
             agreement_type=data.get('agreement_type', AgreementTypeChoices.SHORT_TERM),
+            evaluation_mode=data.get('evaluation_mode', EvaluationModeChoices.PERIODIC),
             start_date=start_date,
             end_date=end_date,
             global_target_amount=Decimal(str(data.get('global_target_amount') or '0')),
@@ -1199,6 +1217,10 @@ class CustomerAgreementsService(UsersService):
         growth_multiplier = Decimal('1.00')
         next_growth_date = start_date + g_delta if g_delta else None
 
+        is_at_end = (agreement.evaluation_mode == EvaluationModeChoices.AT_END) and (total_periods > 1)
+        total_accumulated_target = Decimal('0.00')
+        accumulated_class_targets = {ct.product_class_id: Decimal('0.00') for ct in created_targets}
+
         for p_num in range(1, total_periods + 1):
             while next_growth_date and current_start >= next_growth_date:
                 growth_multiplier *= (Decimal('1.00') + (agreement.growth_value / Decimal('100.00')))
@@ -1209,6 +1231,7 @@ class CustomerAgreementsService(UsersService):
                 current_end = end_date
 
             p_global_target = (agreement.global_target_amount * growth_multiplier).quantize(Decimal('0.01'))
+            total_accumulated_target += p_global_target
 
             period = self.evaluation_period_model.objects.create(
                 agreement=agreement,
@@ -1218,10 +1241,12 @@ class CustomerAgreementsService(UsersService):
                 expected_global_target=p_global_target,
                 status=PeriodStatusChoices.PENDING,
                 amortized_benefit_cost=amortized_cost,
+                is_informative=is_at_end,
             )
 
             for ct in created_targets:
                 class_target_amt = (ct.required_target * growth_multiplier).quantize(Decimal('0.01'))
+                accumulated_class_targets[ct.product_class_id] += class_target_amt
                 self.period_class_result_model.objects.create(
                     evaluation_period=period,
                     product_class=ct.product_class,
@@ -1229,6 +1254,25 @@ class CustomerAgreementsService(UsersService):
                 )
 
             current_start = current_start + freq_delta
+
+        if is_at_end:
+            closing_period = self.evaluation_period_model.objects.create(
+                agreement=agreement,
+                period_number=total_periods + 1,
+                start_date=start_date,
+                end_date=end_date,
+                expected_global_target=total_accumulated_target,
+                status=PeriodStatusChoices.PENDING,
+                amortized_benefit_cost=Decimal('0.00'),
+                is_informative=False,
+                observations="Corte final acumulado del convenio.",
+            )
+            for ct in created_targets:
+                self.period_class_result_model.objects.create(
+                    evaluation_period=closing_period,
+                    product_class=ct.product_class,
+                    expected_class_target=accumulated_class_targets.get(ct.product_class_id, Decimal('0.00')),
+                )
 
         return agreement
 
@@ -1374,19 +1418,32 @@ class CustomerAgreementsService(UsersService):
 
             achieved_global = (period.achieved_global_sales >= period.expected_global_target)
 
-            if achieved_global and achieved_mandatory:
-                period.status = PeriodStatusChoices.ACHIEVED
-                period.penalty_applied = False
-                period.observations = "Objetivo global y metas obligatorias alcanzadas."
-            else:
-                if today <= period.end_date:
-                    period.status = PeriodStatusChoices.PENDING
-                    period.penalty_applied = False
-                    period.observations = "En progreso. Aún no se alcanza la meta."
+            if period.is_informative:
+                if achieved_global and achieved_mandatory:
+                    period.status = PeriodStatusChoices.ACHIEVED
+                    period.observations = "Seguimiento de comportamiento: meta mensual alcanzada."
                 else:
-                    period.status = PeriodStatusChoices.FAILED
-                    period.penalty_applied = True
-                    period.observations = "Periodo vencido sin alcanzar objetivo global o metas obligatorias."
+                    if today <= period.end_date:
+                        period.status = PeriodStatusChoices.PENDING
+                        period.observations = "Seguimiento en curso."
+                    else:
+                        period.status = PeriodStatusChoices.FAILED
+                        period.observations = "Seguimiento de comportamiento concluido sin alcanzar meta sugerida. Sin penalización (corte al término)."
+                period.penalty_applied = False
+            else:
+                if achieved_global and achieved_mandatory:
+                    period.status = PeriodStatusChoices.ACHIEVED
+                    period.penalty_applied = False
+                    period.observations = "Objetivo global y metas obligatorias alcanzadas."
+                else:
+                    if today <= period.end_date:
+                        period.status = PeriodStatusChoices.PENDING
+                        period.penalty_applied = False
+                        period.observations = "En progreso. Aún no se alcanza la meta."
+                    else:
+                        period.status = PeriodStatusChoices.FAILED
+                        period.penalty_applied = True
+                        period.observations = "Periodo vencido sin alcanzar objetivo global o metas obligatorias."
 
             if period.penalty_applied:
                 period.period_profit = total_profit

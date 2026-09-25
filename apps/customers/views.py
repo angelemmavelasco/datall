@@ -16,7 +16,7 @@ from django.db.models import Q
 from dateutil.relativedelta import relativedelta
 from apps.core.models import PeriodicityChoices
 from apps.products.models import ProductClass
-from .models import Customer, CommercialBenefit, CustomerAgreement, AgreementTypeChoices
+from .models import Customer, CommercialBenefit, CustomerAgreement, AgreementTypeChoices, EvaluationModeChoices
 from .services.customer_agreements import parse_month_input
 
 from .services import (
@@ -776,6 +776,7 @@ def customer_agreement_create_view(request):
                     customer_id=form.cleaned_data['customer'].pk,
                     benefit_id=form.cleaned_data['benefit'].pk,
                     agreement_type=form.cleaned_data['agreement_type'],
+                    evaluation_mode=form.cleaned_data.get('evaluation_mode', EvaluationModeChoices.PERIODIC),
                     start_date=form.cleaned_data['start_date'],
                     end_date=form.cleaned_data['end_date'],
                     global_target_amount=form.cleaned_data['global_target_amount'],
@@ -955,6 +956,7 @@ def customer_agreement_preview_view(request):
 
     benefit_id = data.get('benefit')
     agreement_type = data.get('agreement_type', AgreementTypeChoices.SHORT_TERM)
+    evaluation_mode = data.get('evaluation_mode', EvaluationModeChoices.PERIODIC)
     start_date = data.get('start_date')
     end_date = data.get('end_date')
     target_frequency = data.get('target_frequency', PeriodicityChoices.MONTHLY)
@@ -1021,6 +1023,7 @@ def customer_agreement_preview_view(request):
             customer_id=customer_id,
             benefit_id=int(benefit_id),
             agreement_type=agreement_type,
+            evaluation_mode=evaluation_mode,
             start_date=start_date,
             end_date=end_date,
             global_target_amount=Decimal(str(global_target)),

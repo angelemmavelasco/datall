@@ -125,6 +125,13 @@ Convenio comercial: {{ agreement.doc_id }}
             {{ agreement.get_target_frequency_display|title }}
         </div>
 
+        <span class="text-title">Modalidad de corte</span>
+        <div class="text-title">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs {% if agreement.evaluation_mode == 'at_end' %}bg-sky-500/10 text-sky-500 border border-sky-500/20{% else %}bg-primary/10 text-primary border border-primary/20{% endif %}">
+                {{ agreement.get_evaluation_mode_display }}
+            </span>
+        </div>
+
         <span class="text-title">Penalización</span>
         <div class="text-title font-mono">
             $ {{ agreement.penalty_amount|floatformat:2|intcomma }}
@@ -352,6 +359,11 @@ Convenio comercial: {{ agreement.doc_id }}
                 <tr>
                     <td class="p-2 truncate text-center font-mono">
                         {{ p.period_number }}
+                        {% if p.is_informative %}
+                            <span class="block text-[10px] text-sky-500 font-sans">Guía</span>
+                        {% elif agreement.evaluation_mode == 'at_end' %}
+                            <span class="block text-[10px] text-emerald-500 font-sans font-bold">Cierre final</span>
+                        {% endif %}
                     </td>
                     <td class="p-2 truncate text-center font-mono">
                         {{ p.start_date|date:"m/Y" }} - {{ p.end_date|date:"m/Y" }}
@@ -387,18 +399,30 @@ Convenio comercial: {{ agreement.doc_id }}
                     </td>
                     {% endif %}
                     <td class="p-2 truncate text-center">
-                        {% if p.status == 'achieved' or p.status == 'ACHIEVED' or p.status == 'COMPLETED' %}
-                            <span class="text-emerald-500">Cumplido</span>
-                        {% elif p.status == 'failed' or p.status == 'FAILED' %}
-                            <span class="text-red-500">No cumplido</span>
-                        {% elif p.status == 'evaluating' or p.status == 'EVALUATING' %}
-                            <span class="text-amber-500">En evaluación</span>
+                        {% if p.is_informative %}
+                            {% if p.status == 'achieved' or p.status == 'ACHIEVED' or p.status == 'COMPLETED' %}
+                                <span class="text-emerald-500">Meta lograda</span>
+                            {% elif p.status == 'failed' or p.status == 'FAILED' %}
+                                <span class="text-amber-500">Por debajo</span>
+                            {% else %}
+                                <span class="text-secondary">En curso</span>
+                            {% endif %}
                         {% else %}
-                            <span class="text-secondary">Pendiente</span>
+                            {% if p.status == 'achieved' or p.status == 'ACHIEVED' or p.status == 'COMPLETED' %}
+                                <span class="text-emerald-500">Cumplido</span>
+                            {% elif p.status == 'failed' or p.status == 'FAILED' %}
+                                <span class="text-red-500">No cumplido</span>
+                            {% elif p.status == 'evaluating' or p.status == 'EVALUATING' %}
+                                <span class="text-amber-500">En evaluación</span>
+                            {% else %}
+                                <span class="text-secondary">Pendiente</span>
+                            {% endif %}
                         {% endif %}
                     </td>
                     <td class="p-2 truncate text-right font-mono">
-                        {% if p.penalty_applied %}
+                        {% if p.is_informative %}
+                            <span class="text-secondary" title="Informativo - No aplica penalización">-</span>
+                        {% elif p.penalty_applied %}
                             <span class="text-red-500">$ {{ agreement.penalty_amount|floatformat:2|intcomma }}</span>
                         {% else %}
                             <span class="text-secondary">-</span>

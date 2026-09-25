@@ -178,7 +178,7 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- Documento adjunto -->
+        <!-- doc adjunto -->
         <span class="text-title flex items-center gap-1">Documento adjunto</span>
         <div>
             {% render_field form.related_doc class='w-full bg-page border border-border rounded p-1 text-xs text-secondary file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:bg-container file:text-title hover:file:bg-hover cursor-pointer' %}
@@ -194,7 +194,7 @@ Nuevo convenio comercial
     <hr class="border-border border">
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
-        <!-- Cuota global base -->
+        <!-- obj global base -->
         <span class="text-title flex items-center gap-1">Cuota global ($)
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -213,7 +213,7 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- Frecuencia de evaluación -->
+        <!-- freq de evaluación -->
         <span class="text-title flex items-center gap-1">Frecuencia de evaluación
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -227,6 +227,25 @@ Nuevo convenio comercial
             {% render_field form.target_frequency class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title' required='required' %}
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.target_frequency.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <!-- modo de corte / penalización -->
+        <span class="text-title flex items-center gap-1">Modalidad de corte
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="text-red-500 lucide lucide-asterisk-icon lucide-asterisk">
+                <path d="M12 6v12" />
+                <path d="M17.196 9 6.804 15" />
+                <path d="m6.804 9 10.392 6" />
+            </svg>
+        </span>
+        <div>
+            {% render_field form.evaluation_mode class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title' required='required' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.evaluation_mode.errors %}
                 <span class="block">• {{ error }}</span>
                 {% endfor %}
             </p>

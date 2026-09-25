@@ -222,6 +222,11 @@ class AgreementTypeChoices(models.TextChoices):
     LONG_TERM = 'lt', 'Largo plazo'
 
 
+class EvaluationModeChoices(models.TextChoices):
+    PERIODIC = 'periodic', 'Corte por periodo (penalización periódica)'
+    AT_END = 'at_end', 'Corte al término (seguimiento de comportamiento)'
+
+
 class CustomerAgreement(models.Model):
     customer = models.ForeignKey(
         'Customer',
@@ -252,6 +257,12 @@ class CustomerAgreement(models.Model):
         choices=AgreementTypeChoices.choices,
         default=AgreementTypeChoices.SHORT_TERM,
         help_text='Clasificación de plazo del convenio'
+    )
+    evaluation_mode = models.CharField(
+        max_length=10,
+        choices=EvaluationModeChoices.choices,
+        default=EvaluationModeChoices.PERIODIC,
+        help_text='Modalidad de corte: por periodo o acumulada al término del convenio'
     )
     start_date = models.DateField(help_text='Fecha de inicio del convenio (primer día del mes)')
     end_date = models.DateField(null=True, blank=True, help_text='Fecha de fin del convenio (último día del mes)')
@@ -340,7 +351,7 @@ class CustomerAgreement(models.Model):
             original = CustomerAgreement.objects.get(pk=self.pk)
             immutable_fields = [
                 'customer_id', 'route_id', 'benefit_id', 'doc_id',
-                'agreement_type', 'start_date', 'end_date', 'global_target_amount',
+                'agreement_type', 'evaluation_mode', 'start_date', 'end_date', 'global_target_amount',
                 'target_frequency', 'penalty_amount',
                 'growth_value', 'growth_frequency', 'margin_warning_accepted'
             ]
@@ -455,6 +466,10 @@ class AgreementEvaluationPeriod(models.Model):
     penalty_applied = models.BooleanField(
         default=False,
         help_text='Indica si se aplicó penalización por incumplimiento'
+    )
+    is_informative = models.BooleanField(
+        default=False,
+        help_text='Indica si el periodo es para seguimiento mensual informativo sin penalización'
     )
     observations = models.TextField(blank=True, default='', help_text='Detalles u observaciones del periodo')
 

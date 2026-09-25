@@ -251,6 +251,7 @@ class CustomerAgreementAdmin(admin.ModelAdmin):
         'route',
         'benefit',
         'agreement_type',
+        'evaluation_mode',
         'start_date',
         'end_date',
         'global_target_amount',
@@ -262,6 +263,7 @@ class CustomerAgreementAdmin(admin.ModelAdmin):
     )
     list_filter = (
         'agreement_type',
+        'evaluation_mode',
         'target_frequency',
         'signed',
         'benefit_already_provided',
@@ -291,6 +293,7 @@ class CustomerAgreementAdmin(admin.ModelAdmin):
                 'benefit',
                 'doc_id',
                 'agreement_type',
+                'evaluation_mode',
                 'start_date',
                 'end_date',
                 'global_target_amount',
@@ -316,8 +319,9 @@ class AgreementEvaluationPeriodAdmin(admin.ModelAdmin):
         'period_profit',
         'status',
         'penalty_applied',
+        'is_informative',
     )
-    list_filter = ('status', 'penalty_applied', 'start_date', 'end_date')
+    list_filter = ('status', 'penalty_applied', 'is_informative', 'start_date', 'end_date')
     search_fields = (
         'agreement__doc_id',
         'agreement__customer__id',

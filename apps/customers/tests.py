@@ -18,6 +18,7 @@ from apps.customers.models import (
     AgreementEvaluationPeriod,
     PeriodStatusChoices,
     CustomerClassMargin,
+    EvaluationModeChoices,
 )
 from apps.customers.services.customer_agreements import (
     CustomerAgreementsService,
@@ -201,6 +202,9 @@ class CustomerAgreementViewsTests(TestCase):
             cost=Decimal('4500.00'),
             is_active=True,
         )
+
+        self.category = ProductCategory.objects.create(id='CAT_VIEWS', name='Categoría Pruebas')
+        self.product_class = ProductClass.objects.create(id='PC_VIEWS', name='Clase Pruebas', product_category=self.category)
 
         self.service = CustomerAgreementsService(user=self.user)
         self.agreement = self.service.create_customer_agreement(
@@ -676,7 +680,7 @@ class CustomerAgreementViewsTests(TestCase):
             }],
         )
         self.assertEqual(preview['total_periods'], 1)
-        self.assertEqual(preview['target_frequency_name'], 'al término del convenio')
+        self.assertEqual(preview['target_frequency_name'], 'al término')
         self.assertEqual(len(preview['period_columns']), 1)
         self.assertEqual(preview['period_columns'][0]['start_date'], start_d)
         self.assertEqual(preview['period_columns'][0]['end_date'], end_d)
@@ -704,6 +708,54 @@ class CustomerAgreementViewsTests(TestCase):
         self.assertEqual(period1.end_date, end_d)
         self.assertEqual(period1.expected_global_target, Decimal('310000.00'))
         self.assertEqual(period1.amortized_benefit_cost, self.benefit.cost)
+
+    def test_evaluation_mode_at_end_creates_informative_and_closing_periods(self):
+        
+        start_d = date(2026, 1, 1)
+        end_d = date(2026, 3, 31)
+
+        agreement = self.service.create_customer_agreement(
+            customer_id=self.customer.id,
+            benefit_id=self.benefit.id,
+            start_date=start_d,
+            end_date=end_d,
+            target_frequency=PeriodicityChoices.MONTHLY,
+            evaluation_mode=EvaluationModeChoices.AT_END,
+            global_target_amount=Decimal('50000.00'),
+            penalty_amount=Decimal('5000.00'),
+            participating_classes_data=[{
+                'product_class_id': self.product_class.id,
+                'is_mandatory': True,
+                'required_target': Decimal('20000.00'),
+            }],
+        )
+        self.assertEqual(agreement.evaluation_mode, EvaluationModeChoices.AT_END)
+        
+        periods = list(agreement.evaluation_periods.order_by('period_number'))
+        self.assertEqual(len(periods), 4)
+
+        
+        for p in periods[:3]:
+            self.assertTrue(p.is_informative)
+            self.assertEqual(p.expected_global_target, Decimal('50000.00'))
+
+        
+        closing = periods[3]
+        self.assertFalse(closing.is_informative)
+        self.assertEqual(closing.period_number, 4)
+        self.assertEqual(closing.start_date, start_d)
+        self.assertEqual(closing.end_date, end_d)
+        self.assertEqual(closing.expected_global_target, Decimal('150000.00'))  
+
+        
+        
+        periods[0].end_date = date(2026, 1, 31)
+        periods[0].save()
+        self.service.evaluate_pending_periods(agreement_id=agreement.id)
+        periods[0].refresh_from_db()
+        self.assertEqual(periods[0].status, PeriodStatusChoices.FAILED)
+        self.assertFalse(periods[0].penalty_applied)
+
 
 
 

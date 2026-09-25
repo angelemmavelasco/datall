@@ -1566,6 +1566,12 @@
   .border-rose-700 {
     border-color: var(--color-rose-700);
   }
+  .border-sky-500\/20 {
+    border-color: color-mix(in srgb, oklch(68.5% 0.169 237.323) 20%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-sky-500) 20%, transparent);
+    }
+  }
   .border-sky-700 {
     border-color: var(--color-sky-700);
   }
@@ -1859,6 +1865,12 @@
   }
   .bg-sky-200 {
     background-color: var(--color-sky-200);
+  }
+  .bg-sky-500\/10 {
+    background-color: color-mix(in srgb, oklch(68.5% 0.169 237.323) 10%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-sky-500) 10%, transparent);
+    }
   }
   .bg-slate-500 {
     background-color: var(--color-slate-500);
