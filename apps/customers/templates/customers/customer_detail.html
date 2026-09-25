@@ -156,6 +156,99 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
     </div>
 
     <div class="flex justify-between items-center pb-2 border-b border-border">
+        <p class="text-title">Historial de convenios comerciales</p>
+        {% if can_create_agreement %}
+            <a href="{% url 'customers:customer_agreement_create_view' %}?customer={{ customer.pk }}" class="hover:text-hover transition-colors flex items-center gap-1 text-xs text-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-plus">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 12h8"/>
+                    <path d="M12 8v8"/>
+                </svg>
+                <span>Nuevo convenio</span>
+            </a>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title md:col-span-2">{{ customer_agreements|length|default:0|floatformat:0|intcomma }} convenio(s) registrado(s)</span>
+
+        <ul class="md:col-span-2 w-full max-h-72 overflow-y-auto rounded bg-page p-1 flex flex-col gap-2 border border-border">
+            {% for agr in customer_agreements %}
+                <li class="pb-2 border-b border-border last:border-b-0 last:pb-0">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <a href="{% url 'customers:customer_agreement_detail_view' agr.pk %}" class="underline hover:text-hover transition-colors font-mono font-semibold text-body text-xs" title="Ver detalle del convenio">
+                                Folio: {{ agr.doc_id }}
+                            </a>
+                            <span class="text-title text-xs font-medium">
+                                · {{ agr.benefit.name|title }}
+                            </span>
+                            <span class="text-[10px] text-secondary font-mono">
+                                (${{ agr.benefit.cost|floatformat:2|intcomma }} MXN)
+                            </span>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            {% now "Y-m-d" as current_date_str %}
+                            {% if agr.end_date and agr.end_date|date:"Y-m-d" < current_date_str %}
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-container border border-border text-secondary">Concluido</span>
+                            {% elif agr.start_date|date:"Y-m-d" > current_date_str %}
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-500 font-medium">Próximo</span>
+                            {% else %}
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 font-medium">Vigente</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <p class="text-[10px] text-hover mt-1">
+                        • Vigencia: {{ agr.start_date|date:'d M Y' }} - {{ agr.end_date|date:'d M Y'|default:'Indefinido' }}
+                        • Cuota base: ${{ agr.global_target_amount|floatformat:2|intcomma }} ({{ agr.get_target_frequency_display|lower }})
+                        • Modalidad: {{ agr.get_evaluation_mode_display }}
+                        {% if agr.route %}
+                            • Ruta: {{ agr.route.id|upper }} - {{ agr.route.name|title }}
+                        {% endif %}
+                        {% if agr.signed %}
+                            • <span class="text-emerald-500 font-medium">Firmado</span>
+                        {% else %}
+                            • <span class="text-amber-500 font-medium">Sin firmar</span>
+                        {% endif %}
+                        {% if agr.benefit_already_provided %}
+                            • <span class="text-emerald-500 font-medium">Beneficio entregado</span>
+                        {% else %}
+                            • <span class="text-secondary">Beneficio pendiente</span>
+                        {% endif %}
+                    </p>
+
+                    <div class="flex items-center justify-between gap-2 mt-2 pt-1.5 border-t border-border/40">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            {% if agr.related_doc %}
+                                <a href="{{ agr.related_doc.url }}" target="_blank" rel="noopener noreferrer" download class="inline-flex items-center gap-1 text-[11px] text-strong hover:text-hover border border-border bg-container px-2 py-0.5 rounded transition-colors" title="Descargar documento probatorio o anexo firmado">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-paperclip"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                    <span>Descargar documento</span>
+                                </a>
+                            {% endif %}
+
+                            <button type="button" onclick="openAgreementContractModal('{{ agr.pk }}', '{{ agr.doc_id }}')" class="inline-flex items-center gap-1 text-[11px] text-strong hover:text-hover border border-border bg-container px-2 py-0.5 rounded transition-colors cursor-pointer" title="Ver / imprimir o descargar contrato comercial">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                                <span>Ver contrato</span>
+                            </button>
+                        </div>
+
+                        <a href="{% url 'customers:customer_agreement_detail_view' agr.pk %}" class="inline-flex items-center gap-1 text-[11px] text-secondary hover:text-hover transition-colors font-medium">
+                            <span>Ver detalle</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        </a>
+                    </div>
+                </li>
+            {% empty %}
+                <li class="py-4">
+                    {% include 'layouts/data_not_found.html' %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="flex justify-between items-center pb-2 border-b border-border">
         <p class="text-title">Perfil geográfico y ubicación</p>
         {% if can_edit_customer or can_edit_partially %}
             <a href="{% url 'customers:customer_update_view' customer.pk %}" class="hover:text-hover transition-colors flex items-center gap-1 text-xs text-secondary">
@@ -672,5 +765,81 @@ document.addEventListener('keydown', function(e) {
     </div>
 </div>
 {% endif %}
+
+<!-- modal para formato imprimible y descarga de contrato comercial -->
+<div id="contractModal" class="fixed inset-0 z-50 bg-black/60 hidden items-center justify-center p-4 overflow-y-auto" onclick="if(event.target === this) closeAgreementContractModal();">
+    <div class="bg-container border border-border rounded max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-xl relative">
+        <div class="sticky top-0 bg-container border-b border-border p-2 flex items-center justify-between z-10 print:hidden">
+            <span class="text-title text-sm font-medium" id="contractModalTitle">Contrato comercial</span>
+            <button type="button" onclick="closeAgreementContractModal()" class="text-secondary hover:text-hover cursor-pointer p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+
+        <div id="contractModalContent" class="p-4">
+            <div class="p-8 text-center text-xs text-secondary italic">
+                Cargando formato contractual...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const contractPreviewUrl = "{% url 'customers:customer_agreement_preview_view' %}";
+
+function openAgreementContractModal(agreementId, docId) {
+    const modal = document.getElementById('contractModal');
+    const modalContent = document.getElementById('contractModalContent');
+    const titleSpan = document.getElementById('contractModalTitle');
+    if (!modal || !modalContent) return;
+
+    if (titleSpan) {
+        titleSpan.textContent = docId ? `Contrato comercial · Folio: ${docId}` : "Contrato comercial";
+    }
+
+    modalContent.innerHTML = `
+        <div class="p-8 text-center text-xs text-secondary italic flex items-center justify-center gap-2">
+            <svg class="animate-spin h-4 w-4 text-current inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Cargando formato contractual...</span>
+        </div>
+    `;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    if (window.htmx) {
+        htmx.ajax('GET', `${contractPreviewUrl}?agreement_id=${agreementId}`, {
+            target: '#contractModalContent',
+            swap: 'innerHTML'
+        });
+    } else {
+        fetch(`${contractPreviewUrl}?agreement_id=${agreementId}`)
+            .then(res => res.text())
+            .then(html => {
+                modalContent.innerHTML = html;
+            })
+            .catch(err => {
+                modalContent.innerHTML = `<div class="p-4 text-xs text-red-500">Error al cargar el contrato: ${err}</div>`;
+            });
+    }
+}
+
+function closeAgreementContractModal() {
+    const modal = document.getElementById('contractModal');
+    if (modal) {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeAgreementContractModal();
+    }
+});
+</script>
 
 {% endblock %}

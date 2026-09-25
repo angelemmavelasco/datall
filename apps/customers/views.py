@@ -169,6 +169,14 @@ def customer_detail_view(request, pk: str):
 
     transactions_url = f"{reverse('sales:sale_transaction_list_view')}?{tx_query_dict.urlencode()}"
 
+    agr_service = CustomerAgreementsService(user=request.user)
+    customer_agreements = (
+        agr_service.get_allowed_agreements()
+        .filter(customer=customer)
+        .select_related('benefit', 'route')
+        .order_by('-start_date', '-id')
+    )
+
     context = {
         'customer': customer,
         'filter': profile_filter,
@@ -177,10 +185,12 @@ def customer_detail_view(request, pk: str):
         'can_edit_customer': service.has_full_access,
         'can_edit_partially': can_edit_partially,
         'can_edit_geo_profile': can_edit_partially,
+        'can_create_agreement': agr_service.has_full_access,
         'customer_notes': customer_notes,
         'note_form': note_form,
         'customer_contacts': customer_contacts,
         'contact_form': contact_form,
+        'customer_agreements': customer_agreements,
     }
     return render(request, template, context)
 
@@ -945,31 +955,62 @@ def customer_agreement_preview_view(request):
     service = CustomerAgreementsService(user=request.user)
     data = request.POST if request.method == 'POST' else request.GET
 
-    customer_id = data.get('customer') or data.get('q')
-    if customer_id:
-        customer_id = str(customer_id).strip()
-        cust_match = Customer.objects.filter(Q(id=customer_id) | Q(name__iexact=customer_id)).first()
-        if not cust_match and len(customer_id) > 2:
-            cust_match = Customer.objects.filter(Q(id__icontains=customer_id) | Q(name__icontains=customer_id)).first()
-        if cust_match:
-            customer_id = cust_match.id
-
-    benefit_id = data.get('benefit')
-    agreement_type = data.get('agreement_type', AgreementTypeChoices.SHORT_TERM)
-    evaluation_mode = data.get('evaluation_mode', EvaluationModeChoices.PERIODIC)
-    start_date = data.get('start_date')
-    end_date = data.get('end_date')
-    target_frequency = data.get('target_frequency', PeriodicityChoices.MONTHLY)
-    global_target = data.get('global_target_amount')
-    growth_value = data.get('growth_value') or '0'
-    growth_frequency = data.get('growth_frequency')
-    penalty_amount = data.get('penalty_amount') or '0'
-    route_id = data.get('route') or data.get('route_id')
-    doc_id = data.get('doc_id')
-    if doc_id and str(doc_id).strip():
-        doc_id = str(doc_id).strip().upper()
+    agreement_id = data.get('agreement_id') or data.get('agreement')
+    participating_classes_data = None
+    if agreement_id:
+        agr = CustomerAgreement.objects.filter(pk=agreement_id).first()
+        if agr:
+            customer_id = agr.customer_id
+            benefit_id = agr.benefit_id
+            agreement_type = agr.agreement_type
+            evaluation_mode = agr.evaluation_mode
+            start_date = agr.start_date.strftime('%Y-%m') if agr.start_date else None
+            end_date = agr.end_date.strftime('%Y-%m') if agr.end_date else None
+            target_frequency = agr.target_frequency
+            global_target = agr.global_target_amount
+            growth_value = agr.growth_value
+            growth_frequency = agr.growth_frequency
+            penalty_amount = agr.penalty_amount
+            route_id = agr.route_id
+            doc_id = agr.doc_id
+            participating_classes_data = [
+                {
+                    'product_class_id': ct.product_class_id,
+                    'is_mandatory': ct.is_mandatory,
+                    'required_target': ct.required_target,
+                }
+                for ct in agr.class_targets.select_related('product_class')
+            ]
+        else:
+            return render(request, 'customers/customer_agreements/partials/agreement_preview.html', {
+                'error': f"Convenio #{agreement_id} no encontrado.",
+            })
     else:
-        doc_id = service.generate_random_doc_id()
+        customer_id = data.get('customer') or data.get('q')
+        if customer_id:
+            customer_id = str(customer_id).strip()
+            cust_match = Customer.objects.filter(Q(id=customer_id) | Q(name__iexact=customer_id)).first()
+            if not cust_match and len(customer_id) > 2:
+                cust_match = Customer.objects.filter(Q(id__icontains=customer_id) | Q(name__icontains=customer_id)).first()
+            if cust_match:
+                customer_id = cust_match.id
+
+        benefit_id = data.get('benefit')
+        agreement_type = data.get('agreement_type', AgreementTypeChoices.SHORT_TERM)
+        evaluation_mode = data.get('evaluation_mode', EvaluationModeChoices.PERIODIC)
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        target_frequency = data.get('target_frequency', PeriodicityChoices.MONTHLY)
+        global_target = data.get('global_target_amount')
+        growth_value = data.get('growth_value') or '0'
+        growth_frequency = data.get('growth_frequency')
+        penalty_amount = data.get('penalty_amount') or '0'
+        route_id = data.get('route') or data.get('route_id')
+        doc_id = data.get('doc_id')
+        if doc_id and str(doc_id).strip():
+            doc_id = str(doc_id).strip().upper()
+        else:
+            doc_id = service.generate_random_doc_id()
 
     missing_fields = []
     if not customer_id:
@@ -988,26 +1029,26 @@ def customer_agreement_preview_view(request):
             'error': f"Para generar el previo, completa los siguientes campos: {', '.join(missing_fields)}.",
         })
 
-    participating_class_ids = data.getlist('participating_classes')
-    if not participating_class_ids and data.get('participating_classes_json'):
-        try:
-            participating_class_ids = json.loads(data.get('participating_classes_json'))
-        except Exception:
-            participating_class_ids = []
-
-    mandatory_class_ids = set(data.getlist('mandatory_classes'))
-    mandatory_targets = {}
-    for key, val in data.items():
-        if key.startswith('mandatory_target_') and val:
+    if participating_classes_data is None:
+        participating_class_ids = data.getlist('participating_classes')
+        if not participating_class_ids and data.get('participating_classes_json'):
             try:
-                cid = key.replace('mandatory_target_', '')
-                amt = Decimal(str(val))
-                if amt > 0:
-                    mandatory_targets[cid] = amt
+                participating_class_ids = json.loads(data.get('participating_classes_json'))
             except Exception:
-                pass
+                participating_class_ids = []
 
-    try:
+        mandatory_class_ids = set(data.getlist('mandatory_classes'))
+        mandatory_targets = {}
+        for key, val in data.items():
+            if key.startswith('mandatory_target_') and val:
+                try:
+                    cid = key.replace('mandatory_target_', '')
+                    amt = Decimal(str(val))
+                    if amt > 0:
+                        mandatory_targets[cid] = amt
+                except Exception:
+                    pass
+
         participating_classes_data = []
         for p_id in participating_class_ids:
             p_id_str = str(p_id)
@@ -1019,6 +1060,7 @@ def customer_agreement_preview_view(request):
                 'required_target': req_target,
             })
 
+    try:
         preview_data = service.generate_agreement_preview(
             customer_id=customer_id,
             benefit_id=int(benefit_id),

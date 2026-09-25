@@ -800,6 +800,42 @@ class CustomerAgreementViewsTests(TestCase):
         self.assertIn('al finalizar el convenio</strong> sobre el acumulado total comprometido', content_at_end)
         self.assertIn('Penalización al término del convenio:', content_at_end)
 
+    def test_customer_detail_view_shows_agreement_history(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        fake_file = SimpleUploadedFile("contrato_anexo.pdf", b"%PDF-1.4 dummy", content_type="application/pdf")
+        self.agreement.related_doc = fake_file
+        self.agreement.save()
+
+        url = reverse('customers:customer_detail_view', kwargs={'pk': self.customer.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+
+        self.assertIn("Historial de convenios comerciales", content)
+        self.assertIn(self.agreement.doc_id, content)
+        self.assertIn(self.benefit.name.title(), content)
+        self.assertIn(reverse('customers:customer_agreement_detail_view', kwargs={'pk': self.agreement.pk}), content)
+        self.assertIn("Descargar documento", content)
+        self.assertIn("Ver contrato", content)
+        self.assertIn("openAgreementContractModal", content)
+
+    def test_customer_agreement_preview_view_by_agreement_id(self):
+        url = reverse('customers:customer_agreement_preview_view')
+        response = self.client.get(f"{url}?agreement_id={self.agreement.pk}")
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+
+        self.assertIn("Vista previa de contrato comercial", content)
+        self.assertIn(self.agreement.doc_id, content)
+        self.assertIn(self.customer.name.upper(), content)
+        self.assertIn(self.benefit.name.title(), content)
+
+        # Caso id inexistente
+        res_error = self.client.get(f"{url}?agreement_id=999999")
+        self.assertEqual(res_error.status_code, 200)
+        self.assertIn("Convenio #999999 no encontrado.", res_error.content.decode())
+
+
 
 
 
