@@ -241,36 +241,23 @@ def customer_create_view(request):
         assignments_formset = CustomerAssignmentFormSet(request.POST, prefix='assignments')
         class_margins_formset = CustomerClassMarginFormSet(request.POST, prefix='class_margins')
         geo_form = CustomerGeoProfileForm(request.POST)
-        visit_schedule_form = CustomerVisitScheduleForm(request.POST, prefix='visit_schedule', allow_empty=True)
 
         if (
             form.is_valid()
             and assignments_formset.is_valid()
             and class_margins_formset.is_valid()
             and geo_form.is_valid()
-            and visit_schedule_form.is_valid()
         ):
             try:
                 assignments_data = [f.cleaned_data for f in assignments_formset if f.cleaned_data]
                 class_margins_data = [f.cleaned_data for f in class_margins_formset if f.cleaned_data]
                 geo_data = geo_form.cleaned_data if any(geo_form.cleaned_data.values()) else None
-                days_checked = any([
-                    visit_schedule_form.cleaned_data.get('visit_monday'),
-                    visit_schedule_form.cleaned_data.get('visit_tuesday'),
-                    visit_schedule_form.cleaned_data.get('visit_wednesday'),
-                    visit_schedule_form.cleaned_data.get('visit_thursday'),
-                    visit_schedule_form.cleaned_data.get('visit_friday'),
-                    visit_schedule_form.cleaned_data.get('visit_saturday'),
-                    visit_schedule_form.cleaned_data.get('visit_sunday'),
-                ])
-                visit_schedule_data = visit_schedule_form.cleaned_data if days_checked else None
 
                 new_customer = service.create_customer(
                     customer_data=form.cleaned_data,
                     assignments_data=assignments_data,
                     class_margins_data=class_margins_data,
                     geo_profile_data=geo_data,
-                    visit_schedule_data=visit_schedule_data,
                 )
                 messages.success(request, f'Cliente {new_customer.id} registrado correctamente.')
                 next_url = request.GET.get('next') or request.POST.get('next')
@@ -296,14 +283,12 @@ def customer_create_view(request):
         assignments_formset = CustomerAssignmentFormSet(prefix='assignments')
         class_margins_formset = CustomerClassMarginFormSet(prefix='class_margins')
         geo_form = CustomerGeoProfileForm()
-        visit_schedule_form = CustomerVisitScheduleForm(prefix='visit_schedule', allow_empty=True)
 
     context = {
         'form': form,
         'assignments_formset': assignments_formset,
         'class_margins_formset': class_margins_formset,
         'geo_form': geo_form,
-        'visit_schedule_form': visit_schedule_form,
         'can_update_access': service.has_full_access,
         'can_edit_customer': True,
         'can_edit_partially': True,
@@ -342,28 +327,15 @@ def customer_update_view(request, pk: str):
 
     if request.method == 'POST':
         if not can_edit_full and can_edit_partially:
-            # user with partial access: can edit customer geo profile and visit schedule
+            # user with partial access: can edit customer geo profile
             geo_form = CustomerGeoProfileForm(request.POST, instance=geo_profile_instance)
-            visit_schedule_form = CustomerVisitScheduleForm(request.POST, prefix='visit_schedule', allow_empty=True)
-            if geo_form.is_valid() and visit_schedule_form.is_valid():
+            if geo_form.is_valid():
                 try:
                     if geo_form.has_changed():
                         service.update_or_create_geo_profile(
                             customer=customer_instance,
                             geo_data=geo_form.cleaned_data,
                         )
-                    days_checked = any([
-                        visit_schedule_form.cleaned_data.get('visit_monday'),
-                        visit_schedule_form.cleaned_data.get('visit_tuesday'),
-                        visit_schedule_form.cleaned_data.get('visit_wednesday'),
-                        visit_schedule_form.cleaned_data.get('visit_thursday'),
-                        visit_schedule_form.cleaned_data.get('visit_friday'),
-                        visit_schedule_form.cleaned_data.get('visit_saturday'),
-                        visit_schedule_form.cleaned_data.get('visit_sunday'),
-                    ])
-                    if days_checked:
-                        v_copy = dict(visit_schedule_form.cleaned_data)
-                        service.set_customer_visit_schedule(customer=customer_instance, **v_copy)
 
                     messages.success(request, f"Datos del cliente {customer_instance.id} actualizados correctamente.")
                     return redirect('customers:customer_detail_view', pk=customer_instance.pk)
@@ -381,7 +353,7 @@ def customer_update_view(request, pk: str):
             class_margins_formset = CustomerClassMarginFormSet(instance=customer_instance, prefix='class_margins')
 
         else:
-            # full access can edit customer, assignments, margins, geo profile and visit schedule
+            # full access can edit customer, assignments, margins, geo profile
             form = CustomerForm(request.POST, instance=customer_instance)
             assignments_formset = CustomerAssignmentFormSet(
                 request.POST, instance=customer_instance, prefix='assignments'
@@ -390,29 +362,17 @@ def customer_update_view(request, pk: str):
                 request.POST, instance=customer_instance, prefix='class_margins'
             )
             geo_form = CustomerGeoProfileForm(request.POST, instance=geo_profile_instance)
-            visit_schedule_form = CustomerVisitScheduleForm(request.POST, prefix='visit_schedule', allow_empty=True)
 
             if (
                 form.is_valid()
                 and assignments_formset.is_valid()
                 and class_margins_formset.is_valid()
                 and geo_form.is_valid()
-                and visit_schedule_form.is_valid()
             ):
                 try:
                     assignments_data = [f.cleaned_data for f in assignments_formset if f.cleaned_data]
                     class_margins_data = [f.cleaned_data for f in class_margins_formset if f.cleaned_data]
                     geo_data = geo_form.cleaned_data
-                    days_checked = any([
-                        visit_schedule_form.cleaned_data.get('visit_monday'),
-                        visit_schedule_form.cleaned_data.get('visit_tuesday'),
-                        visit_schedule_form.cleaned_data.get('visit_wednesday'),
-                        visit_schedule_form.cleaned_data.get('visit_thursday'),
-                        visit_schedule_form.cleaned_data.get('visit_friday'),
-                        visit_schedule_form.cleaned_data.get('visit_saturday'),
-                        visit_schedule_form.cleaned_data.get('visit_sunday'),
-                    ])
-                    visit_schedule_data = visit_schedule_form.cleaned_data if days_checked else None
 
                     updated_customer = service.update_customer(
                         pk=pk,
@@ -420,7 +380,6 @@ def customer_update_view(request, pk: str):
                         assignments_data=assignments_data,
                         class_margins_data=class_margins_data,
                         geo_profile_data=geo_data,
-                        visit_schedule_data=visit_schedule_data,
                     )
                     messages.success(request, f"Cliente {updated_customer.id} actualizado correctamente.")
                     return redirect('customers:customer_detail_view', updated_customer.pk)
@@ -446,30 +405,12 @@ def customer_update_view(request, pk: str):
             instance=customer_instance, prefix='class_margins'
         )
         geo_form = CustomerGeoProfileForm(instance=geo_profile_instance)
-        current_schedule = service.get_current_visit_schedule(customer_instance)
-        initial_schedule = {}
-        if current_schedule:
-            initial_schedule = {
-                'periodicity': current_schedule.periodicity,
-                'visit_monday': current_schedule.visit_monday,
-                'visit_tuesday': current_schedule.visit_tuesday,
-                'visit_wednesday': current_schedule.visit_wednesday,
-                'visit_thursday': current_schedule.visit_thursday,
-                'visit_friday': current_schedule.visit_friday,
-                'visit_saturday': current_schedule.visit_saturday,
-                'visit_sunday': current_schedule.visit_sunday,
-                'start_date': current_schedule.start_date,
-                'end_date': current_schedule.end_date,
-                'notes': current_schedule.notes,
-            }
-        visit_schedule_form = CustomerVisitScheduleForm(initial=initial_schedule, prefix='visit_schedule', allow_empty=True)
 
     context = {
         'form': form,
         'assignments_formset': assignments_formset,
         'class_margins_formset': class_margins_formset,
         'geo_form': geo_form,
-        'visit_schedule_form': visit_schedule_form,
         'updating': customer_instance,
         'can_update_access': can_edit_full,
         'can_edit_customer': can_edit_full,

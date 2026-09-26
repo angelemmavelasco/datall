@@ -1053,12 +1053,11 @@ class CustomerVisitScheduleTests(TestCase):
         self.assertIn('Lunes cada 2 semanas', content_detail)
         self.assertIn('visitScheduleModal', content_detail)
 
-        # Formulario de edición
         res_form = client.get(reverse('customers:customer_update_view', kwargs={'pk': self.customer.pk}))
         self.assertEqual(res_form.status_code, 200)
         content_form = res_form.content.decode()
-        self.assertIn('Esquema de visitas comercial', content_form)
-        self.assertIn('visit_monday', content_form)
+        self.assertNotIn('Esquema de visitas comercial', content_form)
+        self.assertNotIn('id_visit_schedule-visit_monday', content_form)
 
 
 

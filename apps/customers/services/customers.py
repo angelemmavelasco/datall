@@ -613,7 +613,6 @@ class CustomersService(UsersService):
         assignments_data: list = None,
         class_margins_data: list = None,
         geo_profile_data: dict = None,
-        visit_schedule_data: dict = None,
         **kwargs
     ) -> Customer:
         """
@@ -661,19 +660,6 @@ class CustomersService(UsersService):
                         geo_data=geo_profile_data,
                     )
 
-                if visit_schedule_data and any([
-                    visit_schedule_data.get('visit_monday'),
-                    visit_schedule_data.get('visit_tuesday'),
-                    visit_schedule_data.get('visit_wednesday'),
-                    visit_schedule_data.get('visit_thursday'),
-                    visit_schedule_data.get('visit_friday'),
-                    visit_schedule_data.get('visit_saturday'),
-                    visit_schedule_data.get('visit_sunday'),
-                ]):
-                    v_copy = dict(visit_schedule_data)
-                    v_copy.pop('customer', None)
-                    self.set_customer_visit_schedule(customer=new_customer, **v_copy)
-
             return new_customer
 
         except ValidationError as e:
@@ -694,7 +680,6 @@ class CustomersService(UsersService):
         assignments_data: list = None,
         class_margins_data: list = None,
         geo_profile_data: dict = None,
-        visit_schedule_data: dict = None,
         **kwargs
     ) -> Customer:
         """
@@ -775,19 +760,6 @@ class CustomersService(UsersService):
                             new_margin = self.customer_class_margin_model(customer=customer_to_update, **margin_copy)
                             new_margin.full_clean()
                             new_margin.save()
-
-                if visit_schedule_data and any([
-                    visit_schedule_data.get('visit_monday'),
-                    visit_schedule_data.get('visit_tuesday'),
-                    visit_schedule_data.get('visit_wednesday'),
-                    visit_schedule_data.get('visit_thursday'),
-                    visit_schedule_data.get('visit_friday'),
-                    visit_schedule_data.get('visit_saturday'),
-                    visit_schedule_data.get('visit_sunday'),
-                ]):
-                    v_copy = dict(visit_schedule_data)
-                    v_copy.pop('customer', None)
-                    self.set_customer_visit_schedule(customer=customer_to_update, **v_copy)
 
                 if geo_profile_data is not None:
                     self.update_or_create_geo_profile(

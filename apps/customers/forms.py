@@ -489,8 +489,7 @@ class CustomerVisitScheduleForm(forms.ModelForm):
             'visit_sunday': forms.CheckboxInput(attrs={'class': 'rounded border-border text-strong focus:ring-strong'}),
         }
 
-    def __init__(self, *args, allow_empty: bool = False, **kwargs):
-        self.allow_empty = allow_empty
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.instance.pk and 'start_date' not in self.initial:
             self.initial['start_date'] = timezone.localdate()
@@ -520,8 +519,6 @@ class CustomerVisitScheduleForm(forms.ModelForm):
             cleaned_data.get('visit_sunday'),
         ]
         if not any(days):
-            if self.allow_empty:
-                return cleaned_data
             raise forms.ValidationError("Debes seleccionar al menos un día de la semana para la visita.")
 
         start_date = cleaned_data.get('start_date')
