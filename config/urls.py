@@ -3,7 +3,8 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from apps.analytics.views import(
-    sales_dashboard_view
+    sales_dashboard_view,
+    yearly_sale_breakdown_view
 )
 
 urlpatterns = [
@@ -18,6 +19,7 @@ urlpatterns = [
     
     #legacy urls
     path('business_intelligence/sales_dashboard', sales_dashboard_view, name='sales_dashboard_view'),
+    path('business_intelligence/sales_breakdown', yearly_sale_breakdown_view, name='yearly_sale_breakdown_view'),
 ]
 
 if settings.DEBUG:
