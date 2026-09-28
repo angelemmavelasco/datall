@@ -18,8 +18,8 @@ urlpatterns = [
     path('mapser/', include('apps.mapser.urls')),
     
     #legacy urls
-    path('business_intelligence/sales_dashboard', sales_dashboard_view, name='sales_dashboard_view'),
-    path('business_intelligence/sales_breakdown', yearly_sale_breakdown_view, name='yearly_sale_breakdown_view'),
+    path('business_intelligence/sales_dashboard/', sales_dashboard_view, name='sales_dashboard_view'),
+    path('business_intelligence/sales_breakdown/', yearly_sale_breakdown_view, name='yearly_sale_breakdown_view'),
 ]
 
 if settings.DEBUG:
