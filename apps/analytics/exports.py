@@ -18,12 +18,14 @@ from apps.sales.services.sale_transactions import SaleTransactionsService
 from apps.sales.services.sale_targets import SaleTargetsService
 from apps.human_resources.models import BusinessUnit
 from apps.customers.services.accounts_receivables import AccountsReceivablesService
-from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter, MonthlySaleBreakdownFilter, TargetAchievementFilter, YearlySaleBreakdownFilter
+from apps.products.services.stocks import StocksService
+from apps.analytics.filters import CustomerKpisFilter, CommercialRiskFilter, MonthlySaleBreakdownFilter, TargetAchievementFilter, YearlySaleBreakdownFilter, StockBreakdownFilter
 from apps.analytics.services.customer_kpis import CustomerKpisService, CustomerKpisExports
 from apps.analytics.services.commercial_risk import CommercialRiskService, CommercialRiskExports
 from apps.analytics.services.monthly_sale_breakdown import MonthlySaleBreakdownService, MonthlySaleBreakdownExports
 from apps.analytics.services.yearly_sale_breakdown import YearlySaleBreakdownService, YearlySaleBreakdownExports
 from apps.analytics.services.target_achievement import TargetAchievementService, TargetAchievementExports
+from apps.analytics.services.stock_breakdown import StockBreakdownService, StockBreakdownExports
 
 
 from time import perf_counter
@@ -530,6 +532,79 @@ def yearly_sale_breakdown_export_view(request):
     response = HttpResponse(
         file_bytes,
         content_type="text/csv; charset=utf-8"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Content-Length"] = len(file_bytes)
+    return response
+
+
+@login_required
+def stock_breakdown_export_view(request):
+    start = perf_counter()
+    user = request.user
+
+    req_data = request.GET.copy()
+    if not req_data.get('dimension'):
+        req_data['dimension'] = 'productcategory_productclass_product'
+
+    dimension = req_data.get('dimension', 'productcategory_productclass_product')
+
+    stocks_service = StocksService(user=user)
+    base_stock_qs = stocks_service.read_stocks()
+
+    filter_set = StockBreakdownFilter(req_data, queryset=base_stock_qs, request=request)
+    filtered_stock_qs = filter_set.qs
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+
+    breakdown_service = StockBreakdownService(
+        queryset=filtered_stock_qs,
+        dimension=dimension,
+        user=user,
+        cleaned_data=cleaned_data,
+    )
+
+    exports_service = StockBreakdownExports(breakdown_service=breakdown_service)
+    excel_file = exports_service.export_stock_breakdown_excel()
+    file_bytes = excel_file.getvalue()
+
+    timestamp_str = timezone.localtime().strftime('%Y%m%d_%H%M%S')
+    filename = f"reporte_desglose_existencias_{timestamp_str}.xlsx"
+
+    try:
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_reports')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_filename = f"{uuid.uuid4().hex}.xlsx"
+        temp_file_path = os.path.join(temp_dir, temp_filename)
+        with open(temp_file_path, 'wb') as f:
+            f.write(file_bytes)
+
+        serializable_cleaned_data = {k: _make_serializable(v) for k, v in cleaned_data.items()}
+        serializable_cleaned_data['dimension'] = dimension
+
+        report = GeneratedReport.objects.create(
+            user=user,
+            title="Reporte de Desglose de Existencias por Almacén",
+            module_name="stock_breakdown",
+            status=GeneratedReport.Status.PENDING,
+            filters=serializable_cleaned_data,
+            file_size=len(file_bytes),
+        )
+
+        async_task(
+            'apps.core.tasks.save_generated_report_file_task',
+            report.id,
+            temp_file_path,
+            filename,
+        )
+    except Exception as bg_err:
+        print(f"[STOCK BREAKDOWN EXPORT] Error queuing background persistence: {bg_err}", flush=True)
+
+    end = perf_counter()
+    print(f"Stock Breakdown direct export took {end - start:.2f} seconds")
+
+    response = HttpResponse(
+        file_bytes,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     response["Content-Length"] = len(file_bytes)

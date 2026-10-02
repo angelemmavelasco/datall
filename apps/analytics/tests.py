@@ -15,10 +15,14 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.analytics.filters import YearlySaleBreakdownFilter
+from apps.analytics.filters import YearlySaleBreakdownFilter, StockBreakdownFilter
 from apps.analytics.services.yearly_sale_breakdown import (
     YearlySaleBreakdownExports,
     YearlySaleBreakdownService,
+)
+from apps.analytics.services.stock_breakdown import (
+    StockBreakdownService,
+    StockBreakdownExports,
 )
 from apps.analytics.services.customer_kpis import (
     CustomerKpisService,
@@ -27,7 +31,7 @@ from apps.analytics.services.customer_kpis import (
 )
 from apps.customers.models import Customer, CustomerAssignment, CustomerType, CustomerAgreement, CommercialBenefit, AccountsReceivable
 from apps.human_resources.models import BusinessUnit
-from apps.products.models import Product, ProductClass, ProductCategory
+from apps.products.models import Product, ProductClass, ProductCategory, Stock
 from apps.sales.models import Route, RouteType, SaleChannel, SaleTransaction, Warehouse
 from apps.sales.services.sale_transactions import SaleTransactionsService
 
@@ -1066,6 +1070,98 @@ class CustomerKpisAgreementsTestCase(TestCase):
         self.assertIn(detail_url, rendered)
         self.assertIn('Ver convenios de Cliente Con Convenios Activos', rendered)
         self.assertIn('<span class="text-muted">0</span>', rendered)
+
+
+class StockBreakdownTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username='test_stock_user', password='password')
+
+        cls.cat1 = ProductCategory.objects.create(id='CAT1', name='Farmacia')
+        cls.cat2 = ProductCategory.objects.create(id='CAT2', name='Alimentos')
+
+        cls.class1 = ProductClass.objects.create(id='CLS1', name='Antibióticos', product_category=cls.cat1)
+        cls.class2 = ProductClass.objects.create(id='CLS2', name='Croquetas', product_category=cls.cat2)
+
+        cls.prod1 = Product.objects.create(id='P1', name='Amoxicilina', product_class=cls.class1)
+        cls.prod2 = Product.objects.create(id='P2', name='Cefalexina', product_class=cls.class1)
+        cls.prod3 = Product.objects.create(id='P3', name='Diamond Adult', product_class=cls.class2)
+
+        cls.wh_main = Warehouse.objects.create(
+            id='wh_main',
+            name='Almacén Central',
+            warehouse_type=Warehouse.WarehouseTypeChoices.WAREHOUSE
+        )
+        cls.wh_sec = Warehouse.objects.create(
+            id='wh_sec',
+            name='Almacén Secundario',
+            warehouse_type=Warehouse.WarehouseTypeChoices.WAREHOUSE
+        )
+        cls.wh_retail = Warehouse.objects.create(
+            id='wh_ret',
+            name='Tienda Norte',
+            warehouse_type=Warehouse.WarehouseTypeChoices.RETAIL
+        )
+
+        Stock.objects.create(product=cls.prod1, warehouse=cls.wh_main, quantity=Decimal('100.00'), lot_number='L1')
+        Stock.objects.create(product=cls.prod1, warehouse=cls.wh_sec, quantity=Decimal('50.00'), lot_number='L2')
+        Stock.objects.create(product=cls.prod2, warehouse=cls.wh_main, quantity=Decimal('20.00'), lot_number='L3')
+        Stock.objects.create(product=cls.prod3, warehouse=cls.wh_retail, quantity=Decimal('80.00'), lot_number='L4')
+
+    def test_default_warehouses_resolution(self):
+        service = StockBreakdownService(queryset=Stock.objects.all())
+        wh_ids = [w.id for w in service.active_warehouses]
+        self.assertIn('wh_main', wh_ids)
+        self.assertIn('wh_sec', wh_ids)
+        self.assertNotIn('wh_ret', wh_ids)
+
+    def test_level_1_items_and_totals(self):
+        service = StockBreakdownService(queryset=Stock.objects.all())
+        l1_qs = service.get_level_1_queryset()
+        self.assertEqual(l1_qs.count(), 1)  # Only CAT1 has stock in default warehouses
+
+        top_ids = [i[service.l1_id_field] for i in l1_qs]
+        items = service.get_level_1_items(top_ids)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]['id'], 'CAT1')
+        self.assertEqual(items[0]['total_overall'], 170.0)
+
+    def test_level_children(self):
+        service = StockBreakdownService(queryset=Stock.objects.all())
+        # Level 2 (classes) under CAT1
+        l2_items = service.get_level_children(target_level=2, parent_filters={'l1_id': 'CAT1'})
+        self.assertEqual(len(l2_items), 1)
+        self.assertEqual(l2_items[0]['id'], 'CLS1')
+        self.assertEqual(l2_items[0]['total_overall'], 170.0)
+
+        # Level 3 (products) under CLS1
+        l3_items = service.get_level_children(target_level=3, parent_filters={'l1_id': 'CAT1', 'l2_id': 'CLS1'})
+        self.assertEqual(len(l3_items), 2)
+        p1_item = next(i for i in l3_items if i['id'] == 'P1')
+        self.assertEqual(p1_item['total_overall'], 150.0)
+
+    def test_filter_selection_with_retail_warehouse(self):
+        form_data = {
+            'warehouse': [self.wh_retail.pk],
+        }
+        filter_set = StockBreakdownFilter(form_data, queryset=Stock.objects.all())
+        self.assertTrue(filter_set.is_valid())
+        service = StockBreakdownService(
+            queryset=filter_set.qs,
+            cleaned_data=filter_set.form.cleaned_data
+        )
+        l1_qs = service.get_level_1_queryset()
+        self.assertEqual(l1_qs.count(), 1)
+        self.assertEqual(l1_qs.first()[service.l1_id_field], 'CAT2')
+
+    def test_excel_export_generation(self):
+        service = StockBreakdownService(queryset=Stock.objects.all())
+        exporter = StockBreakdownExports(breakdown_service=service)
+        buf = exporter.export_stock_breakdown_excel()
+        self.assertGreater(len(buf.getvalue()), 0)
+        wb = openpyxl.load_workbook(buf)
+        self.assertIn("Existencias por Almacén", wb.sheetnames)
+
 
 
 

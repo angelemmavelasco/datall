@@ -1,0 +1,79 @@
+{% load humanize %}
+
+{% for item in items %}
+<tr id="row-{{ item.node_id }}"
+    class="border-b border-border hover:bg-hover/20 transition-colors group/row {% if item.has_children %}cursor-pointer{% endif %}"
+    {% if item.has_children %}
+    hx-get="{% url 'analytics:stock_breakdown_children_view' %}?dimension={{ dimension }}&level={{ item.next_level }}&l1_id={{ item.l1_id }}&parent_node_id={{ item.node_id }}{% if query_string %}&{{ query_string }}{% endif %}"
+    hx-target="#row-{{ item.node_id }}"
+    hx-swap="afterend"
+    hx-trigger="click once"
+    onclick="toggleNode('{{ item.node_id }}', 'icon-{{ item.node_id }}', 'child-{{ item.node_id }}')"
+    {% endif %}>
+    <td class="p-1 text-strong sticky md:left-0 z-20 min-w-[280px] bg-container border-r border-b border-border">
+        <div class="flex items-center gap-2 min-w-full min-h-full">
+            {% if item.has_children %}
+                <svg id="icon-{{ item.node_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0 group-[.htmx-request]/row:hidden">
+                    <circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/>
+                </svg>
+                <div class="hidden group-[.htmx-request]/row:flex text-hover shrink-0 items-center justify-center">
+                    {% include 'layouts/loading_animation_icon.html' %}
+                </div>
+            {% else %}
+                <span class="w-4 flex justify-center shrink-0 text-secondary text-xs">•</span>
+            {% endif %}
+            <span class="truncate font-semibold text-title text-xs" title="{{ item.name|upper }}">
+                {{ item.name|title }}
+            </span>
+        </div>
+    </td>
+    {% for total in item.totals %}
+        <td class="p-1 text-right text-strong border-r border-b border-border min-w-[140px]">
+            {% if total.quantity > 0 %}
+                <span class="text-title font-medium text-xs">{{ total.quantity|floatformat:2|intcomma }}</span>
+            {% else %}
+                <span class="text-muted text-xs">-</span>
+            {% endif %}
+        </td>
+    {% endfor %}
+    <td class="p-1 text-right text-strong border-r border-b border-border min-w-[140px] bg-hover/10">
+        <span class="text-title font-bold text-xs">{{ item.total_overall|floatformat:2|intcomma }}</span>
+    </td>
+</tr>
+{% endfor %}
+
+{% if not items %}
+    {% if not page_obj.has_previous %}
+    <tr>
+        <td colspan="{{ available_warehouses|length|add:2 }}" class="p-4 text-muted text-center border-border">
+            <div class="sticky left-1/2 -translate-x-1/2 w-max">
+                {% include 'layouts/data_not_found.html' %}
+            </div>
+        </td>
+    </tr>
+    {% endif %}
+{% endif %}
+
+{% if page_obj and page_obj.has_next %}
+<tr id="load-more-row-{{ page_obj.number }}">
+    <td colspan="{{ available_warehouses|length|add:2 }}" class="p-4 border-t border-border">
+        <div class="sticky left-1/2 -translate-x-1/2 w-max">
+            <button hx-get="{{ request.path }}?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}"
+                    hx-target="#load-more-row-{{ page_obj.number }}"
+                    hx-swap="outerHTML"
+                    class="group hover:text-hover text-strong transition-colors cursor-pointer border border-border rounded p-1.5 bg-page flex items-center gap-2 text-xs">
+                
+                <div class="flex items-center gap-2 group-[.htmx-request]:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down-icon lucide-circle-chevron-down"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg>
+                    <span>Mostrar más</span>
+                </div>
+
+                <div class="hidden items-center gap-2 group-[.htmx-request]:flex">
+                    {% include 'layouts/loading_animation_icon.html' %}
+                    <span class="text-strong">Cargando...</span>
+                </div>
+            </button>
+        </div>
+    </td>
+</tr>
+{% endif %}

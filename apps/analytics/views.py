@@ -24,7 +24,8 @@ from apps.sales.services.routes import RoutesService
 from apps.human_resources.models import BusinessUnit
 
 #base services analytics
-from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter, CommercialRiskFilter, CollectionsDashboardFilter, TargetAchievementFilter, YearlySaleBreakdownFilter, MonthlySaleBreakdownFilter
+from apps.products.services.stocks import StocksService
+from apps.analytics.filters import SalesDashboardFilter, CustomerKpisFilter, RouteKpisFilter, CommercialRiskFilter, CollectionsDashboardFilter, TargetAchievementFilter, YearlySaleBreakdownFilter, MonthlySaleBreakdownFilter, StockBreakdownFilter
 from apps.analytics.services.sales_dashboard import SalesDashboardService
 from apps.analytics.services.customer_kpis import CustomerKpisService
 from apps.analytics.services.route_kpis import RouteKpisService
@@ -32,6 +33,7 @@ from apps.analytics.services.commercial_risk import CommercialRiskService
 from apps.analytics.services.target_achievement import TargetAchievementService
 from apps.analytics.services.yearly_sale_breakdown import YearlySaleBreakdownService
 from apps.analytics.services.monthly_sale_breakdown import MonthlySaleBreakdownService
+from apps.analytics.services.stock_breakdown import StockBreakdownService
 
 @login_required
 def sales_dashboard_view(request):
@@ -744,3 +746,128 @@ def business_unit_sale_breakdown_view(request):
 @login_required
 def unique_customer_count_view(request):
     pass
+
+
+@login_required
+def stock_breakdown_view(request):
+    init = perf_counter()
+    template = 'analytics/stock_breakdown/stock_breakdown.html'
+
+    req_data = request.GET.copy()
+    if not req_data.get('dimension'):
+        req_data['dimension'] = 'productcategory_productclass_product'
+
+    dimension = req_data.get('dimension', 'productcategory_productclass_product')
+
+    stocks_service = StocksService(user=request.user)
+    base_stock_qs = stocks_service.read_stocks()
+
+    filter_set = StockBreakdownFilter(req_data, queryset=base_stock_qs, request=request)
+    filtered_stock_qs = filter_set.qs
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+
+    breakdown_service = StockBreakdownService(
+        queryset=filtered_stock_qs,
+        dimension=dimension,
+        user=request.user,
+        cleaned_data=cleaned_data,
+    )
+
+    l1_qs = breakdown_service.get_level_1_queryset()
+    paginator = Paginator(l1_qs, 50)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    l1_id_field = breakdown_service.l1_id_field
+    top_l1_ids = [
+        item[l1_id_field] for item in page_obj.object_list if item.get(l1_id_field) is not None
+    ]
+
+    items = breakdown_service.get_level_1_items(top_l1_ids)
+
+    query_dict = req_data.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
+
+    end = perf_counter()
+    perf = end - init
+    print(f'stock_breakdown_view: {perf:.4f} seconds')
+
+    context = {
+        'filter': filter_set,
+        'dimension': dimension,
+        'dimension_label': breakdown_service.dimension_config.get('label', ''),
+        'available_warehouses': breakdown_service.active_warehouses,
+        'items': items,
+        'page_obj': page_obj,
+        'query_string': query_dict.urlencode(),
+        'perf': perf,
+    }
+
+    if request.htmx:
+        return render(
+            request,
+            'analytics/stock_breakdown/partials/_stock_breakdown_rows.html',
+            context,
+        )
+
+    return render(request, template, context)
+
+
+@login_required
+def stock_breakdown_children_view(request):
+    """
+    lazy loads and returns child rows for a given stock breakdown hierarchy node
+    """
+    req_data = request.GET.copy()
+    dimension = req_data.get('dimension', 'productcategory_productclass_product')
+
+    try:
+        target_level = int(req_data.get('level', 2))
+    except (TypeError, ValueError):
+        target_level = 2
+
+    parent_filters = {
+        'l1_id': req_data.get('l1_id'),
+        'l2_id': req_data.get('l2_id'),
+        'parent_node_id': req_data.get('parent_node_id', ''),
+    }
+
+    stocks_service = StocksService(user=request.user)
+    base_stock_qs = stocks_service.read_stocks()
+
+    filter_set = StockBreakdownFilter(req_data, queryset=base_stock_qs, request=request)
+    filtered_stock_qs = filter_set.qs
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+
+    breakdown_service = StockBreakdownService(
+        queryset=filtered_stock_qs,
+        dimension=dimension,
+        user=request.user,
+        cleaned_data=cleaned_data,
+    )
+
+    child_items = breakdown_service.get_level_children(
+        target_level=target_level,
+        parent_filters=parent_filters,
+    )
+
+    query_dict = req_data.copy()
+    for param in ['level', 'l1_id', 'l2_id', 'parent_node_id', 'page']:
+        if param in query_dict:
+            del query_dict[param]
+
+    context = {
+        'items': child_items,
+        'dimension': dimension,
+        'available_warehouses': breakdown_service.active_warehouses,
+        'parent_node_id': parent_filters.get('parent_node_id', ''),
+        'query_string': query_dict.urlencode(),
+    }
+
+    return render(
+        request,
+        'analytics/stock_breakdown/partials/_stock_breakdown_child_rows.html',
+        context,
+    )
+

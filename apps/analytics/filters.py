@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.sales.models import SaleTransaction, Route, Warehouse, SaleTarget
 from apps.human_resources.models import BusinessUnit
 from apps.customers.models import Customer, CustomerType, CustomerAssignment, AccountsReceivable
-from apps.products.models import ProductClass, ProductCategory
+from apps.products.models import ProductClass, ProductCategory, Product, Stock
 from apps.sales.services.routes import RoutesService
 from apps.human_resources.services.business_units import BusinessUnitsService
 from apps.customers.filters import AccountsReceivableFilter
@@ -898,6 +898,97 @@ class CustomerProfileFilter(django_filters.FilterSet):
             return queryset
         bu_ids = [bu.pk if hasattr(bu, 'pk') else bu for bu in value]
         return queryset.filter(route__business_unit_id__in=bu_ids)
+
+
+class WarehouseMultipleChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj: Warehouse) -> str:
+        return f"{obj.name.title()} - {obj.get_warehouse_type_display().title()}"
+
+
+class WarehouseMultipleChoiceFilter(django_filters.ModelMultipleChoiceFilter):
+    field_class = WarehouseMultipleChoiceField
+
+
+class ProductMultipleChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj: Product) -> str:
+        return f"{obj.id.upper()} - {obj.name.title()}"
+
+
+class ProductMultipleChoiceFilter(django_filters.ModelMultipleChoiceFilter):
+    field_class = ProductMultipleChoiceField
+
+
+class StockBreakdownFilter(django_filters.FilterSet):
+    DIMENSION_CHOICES = [
+        ('productcategory_productclass_product', 'Categoría de producto → Clase de producto → Producto'),
+    ]
+
+    dimension = django_filters.ChoiceFilter(
+        choices=DIMENSION_CHOICES,
+        label='Dimensión de visualización',
+        widget=forms.RadioSelect,
+        method='filter_noop',
+        empty_label=None,
+        null_label=None,
+        initial='productcategory_productclass_product',
+    )
+    warehouse = WarehouseMultipleChoiceFilter(
+        queryset=Warehouse.objects.all(),
+        method='filter_warehouse',
+        widget=forms.CheckboxSelectMultiple,
+        label='Centro de distribución'
+    )
+    product_category = ProductCategoryMultipleChoiceFilter(
+        field_name='product__product_class__product_category',
+        queryset=ProductCategory.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Categoría de producto'
+    )
+    product_class = ProductClassMultipleChoiceFilter(
+        field_name='product__product_class',
+        queryset=ProductClass.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Clase de producto'
+    )
+    product = ProductMultipleChoiceFilter(
+        field_name='product',
+        queryset=Product.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label='Producto'
+    )
+
+    class Meta:
+        model = Stock
+        fields = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.filters['warehouse'].queryset = Warehouse.objects.all().order_by('warehouse_type', 'name')
+        self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
+        self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
+        self.filters['product'].queryset = Product.objects.all().order_by('name', 'id')
+
+        if self.data is not None and 'warehouse' not in self.data:
+            default_wh_pks = list(
+                Warehouse.objects.filter(warehouse_type=Warehouse.WarehouseTypeChoices.WAREHOUSE)
+                .values_list('pk', flat=True)
+            )
+            if hasattr(self.data, 'setlist'):
+                self.data = self.data.copy()
+                self.data.setlist('warehouse', default_wh_pks)
+            elif isinstance(self.data, dict):
+                self.data = dict(self.data)
+                self.data['warehouse'] = default_wh_pks
+
+    def filter_noop(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        return queryset
+
+    def filter_warehouse(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+        wh_ids = [w.pk if hasattr(w, 'pk') else w for w in value]
+        return queryset.filter(warehouse_id__in=wh_ids)
+
 
 
 

@@ -30,4 +30,8 @@ urlpatterns = [
     path('product-kpis/', product_kpis_view, name='product_kpis_view'),
     path('business-unit-sale-breakdown/', business_unit_sale_breakdown_view, name='business_unit_sale_breakdown_view'),
     path('unique-customer-count/', unique_customer_count_view, name='unique_customer_count_view'),
+
+    path('stock-breakdown/', stock_breakdown_view, name='stock_breakdown_view'),
+    path('stock-breakdown/export/', stock_breakdown_export_view, name='stock_breakdown_export_view'),
+    path('stock-breakdown/children/', stock_breakdown_children_view, name='stock_breakdown_children_view'),
 ]
