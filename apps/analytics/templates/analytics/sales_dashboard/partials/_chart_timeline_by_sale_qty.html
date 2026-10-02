@@ -18,6 +18,75 @@
             const isMobile = window.innerWidth < 768;
             const greenColor = '#43B54B';
             const blueColor = '#435AB5';
+            const containerBg = (chartDom.parentElement && getComputedStyle(chartDom.parentElement).backgroundColor)
+                || getComputedStyle(document.documentElement).getPropertyValue('--color-container').trim()
+                || '#ffffff';
+
+            function getSalesData(isMob = false) {
+                const sales = timelineData.sales || [];
+                const len = sales.length;
+                return sales.map((val, idx) => {
+                    const item = {
+                        value: val,
+                        label: {
+                            show: Number(val) > 0
+                        }
+                    };
+
+                    if (len > 1) {
+                        if (idx === 0) {
+                            item.label.offset = [isMob ? 22 : 16, 0];
+                        } else if (idx === len - 1) {
+                            item.label.offset = [isMob ? -22 : -16, 0];
+                        }
+                    }
+
+                    return item;
+                });
+            }
+
+            function getLabelConfig(isMob) {
+                return {
+                    show: true,
+                    position: 'top',
+                    distance: isMob ? 5 : 6,
+                    color: greenColor,
+                    fontSize: isMob ? 8.5 : 9.5,
+                    fontWeight: '700',
+                    backgroundColor: containerBg,
+                    borderColor: titleColor,
+                    borderWidth: 1,
+                    borderRadius: 3,
+                    padding: isMob ? [1.5, 4] : [2, 5],
+                    formatter: function(params) {
+                        return formatNumberShort(params.value, true);
+                    }
+                };
+            }
+
+            function formatNumberShort(val, isCurrency = false) {
+                if (val === null || val === undefined || isNaN(val) || Number(val) <= 0) return '';
+                const num = Number(val);
+                const abs = Math.abs(num);
+                const prefix = isCurrency ? '$ ' : '';
+
+                let text = '';
+                if (abs >= 1000000) {
+                    const m = abs / 1000000;
+                    text = parseFloat(m.toFixed(1)) + ' M';
+                } else if (abs >= 1000) {
+                    const k = abs / 1000;
+                    if (k >= 999.95) {
+                        text = '1 M';
+                    } else {
+                        text = parseFloat(k.toFixed(1)) + ' k';
+                    }
+                } else {
+                    text = abs.toLocaleString('es-MX');
+                }
+
+                return `${prefix}${text}`;
+            }
 
             const timelineChart = echarts.init(chartDom);
 
@@ -64,9 +133,10 @@
                     }
                 },
                 grid: {
-                    left: '3%',
-                    right: '4%',
-                    bottom: '12%',
+                    left: isMobile ? '6%' : '3%',
+                    right: isMobile ? '6%' : '3%',
+                    top: isMobile ? 48 : 42,
+                    bottom: isMobile ? '16%' : '12%',
                     containLabel: true,
                 },
                 toolbox: {
@@ -82,16 +152,22 @@
                         show: false
                     },
                     axisLabel: {
-                        show: !isMobile,
-                        color: titleColor
+                        show: true,
+                        color: titleColor,
+                        rotate: isMobile ? 45 : 0,
+                        fontSize: isMobile ? 10 : 11
                     },
                     axisTick: {
-                        show: !isMobile
+                        show: true
+                    },
+                    axisLine: {
+                        show: true
                     }
                 },
                 yAxis: [
                     {
                         type: 'value',
+                        boundaryGap: [0, '18%'],
                         splitLine: {
                             lineStyle: {
                                 opacity: 0.10,
@@ -99,17 +175,19 @@
                             show: true
                         },
                         axisLabel: {
-                            show: !isMobile,
-                            color: titleColor,
-                            formatter: (val) => `$ ${Number(val).toLocaleString('es-MX')}`
+                            show: false
                         },
                         axisTick: {
-                            show: !isMobile
+                            show: false
+                        },
+                        axisLine: {
+                            show: false
                         },
                         show: true
                     },
                     {
                         type: 'value',
+                        boundaryGap: [0, '18%'],
                         splitLine: {
                             lineStyle: {
                                 opacity: 0.1,
@@ -117,12 +195,13 @@
                             show: false
                         },
                         axisLabel: {
-                            show: !isMobile,
-                            color: titleColor,
-                            formatter: (val) => Number(val).toLocaleString('es-MX')
+                            show: false
                         },
                         axisTick: {
-                            show: !isMobile
+                            show: false
+                        },
+                        axisLine: {
+                            show: false
                         },
                         show: true
                     }
@@ -131,22 +210,67 @@
                     {
                         name: 'Venta neta',
                         type: 'line',
-                        data: timelineData.sales || [],
-                        smooth: true,
-                        yAxisIndex: 0
+                        clip: false,
+                        data: getSalesData(isMobile),
+                        smooth: false,
+                        yAxisIndex: 0,
+                        label: getLabelConfig(isMobile),
+                        labelLayout: {
+                            hideOverlap: true
+                        }
                     },
                     {
                         name: 'Unidades',
                         type: 'line',
+                        clip: false,
                         data: timelineData.units || [],
-                        smooth: true,
+                        smooth: false,
                         yAxisIndex: 1
                     }
                 ]
             };
 
             timelineChart.setOption(timelineOptions);
-            window.addEventListener('resize', () => timelineChart.resize());
+            window.addEventListener('resize', () => {
+                const currentIsMobile = window.innerWidth < 768;
+                timelineChart.setOption({
+                    grid: {
+                        left: currentIsMobile ? '6%' : '3%',
+                        right: currentIsMobile ? '6%' : '3%',
+                        top: currentIsMobile ? 48 : 42,
+                        bottom: currentIsMobile ? '16%' : '12%',
+                        containLabel: true,
+                    },
+                    xAxis: {
+                        axisLabel: {
+                            show: true,
+                            rotate: currentIsMobile ? 45 : 0,
+                            fontSize: currentIsMobile ? 10 : 11
+                        },
+                        axisTick: { show: true },
+                        axisLine: { show: true }
+                    },
+                    yAxis: [
+                        {
+                            axisLabel: { show: false },
+                            axisTick: { show: false },
+                            axisLine: { show: false }
+                        },
+                        {
+                            axisLabel: { show: false },
+                            axisTick: { show: false },
+                            axisLine: { show: false }
+                        }
+                    ],
+                    series: [
+                        {
+                            data: getSalesData(currentIsMobile),
+                            label: getLabelConfig(currentIsMobile)
+                        }
+                    ]
+                });
+                timelineChart.resize();
+            });
         }
 
         if (document.readyState === 'loading') {
