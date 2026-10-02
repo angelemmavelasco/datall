@@ -44,8 +44,18 @@ KPIs por Clientes
 
 {% block content %}
     <div class="flex flex-col w-full gap-4">
-        <p class="text-title pb-1 border-b border-border" title="Métricas calculadas desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}:&#10;• Clientes registrados&#10;• Clientes con consumo&#10;• Clientes sin consumo&#10;• Venta neta / utilidad&#10;• Frecuencia de compra&#10;• Hábito de compra semanal&#10;• Métricas de contribución (todas)&#10;• Clases con consumo">
-           Métricas calculadas desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }} <span class="cursor-pointer select-none">ⓘ</span>
+        <p class="text-title pb-1 border-b border-border flex items-center justify-between flex-wrap gap-2" title="Métricas calculadas desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}:&#10;• Clientes registrados&#10;• Clientes con consumo&#10;• Clientes sin consumo&#10;• Venta neta / utilidad&#10;• Frecuencia de compra&#10;• Hábito de compra semanal&#10;• Métricas de contribución (todas)&#10;• Clases con consumo">
+            <span>
+                Métricas calculadas desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }} <span class="cursor-pointer select-none">ⓘ</span>
+            </span>
+            {% if request.GET.contrib_min_amount or request.GET.contrib_max_amount %}
+            <span class=" text-title rounded flex items-center gap-1">
+                <span class="text-title">Contribución monetaria por {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}Utilidad{% else %}Venta neta{% endif %}:</span>
+                {% if request.GET.contrib_min_amount %}{% if request.GET.contrib_min_op == 'gt' %}&gt;{% else %}≥{% endif %} ${{ request.GET.contrib_min_amount|floatformat:2|intcomma }}{% endif %}
+                {% if request.GET.contrib_min_amount and request.GET.contrib_max_amount %} y {% endif %}
+                {% if request.GET.contrib_max_amount %}{% if request.GET.contrib_max_op == 'lt' %}&lt;{% else %}≤{% endif %} ${{ request.GET.contrib_max_amount|floatformat:2|intcomma }}{% endif %}
+            </span>
+            {% endif %}
         </p>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -236,25 +246,26 @@ KPIs por Clientes
 
 
     <!-- Periodo de análisis y criterio de contribución -->
-    <div class="flex flex-col gap-2 p-2 rounded border border-border bg-page">
+    <div class="flex flex-col gap-2">
         <div class="flex items-center justify-between border-b border-border pb-1">
             <span class="font-semibold text-title text-xs flex items-center gap-1">
                 Periodo de análisis
-                <span class="cursor-pointer select-none text-muted"
-                      title="Rango de fechas para evaluar las métricas dinámicas del reporte:&#10;• Venta neta y Utilidad global&#10;• Clientes registrados (dados de alta hasta la fecha fin)&#10;• Clientes con y sin consumo&#10;• Frecuencia de compra&#10;• Hábito de compra semanal&#10;• Clases con consumo&#10;• Métricas de contribución monetaria, porcentual y acumulada">ⓘ</span>
+                <!-- <span class="cursor-pointer select-none text-muted"
+                      title="Rango de fechas para evaluar las métricas dinámicas del reporte:&#10;• Venta neta y Utilidad global&#10;• Clientes registrados (dados de alta hasta la fecha fin)&#10;• Clientes con y sin consumo&#10;• Frecuencia de compra&#10;• Hábito de compra semanal&#10;• Clases con consumo&#10;• Métricas de contribución monetaria, porcentual y acumulada">
+                      ⓘ</span> -->
             </span>
             <span class="text-[10px] text-muted font-mono">Dinámico</span>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
             <div class="flex flex-col gap-0.5">
-                <label for="id_start_contrib" class="text-[11px] text-muted">Desde:</label>
+                <label for="id_start_contrib" class="text-title">Desde:</label>
                 <input type="date" id="id_start_contrib" name="start_contrib"
                        value="{{ selected_start_contrib|date:'Y-m-d' }}"
                        class="w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
             </div>
             <div class="flex flex-col gap-0.5">
-                <label for="id_end_contrib" class="text-[11px] text-muted">Hasta:</label>
+                <label for="id_end_contrib" class="text-title">Hasta:</label>
                 <input type="date" id="id_end_contrib" name="end_contrib"
                        value="{{ selected_end_contrib|date:'Y-m-d' }}"
                        class="w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
@@ -262,11 +273,10 @@ KPIs por Clientes
         </div>
 
         {% if not request.user|has_group:"vendedor" %}
-        <div class="flex flex-col gap-1 mt-1 pt-1 border-t border-border">
-            <label class="text-[11px] font-semibold text-title flex items-center gap-1">
+        <div class="flex flex-col gap-1 mt-1">
+            <span class=" text-title flex items-center gap-1">
                 Evaluar y ordenar contribución por:
-                <span class="cursor-pointer select-none text-muted" title="Determina si el listado y el porcentaje acumulado de Pareto se evalúan en función de la Venta Neta o de la Utilidad Bruta">ⓘ</span>
-            </label>
+            </span>
             <div class="grid grid-cols-2 gap-2">
                 <label class="flex items-center gap-1 p-1 rounded border border-border bg-container hover:bg-hover cursor-pointer text-xs">
                     <input type="radio" name="order_contrib" value="net_amount" {% if order_contrib == 'net_amount' or not order_contrib %}checked{% endif %} class="accent-primary">
@@ -282,10 +292,58 @@ KPIs por Clientes
         <input type="hidden" name="order_contrib" value="net_amount">
         {% endif %}
 
+        <!-- contrib monetaria por rangos -->
+        <div class="flex flex-col gap-1 mt-1">
+
+            <!-- lim Inferior -->
+            <div class="flex flex-col gap-0.5">
+                <span class="text-title">Límite inferior:</span>
+                <div class="grid grid-cols-[105px_1fr] gap-1">
+                    <select name="contrib_min_op"
+                            class="bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong cursor-pointer font-mono">
+                        <option value="gte" {% if request.GET.contrib_min_op == 'gte' or not request.GET.contrib_min_op %}selected{% endif %}>≥ Mayor/igual</option>
+                        <option value="gt" {% if request.GET.contrib_min_op == 'gt' %}selected{% endif %}>&gt; Mayor que</option>
+                    </select>
+                    <input type="number" step="any" name="contrib_min_amount"
+                           value="{{ request.GET.contrib_min_amount }}"
+                           placeholder="0.00"
+                           class="w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
+                </div>
+            </div>
+
+            <!-- lim Superior -->
+            <div class="flex flex-col gap-0.5">
+                <span class="text-title">Límite superior:</span>
+                <div class="grid grid-cols-[105px_1fr] gap-1">
+                    <select name="contrib_max_op"
+                            class="bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong cursor-pointer font-mono">
+                        <option value="lte" {% if request.GET.contrib_max_op == 'lte' or not request.GET.contrib_max_op %}selected{% endif %}>≤ Menor/igual</option>
+                        <option value="lt" {% if request.GET.contrib_max_op == 'lt' %}selected{% endif %}>&lt; Menor que</option>
+                    </select>
+                    <input type="number" step="any" name="contrib_max_amount"
+                           value="{{ request.GET.contrib_max_amount }}"
+                           placeholder="Sin tope"
+                           class="w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
+                </div>
+            </div>
+        </div>
+
         <p class="text-[10px] text-muted leading-tight mt-0.5">
-            <strong>Métricas afectadas por este periodo:</strong> Venta neta, Utilidad, Clientes con/sin consumo, Frecuencia de compra, Hábito semanal, Clases con consumo y Contribución.
+            <strong>Métricas afectadas por este periodo:</strong> <br>
+            • Clientes registrados <br>
+            • Clientes con/sin consumo <br>
+            • Venta neta <br>
+            • Utilidad <br>
+            • Frecuencia de compra <br>
+            • Hábito de compra semanal <br>
+            • Clases con consumo <br>
+            • Métricas de contribución
         </p>
     </div>
+
+    <p class="text-title border-b border-border pb-1">
+        Atributos del cliente
+    </p>
 
     <!-- Búsqueda por cliente -->
     <div class="flex flex-col gap-1">

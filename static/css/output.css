@@ -385,6 +385,9 @@
   .z-\[35\] {
     z-index: 35;
   }
+  .z-\[70\] {
+    z-index: 70;
+  }
   .z-\[9999\] {
     z-index: 9999;
   }
@@ -1147,6 +1150,9 @@
   .grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+  .grid-cols-\[105px_1fr\] {
+    grid-template-columns: 105px 1fr;
+  }
   .flex-col {
     flex-direction: column;
   }
@@ -1579,6 +1585,9 @@
   .border-rose-700 {
     border-color: var(--color-rose-700);
   }
+  .border-sky-500 {
+    border-color: var(--color-sky-500);
+  }
   .border-sky-500\/20 {
     border-color: color-mix(in srgb, oklch(68.5% 0.169 237.323) 20%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -1884,6 +1893,9 @@
   }
   .bg-sky-200 {
     background-color: var(--color-sky-200);
+  }
+  .bg-sky-500 {
+    background-color: var(--color-sky-500);
   }
   .bg-sky-500\/10 {
     background-color: color-mix(in srgb, oklch(68.5% 0.169 237.323) 10%, transparent);
@@ -2536,11 +2548,17 @@
       --tw-ring-color: color-mix(in oklab, var(--color-blue-500) 40%, transparent);
     }
   }
+  .ring-blue-600 {
+    --tw-ring-color: var(--color-blue-600);
+  }
   .ring-blue-600\/40 {
     --tw-ring-color: color-mix(in srgb, oklch(54.6% 0.245 262.881) 40%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       --tw-ring-color: color-mix(in oklab, var(--color-blue-600) 40%, transparent);
     }
+  }
+  .ring-emerald-500 {
+    --tw-ring-color: var(--color-emerald-500);
   }
   .ring-emerald-500\/40 {
     --tw-ring-color: color-mix(in srgb, oklch(69.6% 0.17 162.48) 40%, transparent);

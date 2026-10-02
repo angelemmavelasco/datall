@@ -203,6 +203,32 @@ class CustomerKpisFilter(django_filters.FilterSet):
         method='filter_noop',
         widget=forms.DateInput(attrs={'type': 'date'})
     )
+    contrib_min_op = django_filters.ChoiceFilter(
+        choices=[('gte', '≥'), ('gt', '>')],
+        method='filter_noop',
+        label='Operador mínimo',
+        empty_label=None,
+        null_label=None,
+        initial='gte',
+    )
+    contrib_min_amount = django_filters.NumberFilter(
+        method='filter_noop',
+        label='Contribución mínima',
+        widget=forms.NumberInput(attrs={'step': 'any', 'placeholder': '0.00'})
+    )
+    contrib_max_op = django_filters.ChoiceFilter(
+        choices=[('lte', '≤'), ('lt', '<')],
+        method='filter_noop',
+        label='Operador máximo',
+        empty_label=None,
+        null_label=None,
+        initial='lte',
+    )
+    contrib_max_amount = django_filters.NumberFilter(
+        method='filter_noop',
+        label='Contribución máxima',
+        widget=forms.NumberInput(attrs={'step': 'any', 'placeholder': 'Sin tope'})
+    )
     has_purchases = django_filters.TypedChoiceFilter(
         choices=[('True', 'Con compras'), ('False', 'Sin compras')],
         coerce=lambda x: x == 'True',

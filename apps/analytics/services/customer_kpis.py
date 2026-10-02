@@ -578,8 +578,46 @@ class CustomerKpisService:
         customers = self._get_target_customers()
         customer_ids = [c.id for c in customers]
 
-        #single consolidated sales metrics query + supporting queries
+        #single consolidated sales metrics query
         sales_metrics_map = self._get_sales_metrics(customer_ids)
+
+        # apply monetary contribution range filter if configured
+        config = self.cleaned_data or {}
+        min_amount = config.get('contrib_min_amount')
+        min_op = config.get('contrib_min_op') or 'gte'
+        max_amount = config.get('contrib_max_amount')
+        max_op = config.get('contrib_max_op') or 'lte'
+        is_profit_order = (self.order_by == 'profit')
+
+        if min_amount is not None or max_amount is not None:
+            filtered_customers = []
+            min_dec = Decimal(str(min_amount)) if min_amount is not None else None
+            max_dec = Decimal(str(max_amount)) if max_amount is not None else None
+
+            for customer in customers:
+                c_metrics = sales_metrics_map.get(customer.id) or {}
+                val = c_metrics.get('contrib_profit' if is_profit_order else 'contrib_net') or Decimal('0.00')
+
+                # Min condition
+                if min_dec is not None:
+                    if min_op == 'gt' and not (val > min_dec):
+                        continue
+                    elif min_op != 'gt' and not (val >= min_dec):
+                        continue
+
+                # Max condition
+                if max_dec is not None:
+                    if max_op == 'lt' and not (val < max_dec):
+                        continue
+                    elif max_op != 'lt' and not (val <= max_dec):
+                        continue
+
+                filtered_customers.append(customer)
+
+            customers = filtered_customers
+            customer_ids = [c.id for c in customers]
+
+        # Supporting queries executed only for target/filtered customers
         freq_sales_map = self._calculate_sale_frequency(customer_ids)
         habit_sales_map = self._calculate_buying_habit(customer_ids, sales_metrics_map=sales_metrics_map)
         classes_consumption_map = self._calculate_product_classes_consumption(customer_ids)
@@ -831,7 +869,25 @@ class CustomerKpisExports:
         d_start_str = self.customer_kpis_service.date_start.strftime('%Y-%m-%d') if self.customer_kpis_service.date_start else ''
         d_end_str = self.customer_kpis_service.date_end.strftime('%Y-%m-%d') if self.customer_kpis_service.date_end else ''
         criterio_str = "Utilidad" if self.customer_kpis_service.order_by == 'profit' else "Venta Neta"
-        ws_summary.cell(row=2, column=1, value=f"Generado el: {now_str} | Periodo de análisis: {d_start_str} al {d_end_str} | Criterio de evaluación: {criterio_str}").font = subtitle_font
+        subtitle_parts = [
+            f"Generado el: {now_str}",
+            f"Periodo de análisis: {d_start_str} al {d_end_str}",
+            f"Criterio de evaluación: {criterio_str}"
+        ]
+        cd = self.customer_kpis_service.cleaned_data or {}
+        min_amt = cd.get('contrib_min_amount')
+        max_amt = cd.get('contrib_max_amount')
+        if min_amt is not None or max_amt is not None:
+            min_op_sym = '>' if cd.get('contrib_min_op') == 'gt' else '≥'
+            max_op_sym = '<' if cd.get('contrib_max_op') == 'lt' else '≤'
+            range_parts = []
+            if min_amt is not None:
+                range_parts.append(f"{min_op_sym} ${float(min_amt):,.2f}")
+            if max_amt is not None:
+                range_parts.append(f"{max_op_sym} ${float(max_amt):,.2f}")
+            subtitle_parts.append(f"Rango contribución ({criterio_str}): {' y '.join(range_parts)}")
+
+        ws_summary.cell(row=2, column=1, value=" | ".join(subtitle_parts)).font = subtitle_font
 
         #sect 1, gen indicators
         ws_summary.cell(row=4, column=1, value="Indicadores Generales de Cartera").font = section_font
