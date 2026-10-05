@@ -225,6 +225,44 @@ class SalesDashboardService:
         diff_amount = round(net_amount - sale_target, 2)
         margin = round((profit / net_amount * 100.0), 2) if net_amount > 0 else 0.0
 
+        #calculate prior year growth & monthly average metrics only if within same calendar year range <= 1 year
+        show_growth_kpis = (
+            self.date_start is not None
+            and self.date_end is not None
+            and self.date_start.year == self.date_end.year
+        )
+
+        prior_year = None
+        current_year = None
+        months_count = 0
+        prior_year_net_amount = 0.0
+        prior_year_monthly_avg = 0.0
+        current_year_monthly_avg = 0.0
+        growth_vs_prior_year = 0.0
+
+        if show_growth_kpis:
+            current_year = self.date_start.year
+            prior_year = self.date_start.year - 1
+            months_count = (self.date_end.month - self.date_start.month) + 1
+
+            prior_start = self.date_start - relativedelta(years=1)
+            prior_end = self.date_end - relativedelta(years=1)
+
+            prior_tx_qs = self._base_prior_year_tx_qs(prior_start, prior_end)
+            prior_agg = prior_tx_qs.aggregate(total_net=Sum('net_amount'))
+            prior_year_net_amount = float(prior_agg['total_net'] or 0.0)
+
+            if months_count > 0:
+                prior_year_monthly_avg = round(prior_year_net_amount / months_count, 2)
+                current_year_monthly_avg = round(net_amount / months_count, 2)
+
+            if prior_year_net_amount > 0:
+                growth_vs_prior_year = round(((net_amount - prior_year_net_amount) / prior_year_net_amount) * 100.0, 2)
+            elif net_amount > 0 and prior_year_net_amount == 0:
+                growth_vs_prior_year = 100.0
+            else:
+                growth_vs_prior_year = 0.0
+
         return {
             'net_amount': round(net_amount, 2),
             'sale_target': round(sale_target, 2),
@@ -234,6 +272,14 @@ class SalesDashboardService:
             'quantity': quantity,
             'occupied_positions_count': unique_customers,
             'margin': margin,
+            'show_growth_kpis': show_growth_kpis,
+            'prior_year': prior_year,
+            'current_year': current_year,
+            'months_count': months_count,
+            'prior_year_net_amount': round(prior_year_net_amount, 2),
+            'prior_year_monthly_avg': round(prior_year_monthly_avg, 2),
+            'current_year_monthly_avg': round(current_year_monthly_avg, 2),
+            'growth_vs_prior_year': growth_vs_prior_year,
         }
 
     def get_kpis(self) -> dict[str, Any]:

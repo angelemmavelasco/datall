@@ -133,6 +133,44 @@
             </p>
             {% endif %}
         </div>
+
+        {% if kpis.show_growth_kpis %}
+        <div class="border border-border rounded bg-container p-2" title="Venta neta acumulada del año {{ kpis.prior_year }} en el mismo rango de fechas evaluado.">
+            <span class="text-sm text-title" title="Venta neta acumulada del año {{ kpis.prior_year }} en el mismo rango de fechas evaluado.">
+                Venta neta ({{ kpis.prior_year }}) <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-orange-500">
+                $ {{ kpis.prior_year_net_amount|default:0|floatformat:2|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Promedio mensual de ventas del año {{ kpis.prior_year }} ({{ kpis.months_count }} meses evaluados).">
+            <span class="text-sm text-title" title="Promedio mensual de ventas del año {{ kpis.prior_year }} ({{ kpis.months_count }} meses evaluados).">
+                Promedio mensual ({{ kpis.prior_year }}) <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-cyan-500">
+                $ {{ kpis.prior_year_monthly_avg|default:0|floatformat:2|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Promedio mensual de ventas del año {{ kpis.current_year }} ({{ kpis.months_count }} meses evaluados).">
+            <span class="text-sm text-title" title="Promedio mensual de ventas del año {{ kpis.current_year }} ({{ kpis.months_count }} meses evaluados).">
+                Promedio mensual ({{ kpis.current_year }}) <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-cyan-500">
+                $ {{ kpis.current_year_monthly_avg|default:0|floatformat:2|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Crecimiento del promedio mensual del periodo seleccionado respecto al año anterior evaluado en el mismo rango de fechas.">
+            <span class="text-sm text-title" title="Crecimiento del promedio mensual del periodo seleccionado respecto al año anterior evaluado en el mismo rango de fechas.">
+                Crecimiento <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl {% if kpis.growth_vs_prior_year >= 0 %}text-emerald-500{% else %}text-red-500{% endif %}">
+                {% if kpis.growth_vs_prior_year >= 0 %}▲ +{% else %}▼ {% endif %}{{ kpis.growth_vs_prior_year|default:0|floatformat:2|intcomma }} %
+            </span>
+        </div>
+        {% endif %}
     </div>
 
     <p class="text-title pb-1 border-b border-border" title="Línea de tiempo de doble eje: Venta neta (línea verde), Unidades (línea azul) y Alcance acumulado frente a la meta total.">
