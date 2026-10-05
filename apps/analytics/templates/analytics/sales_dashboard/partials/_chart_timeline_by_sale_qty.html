@@ -26,6 +26,9 @@
             function getSalesData(isMob = false) {
                 const sales = timelineData.sales || [];
                 const len = sales.length;
+                const isDaily = Boolean(timelineData.is_daily);
+                const growthList = timelineData.growth || [];
+
                 return sales.map((val, idx) => {
                     const item = {
                         value: val,
@@ -40,6 +43,19 @@
                         } else if (idx === len - 1) {
                             item.label.offset = [isMob ? -22 : -16, 0];
                         }
+                    }
+
+                    if (!isDaily && growthList[idx] !== null && growthList[idx] !== undefined) {
+                        const gVal = Number(growthList[idx]);
+                        const isUp = gVal >= 0;
+                        item.symbol = 'triangle';
+                        item.symbolSize = isMob ? 12 : 15;
+                        item.symbolRotate = isUp ? 0 : 180;
+                        item.itemStyle = {
+                            color: isUp ? '#10b981' : '#ef4444',
+                            borderColor: containerBg,
+                            borderWidth: 1.5
+                        };
                     }
 
                     return item;
@@ -186,7 +202,8 @@
 
                         let res = `<span style="font-weight:600;">${dateStr}</span><br/>`;
                         params.forEach(p => {
-                            const isCurrency = p.seriesName === 'Venta neta' || p.seriesName === 'Tendencia';
+                            if (p.seriesName === 'Tendencia') return;
+                            const isCurrency = p.seriesName === 'Venta neta';
                             const val = isCurrency
                                 ? '$ ' + Number(p.value || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                                 : Number(p.value || 0).toLocaleString('es-MX');
@@ -195,8 +212,35 @@
 
                         if (timelineData.target_achievement && timelineData.target_achievement[dataIndex] !== undefined) {
                             const ach = timelineData.target_achievement[dataIndex];
-                            res += `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:#8b5cf6;"></span> Alcance acum.: <b>${ach}%</b>`;
+                            res += `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:#8b5cf6;"></span> Alcance acum.: <b>${ach}%</b><br/>`;
                         }
+
+                        const trendData = getTrendData();
+                        const trendVal = trendData ? trendData[dataIndex] : null;
+                        const isDaily = Boolean(timelineData.is_daily);
+                        const growth = timelineData.growth ? timelineData.growth[dataIndex] : null;
+                        const priorSale = timelineData.prior_sales ? timelineData.prior_sales[dataIndex] : null;
+
+                        res += `<div style="border-top: 1px solid rgba(156,163,175,0.3); margin-top: 5px; padding-top: 4px;">`;
+
+                        if (trendVal !== null && trendVal !== undefined) {
+                            res += `<span style="display:inline-block;margin-right:4px;border-radius:2px;width:10px;height:3px;background-color:${trendColor};vertical-align:middle;"></span> Tendencia: <b>$ ${Number(trendVal).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b><br/>`;
+                        }
+
+                        if (!isDaily) {
+                            if (growth !== null && growth !== undefined) {
+                                const isUp = Number(growth) >= 0;
+                                const arrow = isUp ? '▲' : '▼';
+                                const gColor = isUp ? '#10b981' : '#ef4444';
+                                const sign = isUp ? '+' : '';
+                                res += `<span style="color:${gColor};font-weight:700;margin-right:4px;">${arrow}</span> Crecimiento vs año pasado: <b style="color:${gColor};">${sign}${Number(growth).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</b><br/>`;
+                            }
+                            if (priorSale !== null && priorSale !== undefined) {
+                                res += `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:8px;height:8px;border:1.5px solid ${titleColor};"></span> Venta ciclo pasado: <b>$ ${Number(priorSale).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b><br/>`;
+                            }
+                        }
+
+                        res += `</div>`;
 
                         return res;
                     }
@@ -288,6 +332,8 @@
                         name: 'Venta neta',
                         type: 'line',
                         clip: false,
+                        showSymbol: true,
+                        showAllSymbol: true,
                         data: getSalesData(isMobile),
                         smooth: false,
                         yAxisIndex: 0,
@@ -358,6 +404,7 @@
                     ],
                     series: [
                         {
+                            name: 'Venta neta',
                             data: getSalesData(currentIsMobile),
                             label: getLabelConfig(currentIsMobile)
                         }

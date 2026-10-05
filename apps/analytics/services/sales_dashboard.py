@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 import calendar
+from dateutil.relativedelta import relativedelta
 
 from django.db.models import QuerySet, Q, Sum, Count
 from django.db.models.functions import TruncMonth
@@ -137,6 +138,54 @@ class SalesDashboardService:
 
         return self._resolved_transactions_qs, self._resolved_targets_qs
 
+    def _base_prior_year_tx_qs(self, start_dt: date, end_dt: date) -> QuerySet:
+        """
+        Builds a transactions QuerySet for the prior year within [start_dt, end_dt]
+        maintaining identical user permissions and dimensional filters from cleaned_data.
+        """
+        tx_service = SaleTransactionsService(user=self.user)
+        tx_qs = tx_service.read_transactions_by_allowed_routes().filter(
+            sale_date__gte=start_dt,
+            sale_date__lte=end_dt
+        )
+        if self.cleaned_data:
+            routes = self.cleaned_data.get('route') or self.cleaned_data.get('routes')
+            if routes:
+                tx_qs = tx_qs.filter(route__in=routes)
+
+            regions = self.cleaned_data.get('region') or self.cleaned_data.get('regions')
+            if regions:
+                selected_region_ids = set(r.pk if hasattr(r, 'pk') else r for r in regions)
+                all_bu_ids = set(selected_region_ids)
+                current_parents = set(selected_region_ids)
+                while current_parents:
+                    child_ids = set(BusinessUnit.objects.filter(parent_id__in=current_parents).values_list('id', flat=True))
+                    new_ids = child_ids - all_bu_ids
+                    if not new_ids:
+                        break
+                    all_bu_ids.update(new_ids)
+                    current_parents = new_ids
+                tx_qs = tx_qs.filter(route__business_unit_id__in=all_bu_ids)
+
+            business_units = self.cleaned_data.get('business_unit') or self.cleaned_data.get('business_units')
+            if business_units:
+                bu_ids = [b.pk if hasattr(b, 'pk') else b for b in business_units]
+                tx_qs = tx_qs.filter(route__business_unit_id__in=bu_ids)
+
+            product_classes = self.cleaned_data.get('product_class') or self.cleaned_data.get('product_classes')
+            if product_classes:
+                tx_qs = tx_qs.filter(product_class__in=product_classes)
+
+            product_categories = self.cleaned_data.get('product_category') or self.cleaned_data.get('product_categories')
+            if product_categories:
+                tx_qs = tx_qs.filter(product_class__product_category__in=product_categories)
+
+            customers = self.cleaned_data.get('customer') or self.cleaned_data.get('customers')
+            if customers:
+                tx_qs = tx_qs.filter(customer__in=customers)
+
+        return tx_qs
+
     def get_stats(self) -> dict[str, Any]:
         """
         Calculates top-level KPI metrics aggregated directly in PostgreSQL.
@@ -269,7 +318,64 @@ class SalesDashboardService:
                         sales_map[m_key] += float(row['total_sales'] or 0.0)
                         units_map[m_key] += float(row['total_units'] or 0.0)
 
-        # Calculate cumulative metrics for reach and progress
+        prior_sales_list: list[float] = []
+        growth_list: list[float | None] = []
+        final_growth: float | None = None
+
+        if not is_daily:
+            prior_start = self.date_start.replace(day=1) - relativedelta(years=1)
+            prior_end = self.date_end - relativedelta(years=1)
+            prior_tx_qs = self._base_prior_year_tx_qs(prior_start, prior_end)
+
+            prior_monthly_aggs = (
+                prior_tx_qs.annotate(month=TruncMonth('sale_date'))
+                .order_by('month')
+                .values('month')
+                .annotate(
+                    total_sales=Sum('net_amount')
+                )
+            )
+            prior_sales_map: dict[str, float] = {}
+            for row in prior_monthly_aggs:
+                if row.get('month'):
+                    m_key = row['month'].strftime('%Y-%m')
+                    prior_sales_map[m_key] = float(row['total_sales'] or 0.0)
+
+            today_month_key = timezone.now().strftime('%Y-%m')
+
+            for c in categories:
+                #same month 1 year ago 2025-12' -> 2024-12
+                y_str, m_str = c.split('-')
+                prior_key = f"{int(y_str) - 1:04d}-{m_str}"
+
+                curr_val = round(sales_map.get(c, 0.0), 2)
+                p_val = round(prior_sales_map.get(prior_key, 0.0), 2)
+                prior_sales_list.append(p_val)
+
+                # Future months shouldnt display negative growth before they occur
+                if c > today_month_key:
+                    growth_list.append(None)
+                else:
+                    if p_val > 0:
+                        growth_pct = round(((curr_val - p_val) / p_val) * 100.0, 2)
+                    elif curr_val > 0 and p_val == 0:
+                        growth_pct = 100.0
+                    else:
+                        growth_pct = 0.0
+                    growth_list.append(growth_pct)
+
+            #determine final growth from the last elapsed month
+            for idx in range(len(categories) - 1, -1, -1):
+                if categories[idx] <= today_month_key and growth_list[idx] is not None:
+                    final_growth = growth_list[idx]
+                    break
+            if final_growth is None and growth_list:
+                for g in reversed(growth_list):
+                    if g is not None:
+                        final_growth = g
+                        break
+
+        #calculate cumulative metrics for reach and progress
         cumulative_sales = 0.0
         cumulative_sales_list: list[float] = []
         target_achievement_list: list[float] = []
@@ -292,6 +398,10 @@ class SalesDashboardService:
             'cumulative_sales': cumulative_sales_list,
             'target_achievement': target_achievement_list,
             'total_target': round(total_target, 2),
+            'is_daily': is_daily,
+            'prior_sales': prior_sales_list,
+            'growth': growth_list,
+            'final_growth': final_growth,
         }
 
     def get_business_unit_chart(self) -> dict[str, list]:
