@@ -18,6 +18,7 @@
             const isMobile = window.innerWidth < 768;
             const greenColor = '#43B54B';
             const blueColor = '#435AB5';
+            const trendColor = '#f59e0b';
             const containerBg = (chartDom.parentElement && getComputedStyle(chartDom.parentElement).backgroundColor)
                 || getComputedStyle(document.documentElement).getPropertyValue('--color-container').trim()
                 || '#ffffff';
@@ -42,6 +43,81 @@
                     }
 
                     return item;
+                });
+            }
+
+            function getTrendData() {
+                const sales = timelineData.sales || [];
+                const categories = timelineData.categories || [];
+                const n = sales.length;
+                if (n === 0) return [];
+                if (n === 1) return [Math.round((Number(sales[0]) || 0) * 100) / 100];
+
+                const now = new Date();
+                const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                const todayMonthStr = todayStr.substring(0, 7);
+
+                function isElapsed(cat) {
+                    if (!cat) return false;
+                    if (cat.length === 10) return cat <= todayStr;
+                    if (cat.length === 7) return cat <= todayMonthStr;
+                    return true;
+                }
+
+                let lastSalesIdx = -1;
+                for (let i = n - 1; i >= 0; i--) {
+                    if (Number(sales[i]) > 0) {
+                        lastSalesIdx = i;
+                        break;
+                    }
+                }
+
+                // indx used for linear regression fitting
+                const fitIndices = [];
+                for (let i = 0; i < n; i++) {
+                    const cat = categories[i];
+                    if (isElapsed(cat) || (lastSalesIdx >= 0 && i <= lastSalesIdx)) {
+                        fitIndices.push(i);
+                    }
+                }
+
+                const indicesToUse = fitIndices.length > 0 ? fitIndices : Array.from({ length: n }, (_, i) => i);
+                const mCount = indicesToUse.length;
+
+                if (mCount === 1) {
+                    const singleVal = Math.round((Number(sales[indicesToUse[0]]) || 0) * 100) / 100;
+                    return sales.map(() => singleVal);
+                }
+
+                let sumX = 0;
+                let sumY = 0;
+                let sumXY = 0;
+                let sumX2 = 0;
+
+                for (let idx of indicesToUse) {
+                    const x = idx;
+                    const y = Number(sales[idx]) || 0;
+                    sumX += x;
+                    sumY += y;
+                    sumXY += x * y;
+                    sumX2 += x * x;
+                }
+
+                const denom = mCount * sumX2 - sumX * sumX;
+                let slope = 0;
+                let intercept = 0;
+
+                if (denom !== 0) {
+                    slope = (mCount * sumXY - sumX * sumY) / denom;
+                    intercept = (sumY - slope * sumX) / mCount;
+                } else {
+                    slope = 0;
+                    intercept = sumY / mCount;
+                }
+
+                return sales.map((_, i) => {
+                    const val = slope * i + intercept;
+                    return Math.round(Math.max(0, val) * 100) / 100;
                 });
             }
 
@@ -91,7 +167,7 @@
             const timelineChart = echarts.init(chartDom);
 
             const timelineOptions = {
-                color: [greenColor, blueColor],
+                color: [greenColor, blueColor, trendColor],
                 title: {
                     text: 'Evolución de venta neta y unidades',
                     textStyle: {
@@ -110,7 +186,8 @@
 
                         let res = `<span style="font-weight:600;">${dateStr}</span><br/>`;
                         params.forEach(p => {
-                            const val = p.seriesName === 'Venta neta'
+                            const isCurrency = p.seriesName === 'Venta neta' || p.seriesName === 'Tendencia';
+                            const val = isCurrency
                                 ? '$ ' + Number(p.value || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                                 : Number(p.value || 0).toLocaleString('es-MX');
                             res += `${p.marker} ${p.seriesName}: <b>${val}</b><br/>`;
@@ -125,7 +202,7 @@
                     }
                 },
                 legend: {
-                    data: ['Venta neta', 'Unidades'],
+                    data: ['Venta neta', 'Unidades', 'Tendencia'],
                     bottom: 0,
                     left: 'center',
                     textStyle: {
@@ -226,6 +303,23 @@
                         data: timelineData.units || [],
                         smooth: false,
                         yAxisIndex: 1
+                    },
+                    {
+                        name: 'Tendencia',
+                        type: 'line',
+                        clip: false,
+                        data: getTrendData(),
+                        smooth: false,
+                        symbol: 'none',
+                        yAxisIndex: 0,
+                        lineStyle: {
+                            type: 'dashed',
+                            width: 2,
+                            color: trendColor
+                        },
+                        itemStyle: {
+                            color: trendColor
+                        }
                     }
                 ]
             };
