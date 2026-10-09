@@ -789,6 +789,8 @@ def stock_breakdown_view(request):
     if 'page' in query_dict:
         del query_dict['page']
 
+    kpis = breakdown_service.get_kpis() if not request.htmx else {}
+
     end = perf_counter()
     perf = end - init
     print(f'stock_breakdown_view: {perf:.4f} seconds')
@@ -802,6 +804,7 @@ def stock_breakdown_view(request):
         'page_obj': page_obj,
         'query_string': query_dict.urlencode(),
         'perf': perf,
+        'kpis': kpis,
     }
 
     if request.htmx:
@@ -830,6 +833,7 @@ def stock_breakdown_children_view(request):
     parent_filters = {
         'l1_id': req_data.get('l1_id'),
         'l2_id': req_data.get('l2_id'),
+        'l3_id': req_data.get('l3_id'),
         'parent_node_id': req_data.get('parent_node_id', ''),
     }
 
@@ -853,7 +857,7 @@ def stock_breakdown_children_view(request):
     )
 
     query_dict = req_data.copy()
-    for param in ['level', 'l1_id', 'l2_id', 'parent_node_id', 'page']:
+    for param in ['level', 'l1_id', 'l2_id', 'l3_id', 'parent_node_id', 'page']:
         if param in query_dict:
             del query_dict[param]
 

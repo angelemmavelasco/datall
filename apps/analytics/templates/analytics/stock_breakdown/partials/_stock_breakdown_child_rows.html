@@ -5,13 +5,13 @@
     data-parent="{{ parent_node_id }}"
     class="{{ child.ancestor_classes }} border-b border-border hover:bg-hover/20 transition-colors bg-page group/row {% if child.has_children %}cursor-pointer{% endif %}"
     {% if child.has_children %}
-    hx-get="{% url 'analytics:stock_breakdown_children_view' %}?dimension={{ dimension }}&level={{ child.next_level }}&l1_id={{ child.l1_id }}&l2_id={{ child.l2_id|default:'' }}&parent_node_id={{ child.node_id }}{% if query_string %}&{{ query_string }}{% endif %}"
+    hx-get="{% url 'analytics:stock_breakdown_children_view' %}?dimension={{ dimension }}&level={{ child.next_level }}&l1_id={{ child.l1_id }}&l2_id={{ child.l2_id|default:'' }}&l3_id={{ child.l3_id|default:'' }}&parent_node_id={{ child.node_id }}{% if query_string %}&{{ query_string }}{% endif %}"
     hx-target="#row-{{ child.node_id }}"
     hx-swap="afterend"
     hx-trigger="click once"
     onclick="toggleNode('{{ child.node_id }}', 'icon-{{ child.node_id }}', 'child-{{ child.node_id }}')"
     {% endif %}>
-    <td class="p-1 {% if child.level == 2 %}pl-8{% elif child.level == 3 %}pl-16{% else %}pl-8{% endif %} {% if child.has_children %}text-body{% else %}text-muted{% endif %} border-b border-border sticky md:left-0 z-20 min-w-[280px] bg-page border-r">
+    <td class="p-1 {% if child.level == 2 %}pl-8{% elif child.level == 3 %}pl-16{% elif child.level == 4 %}pl-24{% else %}pl-8{% endif %} {% if child.has_children %}text-body{% else %}text-muted{% endif %} border-b border-border sticky md:left-0 z-20 min-w-[280px] bg-page border-r">
         <div class="flex items-center gap-2 min-w-full min-h-full">
             {% if child.has_children %}
                 <svg id="icon-{{ child.node_id }}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-right-icon lucide-circle-chevron-right text-muted transition-transform shrink-0 group-[.htmx-request]/row:hidden">
@@ -20,28 +20,64 @@
                 <div class="hidden group-[.htmx-request]/row:flex text-hover shrink-0 items-center justify-center">
                     {% include 'layouts/loading_animation_icon.html' %}
                 </div>
-                <span class="truncate font-medium text-title text-xs" title="{{ child.name|title }}">
-                    {{ child.name|title }}
-                </span>
+                {% if child.is_product %}
+                    <span class="truncate font-medium text-title text-xs" title="{{ child.id|upper }} - {{ child.name|title }}">
+                        <span class="text-muted font-normal">{{ child.id|upper }}</span> - {{ child.name|title }}
+                    </span>
+                {% else %}
+                    <span class="truncate font-medium text-title text-xs" title="{{ child.name|title }}">
+                        {{ child.name|title }}
+                    </span>
+                {% endif %}
             {% else %}
-                <span class="w-4 flex justify-center shrink-0 text-secondary text-xs">•</span>
-                <span class="truncate text-xs text-strong" title="{{ child.id|upper }} - {{ child.name|title }}">
-                    <span class="text-muted">{{ child.id|upper }}</span> - {{ child.name|title }}
-                </span>
+                {% if child.is_lot %}
+                    <div class="flex items-center gap-1.5 truncate text-xs min-w-0">
+                        <span class="font-mono text-strong text-xs font-medium shrink-0">
+                            {% if child.lot_number %}
+                                Lote: {{ child.lot_number }}
+                            {% else %}
+                                <span class="italic text-muted font-normal">Sin lote</span>
+                            {% endif %}
+                        </span>
+                        {% if child.expiration_date %}
+                            <span class="text-[11px] font-mono shrink-0 {% if child.is_expired %}text-red-500 font-semibold{% else %}text-muted{% endif %}">
+                                (Cad: {{ child.expiration_date|date:'d/m/Y' }})
+                            </span>
+                        {% else %}
+                            <span class="text-[11px] italic text-muted/60 shrink-0">(Sin caducidad)</span>
+                        {% endif %}
+                    </div>
+                {% elif child.is_product %}
+                    <span class="w-4 flex justify-center shrink-0 text-secondary text-xs">•</span>
+                    <span class="truncate text-xs text-strong" title="{{ child.id|upper }} - {{ child.name|title }}">
+                        <span class="text-muted font-normal">{{ child.id|upper }}</span> - {{ child.name|title }}
+                    </span>
+                {% else %}
+                    <span class="w-4 flex justify-center shrink-0 text-secondary text-xs">•</span>
+                    <span class="truncate text-xs text-strong" title="{{ child.id|upper }} - {{ child.name|title }}">
+                        <span class="text-muted">{{ child.id|upper }}</span> - {{ child.name|title }}
+                    </span>
+                {% endif %}
             {% endif %}
         </div>
     </td>
     {% for total in child.totals %}
-        <td class="p-1 text-right text-strong border-r border-b border-border min-w-[140px]">
+        <td class="p-1 text-right text-strong border-r border-b border-border min-w-[140px] {% if child.is_lot %}font-mono text-[11px]{% endif %}">
             {% if total.quantity > 0 %}
-                <span class="text-title font-medium text-xs">{{ total.quantity|floatformat:2|intcomma }}</span>
+                <span class="{% if child.is_lot %}text-muted font-normal{% else %}text-title font-medium{% endif %} text-xs">{{ total.quantity|floatformat:2|intcomma }}</span>
+            {% elif total.quantity < 0 %}
+                <span class="text-red-500 font-medium text-xs">{{ total.quantity|floatformat:2|intcomma }}</span>
             {% else %}
                 <span class="text-muted text-xs">-</span>
             {% endif %}
         </td>
     {% endfor %}
-    <td class="p-1 text-right text-strong border-r border-b border-border min-w-[140px] bg-hover/10">
-        <span class="text-title font-bold text-xs">{{ child.total_overall|floatformat:2|intcomma }}</span>
+    <td class="p-1 text-right text-strong border-r border-b border-border min-w-[140px] bg-hover/10 {% if child.is_lot %}font-mono text-[11px]{% endif %}">
+        {% if child.total_overall < 0 %}
+            <span class="text-red-500 font-bold text-xs">{{ child.total_overall|floatformat:2|intcomma }}</span>
+        {% else %}
+            <span class="{% if child.is_lot %}text-title font-semibold{% else %}text-title font-bold{% endif %} text-xs">{{ child.total_overall|floatformat:2|intcomma }}</span>
+        {% endif %}
     </td>
 </tr>
 {% endfor %}

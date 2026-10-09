@@ -920,7 +920,7 @@ class ProductMultipleChoiceFilter(django_filters.ModelMultipleChoiceFilter):
 
 class StockBreakdownFilter(django_filters.FilterSet):
     DIMENSION_CHOICES = [
-        ('productcategory_productclass_product', 'Categoría de producto → Clase de producto → Producto'),
+        ('productcategory_productclass_product', 'Categoría de producto → Clase de producto → Producto → Lote'),
     ]
 
     dimension = django_filters.ChoiceFilter(

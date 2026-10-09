@@ -72,6 +72,80 @@
         </p>
     </div>
 
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="border border-border rounded bg-container p-2" title="Conteo único de productos que cuentan con existencia diferente de cero.">
+            <span class="text-sm text-title">
+                Productos con existencia <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-title font-semibold">
+                {{ kpis.products_with_stock|default:0|floatformat:0|intcomma }}
+            </span>
+        </div>
+        <div class="border border-border rounded bg-container p-2" title="Total agregado de existencias en inventario.">
+            <span class="text-sm text-title">
+                Existencia total <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-title font-semibold">
+                {{ kpis.total_stock|default:0|floatformat:2|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Conteo de unidades de productos cuya caducidad es inferior o igual al día de hoy.">
+            <span class="text-sm text-title">
+                Unidades caducas <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-title font-semibold {% if kpis.expired_units > 0 %}text-red-500{% endif %}">
+                {{ kpis.expired_units|default:0|floatformat:2|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Conteo único de productos que cuentan con unidades caducas.">
+            <span class="text-sm text-title">
+                Productos con caducos <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-title font-semibold {% if kpis.expired_products > 0 %}text-red-500{% endif %}">
+                {{ kpis.expired_products|default:0|floatformat:0|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Unidades que caducan en el mes actual y siguiente (0 - 2 meses truncados).">
+            <span class="text-sm text-title">
+                Caducan 0 - 2 meses <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-title font-semibold">
+                {{ kpis.expires_0_2_months|default:0|floatformat:2|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Unidades que caducan en los meses 3 y 4 (meses 2 y 3 futuros truncados).">
+            <span class="text-sm text-title">
+                Caducan 3 - 4 meses <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-title font-semibold">
+                {{ kpis.expires_3_4_months|default:0|floatformat:2|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Unidades que caducan en los meses 5 y 6 (meses 4 y 5 futuros truncados).">
+            <span class="text-sm text-title">
+                Caducan 5 - 6 meses <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-title font-semibold">
+                {{ kpis.expires_5_6_months|default:0|floatformat:2|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Unidades que caducan de 6 meses en adelante (+6 meses truncados).">
+            <span class="text-sm text-title">
+                Caducan +6 meses <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-title font-semibold">
+                {{ kpis.expires_6_plus_months|default:0|floatformat:2|intcomma }}
+            </span>
+        </div>
+
+    </div>
+
     <div class="w-full overflow-auto border border-border rounded bg-container max-h-[82vh] relative @container shadow-sm min-h-[380px]">
         <table class="w-full text-left border-separate border-spacing-0 min-w-[600px]">
             <thead class="sticky top-0 z-30 bg-page">
@@ -179,16 +253,18 @@
 
             if (!isOpening) {
                 // hide all descendants recursively
-                const allDescendants = document.querySelectorAll('.child-' + nodeId);
-                allDescendants.forEach(el => el.classList.add('hidden'));
+                const allDescendants = document.getElementsByClassName('child-' + nodeId);
+                Array.from(allDescendants).forEach(el => el.classList.add('hidden'));
 
                 // reset descendant icons to right-chevron
-                const descendantIcons = document.querySelectorAll('[id^="icon-' + nodeId + '_"]');
-                descendantIcons.forEach(ic => {
-                    ic.classList.remove('lucide-circle-chevron-down');
-                    ic.classList.add('lucide-circle-chevron-right');
-                    ic.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/>';
-                });
+                try {
+                    const descendantIcons = document.querySelectorAll('[id^="' + CSS.escape('icon-' + nodeId + '_') + '"]');
+                    descendantIcons.forEach(ic => {
+                        ic.classList.remove('lucide-circle-chevron-down');
+                        ic.classList.add('lucide-circle-chevron-right');
+                        ic.innerHTML = '<circle cx="12" cy="12" r="10"/><path d="m10 8 4 4-4 4"/>';
+                    });
+                } catch(e) {}
             }
         } else {
             // first click while htmx is loading

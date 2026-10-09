@@ -1139,6 +1139,17 @@ class StockBreakdownTestCase(TestCase):
         self.assertEqual(len(l3_items), 2)
         p1_item = next(i for i in l3_items if i['id'] == 'P1')
         self.assertEqual(p1_item['total_overall'], 150.0)
+        self.assertTrue(p1_item['has_children'])
+        self.assertTrue(p1_item['is_product'])
+
+        # Level 4 (lots) under P1
+        l4_items = service.get_level_children(target_level=4, parent_filters={'l1_id': 'CAT1', 'l2_id': 'CLS1', 'l3_id': 'P1'})
+        self.assertEqual(len(l4_items), 2)
+        lot_numbers = [item['lot_number'] for item in l4_items]
+        self.assertIn('L1', lot_numbers)
+        self.assertIn('L2', lot_numbers)
+        self.assertTrue(all(item['is_lot'] for item in l4_items))
+        self.assertTrue(all(not item['has_children'] for item in l4_items))
 
     def test_filter_selection_with_retail_warehouse(self):
         form_data = {
@@ -1161,6 +1172,105 @@ class StockBreakdownTestCase(TestCase):
         self.assertGreater(len(buf.getvalue()), 0)
         wb = openpyxl.load_workbook(buf)
         self.assertIn("Existencias por Almacén", wb.sheetnames)
+        ws = wb["Existencias por Almacén"]
+        # Verify lot rows are written
+        found_lot = any("Lote:" in str(cell.value) for row in ws.iter_rows() for cell in row)
+        self.assertTrue(found_lot)
+
+    def test_kpis_calculation_and_buckets(self):
+        from dateutil.relativedelta import relativedelta
+        today = timezone.localdate()
+        m0_start = today.replace(day=1)
+
+        # Create additional test products with specific expiration dates
+        prod_neg = Product.objects.create(id='P_NEG', name='Prod Negativo', product_class=self.class1)
+        prod_zero = Product.objects.create(id='P_ZERO', name='Prod Cero', product_class=self.class1)
+        prod_exp = Product.objects.create(id='P_EXP', name='Prod Expirando', product_class=self.class1)
+
+        # Negative stock should be counted as having stock
+        Stock.objects.create(product=prod_neg, warehouse=self.wh_main, quantity=Decimal('-5.00'), lot_number='L_NEG')
+        # Zero stock should NOT be counted as having stock
+        Stock.objects.create(product=prod_zero, warehouse=self.wh_main, quantity=Decimal('0.00'), lot_number='L_ZERO')
+
+        # Expired (<= today, in previous month)
+        Stock.objects.create(
+            product=prod_exp,
+            warehouse=self.wh_main,
+            quantity=Decimal('10.00'),
+            lot_number='L_EXPIRED',
+            expiration_date=m0_start - timedelta(days=5)
+        )
+        # Expires in 0-2 months (month 0 or 1)
+        Stock.objects.create(
+            product=prod_exp,
+            warehouse=self.wh_sec,
+            quantity=Decimal('15.00'),
+            lot_number='L_M01',
+            expiration_date=m0_start + relativedelta(days=12)
+        )
+        # Expires in 3-4 months (month 2 or 3)
+        Stock.objects.create(
+            product=prod_exp,
+            warehouse=self.wh_main,
+            quantity=Decimal('25.00'),
+            lot_number='L_M23',
+            expiration_date=m0_start + relativedelta(months=2, days=5)
+        )
+        # Expires in 5-6 months (month 4 or 5)
+        Stock.objects.create(
+            product=prod_exp,
+            warehouse=self.wh_main,
+            quantity=Decimal('35.00'),
+            lot_number='L_M45',
+            expiration_date=m0_start + relativedelta(months=4, days=5)
+        )
+        # Expires +6 months (month 6+)
+        Stock.objects.create(
+            product=prod_exp,
+            warehouse=self.wh_main,
+            quantity=Decimal('45.00'),
+            lot_number='L_M6P',
+            expiration_date=m0_start + relativedelta(months=7, days=5)
+        )
+
+        service = StockBreakdownService(queryset=Stock.objects.all())
+        kpis = service.get_kpis()
+
+        # Prod1 (150), Prod2 (20), Prod_neg (-5), Prod_exp (130) -> 4 products with stock != 0. Prod_zero is excluded.
+        self.assertEqual(kpis['products_with_stock'], 4)
+        # Total stock = 100 + 50 + 20 - 5 + 0 + 10 + 15 + 25 + 35 + 45 = 295.00
+        self.assertEqual(kpis['total_stock'], 295.0)
+        # Expired units <= today = 10.0
+        self.assertEqual(kpis['expired_units'], 10.0)
+        # Expired products = 1 (prod_exp)
+        self.assertEqual(kpis['expired_products'], 1)
+        # Expiration buckets
+        self.assertEqual(kpis['expires_0_2_months'], 15.0)
+        self.assertEqual(kpis['expires_3_4_months'], 25.0)
+        self.assertEqual(kpis['expires_5_6_months'], 35.0)
+        self.assertEqual(kpis['expires_6_plus_months'], 45.0)
+
+    def test_stock_breakdown_views_and_child_rendering(self):
+        self.client.force_login(self.user)
+        url = reverse('analytics:stock_breakdown_view')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('kpis', response.context)
+        self.assertGreater(response.context['kpis']['total_stock'], 0)
+
+        # Lazy load children at level 4 (lots)
+        child_url = reverse('analytics:stock_breakdown_children_view')
+        child_resp = self.client.get(child_url, {
+            'level': 4,
+            'l1_id': 'CAT1',
+            'l2_id': 'CLS1',
+            'l3_id': 'P1',
+            'parent_node_id': 'n1_CAT1_CLS1_P1'
+        })
+        self.assertEqual(child_resp.status_code, 200)
+        content = child_resp.content.decode('utf-8')
+        self.assertIn('Lote: L1', content)
+        self.assertIn('Lote: L2', content)
 
 
 
