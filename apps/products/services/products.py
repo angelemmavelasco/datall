@@ -435,26 +435,36 @@ class ProductsStats:
         today = timezone.localdate()
         limit_date = today + timedelta(days=30)
 
-        agg = base_qs.aggregate(
+        agg = self.products_service.product_model.objects.filter(
+            pk__in=base_qs.values('pk')
+        ).aggregate(
             products_count=Count('pk', distinct=True),
             active_products_count=Count('pk', filter=Q(is_active=True), distinct=True),
             inactive_products_count=Count('pk', filter=Q(is_active=False), distinct=True),
             categories_count=Count('product_class__product_category', distinct=True),
             classes_count=Count('product_class', distinct=True),
             avg_price=Avg('price'),
-            total_stock=Sum('stocks__quantity'),
-            next_to_expire=Sum(
-                'stocks__quantity',
-                filter=Q(
-                    stocks__expiration_date__isnull=False,
-                    stocks__expiration_date__lte=limit_date,
-                    stocks__expiration_date__gte=today,
+        )
+
+        stock_agg = self.products_service.stock_model.objects.filter(
+            product__in=base_qs.values('pk')
+        ).aggregate(
+            total_stock=Coalesce(Sum('quantity'), Decimal('0.00')),
+            next_to_expire=Coalesce(
+                Sum(
+                    'quantity',
+                    filter=Q(
+                        expiration_date__isnull=False,
+                        expiration_date__lte=limit_date,
+                        expiration_date__gte=today,
+                    ),
                 ),
+                Decimal('0.00'),
             ),
         )
 
-        agg['total_stock'] = agg['total_stock'] or Decimal('0.00')
-        agg['next_to_expire'] = agg['next_to_expire'] or Decimal('0.00')
+        agg.update(stock_agg)
         agg['avg_price'] = agg['avg_price'] or Decimal('0.00')
 
         return agg
+
