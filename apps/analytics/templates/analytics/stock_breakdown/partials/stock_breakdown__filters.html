@@ -97,6 +97,54 @@
         </div>
     </div>
 
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title text-xs font-medium">{{ filter.form.expiration_status.label }}</label>
+        <div class="border border-border rounded bg-page p-2 flex flex-col gap-1.5">
+            {% for choice in filter.form.expiration_status %}
+                <label class="filter-option flex items-center gap-2 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs text-title">
+                    {{ choice.tag }}
+                    <span class="option-label font-normal">{{ choice.choice_label }}</span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title text-xs font-medium">{{ filter.form.expiration_buckets.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2">
+            <label class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border text-xs">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="flex flex-col gap-1 filter-options">
+                {% for choice in filter.form.expiration_buckets %}
+                    <label class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                        {{ choice.tag }}
+                        <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label class="text-title text-xs font-medium">Rango de caducidad</label>
+        <div class="grid grid-cols-2 gap-2">
+            <div class="flex flex-col gap-1">
+                <label for="{{ filter.form.expiration_date_from.id_for_label }}" class="text-[11px] text-muted">
+                    {{ filter.form.expiration_date_from.label }}
+                </label>
+                {% render_field filter.form.expiration_date_from class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title" %}
+            </div>
+            <div class="flex flex-col gap-1">
+                <label for="{{ filter.form.expiration_date_to.id_for_label }}" class="text-[11px] text-muted">
+                    {{ filter.form.expiration_date_to.label }}
+                </label>
+                {% render_field filter.form.expiration_date_to class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title" %}
+            </div>
+        </div>
+    </div>
+
     <div class="flex gap-2 flex-col mt-2">
         <button type="submit"
             class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-xs font-medium">Aplicar

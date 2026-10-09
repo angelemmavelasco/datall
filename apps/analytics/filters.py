@@ -3,6 +3,7 @@ import django_filters
 from django import forms
 from django.db.models import Min, Max, Q, QuerySet
 from django.utils import timezone
+from dateutil.relativedelta import relativedelta
 
 from apps.sales.models import SaleTransaction, Route, Warehouse, SaleTarget
 from apps.human_resources.models import BusinessUnit
@@ -923,6 +924,19 @@ class StockBreakdownFilter(django_filters.FilterSet):
         ('productcategory_productclass_product', 'Categoría de producto → Clase de producto → Producto → Lote'),
     ]
 
+    EXPIRATION_STATUS_CHOICES = [
+        ('all', 'Todos'),
+        ('expired', 'Caducos'),
+        ('not_expired', 'No caducos'),
+    ]
+
+    EXPIRATION_BUCKET_CHOICES = [
+        ('0_2', 'Caducan 0 - 2 meses'),
+        ('3_4', 'Caducan 3 - 4 meses'),
+        ('5_6', 'Caducan 5 - 6 meses'),
+        ('6_plus', 'Caducan +6 meses'),
+    ]
+
     dimension = django_filters.ChoiceFilter(
         choices=DIMENSION_CHOICES,
         label='Dimensión de visualización',
@@ -931,6 +945,33 @@ class StockBreakdownFilter(django_filters.FilterSet):
         empty_label=None,
         null_label=None,
         initial='productcategory_productclass_product',
+    )
+    expiration_status = django_filters.ChoiceFilter(
+        choices=EXPIRATION_STATUS_CHOICES,
+        label='Estado de caducidad',
+        widget=forms.RadioSelect,
+        method='filter_expiration_status',
+        empty_label=None,
+        null_label=None,
+        initial='all',
+    )
+    expiration_buckets = django_filters.MultipleChoiceFilter(
+        choices=EXPIRATION_BUCKET_CHOICES,
+        label='Periodo de caducidad',
+        widget=forms.CheckboxSelectMultiple,
+        method='filter_expiration_buckets',
+    )
+    expiration_date_from = django_filters.DateFilter(
+        field_name='expiration_date',
+        lookup_expr='gte',
+        label='Caduca desde',
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+    expiration_date_to = django_filters.DateFilter(
+        field_name='expiration_date',
+        lookup_expr='lte',
+        label='Caduca hasta',
+        widget=forms.DateInput(attrs={'type': 'date'}),
     )
     warehouse = WarehouseMultipleChoiceFilter(
         queryset=Warehouse.objects.all(),
@@ -988,6 +1029,44 @@ class StockBreakdownFilter(django_filters.FilterSet):
             return queryset
         wh_ids = [w.pk if hasattr(w, 'pk') else w for w in value]
         return queryset.filter(warehouse_id__in=wh_ids)
+
+    def filter_expiration_status(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value or value in ('all', 'todos'):
+            return queryset
+        today = timezone.localdate()
+        if value in ('expired', 'caducos'):
+            return queryset.filter(expiration_date__isnull=False, expiration_date__lte=today)
+        if value in ('not_expired', 'no_caducos'):
+            return queryset.filter(Q(expiration_date__gt=today) | Q(expiration_date__isnull=True))
+        return queryset
+
+    def filter_expiration_buckets(self, queryset: QuerySet, name: str, value: Any) -> QuerySet:
+        if not value:
+            return queryset
+
+        today = timezone.localdate()
+        m0_start = today.replace(day=1)
+
+        start_1 = m0_start
+        end_1 = (m0_start + relativedelta(months=2)) - relativedelta(days=1)
+        start_2 = m0_start + relativedelta(months=2)
+        end_2 = (m0_start + relativedelta(months=4)) - relativedelta(days=1)
+        start_3 = m0_start + relativedelta(months=4)
+        end_3 = (m0_start + relativedelta(months=6)) - relativedelta(days=1)
+        start_4 = m0_start + relativedelta(months=6)
+
+        q_filter = Q()
+        for val in value:
+            if val == '0_2':
+                q_filter |= Q(expiration_date__isnull=False, expiration_date__gte=start_1, expiration_date__lte=end_1)
+            elif val == '3_4':
+                q_filter |= Q(expiration_date__isnull=False, expiration_date__gte=start_2, expiration_date__lte=end_2)
+            elif val == '5_6':
+                q_filter |= Q(expiration_date__isnull=False, expiration_date__gte=start_3, expiration_date__lte=end_3)
+            elif val == '6_plus':
+                q_filter |= Q(expiration_date__isnull=False, expiration_date__gte=start_4)
+
+        return queryset.filter(q_filter)
 
 
 

@@ -1272,8 +1272,80 @@ class StockBreakdownTestCase(TestCase):
         self.assertIn('Lote: L1', content)
         self.assertIn('Lote: L2', content)
 
+    def test_expiration_filters(self):
+        from dateutil.relativedelta import relativedelta
+        today = timezone.localdate()
+        m0_start = today.replace(day=1)
 
+        # Create distinct test stocks
+        prod = Product.objects.create(id='P_FLT', name='Prod Filtro', product_class=self.class1)
+        s_exp = Stock.objects.create(
+            product=prod, warehouse=self.wh_main, quantity=Decimal('10.00'), lot_number='L_EXP',
+            expiration_date=today - timedelta(days=5)
+        )
+        s_b1 = Stock.objects.create(
+            product=prod, warehouse=self.wh_main, quantity=Decimal('20.00'), lot_number='L_B1',
+            expiration_date=m0_start + relativedelta(days=15)
+        )
+        s_b2 = Stock.objects.create(
+            product=prod, warehouse=self.wh_main, quantity=Decimal('30.00'), lot_number='L_B2',
+            expiration_date=m0_start + relativedelta(months=2, days=15)
+        )
+        s_b3 = Stock.objects.create(
+            product=prod, warehouse=self.wh_main, quantity=Decimal('40.00'), lot_number='L_B3',
+            expiration_date=m0_start + relativedelta(months=4, days=15)
+        )
+        s_b4 = Stock.objects.create(
+            product=prod, warehouse=self.wh_main, quantity=Decimal('50.00'), lot_number='L_B4',
+            expiration_date=m0_start + relativedelta(months=7, days=15)
+        )
 
+        # 1. Test expiration_status='expired'
+        f_expired = StockBreakdownFilter({'expiration_status': 'expired'}, queryset=Stock.objects.all())
+        self.assertTrue(f_expired.is_valid())
+        expired_pks = set(f_expired.qs.values_list('pk', flat=True))
+        self.assertIn(s_exp.pk, expired_pks)
+        self.assertNotIn(s_b1.pk, expired_pks)
+        self.assertNotIn(s_b4.pk, expired_pks)
 
+        # 2. Test expiration_status='not_expired'
+        f_not_expired = StockBreakdownFilter({'expiration_status': 'not_expired'}, queryset=Stock.objects.all())
+        self.assertTrue(f_not_expired.is_valid())
+        not_expired_pks = set(f_not_expired.qs.values_list('pk', flat=True))
+        self.assertNotIn(s_exp.pk, not_expired_pks)
+        self.assertIn(s_b1.pk, not_expired_pks)
+        self.assertIn(s_b4.pk, not_expired_pks)
 
+        # 3. Test expiration_buckets
+        f_b1 = StockBreakdownFilter({'expiration_buckets': ['0_2']}, queryset=Stock.objects.all())
+        self.assertTrue(f_b1.is_valid())
+        b1_pks = set(f_b1.qs.values_list('pk', flat=True))
+        self.assertIn(s_b1.pk, b1_pks)
+        self.assertNotIn(s_b2.pk, b1_pks)
 
+        f_multi = StockBreakdownFilter({'expiration_buckets': ['3_4', '5_6']}, queryset=Stock.objects.all())
+        self.assertTrue(f_multi.is_valid())
+        multi_pks = set(f_multi.qs.values_list('pk', flat=True))
+        self.assertIn(s_b2.pk, multi_pks)
+        self.assertIn(s_b3.pk, multi_pks)
+        self.assertNotIn(s_b1.pk, multi_pks)
+        self.assertNotIn(s_b4.pk, multi_pks)
+
+        # 4. Test date range
+        f_range = StockBreakdownFilter({
+            'expiration_date_from': (m0_start + relativedelta(months=2)).strftime('%Y-%m-%d'),
+            'expiration_date_to': (m0_start + relativedelta(months=3)).strftime('%Y-%m-%d'),
+        }, queryset=Stock.objects.all())
+        self.assertTrue(f_range.is_valid())
+        range_pks = set(f_range.qs.values_list('pk', flat=True))
+        self.assertIn(s_b2.pk, range_pks)
+        self.assertNotIn(s_b1.pk, range_pks)
+        self.assertNotIn(s_b3.pk, range_pks)
+
+        # 5. Integration with client GET view
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse('analytics:stock_breakdown_view'), {
+            'expiration_status': 'expired'
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('kpis', resp.context)
