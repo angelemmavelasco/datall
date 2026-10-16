@@ -89,6 +89,16 @@ class SubmoduleAdmin(admin.ModelAdmin):
     list_filter = ('module', 'is_active')
     list_editable = ('order', 'is_active')
     search_fields = ('name', 'url_name')
+    filter_horizontal = ('allowed_groups', 'allowed_users')
+    fieldsets = (
+        ('Información General', {
+            'fields': ('name', 'module', 'url_name', 'icon', 'order', 'is_active')
+        }),
+        ('Permisos de Acceso', {
+            'fields': ('allowed_groups', 'allowed_users'),
+            'description': 'Grupos y usuarios autorizados para acceder a este submódulo.'
+        }),
+    )
     inlines = [ReferenceInline]
 
     @admin.display(description='Ícono')
