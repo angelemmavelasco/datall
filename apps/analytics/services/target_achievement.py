@@ -25,6 +25,7 @@ class TargetAchievementService:
     date_start: date | str | None = None
     date_end: date | str | None = None
     cleaned_data: dict[str, Any] | None = None
+    has_full_access: bool | None = None
 
     today: date = field(init=False)
     date_start_dt: date = field(init=False)
@@ -42,9 +43,26 @@ class TargetAchievementService:
         'zoetis'
     )
 
+    CDMX_CORPORATE_ID: str = 'crp_cdmx'
+    CDMX_SUB_GERENCIAS_IDS: tuple[str, ...] = ('cdmx1', 'cdmx2')
+    CDMX_ALL_RELATED_IDS: tuple[str, ...] = ('cdmx', 'cdmx1', 'cdmx2', 'crp_cdmx')
+
     def __post_init__(self):
         self._init_dates()
         self.total_b_days, self.elapsed_b_days = self._get_business_days(self.date_start_dt, self.date_end_dt)
+        if self.has_full_access is None:
+            self.has_full_access = self._evaluate_user_full_access()
+
+    def _evaluate_user_full_access(self) -> bool:
+        if not self.user:
+            return False
+        if getattr(self.user, 'is_superuser', False) or getattr(self.user, 'is_staff', False):
+            return True
+        try:
+            from apps.core.services.users import UsersService
+            return UsersService(user=self.user).has_full_access
+        except Exception:
+            return False
 
     def _init_dates(self) -> None:
         """
@@ -196,6 +214,7 @@ class TargetAchievementService:
             act = cdict['active']
             cdict['portfolio_scope'] = round((act / reg * 100.0), 2) if reg > 0 else 0.00
 
+        print(route_customers_dict)
         return route_customers_dict
 
     def _get_product_class_prf_by_route(self) -> tuple[dict[tuple[str, str], dict[str, Any]], dict[str, str], list[str]]:
@@ -625,12 +644,155 @@ class TargetAchievementService:
             'product_classes_breakdown': gt_classes_breakdown,
         }
 
-    def get_target_achievement_data(self) -> list[dict[str, Any]]:
-        """
-        Método orquestador principal que coordina el cálculo
-        y entrega la estructura consolidada para la vista y templates.
-        """
-        return self._get_product_class_prf_by_business_unit()
+    def _apply_cdmx_director_hierarchy(self, final_bu_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        '''
+        groups business units in the ways cdmx is a region and not a independent bu
+        '''
+        if not final_bu_list:
+            return final_bu_list
+
+        has_cdmx = any(
+            item['total_business_unit_data']['business_unit_id'] in self.CDMX_ALL_RELATED_IDS
+            for item in final_bu_list
+        )
+        if not has_cdmx:
+            for item in final_bu_list:
+                item.setdefault('sub_gerencias', [])
+            return final_bu_list
+
+        cdmx_items = []
+        other_bu_items = []
+
+        for item in final_bu_list:
+            item.setdefault('sub_gerencias', [])
+            buid = item['total_business_unit_data']['business_unit_id']
+            if buid in self.CDMX_ALL_RELATED_IDS:
+                cdmx_items.append(item)
+            else:
+                other_bu_items.append(item)
+
+        direct_routes = []
+        sub_gerencias = []
+
+        for item in cdmx_items:
+            buid = item['total_business_unit_data']['business_unit_id']
+            if buid in self.CDMX_SUB_GERENCIAS_IDS:
+                sub_gerencias.append(item)
+            else:
+                direct_routes.extend(item.get('routes_data', []))
+
+        sub_gerencias.sort(key=lambda x: x['total_business_unit_data']['business_unit_name'])
+        direct_routes.sort(key=lambda x: int(x['route_id']) if str(x['route_id']).isdigit() else str(x['route_id']))
+
+        dr_by_scope = sorted(direct_routes, key=lambda x: x['scope'], reverse=True)
+        dr_by_sale = sorted(direct_routes, key=lambda x: x['net_amount'], reverse=True)
+        for rank, r in enumerate(dr_by_scope, start=1):
+            r['rank_scope'] = rank
+        for rank, r in enumerate(dr_by_sale, start=1):
+            r['rank_sale'] = rank
+
+        reg_total = sum(x['total_business_unit_data']['registered_customers'] for x in cdmx_items)
+        act_total = sum(x['total_business_unit_data']['active_customers'] for x in cdmx_items)
+        new_total = sum(x['total_business_unit_data']['new_customers'] for x in cdmx_items)
+        target_total = sum((x['total_business_unit_data']['target'] for x in cdmx_items), Decimal('0.00'))
+        net_total = sum((x['total_business_unit_data']['net_amount'] for x in cdmx_items), Decimal('0.00'))
+        diff_total = target_total - net_total
+
+        port_scope = round((act_total / reg_total * 100.0), 2) if reg_total > 0 else 0.00
+        scope_total = (net_total / target_total * Decimal('100.00')) if target_total > 0 else Decimal('0.00')
+
+        proj_total = (net_total / Decimal(self.elapsed_b_days)) * Decimal(self.total_b_days)
+        scope_forecast_total = (proj_total / target_total * Decimal('100.00')) if target_total > 0 else Decimal('0.00')
+
+        classes_totals = defaultdict(lambda: {'target': Decimal('0.00'), 'net_amount': Decimal('0.00')})
+        for x in cdmx_items:
+            for c in x['total_business_unit_data']['business_unit_product_classes_breakdown']:
+                cname = c['product_class_name']
+                classes_totals[cname]['target'] += c['target']
+                classes_totals[cname]['net_amount'] += c['net_amount']
+
+        display_classes = self._get_display_product_classes()
+        cdmx_comp_fams = 0
+        cdmx_classes_breakdown = []
+        for cname in display_classes:
+            t = classes_totals[cname]['target']
+            n = classes_totals[cname]['net_amount']
+            c_diff = t - n
+            c_scope = (n / t * Decimal('100.00')) if t > 0 else Decimal('0.00')
+            c_proj = (n / Decimal(self.elapsed_b_days)) * Decimal(self.total_b_days)
+            c_forecast = (c_proj / t * Decimal('100.00')) if t > 0 else Decimal('0.00')
+
+            if cname in self.VALID_CORE_CLASSES:
+                if t > 0 and n >= t:
+                    cdmx_comp_fams += 1
+
+            cdmx_classes_breakdown.append({
+                'product_class_name': cname,
+                'target': t,
+                'net_amount': n,
+                'difference': c_diff,
+                'scope': c_scope,
+                'scope_forecast': c_forecast
+            })
+
+        corporate_name = 'Corporativo Ciudad De México'
+        try:
+            from apps.human_resources.models import BusinessUnit
+            bu_obj = BusinessUnit.objects.filter(id=self.CDMX_CORPORATE_ID).first()
+            if bu_obj and bu_obj.name:
+                corporate_name = bu_obj.name.title()
+        except Exception:
+            pass
+
+        crp_cdmx_item = {
+            'total_business_unit_data': {
+                'business_unit_id': self.CDMX_CORPORATE_ID,
+                'business_unit_name': corporate_name,
+                'registered_customers': reg_total,
+                'active_customers': act_total,
+                'portfolio_scope': port_scope,
+                'new_customers': new_total,
+                'completed_product_classes': cdmx_comp_fams,
+                'target': target_total,
+                'net_amount': net_total,
+                'difference': diff_total,
+                'scope': scope_total,
+                'scope_forecast': scope_forecast_total,
+                'business_unit_product_classes_breakdown': cdmx_classes_breakdown,
+                'rank_sale': 0,
+                'rank_scope': 0,
+            },
+            'routes_data': direct_routes,
+            'sub_gerencias': sub_gerencias,
+            'display_classes': display_classes,
+        }
+
+        result_list = [crp_cdmx_item] + other_bu_items
+
+        bu_by_scope = sorted(result_list, key=lambda x: x['total_business_unit_data']['scope'], reverse=True)
+        bu_by_sale = sorted(result_list, key=lambda x: x['total_business_unit_data']['net_amount'], reverse=True)
+
+        for rank, item in enumerate(bu_by_scope, start=1):
+            item['total_business_unit_data']['rank_scope'] = rank
+        for rank, item in enumerate(bu_by_sale, start=1):
+            item['total_business_unit_data']['rank_sale'] = rank
+
+        result_list.sort(key=lambda x: x['total_business_unit_data']['business_unit_name'])
+        return result_list
+
+    def get_target_achievement_data(self, apply_director_hierarchy: bool | None = None) -> list[dict[str, Any]]:
+        '''
+        main method to retreive agg data.
+        if user has full access, apply cdmx aggregation.
+        '''
+        bu_data = self._get_product_class_prf_by_business_unit()
+        should_apply = self.has_full_access if apply_director_hierarchy is None else apply_director_hierarchy
+        if should_apply:
+            return self._apply_cdmx_director_hierarchy(bu_data)
+
+        for item in bu_data:
+            item.setdefault('sub_gerencias', [])
+        return bu_data
 
 
 @dataclass
@@ -639,7 +801,7 @@ class TargetAchievementExports:
 
     def export_target_achievement_report(self) -> io.BytesIO:
         service = self.target_achievement_service
-        data = service.get_target_achievement_data()
+        data = service.get_target_achievement_data(apply_director_hierarchy=False)
         display_classes = service._get_display_product_classes()
         grand_total = service.get_grand_total_data(data, display_classes) if data else {}
 

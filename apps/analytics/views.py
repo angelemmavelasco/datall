@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from .exports import *
 from time import perf_counter
+import pandas as pd
 
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
@@ -418,17 +419,25 @@ def commercial_risk_view(request):
 
 @login_required
 def target_achievement_view(request):
+    # time tracking to check performance at the end of the request.
+    # this does not consider dom rendering time
+    start_time = perf_counter()
+    # to track an unique request
+    request_id = uuid.uuid4().hex
+
     template = 'analytics/target_achievement/target_achievement.html'
 
     #default current month
     today = timezone.localdate()
     first_day_curr_month = today.replace(day=1)
+    # avoid having month mismatch in December
     if today.month == 12:
         last_day_curr_month = date(today.year, 12, 31)
     else:
         last_day_curr_month = date(today.year, today.month + 1, 1) - timedelta(days=1)
 
     req_data = request.GET.copy()
+    print(f"applied filters:\n{req_data.values()}")
     if 'date_start' not in req_data:
         req_data['date_start'] = first_day_curr_month.strftime('%Y-%m-%d')
     if 'date_end' not in req_data:
@@ -440,6 +449,7 @@ def target_achievement_view(request):
 
     tx_service = SaleTransactionsService(user=request.user)
     base_tx_qs = tx_service.read_transactions_by_allowed_routes()
+
 
     customers_service = CustomersService(user=request.user)
     base_customers_qs = customers_service.read_customers()
@@ -509,16 +519,20 @@ def target_achievement_view(request):
         routes_qs=filtered_routes_qs,
         date_start=date_start,
         date_end=date_end,
-        cleaned_data=cleaned_data
+        cleaned_data=cleaned_data,
+        has_full_access=routes_service.has_full_access,
     )
 
-    data = achievement_service.get_target_achievement_data()
+    raw_bu_data = achievement_service.get_target_achievement_data(apply_director_hierarchy=False)
+    data = achievement_service.get_target_achievement_data(apply_director_hierarchy=True) if routes_service.has_full_access else raw_bu_data
     display_classes = achievement_service._get_display_product_classes()
     grand_total = achievement_service.get_grand_total_data(data, display_classes) if data else None
 
     context = {
         'filter': filter_set,
         'data': data,
+        'detail_data': raw_bu_data,
+        'has_full_access': routes_service.has_full_access,
         'display_classes': display_classes,
         'grand_total': grand_total,
         'selected_date_start': achievement_service.date_start_dt.strftime('%Y-%m-%d'),
@@ -527,6 +541,29 @@ def target_achievement_view(request):
         'elapsed_b_days': achievement_service.elapsed_b_days,
         'query_string': req_data.urlencode(),
     }
+    end_time = perf_counter()
+    print(f"perf time: {end_time - start_time}")
+    try:
+
+        print(
+            f"\n{'-'*100}\n"
+            f"  logger | {request.path}\n"
+            f"{'-'*100}\n"
+            f"  {'user':<18} : @{request.user.username} ({request.user.first_name} {request.user.last_name})\n"
+            f"  {'request id':<18} : {request_id}\n"
+            f"  {'exec time':<18} : {end_time - start_time:.4f}s\n"
+            f"  {'related services':<18} : get_target_achievement_data, _get_display_product_classes, get_grand_total_data\n"
+            f"{'-'*100}\n"
+        )
+    except Exception as e:
+        print(e)
+
+    print(f"filtered routes:\n{pd.DataFrame(list(filtered_routes_qs.values()[:10])).to_string()}\n\n")
+    print(f"filtered targets:\n{pd.DataFrame(list(filtered_targets_qs.values()[:10])).to_string()}\n\n")
+    print(f"filtered transactions:\n\n{pd.DataFrame(list(filtered_tx_qs.values()[:10])).to_string()}\n\n")
+    print(f"filtered customers (trp):\n{pd.DataFrame(list(filtered_customers_qs.values()[:3])).T.to_string()}\n\n")
+    print('-'*100)
+
     return render(request, template, context)
 
 @login_required
