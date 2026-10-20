@@ -339,7 +339,7 @@ class SaleTargetCalculatorService(UsersService):
                 Prefetch(
                     'assignments',
                     queryset=CustomerAssignment.objects.filter(
-                        Q(end_date__isnull=True) | Q(end_date__gt=today),
+                        Q(end_date__isnull=True) | Q(end_date__gte=today),
                         start_date__lte=today
                     ).select_related('route'),
                     to_attr='active_assignments'
@@ -348,10 +348,9 @@ class SaleTargetCalculatorService(UsersService):
 
         # filter customers actively assigned to the specific route
         return base_qs.filter(
+            Q(assignments__end_date__isnull=True) | Q(assignments__end_date__gte=today),
             assignments__route_id=route_id,
-            assignments__start_date__lte=today
-        ).filter(
-            Q(assignments__end_date__isnull=True) | Q(assignments__end_date__gt=today)
+            assignments__start_date__lte=today,
         ).distinct().order_by('name', 'id')
 
     def parse_month_bounds(self, ym_str: str) -> tuple[Optional[datetime.date], Optional[datetime.date]]:
@@ -794,19 +793,17 @@ class SaleTargetCalculatorService(UsersService):
 
         def _get_active_count(route_id: str) -> int:
             return Customer.objects.filter(
+                Q(assignments__end_date__isnull=True) | Q(assignments__end_date__gte=today),
                 assignments__route_id=route_id,
-                assignments__start_date__lte=today
-            ).filter(
-                Q(assignments__end_date__isnull=True) | Q(assignments__end_date__gt=today)
+                assignments__start_date__lte=today,
             ).distinct().count()
 
         def _get_selected_in_route_count(route_id: str) -> int:
             return Customer.objects.filter(
+                Q(assignments__end_date__isnull=True) | Q(assignments__end_date__gte=today),
                 id__in=customer_ids,
                 assignments__route_id=route_id,
-                assignments__start_date__lte=today
-            ).filter(
-                Q(assignments__end_date__isnull=True) | Q(assignments__end_date__gt=today)
+                assignments__start_date__lte=today,
             ).distinct().count()
 
         origin_current = _get_active_count(origin_route_id)
