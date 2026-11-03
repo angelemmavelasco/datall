@@ -78,6 +78,18 @@ class CommercialRiskService:
         else:
             self.route_id = None
 
+    def _get_route_customers_qs(self) -> QuerySet:
+        """
+        returns customers currently assigned to this route, leveraging the current_route_id
+        annotation from CustomersService.read_customers() when available.
+        """
+        if 'current_route_id' in self.customers_qs.query.annotations:
+            return self.customers_qs.filter(current_route_id=self.route_id)
+        return self.customers_qs.filter(
+            Q(assignments__end_date__isnull=True) | Q(assignments__end_date__gte=self.today),
+            assignments__route_id=self.route_id,
+        ).distinct()
+
     def stats(self) -> dict[str, Any]:
         return CommercialRiskStats(commercial_risk_service=self).stats()
 
@@ -129,10 +141,8 @@ class CommercialRiskService:
             }
 
         customers_qs = (
-            self.customers_qs
-            .filter(assignments__route_id=self.route_id)
+            self._get_route_customers_qs()
             .values('id', 'registration_date')
-            .distinct()
         )
         customers_map = {c['id']: c['registration_date'] for c in customers_qs}
 
@@ -141,17 +151,17 @@ class CommercialRiskService:
             self.transactions_qs
             .filter(
                 route_id=self.route_id,
+                customer_id__in=list(customers_map.keys()),
                 sale_date__gte=extended_start,
                 sale_date__lte=self.date_end,
-                net_amount__gt=0
             )
             .values('sale_date', 'customer_id', 'net_amount')
-        )
+        ) if customers_map else []
 
         monthly_customer_sales = defaultdict(lambda: defaultdict(float))
         for tx in tx_qs:
             m_key = tx['sale_date'].strftime('%Y-%m')
-            monthly_customer_sales[m_key][tx['customer_id']] += float(tx['net_amount'])
+            monthly_customer_sales[m_key][tx['customer_id']] += float(tx['net_amount'] or 0.0)
 
         gini_list = []
         unattended_list = []
@@ -173,7 +183,7 @@ class CommercialRiskService:
             for qm in q_months:
                 for cid in portfolio_cids:
                     amt = monthly_customer_sales[qm].get(cid, 0.0)
-                    if amt > 0.0:
+                    if amt != 0.0:
                         quarter_customer_sales[cid] += amt
 
             active_count = sum(1 for cid in portfolio_cids if quarter_customer_sales.get(cid, 0.0) > 0.0)
@@ -249,10 +259,8 @@ class CommercialRiskService:
         end_bound = date(all_periods[-1][0], all_periods[-1][1], last_day_end)
 
         assigned_cids = set(
-            self.customers_qs
-            .filter(assignments__route_id=self.route_id)
+            self._get_route_customers_qs()
             .values_list('id', flat=True)
-            .distinct()
         )
 
         tx_churn = (
@@ -262,12 +270,12 @@ class CommercialRiskService:
                 customer_id__in=assigned_cids,
                 sale_date__gte=start_bound,
                 sale_date__lte=end_bound,
-                net_amount__gt=0
             )
             .order_by()
             .values('sale_date__year', 'sale_date__month', 'customer_id')
-            .distinct()
-        )
+            .annotate(total_net=Sum('net_amount'))
+            .filter(total_net__gt=0)
+        ) if assigned_cids else []
 
         cust_by_period: dict[tuple[int, int], set[Any]] = defaultdict(set)
         for row in tx_churn:
@@ -348,10 +356,8 @@ class CommercialRiskService:
             month_labels.append(m_label)
 
         customers_qs = (
-            self.customers_qs
-            .filter(assignments__route_id=self.route_id)
+            self._get_route_customers_qs()
             .values('id', 'registration_date')
-            .distinct()
         )
 
         counts = []
@@ -405,10 +411,8 @@ class CommercialRiskService:
             month_labels.append(m_label)
 
         customers_qs = (
-            self.customers_qs
-            .filter(assignments__route_id=self.route_id)
+            self._get_route_customers_qs()
             .values('id', 'registration_date')
-            .distinct()
         )
         cust_reg = {str(c['id']): c['registration_date'] for c in customers_qs if c['registration_date']}
 
@@ -416,13 +420,15 @@ class CommercialRiskService:
             self.transactions_qs
             .filter(
                 route_id=self.route_id,
+                customer_id__in=list(cust_reg.keys()),
                 sale_date__gte=self.date_start,
                 sale_date__lte=self.date_end,
-                net_amount__gt=0
             )
+            .order_by()
             .values('sale_date__year', 'sale_date__month', 'customer_id')
-            .distinct()
-        )
+            .annotate(total_net=Sum('net_amount'))
+            .filter(total_net__gt=0)
+        ) if cust_reg else []
 
         active_by_period = defaultdict(set)
         for tx in tx_qs:
@@ -486,10 +492,8 @@ class CommercialRiskService:
             last_month_label = 'Último mes'
 
         customers_qs = (
-            self.customers_qs
-            .filter(assignments__route_id=self.route_id)
+            self._get_route_customers_qs()
             .values('id', 'name', 'registration_date')
-            .distinct()
         )
         cust_map = {
             str(c['id']): {
@@ -503,17 +507,17 @@ class CommercialRiskService:
             self.transactions_qs
             .filter(
                 route_id=self.route_id,
+                customer_id__in=list(cust_map.keys()),
                 sale_date__gte=self.date_start,
                 sale_date__lte=self.date_end,
-                net_amount__gt=0
             )
             .values('sale_date', 'customer_id', 'net_amount')
-        )
+        ) if cust_map else []
 
         monthly_sales = defaultdict(lambda: defaultdict(float))
         for t in tx_qs:
             m = t['sale_date'].strftime('%Y-%m')
-            monthly_sales[m][str(t['customer_id'])] += float(t['net_amount'])
+            monthly_sales[m][str(t['customer_id'])] += float(t['net_amount'] or 0.0)
 
         result = {}
         for cid, info in cust_map.items():
@@ -864,10 +868,8 @@ class CommercialRiskService:
             }
 
         customers_qs = (
-            self.customers_qs
-            .filter(assignments__route_id=self.route_id)
+            self._get_route_customers_qs()
             .values('id', 'registration_date')
-            .distinct()
         )
         customers_map = {c['id']: c['registration_date'] for c in customers_qs}
 
@@ -876,17 +878,17 @@ class CommercialRiskService:
             self.transactions_qs
             .filter(
                 route_id=self.route_id,
+                customer_id__in=list(customers_map.keys()),
                 sale_date__gte=extended_start,
                 sale_date__lte=self.date_end,
-                net_amount__gt=0
             )
             .values('sale_date', 'customer_id', 'net_amount')
-        )
+        ) if customers_map else []
 
         monthly_customer_sales = defaultdict(lambda: defaultdict(float))
         for tx in tx_qs:
             m_key = tx['sale_date'].strftime('%Y-%m')
-            monthly_customer_sales[m_key][tx['customer_id']] += float(tx['net_amount'])
+            monthly_customer_sales[m_key][tx['customer_id']] += float(tx['net_amount'] or 0.0)
 
         category_counts = {k: [] for k in ordered_cat_keys}
         category_pcts = {k: [] for k in ordered_cat_keys}
@@ -1010,10 +1012,8 @@ class CommercialRiskService:
             }
 
         customers_qs = (
-            self.customers_qs
-            .filter(assignments__route_id=self.route_id)
+            self._get_route_customers_qs()
             .values('id', 'registration_date')
-            .distinct()
         )
         customers_map = {c['id']: c['registration_date'] for c in customers_qs}
 
@@ -1022,17 +1022,17 @@ class CommercialRiskService:
             self.transactions_qs
             .filter(
                 route_id=self.route_id,
+                customer_id__in=list(customers_map.keys()),
                 sale_date__gte=extended_start,
                 sale_date__lte=self.date_end,
-                net_amount__gt=0
             )
             .values('sale_date', 'customer_id', 'net_amount')
-        )
+        ) if customers_map else []
 
         monthly_customer_sales = defaultdict(lambda: defaultdict(float))
         for tx in tx_qs:
             m_key = tx['sale_date'].strftime('%Y-%m')
-            monthly_customer_sales[m_key][tx['customer_id']] += float(tx['net_amount'])
+            monthly_customer_sales[m_key][tx['customer_id']] += float(tx['net_amount'] or 0.0)
 
         category_amounts = {k: [] for k in ordered_cat_keys}
         category_percentages = {k: [] for k in ordered_cat_keys}
@@ -1107,16 +1107,9 @@ class CommercialRiskStats:
             return []
 
         target_qs = (
-            service.customers_qs
-            .filter(
-                assignments__route_id=service.route_id,
-                registration_date__lte=service.end_q_date
-            )
-            .filter(
-                Q(assignments__end_date__isnull=True) | Q(assignments__end_date__gte=service.today)
-            )
+            service._get_route_customers_qs()
+            .filter(registration_date__lte=service.end_q_date)
             .values_list('id', flat=True)
-            .distinct()
         )
         return [str(cid) for cid in target_qs]
 
@@ -1137,10 +1130,11 @@ class CommercialRiskStats:
                 customer_id__in=target_cids,
                 sale_date__gte=service.start_q_date,
                 sale_date__lte=service.end_q_date,
-                net_amount__gt=0
             )
+            .order_by()
             .values('customer_id')
             .annotate(total=Sum('net_amount'))
+            .filter(total__gt=0)
         )
         return {str(row['customer_id']): (row['total'] or Decimal('0.00')) for row in sales_qs}
 
@@ -1259,13 +1253,11 @@ class CommercialRiskStats:
 
         service = self.commercial_risk_service
         new_customers_count = (
-            service.customers_qs
+            service._get_route_customers_qs()
             .filter(
-                assignments__route_id=service.route_id,
                 registration_date__gte=service.date_start,
                 registration_date__lte=service.date_end
             )
-            .distinct()
             .count()
         ) if service.route_id else 0
 

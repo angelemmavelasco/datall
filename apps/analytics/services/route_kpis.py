@@ -292,6 +292,18 @@ class RouteKpisService:
             'total': total_data,
         }
 
+    def _get_route_customers_qs(self) -> QuerySet:
+        """
+        returns customers currently assigned to this route, leveraging the current_route_id
+        annotation from CustomersService.read_customers() when available.
+        """
+        if 'current_route_id' in self.customers_qs.query.annotations:
+            return self.customers_qs.filter(current_route_id=self.route_id)
+        return self.customers_qs.filter(
+            Q(assignments__end_date__isnull=True) | Q(assignments__end_date__gte=self.today),
+            assignments__route_id=self.route_id,
+        ).distinct()
+
     def _get_collections(self) -> dict[str, Any]:
         """
         aggregates credit limits and accounts receivable breakdown for the route.
@@ -309,10 +321,7 @@ class RouteKpisService:
                 'days_60_over': 0.0,
             }
 
-        route_customers = self.customers_qs.filter(
-            assignments__route_id=self.route_id,
-            assignments__end_date__isnull=True
-        ).distinct()
+        route_customers = self._get_route_customers_qs()
 
         total_credit = float(route_customers.aggregate(total=Sum('credit_limit'))['total'] or 0.0)
 
@@ -464,17 +473,24 @@ class RouteKpisService:
         _, last_day_end = calendar.monthrange(all_periods[-1][0], all_periods[-1][1])
         end_bound = date(all_periods[-1][0], all_periods[-1][1], last_day_end)
 
+        assigned_cids = set(
+            self._get_route_customers_qs()
+            .values_list('id', flat=True)
+        )
+
         tx_churn = (
             self.transactions_qs
             .filter(
                 route_id=self.route_id,
+                customer_id__in=assigned_cids,
                 sale_date__gte=start_bound,
                 sale_date__lte=end_bound
             )
             .order_by()
             .values('sale_date__year', 'sale_date__month', 'customer_id')
-            .distinct()
-        )
+            .annotate(total_net=Sum('net_amount'))
+            .filter(total_net__gt=0)
+        ) if assigned_cids else []
 
         cust_by_period: dict[tuple[int, int], set[Any]] = defaultdict(set)
         for row in tx_churn:
@@ -630,10 +646,7 @@ class RouteKpisService:
         curr_bal = collections['current_balance']
         overdue_amt = collections['overdue_balance']
 
-        route_customers = self.customers_qs.filter(
-            assignments__route_id=self.route_id,
-            assignments__end_date__isnull=True
-        ).distinct()
+        route_customers = self._get_route_customers_qs()
 
         ar_base = self.ars_qs.filter(customer__in=route_customers)
         
@@ -653,7 +666,8 @@ class RouteKpisService:
         else:
             active_customers = route_customers
 
-        registered_count = active_customers.count()
+        active_customer_ids = list(active_customers.values_list('id', flat=True))
+        registered_count = len(active_customer_ids)
 
         new_count = route_customers.filter(
             registration_date__gte=self.date_start,
@@ -664,15 +678,18 @@ class RouteKpisService:
             self.transactions_qs
             .filter(
                 route_id=self.route_id,
+                customer_id__in=active_customer_ids,
                 sale_date__gte=self.date_start,
                 sale_date__lte=self.date_end
             )
+            .order_by()
             .values('customer_id')
-            .distinct()
+            .annotate(total_net=Sum('net_amount'))
+            .filter(total_net__gt=0)
             .count()
-        )
+        ) if active_customer_ids else 0
 
-        portfolio_coverage = round((purchased_count / registered_count * 100.0), 2) if registered_count > 0 else 0.0
+        portfolio_coverage = min(100.0, max(0.0, round((purchased_count / registered_count * 100.0), 2))) if registered_count > 0 else 0.0
 
         stats_data = {
             'net_amount': round(net_amount, 2),
