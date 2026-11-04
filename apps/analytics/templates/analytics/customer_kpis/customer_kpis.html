@@ -171,7 +171,7 @@ KPIs por Clientes
 
                         <!-- metricas de contribución -->
                         {% if show_contrib %}
-                        <th colspan="3" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-body text-page h-8 whitespace-nowrap">
+                        <th colspan="4" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-body text-page h-8 whitespace-nowrap">
                             <span class="inline-flex items-center gap-1.5 justify-center">
                                 Métricas de contribución ({{ selected_start_contrib|date:"d/m/Y" }} al {{ selected_end_contrib|date:"d/m/Y" }})
                                 <button type="button" onclick="toggleFilters()" class="hover:text-hover text-muted transition-colors cursor-pointer">
@@ -271,6 +271,10 @@ KPIs por Clientes
 
                         <th class="w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Contribución acumulada (Análisis de Pareto): Suma progresiva de los clientes ordenados de mayor a menor en el periodo (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}):&#10;• % Acumulado: Porcentaje acumulado de venta o utilidad hasta esta fila (resaltando en naranja al alcanzar el 80%)&#10;• Clientes y % Cartera: Total acumulado de clientes y porcentaje que representan de la cartera activa">
                             Contribución acumulada <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[220px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Venta mínima sugerida para cubrir objetivo: Monto de venta sugerido para el cliente en el mes en curso, calculado multiplicando su porcentaje de participación en venta neta del periodo evaluado (desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }}) por la cuota total del mes actual de las rutas presentes en el listado ($ {{ kpis.current_month_target|default:0|floatformat:2|intcomma }})">
+                            Venta mínima sugerida para cubrir objetivo <span class="cursor-pointer select-none">ⓘ</span>
                         </th>
                         {% endif %}
 
