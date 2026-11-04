@@ -224,6 +224,10 @@
             </span>
         </div>
     </td>
+
+    <td class="p-2 text-right text-title border-r border-border">
+        $ {{ customer.suggested_min_sale|default:0|floatformat:2|intcomma }}
+    </td>
     {% endif %}
 
     {% if show_monthly %}
@@ -244,7 +248,7 @@
 {% empty %}
 {% if not page_obj.has_previous %}
 <tr>
-    <td colspan="{% if show_contrib and show_monthly %}28{% elif show_contrib %}16{% elif show_monthly %}25{% else %}13{% endif %}" class="p-2 text-muted text-center border-border">
+    <td colspan="{% if show_contrib and show_monthly %}29{% elif show_contrib %}17{% elif show_monthly %}25{% else %}13{% endif %}" class="p-2 text-muted text-center border-border">
         <div class="sticky left-1/2 -translate-x-1/2 w-max">
             {% include 'layouts/data_not_found.html' %}
         </div>
@@ -255,7 +259,7 @@
 
 {% if page_obj.has_next %}
 <tr id="load-more-row-{{ page_obj.number }}">
-    <td colspan="{% if show_contrib and show_monthly %}28{% elif show_contrib %}16{% elif show_monthly %}25{% else %}13{% endif %}" class="p-4 border-t border-border">
+    <td colspan="{% if show_contrib and show_monthly %}29{% elif show_contrib %}17{% elif show_monthly %}25{% else %}13{% endif %}" class="p-4 border-t border-border">
         <div class="sticky left-1/2 -translate-x-1/2 w-max">
             <button hx-get="{{ request.path }}?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}"
                     hx-target="#load-more-row-{{ page_obj.number }}"

@@ -23,6 +23,7 @@ class CustomerKpisService:
     customers_qs: QuerySet
     transactions_qs: QuerySet
     ars_qs: QuerySet
+    targets_qs: QuerySet | None = None
     date_start: date | str | None = None
     date_end: date | str | None = None
     cleaned_data: dict[str, Any] | None = None
@@ -584,6 +585,50 @@ class CustomerKpisService:
         self.get_ordered_customers()
         return self.stats
 
+    def _get_current_month_target(self, customers: list, routes_map: dict | None = None) -> Decimal:
+        """
+        returns the sum of target_amount for the current month across the unique active routes
+        present in the filtered customers list.
+        """
+        if not customers:
+            return Decimal('0.00')
+
+        if hasattr(customers[0], 'current_route_id') and customers[0].current_route_id is not None:
+            route_ids = {
+                c.current_route_id
+                for c in customers
+                if getattr(c, 'current_route_id', None) and c.current_route_id != '-'
+            }
+        else:
+            r_map = routes_map if routes_map is not None else self._get_customer_assignments_map([c.id for c in customers])
+            route_ids = {
+                info['route_id']
+                for info in r_map.values()
+                if info.get('route_id') and info['route_id'] != '-'
+            }
+
+        if not route_ids:
+            return Decimal('0.00')
+
+        if self.targets_qs is not None:
+            t_qs = self.targets_qs
+        else:
+            from apps.sales.services.sale_targets import SaleTargetsService
+            t_qs = SaleTargetsService(user=self.user).read_sale_targets()
+
+        agg = (
+            t_qs
+            .select_related(None)
+            .order_by()
+            .filter(
+                route_id__in=route_ids,
+                period__year=self.today.year,
+                period__month=self.today.month,
+            )
+            .aggregate(total=Sum('target_amount'))
+        )
+        return agg['total'] or Decimal('0.00')
+
     def get_ordered_customers(self) -> list:
         """
         calculates contribution period totals, global stats bans,
@@ -669,6 +714,7 @@ class CustomerKpisService:
             customer.cumuled_contrib = Decimal('0.00')
             customer.cumuled_portafolio_count = 0
             customer.cumuled_portafolio_pct = Decimal('0.00')
+            customer.suggested_min_sale = Decimal('0.00')
 
             global_net += customer.performance_net_amount
             global_profit += customer.performance_profit
@@ -690,6 +736,7 @@ class CustomerKpisService:
             active_customers.sort(key=lambda x: x.performance_net_amount, reverse=True)
 
         total_active_customers = len(active_customers)
+        current_month_target = self._get_current_month_target(customers) if self.show_contrib else Decimal('0.00')
 
         if self.show_contrib:
             cumuled_val = Decimal('0.00')
@@ -707,6 +754,7 @@ class CustomerKpisService:
                 customer.cumuled_contrib = cumuled_val
                 customer.cumuled_portafolio_count = index
                 customer.cumuled_portafolio_pct = (Decimal(index) / Decimal(total_active_customers)) * Decimal('100.00') if total_active_customers > 0 else Decimal('0.00')
+                customer.suggested_min_sale = (customer.contrib_net_amount / Decimal('100.00')) * current_month_target
 
         registered_customers = len(customers)
         customers_with_consumption = total_active_customers
@@ -721,7 +769,8 @@ class CustomerKpisService:
             'net_amount': global_net,
             'net_sales': global_net,
             'profit': global_profit,
-            'margin': (global_profit / global_net * Decimal('100.00')) if global_net > Decimal('0.00') else Decimal('0.00')
+            'margin': (global_profit / global_net * Decimal('100.00')) if global_net > Decimal('0.00') else Decimal('0.00'),
+            'current_month_target': current_month_target,
         }
 
         return active_customers + inactive_customers
@@ -1056,6 +1105,7 @@ class CustomerKpisService:
             customer.cumuled_contrib = Decimal('0.00')
             customer.cumuled_portafolio_count = 0
             customer.cumuled_portafolio_pct = Decimal('0.00')
+            customer.suggested_min_sale = Decimal('0.00')
 
             global_net += customer.performance_net_amount
             global_profit += customer.performance_profit
@@ -1079,6 +1129,7 @@ class CustomerKpisService:
 
         total_active_customers = len(active_customers)
         cumuled_val = Decimal('0.00')
+        current_month_target = self._get_current_month_target(customers, routes_map=routes_map)
 
         for index, customer in enumerate(active_customers, start=1):
             if global_net > Decimal('0.00'):
@@ -1094,6 +1145,7 @@ class CustomerKpisService:
             customer.cumuled_contrib = cumuled_val
             customer.cumuled_portafolio_count = index
             customer.cumuled_portafolio_pct = (Decimal(index) / Decimal(total_active_customers)) * Decimal('100.00') if total_active_customers > 0 else Decimal('0.00')
+            customer.suggested_min_sale = (customer.contrib_net_amount / Decimal('100.00')) * current_month_target
 
         registered_customers = len(customers)
         customers_with_consumption = total_active_customers
@@ -1108,7 +1160,8 @@ class CustomerKpisService:
             'net_amount': global_net,
             'net_sales': global_net,
             'profit': global_profit,
-            'margin': (global_profit / global_net * Decimal('100.00')) if global_net > Decimal('0.00') else Decimal('0.00')
+            'margin': (global_profit / global_net * Decimal('100.00')) if global_net > Decimal('0.00') else Decimal('0.00'),
+            'current_month_target': current_month_target,
         }
 
         return active_customers + inactive_customers
@@ -1231,12 +1284,14 @@ class CustomerKpisExports:
         net_s = float(kpis.get('net_amount') or kpis.get('net_sales') or 0)
         prof_s = float(kpis.get('profit') or 0)
         marg_s = float(kpis.get('margin') or 0) / 100.0
+        target_s = float(kpis.get('current_month_target') or 0)
 
         perf_rows = [
             ("Venta Neta", net_s, None),
         ]
         if not is_vendor:
             perf_rows.append(("Utilidad Bruta", prof_s, marg_s))
+        perf_rows.append(("Cuota Considerada (Mes Actual)", target_s, None))
 
         for idx, (lbl, amt, marg) in enumerate(perf_rows, start_row_perf + 2):
             c_l = ws_summary.cell(row=idx, column=1, value=lbl)
@@ -1267,8 +1322,8 @@ class CustomerKpisExports:
                 ("Segmentación", 5, 13), # cols 5-13 (E-M)
                 ("Cobranza", 14, 18),   # cols 14-18 (N-R)
                 ("Métricas de Consumo", 19, 23), # cols 19-23 (S-W)
-                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 24, 28),  # cols 24-28 (X-AB)
-                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 29, 40), # cols 29-40 (AC-AN)
+                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 24, 29),  # cols 24-29 (X-AC)
+                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 30, 41), # cols 30-41 (AD-AO)
             ]
             contrib_headers = [
                 "Venta Neta Periodo",
@@ -1276,6 +1331,7 @@ class CustomerKpisExports:
                 "% Contribución Acumulada",
                 "Clientes Acumulados",
                 "% Cartera Acumulada",
+                "Venta Mínima Sugerida para Cubrir Objetivo",
             ]
         else:
             superheaders = [
@@ -1283,8 +1339,8 @@ class CustomerKpisExports:
                 ("Segmentación", 5, 13), # cols 5-13 (E-M)
                 ("Cobranza", 14, 18),   # cols 14-18 (N-R)
                 ("Métricas de Consumo", 19, 23), # cols 19-23 (S-W)
-                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 24, 30),  # cols 24-30 (X-AD)
-                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 31, 42), # cols 31-42 (AE-AP)
+                (f"Métricas de Contribución ({d_start_str} al {d_end_str})", 24, 31),  # cols 24-31 (X-AE)
+                (f"Desglose de Consumos Mensuales {self.customer_kpis_service.current_year}", 32, 43), # cols 32-43 (AF-AQ)
             ]
             contrib_headers = [
                 "Venta Neta Periodo",
@@ -1294,6 +1350,7 @@ class CustomerKpisExports:
                 "% Contribución Acumulada",
                 "Clientes Acumulados",
                 "% Cartera Acumulada",
+                "Venta Mínima Sugerida para Cubrir Objetivo",
             ]
 
         for title, start_col, end_col in superheaders:
@@ -1398,6 +1455,7 @@ class CustomerKpisExports:
             cumuled_contrib = float(getattr(c, 'cumuled_contrib', 0) or 0) / 100.0
             cumuled_count = int(getattr(c, 'cumuled_portafolio_count', 0) or 0)
             cumuled_pct = float(getattr(c, 'cumuled_portafolio_pct', 0) or 0) / 100.0
+            suggested_min_sale = float(getattr(c, 'suggested_min_sale', 0) or 0)
 
             monthly_sales = []
             m_list = getattr(c, 'monthly_consumption', [])
@@ -1412,6 +1470,7 @@ class CustomerKpisExports:
                     (cumuled_contrib, pct_format, align_right),
                     (cumuled_count, int_format, align_right),
                     (cumuled_pct, pct_format, align_right),
+                    (suggested_min_sale, currency_format, align_right),
                 ]
             else:
                 contrib_values = [
@@ -1422,6 +1481,7 @@ class CustomerKpisExports:
                     (cumuled_contrib, pct_format, align_right),
                     (cumuled_count, int_format, align_right),
                     (cumuled_pct, pct_format, align_right),
+                    (suggested_min_sale, currency_format, align_right),
                 ]
 
             row_values = [
@@ -1467,7 +1527,7 @@ class CustomerKpisExports:
                     cell.number_format = num_fmt
 
         # predefined column widths for summary worksheet
-        summary_widths = {'A': 32, 'B': 20, 'C': 18}
+        summary_widths = {'A': 34, 'B': 20, 'C': 18}
         for col_letter, width in summary_widths.items():
             ws_summary.column_dimensions[col_letter].width = width
 
@@ -1478,7 +1538,7 @@ class CustomerKpisExports:
                 18, 14, 18, 16, 14, 14, 14, 14, 16, # type, cat, freq, days, sem1, sem2, sem3, sem4, leader
                 18, 16, 18, 18, 18, # credit limit, usage, curr, overdue, total
                 16, 18, 20, 20, 20, # agreements, classes, prev_y, curr_y, prev_q
-                18, 20, 20, 18, 18, # contrib net, % net, % cum, count, % port
+                18, 20, 20, 18, 18, 24, # contrib net, % net, % cum, count, % port, suggested min sale
                 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16 # 12 months
             ]
         else:
@@ -1487,7 +1547,7 @@ class CustomerKpisExports:
                 18, 14, 18, 16, 14, 14, 14, 14, 16, # type, cat, freq, days, sem1, sem2, sem3, sem4, leader
                 18, 16, 18, 18, 18, # credit limit, usage, curr, overdue, total
                 16, 18, 20, 20, 20, # agreements, classes, prev_y, curr_y, prev_q
-                18, 18, 20, 20, 20, 18, 18, # contrib net, profit, % net, % profit, % cum, count, % port
+                18, 18, 20, 20, 20, 18, 18, 24, # contrib net, profit, % net, % profit, % cum, count, % port, suggested min sale
                 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16 # 12 months
             ]
 
