@@ -148,26 +148,45 @@ def customer_kpis_view(request):
     if request.user.groups.filter(name='vendedor').exists():
         cleaned_data['order_contrib'] = 'net_amount'
 
+    show_contrib = request.GET.get('show_contrib') == '1'
+    show_monthly = request.GET.get('show_monthly') == '1'
+
     #set main service
-    customer_kpis_service = CustomerKpisService(user=request.user, 
+    customer_kpis_service = CustomerKpisService(
+        user=request.user,
         customers_qs=filtered_customers_qs,
         transactions_qs=tx_by_allowed_ctm,
         ars_qs=ar_allowed_ctm,
         date_start=cleaned_data.get('start_contrib'),
         date_end=cleaned_data.get('end_contrib'),
         cleaned_data=cleaned_data,
+        show_contrib=show_contrib,
+        show_monthly=show_monthly,
     )
 
-    customers_data = customer_kpis_service.read_customer_kpis()
+    customers_data = customer_kpis_service.get_ordered_customers()
     global_kpis = customer_kpis_service.get_stats()
 
     paginator = Paginator(customers_data, 100)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+    enriched_customers = customer_kpis_service.enrich_customers_page(list(page_obj.object_list))
 
     query_dict = request.GET.copy()
     if 'page' in query_dict:
         del query_dict['page']
+
+    contrib_qd = query_dict.copy()
+    if show_contrib:
+        contrib_qd.pop('show_contrib', None)
+    else:
+        contrib_qd['show_contrib'] = '1'
+
+    monthly_qd = query_dict.copy()
+    if show_monthly:
+        monthly_qd.pop('show_monthly', None)
+    else:
+        monthly_qd['show_monthly'] = '1'
 
     context = {
         'filter': filter_set,
@@ -175,9 +194,13 @@ def customer_kpis_view(request):
         'selected_start_contrib': customer_kpis_service.date_start,
         'selected_end_contrib': customer_kpis_service.date_end,
         'kpis': global_kpis,
-        'customers': page_obj.object_list,
+        'customers': enriched_customers,
         'page_obj': page_obj,
         'query_string': query_dict.urlencode(),
+        'show_contrib': show_contrib,
+        'show_monthly': show_monthly,
+        'toggle_contrib_query': contrib_qd.urlencode(),
+        'toggle_monthly_query': monthly_qd.urlencode(),
         'month_headers': [date(today.year, m, 1) for m in range(1, 13)],
     }
 
@@ -185,7 +208,7 @@ def customer_kpis_view(request):
     total_time = end_time - start_time
     print(f">>>>>>>>>>>> Customer KPIs view execution time: {total_time} seconds")
 
-    if request.htmx:
+    if request.htmx and request.headers.get('HX-Target') != 'customer-kpis-table-section':
         return render(request, 'analytics/customer_kpis/partials/_customer_kpis_rows.html', context)
 
     return render(request, template, context)
