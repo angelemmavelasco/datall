@@ -395,23 +395,34 @@ def sale_transaction_list_view(request):
     service = SaleTransactionsService(user=request.user)
     stats_service = SaleTransactionsStats(sale_transactions_service=service)
 
+    # default date range: current month
+    today = timezone.localdate()
+    first_day_curr_month = today.replace(day=1)
+    last_day_curr_month = (first_day_curr_month + relativedelta(months=1)) - datetime.timedelta(days=1)
+
+    req_data = request.GET.copy()
+    if not req_data.get('date_from') and not req_data.get('date_start'):
+        req_data['date_from'] = first_day_curr_month.strftime('%Y-%m-%d')
+    if not req_data.get('date_to') and not req_data.get('date_end'):
+        req_data['date_to'] = last_day_curr_month.strftime('%Y-%m-%d')
+
     transactions_qs = service.read_transactions()
-    transaction_filter = SaleTransactionFilter(request.GET, queryset=transactions_qs, request=request)
+    transaction_filter = SaleTransactionFilter(req_data, queryset=transactions_qs, request=request)
     transactions_qs = transaction_filter.qs
 
     paginator = Paginator(transactions_qs, 100)
-    page_number = request.GET.get('page', 1)
+    page_number = req_data.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    query_dict = request.GET.copy()
+    query_dict = req_data.copy()
     if 'page' in query_dict:
         del query_dict['page']
 
     transactions = page_obj.object_list
     kpis = stats_service.stats(qs=transactions_qs)
 
-    selected_customer_ids = request.GET.getlist('customer')
-    selected_product_ids = request.GET.getlist('product')
+    selected_customer_ids = req_data.getlist('customer')
+    selected_product_ids = req_data.getlist('product')
 
     customers_service = CustomersService(user=request.user)
     cust_base = customers_service.read_customers()
@@ -431,6 +442,8 @@ def sale_transaction_list_view(request):
         'query_string': query_dict.urlencode(),
         'page_obj': page_obj,
         'filter': transaction_filter,
+        'selected_date_start': req_data.get('date_from') or req_data.get('date_start'),
+        'selected_date_end': req_data.get('date_to') or req_data.get('date_end'),
         'initial_customers': initial_customers,
         'selected_customer_ids': selected_customer_ids,
         'initial_products': initial_products,
