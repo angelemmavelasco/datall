@@ -2,7 +2,7 @@
 
 <div class="flex flex-col w-full gap-4" id="sale-transaction-list-content">
     <p class="text-title pb-1 border-b border-border">
-        Resumen
+        Resumen del {{ selected_date_start|default:'' }} al {{ selected_date_end|default:'' }}
     </p>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
