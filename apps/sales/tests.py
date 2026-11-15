@@ -1,12 +1,16 @@
+import io
 from datetime import date, timedelta
 from decimal import Decimal
+from unittest.mock import patch
+import openpyxl
+from django.contrib.auth.models import Group
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 
-from apps.core.models import User
+from apps.core.models import User, GeneratedReport
 from apps.customers.models import Customer, CustomerType, CustomerAssignment
 from apps.products.models import ProductClass, ProductCategory, Product
 from apps.human_resources.models import BusinessUnit, Department, Position, Employee
@@ -370,3 +374,254 @@ class RouteAssignmentAccessTests(TestCase):
         self.assertContains(response, 'Programada')
         self.assertContains(response, 'Finalizada')
         self.assertNotContains(response, 'Activa actualmente')
+
+
+class SaleTransactionExportTests(TestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_superuser(
+            username='admin_export',
+            password='password123',
+            email='admin_export@test.com',
+        )
+        self.client = Client()
+        self.client.force_login(self.admin_user)
+
+        self.cust_type = CustomerType.objects.create(name='Clinica')
+        self.customer = Customer.objects.create(
+            id='CUST200',
+            name='Clinica Norte',
+            customer_type=self.cust_type,
+            registration_date=date(2026, 1, 1),
+        )
+
+        self.region = BusinessUnit.objects.create(
+            id='REG02',
+            name='Region Norte',
+            business_unit_type=BusinessUnit.BusinessUnitTypeChoices.REGION,
+        )
+        self.unit = BusinessUnit.objects.create(
+            id='BU02',
+            name='Gerencia Norte',
+            business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT,
+            parent=self.region,
+        )
+
+        self.route_type = RouteType.objects.create(id='RT02', name='Ruta Urbana')
+        self.channel = SaleChannel.objects.create(id='SC02', name='Canal Directo')
+        self.route = Route.objects.create(
+            id='R202',
+            name='Ruta Norte 1',
+            route_type=self.route_type,
+            sale_channel=self.channel,
+            business_unit=self.unit,
+        )
+        CustomerAssignment.objects.create(customer=self.customer, route=self.route, start_date=date(2026, 1, 1))
+
+        self.category = ProductCategory.objects.create(id='CAT02', name='Suplementos')
+        self.product_class = ProductClass.objects.create(id='PC02', name='Vitaminas', product_category=self.category)
+        self.product = Product.objects.create(id='PRD02', name='Complejo B', product_class=self.product_class)
+
+        self.tx_pos = SaleTransaction.objects.create(
+            doc_id='FAC-200',
+            sale_date=date(2026, 3, 10),
+            customer=self.customer,
+            route=self.route,
+            product=self.product,
+            product_class=self.product_class,
+            quantity=Decimal('5.00'),
+            net_amount=Decimal('500.00'),
+            gross_amount=Decimal('550.00'),
+            cost=Decimal('300.00'),
+            profit=Decimal('200.00'),
+        )
+        self.tx_neg = SaleTransaction.objects.create(
+            doc_id='NC-200',
+            sale_date=date(2026, 3, 15),
+            customer=self.customer,
+            route=self.route,
+            product=self.product,
+            product_class=self.product_class,
+            quantity=Decimal('-1.00'),
+            net_amount=Decimal('-100.00'),
+            gross_amount=Decimal('-110.00'),
+            cost=Decimal('-60.00'),
+            profit=Decimal('-40.00'),
+        )
+        self.tx_zero = SaleTransaction.objects.create(
+            doc_id='BON-200',
+            sale_date=date(2026, 3, 20),
+            customer=self.customer,
+            route=self.route,
+            product=self.product,
+            product_class=self.product_class,
+            quantity=Decimal('1.00'),
+            net_amount=Decimal('0.00'),
+            gross_amount=Decimal('0.00'),
+            cost=Decimal('50.00'),
+            profit=Decimal('-50.00'),
+        )
+
+    def _create_user_with_route_assignment(self, username: str, is_vendor: bool = False):
+        user = User.objects.create_user(username=username, password='password123', email=f'{username}@test.com')
+        if is_vendor:
+            vendor_group, _ = Group.objects.get_or_create(name='vendedor')
+            user.groups.add(vendor_group)
+        dept = Department.objects.create(id=f'DEP_{username[:6]}', name='Ventas')
+        pos = Position.objects.create(id=f'POS_{username[:6]}', name='Agente', department=dept)
+        emp = Employee.objects.create(
+            id=f'EMP_{username[:6]}',
+            user=user,
+            position=pos,
+            hire_date=date(2025, 1, 1),
+        )
+        RouteAssignment.objects.create(
+            route=self.route,
+            employee=emp,
+            date_start=timezone.localdate() - timedelta(days=30),
+            date_end=None,
+        )
+        return user
+
+    @patch('apps.sales.exports.async_task')
+    def test_export_view_admin_colors_kpis_and_report_record(self, mock_async_task):
+        url = reverse('sales:sale_transaction_export_view')
+        response = self.client.get(url, {'date_from': '2026-03-01', 'date_to': '2026-03-31'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        self.assertIn('attachment; filename="transacciones_venta_', response['Content-Disposition'])
+        self.assertEqual(GeneratedReport.objects.filter(module_name='sale_transactions').count(), 1)
+        mock_async_task.assert_called_once()
+
+        wb = openpyxl.load_workbook(io.BytesIO(response.content))
+        self.assertEqual(wb.sheetnames, ['Resumen General', 'Transacciones'])
+
+        ws_summary = wb['Resumen General']
+        kpis = {
+            ws_summary.cell(row=r, column=1).value: ws_summary.cell(row=r, column=2)
+            for r in range(6, ws_summary.max_row + 1)
+        }
+        self.assertEqual(kpis['Transacciones'].value, 3)
+        self.assertEqual(kpis['Venta Neta Total'].value, 400.0)
+        self.assertTrue(kpis['Venta Neta Total'].font.color.rgb.endswith('15803D'))
+        self.assertEqual(kpis['Utilidad Total'].value, 110.0)
+        self.assertTrue(kpis['Utilidad Total'].font.color.rgb.endswith('15803D'))
+        self.assertIn('Margen Total (%)', kpis)
+
+        ws_detail = wb['Transacciones']
+        headers = [ws_detail.cell(row=4, column=c).value for c in range(1, ws_detail.max_column + 1)]
+        self.assertIn('Importe Neto', headers)
+        self.assertIn('Utilidad', headers)
+        self.assertIn('Margen (%)', headers)
+
+        net_col = headers.index('Importe Neto') + 1
+        profit_col = headers.index('Utilidad') + 1
+        rows_by_doc = {
+            ws_detail.cell(row=r, column=1).value: r
+            for r in range(5, ws_detail.max_row + 1)
+        }
+
+        self.assertTrue(ws_detail.cell(row=rows_by_doc['FAC-200'], column=net_col).font.color.rgb.endswith('15803D'))
+        self.assertTrue(ws_detail.cell(row=rows_by_doc['FAC-200'], column=profit_col).font.color.rgb.endswith('15803D'))
+
+        self.assertTrue(ws_detail.cell(row=rows_by_doc['NC-200'], column=net_col).font.color.rgb.endswith('B91C1C'))
+        self.assertTrue(ws_detail.cell(row=rows_by_doc['NC-200'], column=profit_col).font.color.rgb.endswith('B91C1C'))
+
+        self.assertTrue(ws_detail.cell(row=rows_by_doc['BON-200'], column=net_col).font.color.rgb.endswith('B91C1C'))
+        self.assertTrue(ws_detail.cell(row=rows_by_doc['BON-200'], column=profit_col).font.color.rgb.endswith('B91C1C'))
+
+    @patch('apps.sales.exports.async_task')
+    def test_export_view_negative_kpi_totals_are_red(self, mock_async_task):
+        url = reverse('sales:sale_transaction_export_view')
+        response = self.client.get(
+            url,
+            {'search': 'NC-200', 'date_from': '2026-03-01', 'date_to': '2026-03-31'},
+        )
+        self.assertEqual(response.status_code, 200)
+        wb = openpyxl.load_workbook(io.BytesIO(response.content))
+        ws_summary = wb['Resumen General']
+        kpis = {
+            ws_summary.cell(row=r, column=1).value: ws_summary.cell(row=r, column=2)
+            for r in range(6, ws_summary.max_row + 1)
+        }
+        self.assertEqual(kpis['Venta Neta Total'].value, -100.0)
+        self.assertTrue(kpis['Venta Neta Total'].font.color.rgb.endswith('B91C1C'))
+        self.assertEqual(kpis['Utilidad Total'].value, -40.0)
+        self.assertTrue(kpis['Utilidad Total'].font.color.rgb.endswith('B91C1C'))
+
+    @patch('apps.sales.exports.async_task')
+    def test_export_view_default_current_month(self, mock_async_task):
+        today = timezone.localdate()
+        SaleTransaction.objects.create(
+            doc_id='CURR-200',
+            sale_date=today,
+            customer=self.customer,
+            route=self.route,
+            product=self.product,
+            product_class=self.product_class,
+            quantity=Decimal('2.00'),
+            net_amount=Decimal('250.00'),
+            gross_amount=Decimal('275.00'),
+            cost=Decimal('120.00'),
+            profit=Decimal('130.00'),
+        )
+        url = reverse('sales:sale_transaction_export_view')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        wb = openpyxl.load_workbook(io.BytesIO(response.content))
+        ws_detail = wb['Transacciones']
+        docs = [ws_detail.cell(row=r, column=1).value for r in range(5, ws_detail.max_row + 1)]
+        self.assertEqual(docs, ['CURR-200'])
+
+    @patch('apps.sales.exports.async_task')
+    def test_export_view_hides_profit_and_margin_percentage_from_vendor(self, mock_async_task):
+        vendor = self._create_user_with_route_assignment('vendor1', is_vendor=True)
+        vendor_client = Client()
+        vendor_client.force_login(vendor)
+
+        url = reverse('sales:sale_transaction_export_view')
+        response = vendor_client.get(url, {'date_from': '2026-03-01', 'date_to': '2026-03-31'})
+        self.assertEqual(response.status_code, 200)
+
+        wb = openpyxl.load_workbook(io.BytesIO(response.content))
+        ws_summary = wb['Resumen General']
+        kpi_labels = [ws_summary.cell(row=r, column=1).value for r in range(6, ws_summary.max_row + 1)]
+        self.assertNotIn('Utilidad Total', kpi_labels)
+        self.assertNotIn('Margen Total (%)', kpi_labels)
+        self.assertIn('Evaluación', kpi_labels)
+
+        ws_detail = wb['Transacciones']
+        headers = [ws_detail.cell(row=4, column=c).value for c in range(1, ws_detail.max_column + 1)]
+        self.assertNotIn('Utilidad', headers)
+        self.assertNotIn('Margen (%)', headers)
+        self.assertIn('Evaluación', headers)
+
+    @patch('apps.sales.exports.async_task')
+    def test_export_view_restricted_non_vendor_hides_profit_only(self, mock_async_task):
+        regular_user = self._create_user_with_route_assignment('regular1', is_vendor=False)
+        regular_client = Client()
+        regular_client.force_login(regular_user)
+
+        url = reverse('sales:sale_transaction_export_view')
+        response = regular_client.get(url, {'date_from': '2026-03-01', 'date_to': '2026-03-31'})
+        self.assertEqual(response.status_code, 200)
+
+        wb = openpyxl.load_workbook(io.BytesIO(response.content))
+        ws_summary = wb['Resumen General']
+        kpi_labels = [ws_summary.cell(row=r, column=1).value for r in range(6, ws_summary.max_row + 1)]
+        self.assertNotIn('Utilidad Total', kpi_labels)
+        self.assertIn('Margen Total (%)', kpi_labels)
+
+        ws_detail = wb['Transacciones']
+        headers = [ws_detail.cell(row=4, column=c).value for c in range(1, ws_detail.max_column + 1)]
+        self.assertNotIn('Utilidad', headers)
+        self.assertIn('Margen (%)', headers)
+
+    def test_transaction_list_view_renders_export_button(self):
+        response = self.client.get(reverse('sales:sale_transaction_list_view'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse('sales:sale_transaction_export_view'))
+        self.assertContains(response, 'Exportar')
