@@ -50,6 +50,82 @@ Transacciones de Venta
 <form hx-get="{% url 'sales:sale_transaction_list_view' %}" hx-target="#sale-transaction-list-content"
     hx-swap="outerHTML" hx-push-url="true" class="flex flex-col gap-4">
     <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.date_from.id_for_label }}" class="text-title">{{ filter.form.date_from.label }}</label>
+        {% render_field filter.form.date_from class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="{{ filter.form.date_to.id_for_label }}" class="text-title">{{ filter.form.date_to.label }}</label>
+        {% render_field filter.form.date_to class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-title" %}
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <span class="text-title border-b border-border pb-1">Venta neta</span>
+        <div class="flex flex-col gap-0.5">
+            <span class="text-title text-xs">Límite inferior:</span>
+            <div class="grid grid-cols-[105px_1fr] gap-1">
+                <select name="net_amount_min_op"
+                        class="bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong cursor-pointer font-mono">
+                    <option value="gte" {% if request.GET.net_amount_min_op == 'gte' or not request.GET.net_amount_min_op %}selected{% endif %}>≥ Mayor/igual</option>
+                    <option value="gt" {% if request.GET.net_amount_min_op == 'gt' %}selected{% endif %}>&gt; Mayor que</option>
+                </select>
+                <input type="number" step="any" name="net_amount_min"
+                       value="{{ request.GET.net_amount_min }}"
+                       placeholder="0.00"
+                       class="w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
+            </div>
+        </div>
+        <div class="flex flex-col gap-0.5">
+            <span class="text-title text-xs">Límite superior:</span>
+            <div class="grid grid-cols-[105px_1fr] gap-1">
+                <select name="net_amount_max_op"
+                        class="bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong cursor-pointer font-mono">
+                    <option value="lte" {% if request.GET.net_amount_max_op == 'lte' or not request.GET.net_amount_max_op %}selected{% endif %}>≤ Menor/igual</option>
+                    <option value="lt" {% if request.GET.net_amount_max_op == 'lt' %}selected{% endif %}>&lt; Menor que</option>
+                </select>
+                <input type="number" step="any" name="net_amount_max"
+                       value="{{ request.GET.net_amount_max }}"
+                       placeholder="Sin tope"
+                       class="w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
+            </div>
+        </div>
+    </div>
+
+    {% if can_view_cost %}
+    <div class="flex flex-col gap-1">
+        <span class="text-title border-b border-border pb-1">Utilidad</span>
+        <div class="flex flex-col gap-0.5">
+            <span class="text-title text-xs">Límite inferior:</span>
+            <div class="grid grid-cols-[105px_1fr] gap-1">
+                <select name="profit_min_op"
+                        class="bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong cursor-pointer font-mono">
+                    <option value="gte" {% if request.GET.profit_min_op == 'gte' or not request.GET.profit_min_op %}selected{% endif %}>≥ Mayor/igual</option>
+                    <option value="gt" {% if request.GET.profit_min_op == 'gt' %}selected{% endif %}>&gt; Mayor que</option>
+                </select>
+                <input type="number" step="any" name="profit_min"
+                       value="{{ request.GET.profit_min }}"
+                       placeholder="0.00"
+                       class="w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
+            </div>
+        </div>
+        <div class="flex flex-col gap-0.5">
+            <span class="text-title text-xs">Límite superior:</span>
+            <div class="grid grid-cols-[105px_1fr] gap-1">
+                <select name="profit_max_op"
+                        class="bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong cursor-pointer font-mono">
+                    <option value="lte" {% if request.GET.profit_max_op == 'lte' or not request.GET.profit_max_op %}selected{% endif %}>≤ Menor/igual</option>
+                    <option value="lt" {% if request.GET.profit_max_op == 'lt' %}selected{% endif %}>&lt; Menor que</option>
+                </select>
+                <input type="number" step="any" name="profit_max"
+                       value="{{ request.GET.profit_max }}"
+                       placeholder="Sin tope"
+                       class="w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="flex flex-col gap-1">
         <label for="{{ filter.form.search.id_for_label }}" class="text-title">{{ filter.form.search.label }}</label>
         {% render_field filter.form.search class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title" placeholder="Doc, Cliente o Producto" %}
     </div>
@@ -192,16 +268,6 @@ Transacciones de Venta
                 {% endfor %}
             </div>
         </div>
-    </div>
-
-    <div class="flex flex-col gap-1">
-        <label for="{{ filter.form.date_from.id_for_label }}" class="text-title">{{ filter.form.date_from.label }}</label>
-        {% render_field filter.form.date_from class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-title" %}
-    </div>
-
-    <div class="flex flex-col gap-1">
-        <label for="{{ filter.form.date_to.id_for_label }}" class="text-title">{{ filter.form.date_to.label }}</label>
-        {% render_field filter.form.date_to class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-title" %}
     </div>
 
     <div class="flex gap-2 flex-col mt-2">

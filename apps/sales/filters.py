@@ -190,6 +190,58 @@ class SaleTransactionFilter(django_filters.FilterSet):
         label='Fecha de venta (Hasta)',
         widget=forms.DateInput(attrs={'type': 'date'})
     )
+    net_amount_min_op = django_filters.ChoiceFilter(
+        choices=[('gte', '≥'), ('gt', '>')],
+        method='filter_noop',
+        label='Operador venta neta mínima',
+        empty_label=None,
+        null_label=None,
+        initial='gte',
+    )
+    net_amount_min = django_filters.NumberFilter(
+        method='filter_net_amount_min',
+        label='Venta neta mínima',
+        widget=forms.NumberInput(attrs={'step': 'any', 'placeholder': '0.00'})
+    )
+    net_amount_max_op = django_filters.ChoiceFilter(
+        choices=[('lte', '≤'), ('lt', '<')],
+        method='filter_noop',
+        label='Operador venta neta máxima',
+        empty_label=None,
+        null_label=None,
+        initial='lte',
+    )
+    net_amount_max = django_filters.NumberFilter(
+        method='filter_net_amount_max',
+        label='Venta neta máxima',
+        widget=forms.NumberInput(attrs={'step': 'any', 'placeholder': 'Sin tope'})
+    )
+    profit_min_op = django_filters.ChoiceFilter(
+        choices=[('gte', '≥'), ('gt', '>')],
+        method='filter_noop',
+        label='Operador utilidad mínima',
+        empty_label=None,
+        null_label=None,
+        initial='gte',
+    )
+    profit_min = django_filters.NumberFilter(
+        method='filter_profit_min',
+        label='Utilidad mínima',
+        widget=forms.NumberInput(attrs={'step': 'any', 'placeholder': '0.00'})
+    )
+    profit_max_op = django_filters.ChoiceFilter(
+        choices=[('lte', '≤'), ('lt', '<')],
+        method='filter_noop',
+        label='Operador utilidad máxima',
+        empty_label=None,
+        null_label=None,
+        initial='lte',
+    )
+    profit_max = django_filters.NumberFilter(
+        method='filter_profit_max',
+        label='Utilidad máxima',
+        widget=forms.NumberInput(attrs={'step': 'any', 'placeholder': 'Sin tope'})
+    )
 
     class Meta:
         model = SaleTransaction
@@ -213,11 +265,18 @@ class SaleTransactionFilter(django_filters.FilterSet):
                 data['date_to'] = data['date_end']
             kwargs['data'] = data
 
+        self._can_view_cost = True
         super().__init__(*args, **kwargs)
         if request:
             user = request.user if hasattr(request, 'user') else request
             from .services.routes import RoutesService
+            from .services.sale_transactions import SaleTransactionsService
             bu_service = BusinessUnitsService(user=user)
+            if getattr(user, 'is_authenticated', False) and getattr(user, 'is_active', True):
+                tx_service = SaleTransactionsService(user=user)
+                self._can_view_cost = tx_service.has_full_access and not user.groups.filter(name='vendedor').exists()
+            else:
+                self._can_view_cost = False
             if 'region' in self.filters:
                 self.filters['region'].queryset = bu_service.read_regions()
             self.filters['route'].queryset = RoutesService(user=user).read_routes().order_by('id')
@@ -228,6 +287,33 @@ class SaleTransactionFilter(django_filters.FilterSet):
             if 'product_category' in self.filters:
                 self.filters['product_category'].queryset = ProductCategory.objects.all().order_by('name', 'id')
             self.filters['product_class'].queryset = ProductClass.objects.all().order_by('name', 'id')
+
+    def filter_noop(self, queryset, name, value):
+        return queryset
+
+    def _apply_numeric_bound(self, queryset, field_name: str, op_param: str, default_op: str, valid_ops: tuple[str, ...], value):
+        if value is None:
+            return queryset
+        op = self.data.get(op_param) or default_op
+        if op not in valid_ops:
+            op = default_op
+        return queryset.filter(**{f'{field_name}__{op}': value})
+
+    def filter_net_amount_min(self, queryset, name, value):
+        return self._apply_numeric_bound(queryset, 'net_amount', 'net_amount_min_op', 'gte', ('gte', 'gt'), value)
+
+    def filter_net_amount_max(self, queryset, name, value):
+        return self._apply_numeric_bound(queryset, 'net_amount', 'net_amount_max_op', 'lte', ('lte', 'lt'), value)
+
+    def filter_profit_min(self, queryset, name, value):
+        if not self._can_view_cost:
+            return queryset
+        return self._apply_numeric_bound(queryset, 'profit', 'profit_min_op', 'gte', ('gte', 'gt'), value)
+
+    def filter_profit_max(self, queryset, name, value):
+        if not self._can_view_cost:
+            return queryset
+        return self._apply_numeric_bound(queryset, 'profit', 'profit_max_op', 'lte', ('lte', 'lt'), value)
 
     def filter_region(self, queryset, name, value):
         if not value:
