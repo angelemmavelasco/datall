@@ -7,6 +7,7 @@ import csv
 import io
 from datetime import date, timedelta
 from decimal import Decimal
+from unittest.mock import patch
 import openpyxl
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Sum
@@ -15,7 +16,11 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.analytics.filters import YearlySaleBreakdownFilter, StockBreakdownFilter
+from apps.analytics.filters import (
+    CustomerKpisFilter,
+    StockBreakdownFilter,
+    YearlySaleBreakdownFilter,
+)
 from apps.analytics.services.yearly_sale_breakdown import (
     YearlySaleBreakdownExports,
     YearlySaleBreakdownService,
@@ -1349,3 +1354,327 @@ class StockBreakdownTestCase(TestCase):
         })
         self.assertEqual(resp.status_code, 200)
         self.assertIn('kpis', resp.context)
+
+
+class CustomerKpisMonthlyGrowthFilterTestCase(TestCase):
+    """
+    Validates current-month vs previous-month percentage growth filtering
+    across CustomerKpisFilter, CustomerKpisService, CustomerKpisExports, and views.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            username='analytics_growth_tester',
+            email='growth@datall.local',
+            is_superuser=True,
+            is_staff=True,
+        )
+        cls.bu = BusinessUnit.objects.create(
+            id='bu_growth',
+            name='Unidad Crecimiento',
+            business_unit_type=BusinessUnit.BusinessUnitTypeChoices.UNIT,
+        )
+        cls.route_type = RouteType.objects.create(id='rt_grw', name='Ruta Crecimiento')
+        cls.sale_channel = SaleChannel.objects.create(id='sc_grw', name='Canal Crecimiento')
+        cls.warehouse = Warehouse.objects.create(id='wh_grw', name='Almacén Crecimiento')
+        cls.route = Route.objects.create(
+            id='R-GRW-1',
+            name='Ruta GRW 1',
+            business_unit=cls.bu,
+            route_type=cls.route_type,
+            sale_channel=cls.sale_channel,
+            is_active=True,
+        )
+        cls.category = ProductCategory.objects.create(id='cat_grw', name='Categoría GRW')
+        cls.product_class = ProductClass.objects.create(
+            id='pc_grw',
+            name='Clase GRW',
+            product_category=cls.category,
+        )
+        cls.product = Product.objects.create(
+            id='P-GRW-1',
+            name='Producto GRW 1',
+            product_class=cls.product_class,
+        )
+        cls.customer_type = CustomerType.objects.create(id='ct_grw', name='Tipo GRW')
+
+        today = timezone.localdate()
+        cls.today = today
+        cls.curr_month_start = today.replace(day=1)
+        cls.prev_month_end = cls.curr_month_start - timedelta(days=1)
+        cls.prev_month_start = cls.prev_month_end.replace(day=1)
+        cls.hist_date = cls.prev_month_start - timedelta(days=20)
+
+        cls.c_grew = Customer.objects.create(
+            id='C-GRW-POS',
+            name='Cliente Creció',
+            registration_date=today - timedelta(days=365),
+            customer_type=cls.customer_type,
+        )
+        cls.c_new_buyer = Customer.objects.create(
+            id='C-GRW-NEW',
+            name='Cliente Nuevo Mes Actual',
+            registration_date=today - timedelta(days=365),
+            customer_type=cls.customer_type,
+        )
+        cls.c_declined = Customer.objects.create(
+            id='C-GRW-NEG',
+            name='Cliente Decreció',
+            registration_date=today - timedelta(days=365),
+            customer_type=cls.customer_type,
+        )
+        cls.c_flat = Customer.objects.create(
+            id='C-GRW-FLT',
+            name='Cliente Igual',
+            registration_date=today - timedelta(days=365),
+            customer_type=cls.customer_type,
+        )
+        cls.c_zero = Customer.objects.create(
+            id='C-GRW-ZRO',
+            name='Cliente Cero',
+            registration_date=today - timedelta(days=365),
+            customer_type=cls.customer_type,
+        )
+
+        cls.test_customer_ids = [
+            cls.c_grew.id,
+            cls.c_new_buyer.id,
+            cls.c_declined.id,
+            cls.c_flat.id,
+            cls.c_zero.id,
+        ]
+
+        for customer in [cls.c_grew, cls.c_new_buyer, cls.c_declined, cls.c_flat, cls.c_zero]:
+            CustomerAssignment.objects.create(
+                customer=customer,
+                route=cls.route,
+                start_date=today - timedelta(days=365),
+                end_date=None,
+            )
+
+        tx_specs = [
+            ('GRW-1', cls.prev_month_start, cls.c_grew, Decimal('1000.00'), Decimal('200.00')),
+            ('GRW-2', today, cls.c_grew, Decimal('1500.00'), Decimal('300.00')),
+            ('GRW-3', today, cls.c_new_buyer, Decimal('500.00'), Decimal('100.00')),
+            ('GRW-4', cls.prev_month_start, cls.c_declined, Decimal('1000.00'), Decimal('200.00')),
+            ('GRW-5', today, cls.c_declined, Decimal('700.00'), Decimal('140.00')),
+            ('GRW-6', cls.prev_month_start, cls.c_flat, Decimal('1000.00'), Decimal('200.00')),
+            ('GRW-7', today, cls.c_flat, Decimal('1000.00'), Decimal('200.00')),
+            ('GRW-8', cls.hist_date, cls.c_zero, Decimal('2000.00'), Decimal('400.00')),
+        ]
+        for doc_id, sale_date, customer, net_amount, profit in tx_specs:
+            SaleTransaction.objects.create(
+                doc_id=doc_id,
+                sale_date=sale_date,
+                customer=customer,
+                route=cls.route,
+                warehouse=cls.warehouse,
+                product_class=cls.product_class,
+                product=cls.product,
+                net_amount=net_amount,
+                profit=profit,
+                cost=net_amount - profit,
+                gross_amount=net_amount,
+                quantity=Decimal('10.00'),
+            )
+
+    def _get_service(self, filter_params=None, date_start=None, date_end=None, customer_ids=None):
+        ids = customer_ids or self.test_customer_ids
+        customers_qs = Customer.objects.filter(id__in=ids)
+        filter_set = CustomerKpisFilter(filter_params or {}, queryset=customers_qs)
+        self.assertTrue(filter_set.is_valid(), filter_set.errors)
+        return CustomerKpisService(
+            user=self.user,
+            customers_qs=filter_set.qs,
+            transactions_qs=SaleTransaction.objects.filter(customer_id__in=ids),
+            ars_qs=AccountsReceivable.objects.none(),
+            date_start=date_start,
+            date_end=date_end,
+            cleaned_data=filter_set.form.cleaned_data,
+        )
+
+    def test_growth_filter_grew_vs_not_grew(self):
+        grew_service = self._get_service({'growth_min_op': 'gt', 'growth_min': '0'})
+        ordered_grew_ids = {c.id for c in grew_service.get_ordered_customers()}
+        read_grew_ids = {c.id for c in grew_service.read_customer_kpis()}
+        expected_grew = {self.c_grew.id, self.c_new_buyer.id}
+        self.assertEqual(ordered_grew_ids, expected_grew)
+        self.assertEqual(read_grew_ids, expected_grew)
+
+        not_grew_service = self._get_service({'growth_max_op': 'lte', 'growth_max': '0'})
+        ordered_not_grew_ids = {c.id for c in not_grew_service.get_ordered_customers()}
+        read_not_grew_ids = {c.id for c in not_grew_service.read_customer_kpis()}
+        expected_not_grew = {self.c_declined.id, self.c_flat.id, self.c_zero.id}
+        self.assertEqual(ordered_not_grew_ids, expected_not_grew)
+        self.assertEqual(read_not_grew_ids, expected_not_grew)
+
+        declined_service = self._get_service({'growth_max_op': 'lt', 'growth_max': '0'})
+        self.assertEqual({c.id for c in declined_service.get_ordered_customers()}, {self.c_declined.id})
+        self.assertEqual({c.id for c in declined_service.read_customer_kpis()}, {self.c_declined.id})
+
+    def test_growth_filter_custom_bounds_and_exact_edges(self):
+        bounded_service = self._get_service({
+            'growth_min_op': 'gte',
+            'growth_min': '-50',
+            'growth_max_op': 'lte',
+            'growth_max': '60',
+        })
+        expected_bounded = {self.c_grew.id, self.c_declined.id, self.c_flat.id, self.c_zero.id}
+        self.assertEqual({c.id for c in bounded_service.get_ordered_customers()}, expected_bounded)
+        self.assertEqual({c.id for c in bounded_service.read_customer_kpis()}, expected_bounded)
+
+        strict_service = self._get_service({
+            'growth_min_op': 'gt',
+            'growth_min': '-30',
+            'growth_max_op': 'lt',
+            'growth_max': '50',
+        })
+        expected_strict = {self.c_flat.id, self.c_zero.id}
+        self.assertEqual({c.id for c in strict_service.get_ordered_customers()}, expected_strict)
+        self.assertEqual({c.id for c in strict_service.read_customer_kpis()}, expected_strict)
+
+    def test_growth_filter_independent_of_analysis_date_range(self):
+        hist_start = self.hist_date - timedelta(days=5)
+        hist_end = self.hist_date + timedelta(days=5)
+        service = self._get_service(
+            {'growth_min_op': 'gt', 'growth_min': '0'},
+            date_start=hist_start,
+            date_end=hist_end,
+        )
+        expected_grew = {self.c_grew.id, self.c_new_buyer.id}
+        self.assertEqual({c.id for c in service.get_ordered_customers()}, expected_grew)
+        self.assertEqual({c.id for c in service.read_customer_kpis()}, expected_grew)
+
+        combined = self._get_service(
+            {
+                'growth_min_op': 'gt',
+                'growth_min': '0',
+                'contrib_min_op': 'gte',
+                'contrib_min_amount': '1200',
+            },
+            date_start=self.prev_month_start,
+            date_end=self.today,
+        )
+        self.assertEqual({c.id for c in combined.get_ordered_customers()}, {self.c_grew.id})
+        self.assertEqual({c.id for c in combined.read_customer_kpis()}, {self.c_grew.id})
+
+    def test_growth_filter_january_previous_december_boundary(self):
+        c_jan_up = Customer.objects.create(
+            id='C-JAN-UP',
+            name='Cliente Enero Sube',
+            registration_date=date(2025, 1, 1),
+            customer_type=self.customer_type,
+        )
+        c_jan_dn = Customer.objects.create(
+            id='C-JAN-DN',
+            name='Cliente Enero Baja',
+            registration_date=date(2025, 1, 1),
+            customer_type=self.customer_type,
+        )
+        jan_ids = [c_jan_up.id, c_jan_dn.id]
+        for idx, (cust, dec_amt, jan_amt) in enumerate([
+            (c_jan_up, Decimal('1000.00'), Decimal('1400.00')),
+            (c_jan_dn, Decimal('1000.00'), Decimal('800.00')),
+        ]):
+            SaleTransaction.objects.create(
+                doc_id=f'JAN-DEC-{idx}',
+                sale_date=date(2025, 12, 10),
+                customer=cust,
+                route=self.route,
+                warehouse=self.warehouse,
+                product_class=self.product_class,
+                product=self.product,
+                net_amount=dec_amt,
+                profit=Decimal('100.00'),
+                cost=dec_amt - Decimal('100.00'),
+                gross_amount=dec_amt,
+                quantity=Decimal('5.00'),
+            )
+            SaleTransaction.objects.create(
+                doc_id=f'JAN-CUR-{idx}',
+                sale_date=date(2026, 1, 10),
+                customer=cust,
+                route=self.route,
+                warehouse=self.warehouse,
+                product_class=self.product_class,
+                product=self.product,
+                net_amount=jan_amt,
+                profit=Decimal('100.00'),
+                cost=jan_amt - Decimal('100.00'),
+                gross_amount=jan_amt,
+                quantity=Decimal('5.00'),
+            )
+
+        with patch('django.utils.timezone.localdate', return_value=date(2026, 1, 15)):
+            grew_service = self._get_service(
+                {'growth_min_op': 'gt', 'growth_min': '0'},
+                customer_ids=jan_ids,
+            )
+            self.assertEqual({c.id for c in grew_service.get_ordered_customers()}, {c_jan_up.id})
+            self.assertEqual({c.id for c in grew_service.read_customer_kpis()}, {c_jan_up.id})
+
+            declined_service = self._get_service(
+                {'growth_max_op': 'lte', 'growth_max': '0'},
+                customer_ids=jan_ids,
+            )
+            self.assertEqual({c.id for c in declined_service.get_ordered_customers()}, {c_jan_dn.id})
+            self.assertEqual({c.id for c in declined_service.read_customer_kpis()}, {c_jan_dn.id})
+
+    def test_growth_filter_stats_and_excel_export(self):
+        service = self._get_service({'growth_min_op': 'gt', 'growth_min': '0'})
+        stats = service.get_stats()
+        self.assertEqual(stats['total_customers'], 2)
+
+        exporter = CustomerKpisExports(customer_kpis_service=service)
+        excel_buffer = exporter.export_customer_kpis_report()
+        wb = openpyxl.load_workbook(excel_buffer)
+        ws_summary = wb['Resumen Ejecutivo']
+        ws_list = wb['Listado de Clientes']
+
+        subtitle = ws_summary.cell(row=2, column=1).value
+        self.assertIn('Crecimiento mensual: > 0.00%', subtitle)
+
+        exported_ids = {
+            ws_list.cell(row=r, column=1).value
+            for r in range(3, ws_list.max_row + 1)
+            if ws_list.cell(row=r, column=1).value
+        }
+        self.assertEqual(exported_ids, {self.c_grew.id, self.c_new_buyer.id})
+
+    def test_customer_kpis_view_filter_placement_and_filtering(self):
+        self.client.force_login(self.user)
+        url = reverse('analytics:customer_kpis_view')
+
+        base_resp = self.client.get(url)
+        self.assertEqual(base_resp.status_code, 200)
+        base_html = base_resp.content.decode('utf-8')
+        self.assertIn('id="id_growth_min_op"', base_html)
+        self.assertIn('id="id_growth_min"', base_html)
+        self.assertIn('id="id_growth_max_op"', base_html)
+        self.assertIn('id="id_growth_max"', base_html)
+
+        pos_period = base_html.index('Periodo de análisis')
+        pos_growth = base_html.index('Crecimiento mensual (%)')
+        pos_attrs = base_html.index('Atributos del cliente')
+        self.assertLess(pos_period, pos_growth)
+        self.assertLess(pos_growth, pos_attrs)
+
+        filtered_resp = self.client.get(url, {
+            'customer': 'C-GRW',
+            'growth_min_op': 'gt',
+            'growth_min': '0',
+        })
+        self.assertEqual(filtered_resp.status_code, 200)
+        filtered_ids = {c.id for c in filtered_resp.context['customers']}
+        self.assertEqual(filtered_ids, {self.c_grew.id, self.c_new_buyer.id})
+
+        filtered_html = filtered_resp.content.decode('utf-8')
+        self.assertIn('Crecimiento mensual:', filtered_html)
+        self.assertIn('Cliente Creció', filtered_html)
+        self.assertIn('Cliente Nuevo Mes Actual', filtered_html)
+        self.assertNotIn('Cliente Decreció', filtered_html)
+        self.assertNotIn('Cliente Igual', filtered_html)
+        self.assertNotIn('Cliente Cero', filtered_html)
+        self.assertIn('growth_min_op=gt', filtered_html)
+        self.assertIn('growth_min=0', filtered_html)

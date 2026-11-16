@@ -538,6 +538,138 @@ class CustomerKpisService:
         )
         return {item['customer_id']: item['total'] for item in counts}
 
+    @staticmethod
+    def _calculate_monthly_growth(current_sale: Decimal, prev_sale: Decimal) -> Decimal:
+        """calculates percentage growth between current and previous month sales"""
+        if prev_sale > Decimal('0.00'):
+            return ((current_sale - prev_sale) / prev_sale) * Decimal('100.00')
+        return Decimal('100.00') if current_sale > Decimal('0.00') else Decimal('0.00')
+
+    @staticmethod
+    def _passes_numeric_range(val: Decimal, min_val: Any, min_op: str, max_val: Any, max_op: str) -> bool:
+        """evaluates whether a decimal value satisfies optional lower and upper bounds"""
+        if min_val is not None:
+            min_dec = Decimal(str(min_val))
+            if (min_op == 'gt' and not (val > min_dec)) or (min_op != 'gt' and not (val >= min_dec)):
+                return False
+        if max_val is not None:
+            max_dec = Decimal(str(max_val))
+            if (max_op == 'lt' and not (val < max_dec)) or (max_op != 'lt' and not (val <= max_dec)):
+                return False
+        return True
+
+    @staticmethod
+    def _format_range_filter(
+        label: str,
+        min_val: Any,
+        min_op: str | None,
+        max_val: Any,
+        max_op: str | None,
+        *,
+        prefix: str = '',
+        suffix: str = '',
+    ) -> str | None:
+        """formats an active lower/upper numeric range filter into a subtitle label"""
+        if min_val is None and max_val is None:
+            return None
+        min_op_sym = '>' if min_op == 'gt' else '≥'
+        max_op_sym = '<' if max_op == 'lt' else '≤'
+        range_parts = []
+        if min_val is not None:
+            range_parts.append(f"{min_op_sym} {prefix}{float(min_val):,.2f}{suffix}")
+        if max_val is not None:
+            range_parts.append(f"{max_op_sym} {prefix}{float(max_val):,.2f}{suffix}")
+        return f"{label}: {' y '.join(range_parts)}"
+
+    def _get_current_month_growth_map(
+        self,
+        customer_ids: list[Any],
+        sales_metrics_map: dict[Any, dict[str, Any]] | None = None,
+    ) -> dict[Any, Decimal]:
+        """returns {customer_id: current_month_vs_previous_month_growth_pct} independent of contribution dates"""
+        if not customer_ids:
+            return {}
+
+        if sales_metrics_map is not None:
+            curr_key = f'm_{self.today.month}'
+            return {
+                cid: self._calculate_monthly_growth(
+                    (sales_metrics_map.get(cid) or {}).get(curr_key) or Decimal('0.00'),
+                    (sales_metrics_map.get(cid) or {}).get('prev_m') or Decimal('0.00'),
+                )
+                for cid in customer_ids
+            }
+
+        last_day_prev_month = self.today.replace(day=1) - timedelta(days=1)
+        first_day_prev_month = last_day_prev_month.replace(day=1)
+        rows = (
+            self.transactions_qs.select_related(None).order_by()
+            .filter(customer_id__in=customer_ids, sale_date__gte=first_day_prev_month)
+            .values('customer_id')
+            .annotate(
+                curr_m=Sum('net_amount', filter=Q(sale_date__year=self.current_year, sale_date__month=self.today.month)),
+                prev_m=Sum('net_amount', filter=Q(sale_date__gte=first_day_prev_month, sale_date__lte=last_day_prev_month)),
+            )
+        )
+        totals_by_cid = {
+            r['customer_id']: (r.get('curr_m') or Decimal('0.00'), r.get('prev_m') or Decimal('0.00'))
+            for r in rows
+        }
+        return {
+            cid: self._calculate_monthly_growth(*totals_by_cid.get(cid, (Decimal('0.00'), Decimal('0.00'))))
+            for cid in customer_ids
+        }
+
+    def _filter_customers_by_ranges(
+        self,
+        customers: list,
+        metrics_map: dict[Any, dict[str, Any]] | None,
+        *,
+        has_monthly_metrics: bool = False,
+    ) -> list:
+        """filters target customers by configured contribution and monthly growth bounds"""
+        config = self.cleaned_data or {}
+        min_amount = config.get('contrib_min_amount')
+        min_op = config.get('contrib_min_op') or 'gte'
+        max_amount = config.get('contrib_max_amount')
+        max_op = config.get('contrib_max_op') or 'lte'
+        growth_min = config.get('growth_min')
+        growth_min_op = config.get('growth_min_op') or 'gte'
+        growth_max = config.get('growth_max')
+        growth_max_op = config.get('growth_max_op') or 'lte'
+
+        has_contrib_filter = min_amount is not None or max_amount is not None
+        has_growth_filter = growth_min is not None or growth_max is not None
+        if not has_contrib_filter and not has_growth_filter:
+            return customers
+
+        is_profit_order = (self.order_by == 'profit')
+        growth_map = None
+        if has_growth_filter:
+            customer_ids = [c.id for c in customers]
+            growth_map = self._get_current_month_growth_map(
+                customer_ids,
+                sales_metrics_map=metrics_map if has_monthly_metrics else None,
+            )
+
+        filtered_customers = []
+        safe_metrics_map = metrics_map or {}
+        for customer in customers:
+            if has_contrib_filter:
+                c_metrics = safe_metrics_map.get(customer.id) or {}
+                contrib_val = c_metrics.get('contrib_profit' if is_profit_order else 'contrib_net') or Decimal('0.00')
+                if not self._passes_numeric_range(contrib_val, min_amount, min_op, max_amount, max_op):
+                    continue
+
+            if has_growth_filter:
+                growth_val = growth_map.get(customer.id, Decimal('0.00'))
+                if not self._passes_numeric_range(growth_val, growth_min, growth_min_op, growth_max, growth_max_op):
+                    continue
+
+            filtered_customers.append(customer)
+
+        return filtered_customers
+
     def _get_monthly_consumption(self, customer_ids: list[Any]) -> dict[Any, list[dict[str, Any]]]:
         """
         calculates 12 monthly consumption slots for the current year,
@@ -556,11 +688,7 @@ class CustomerKpisService:
 
             for m in range(1, 13):
                 current_sale = c_metrics.get(f'm_{m}') or Decimal('0.00')
-
-                if prev_sale > Decimal('0.00'):
-                    growth = ((current_sale - prev_sale) / prev_sale) * Decimal('100.00')
-                else:
-                    growth = Decimal('100.00') if current_sale > Decimal('0.00') else Decimal('0.00')
+                growth = self._calculate_monthly_growth(current_sale, prev_sale)
 
                 monthly_list.append({
                     'month_number': m,
@@ -660,37 +788,8 @@ class CustomerKpisService:
                     'contrib_profit': r.get('contrib_profit') or Decimal('0.00'),
                 }
 
-        config = self.cleaned_data or {}
-        min_amount = config.get('contrib_min_amount')
-        min_op = config.get('contrib_min_op') or 'gte'
-        max_amount = config.get('contrib_max_amount')
-        max_op = config.get('contrib_max_op') or 'lte'
         is_profit_order = (self.order_by == 'profit')
-
-        if min_amount is not None or max_amount is not None:
-            filtered_customers = []
-            min_dec = Decimal(str(min_amount)) if min_amount is not None else None
-            max_dec = Decimal(str(max_amount)) if max_amount is not None else None
-
-            for customer in customers:
-                c_metrics = contrib_map.get(customer.id) or {}
-                val = c_metrics.get('contrib_profit' if is_profit_order else 'contrib_net') or Decimal('0.00')
-
-                if min_dec is not None:
-                    if min_op == 'gt' and not (val > min_dec):
-                        continue
-                    elif min_op != 'gt' and not (val >= min_dec):
-                        continue
-
-                if max_dec is not None:
-                    if max_op == 'lt' and not (val < max_dec):
-                        continue
-                    elif max_op != 'lt' and not (val <= max_dec):
-                        continue
-
-                filtered_customers.append(customer)
-
-            customers = filtered_customers
+        customers = self._filter_customers_by_ranges(customers, contrib_map, has_monthly_metrics=False)
 
         global_net = Decimal('0.00')
         global_profit = Decimal('0.00')
@@ -850,10 +949,7 @@ class CustomerKpisService:
                     prev_sale = Decimal('0.00')
                     for m in range(1, 13):
                         current_sale = c_metrics.get(f'm_{m}') or Decimal('0.00')
-                        if prev_sale > Decimal('0.00'):
-                            growth = ((current_sale - prev_sale) / prev_sale) * Decimal('100.00')
-                        else:
-                            growth = Decimal('100.00') if current_sale > Decimal('0.00') else Decimal('0.00')
+                        growth = self._calculate_monthly_growth(current_sale, prev_sale)
 
                         monthly_list.append({
                             'month_number': m,
@@ -918,41 +1014,9 @@ class CustomerKpisService:
         #single consolidated sales metrics query
         sales_metrics_map = self._get_sales_metrics(customer_ids)
 
-        # apply monetary contribution range filter if configured
-        config = self.cleaned_data or {}
-        min_amount = config.get('contrib_min_amount')
-        min_op = config.get('contrib_min_op') or 'gte'
-        max_amount = config.get('contrib_max_amount')
-        max_op = config.get('contrib_max_op') or 'lte'
         is_profit_order = (self.order_by == 'profit')
-
-        if min_amount is not None or max_amount is not None:
-            filtered_customers = []
-            min_dec = Decimal(str(min_amount)) if min_amount is not None else None
-            max_dec = Decimal(str(max_amount)) if max_amount is not None else None
-
-            for customer in customers:
-                c_metrics = sales_metrics_map.get(customer.id) or {}
-                val = c_metrics.get('contrib_profit' if is_profit_order else 'contrib_net') or Decimal('0.00')
-
-                # Min condition
-                if min_dec is not None:
-                    if min_op == 'gt' and not (val > min_dec):
-                        continue
-                    elif min_op != 'gt' and not (val >= min_dec):
-                        continue
-
-                # Max condition
-                if max_dec is not None:
-                    if max_op == 'lt' and not (val < max_dec):
-                        continue
-                    elif max_op != 'lt' and not (val <= max_dec):
-                        continue
-
-                filtered_customers.append(customer)
-
-            customers = filtered_customers
-            customer_ids = [c.id for c in customers]
+        customers = self._filter_customers_by_ranges(customers, sales_metrics_map, has_monthly_metrics=True)
+        customer_ids = [c.id for c in customers]
 
         # Supporting queries executed only for target/filtered customers
         freq_sales_map = self._calculate_sale_frequency(customer_ids)
@@ -1030,10 +1094,7 @@ class CustomerKpisService:
                 prev_sale = Decimal('0.00')
                 for m in range(1, 13):
                     current_sale = c_metrics.get(f'm_{m}') or Decimal('0.00')
-                    if prev_sale > Decimal('0.00'):
-                        growth = ((current_sale - prev_sale) / prev_sale) * Decimal('100.00')
-                    else:
-                        growth = Decimal('100.00') if current_sale > Decimal('0.00') else Decimal('0.00')
+                    growth = self._calculate_monthly_growth(current_sale, prev_sale)
 
                     monthly_list.append({
                         'month_number': m,
@@ -1216,17 +1277,27 @@ class CustomerKpisExports:
             f"Criterio de evaluación: {criterio_str}"
         ]
         cd = self.customer_kpis_service.cleaned_data or {}
-        min_amt = cd.get('contrib_min_amount')
-        max_amt = cd.get('contrib_max_amount')
-        if min_amt is not None or max_amt is not None:
-            min_op_sym = '>' if cd.get('contrib_min_op') == 'gt' else '≥'
-            max_op_sym = '<' if cd.get('contrib_max_op') == 'lt' else '≤'
-            range_parts = []
-            if min_amt is not None:
-                range_parts.append(f"{min_op_sym} ${float(min_amt):,.2f}")
-            if max_amt is not None:
-                range_parts.append(f"{max_op_sym} ${float(max_amt):,.2f}")
-            subtitle_parts.append(f"Rango contribución ({criterio_str}): {' y '.join(range_parts)}")
+        contrib_subtitle = CustomerKpisService._format_range_filter(
+            f"Rango contribución ({criterio_str})",
+            cd.get('contrib_min_amount'),
+            cd.get('contrib_min_op'),
+            cd.get('contrib_max_amount'),
+            cd.get('contrib_max_op'),
+            prefix='$',
+        )
+        if contrib_subtitle:
+            subtitle_parts.append(contrib_subtitle)
+
+        growth_subtitle = CustomerKpisService._format_range_filter(
+            "Crecimiento mensual",
+            cd.get('growth_min'),
+            cd.get('growth_min_op'),
+            cd.get('growth_max'),
+            cd.get('growth_max_op'),
+            suffix='%',
+        )
+        if growth_subtitle:
+            subtitle_parts.append(growth_subtitle)
 
         ws_summary.cell(row=2, column=1, value=" | ".join(subtitle_parts)).font = subtitle_font
 
