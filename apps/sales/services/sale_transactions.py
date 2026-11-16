@@ -338,3 +338,287 @@ class SaleTransactionsStats:
             agg['total_margin'] = Decimal('0.00')
 
         return agg
+
+
+class SaleTransactionsExports:
+    def __init__(self, sale_transactions_service: SaleTransactionsService):
+        self.sale_transactions_service = sale_transactions_service
+
+    def _is_vendor(self) -> bool:
+        user = self.sale_transactions_service.user
+        if not user or not hasattr(user, 'groups'):
+            return False
+        return user.groups.filter(name='vendedor').exists()
+
+    def _get_margin_status(self, margin: Decimal | float) -> str:
+        val = float(margin or 0)
+        if val >= 43:
+            return 'Excelente'
+        if val >= 40:
+            return 'Óptimo'
+        if val >= 37:
+            return 'Regular'
+        if val >= 35:
+            return 'Malo'
+        return 'Muy malo'
+
+    def export_sale_transactions_report(
+        self,
+        *,
+        qs: 'QuerySet | None' = None,
+        date_start: str = '',
+        date_end: str = '',
+    ) -> 'io.BytesIO':
+        import io
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+        from django.utils import timezone
+
+        service = self.sale_transactions_service
+        base_qs = qs if qs is not None else service.read_transactions()
+        is_vendor = self._is_vendor()
+        can_view_cost = service.has_full_access and not is_vendor
+        stats = SaleTransactionsStats(sale_transactions_service=service).stats(qs=base_qs)
+
+        wb = openpyxl.Workbook()
+
+        header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
+        header_font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+        section_font = Font(name="Calibri", size=11, bold=True, color="0F172A")
+        title_font = Font(name="Calibri", size=14, bold=True, color="0F172A")
+        subtitle_font = Font(name="Calibri", size=9, italic=True, color="64748B")
+        data_font = Font(name="Calibri", size=10, color="0F172A")
+        bold_data_font = Font(name="Calibri", size=10, bold=True, color="0F172A")
+        green_font = Font(name="Calibri", size=10, color="15803D")
+        green_bold_font = Font(name="Calibri", size=10, bold=True, color="15803D")
+        red_font = Font(name="Calibri", size=10, color="B91C1C")
+        red_bold_font = Font(name="Calibri", size=10, bold=True, color="B91C1C")
+        amber_font = Font(name="Calibri", size=10, bold=True, color="D97706")
+
+        thin_border_side = Side(style='thin', color='CBD5E1')
+        cell_border = Border(
+            left=thin_border_side,
+            right=thin_border_side,
+            top=thin_border_side,
+            bottom=thin_border_side,
+        )
+
+        left_align = Alignment(horizontal="left", vertical="center")
+        center_align = Alignment(horizontal="center", vertical="center")
+        right_align = Alignment(horizontal="right", vertical="center")
+
+        currency_format = '"$"#,##0.00'
+        pct_format = '0.00%'
+        int_format = '#,##0'
+        qty_format = '#,##0.00'
+
+        def get_status_font(margin_val: Decimal | float):
+            val = float(margin_val or 0)
+            if val >= 40:
+                return green_bold_font
+            if val >= 37:
+                return amber_font
+            return red_bold_font
+
+        now_str = timezone.localtime().strftime('%Y-%m-%d %H:%M')
+        if date_start and date_end:
+            period_label = f"Periodo: {date_start} al {date_end}"
+        elif date_start:
+            period_label = f"Desde: {date_start}"
+        elif date_end:
+            period_label = f"Hasta: {date_end}"
+        else:
+            period_label = "Periodo: Todos los registros"
+
+        ws_summary = wb.active
+        ws_summary.title = "Resumen General"
+        ws_summary.views.sheetView[0].showGridLines = True
+
+        ws_summary.cell(row=1, column=1, value="REPORTE DE TRANSACCIONES DE VENTA").font = title_font
+        ws_summary.cell(row=2, column=1, value=f"Generado el: {now_str} | {period_label}").font = subtitle_font
+
+        ws_summary.cell(row=4, column=1, value="1. Indicadores Generales (KPIs)").font = section_font
+        summary_headers = ["Indicador", "Valor"]
+        for col_num, h_text in enumerate(summary_headers, 1):
+            c = ws_summary.cell(row=5, column=col_num, value=h_text)
+            c.fill = header_fill
+            c.font = header_font
+            c.alignment = center_align if col_num > 1 else left_align
+            c.border = cell_border
+
+        total_net = float(stats.get('total_net_amount') or 0)
+        total_profit = float(stats.get('total_profit') or 0)
+        total_margin = float(stats.get('total_margin') or 0)
+
+        kpi_rows = [
+            ("Transacciones", int(stats.get('transactions_count') or 0), int_format, bold_data_font, right_align),
+            ("Piezas Vendidas", float(stats.get('total_quantity') or 0), qty_format, bold_data_font, right_align),
+            (
+                "Venta Neta Total",
+                total_net,
+                currency_format,
+                red_bold_font if total_net <= 0 else green_bold_font,
+                right_align,
+            ),
+            ("Ticket Promedio", float(stats.get('avg_ticket') or 0), currency_format, bold_data_font, right_align),
+        ]
+
+        if can_view_cost:
+            kpi_rows.append(
+                (
+                    "Utilidad Total",
+                    total_profit,
+                    currency_format,
+                    red_bold_font if total_profit <= 0 else green_bold_font,
+                    right_align,
+                )
+            )
+
+        if is_vendor:
+            kpi_rows.append(
+                (
+                    "Evaluación",
+                    self._get_margin_status(total_margin),
+                    None,
+                    get_status_font(total_margin),
+                    center_align,
+                )
+            )
+        else:
+            kpi_rows.append(
+                (
+                    "Margen Total (%)",
+                    total_margin / 100.0,
+                    pct_format,
+                    bold_data_font,
+                    right_align,
+                )
+            )
+
+        kpi_rows.extend([
+            ("Clientes Atendidos", int(stats.get('unique_customers_count') or 0), int_format, bold_data_font, right_align),
+            ("Productos Vendidos", int(stats.get('unique_products_count') or 0), int_format, bold_data_font, right_align),
+        ])
+
+        for r_idx, (lbl, val, num_fmt, val_font, val_align) in enumerate(kpi_rows, 6):
+            c_lbl = ws_summary.cell(row=r_idx, column=1, value=lbl)
+            c_lbl.font = data_font
+            c_lbl.alignment = left_align
+            c_lbl.border = cell_border
+
+            c_val = ws_summary.cell(row=r_idx, column=2, value=val)
+            c_val.font = val_font
+            c_val.alignment = val_align
+            c_val.border = cell_border
+            if num_fmt:
+                c_val.number_format = num_fmt
+
+        ws_summary.column_dimensions['A'].width = 32
+        ws_summary.column_dimensions['B'].width = 24
+
+        ws_detail = wb.create_sheet(title="Transacciones")
+        ws_detail.views.sheetView[0].showGridLines = True
+        ws_detail.freeze_panes = "A5"
+
+        ws_detail.cell(row=1, column=1, value="LISTADO DETALLADO DE TRANSACCIONES").font = title_font
+        ws_detail.cell(row=2, column=1, value=f"Generado el: {now_str} | {period_label}").font = subtitle_font
+
+        detail_columns = [
+            ("Documento", 18),
+            ("Fecha", 14),
+            ("ID Cliente", 14),
+            ("Cliente", 36),
+            ("Ruta", 28),
+            ("Gerencia", 22),
+            ("Centro de Distribución", 24),
+            ("Clase de Producto", 22),
+            ("ID Producto", 14),
+            ("Producto", 36),
+            ("Cantidad", 14),
+            ("Importe Neto", 18),
+        ]
+        if can_view_cost:
+            detail_columns.append(("Utilidad", 18))
+        if not is_vendor:
+            detail_columns.append(("Margen (%)", 14))
+        detail_columns.append(("Evaluación", 16))
+
+        for col_num, (h_text, col_width) in enumerate(detail_columns, 1):
+            c = ws_detail.cell(row=4, column=col_num, value=h_text)
+            c.fill = header_fill
+            c.font = header_font
+            c.alignment = center_align
+            c.border = cell_border
+            ws_detail.column_dimensions[get_column_letter(col_num)].width = col_width
+
+        detail_qs = base_qs.select_related(
+            'customer',
+            'route',
+            'route__business_unit',
+            'warehouse',
+            'product',
+            'product_class',
+        )
+
+        row_idx = 5
+        for tx in detail_qs.iterator(chunk_size=2000):
+            net_val = float(tx.net_amount or 0)
+            profit_val = float(tx.profit or 0)
+            margin_val = float(tx.margin or 0)
+            qty_val = float(tx.quantity or 0)
+
+            doc_str = (tx.doc_id or '-').upper()
+            date_str = tx.sale_date.strftime('%Y-%m-%d') if tx.sale_date else '-'
+            cust_id_str = (tx.customer.id or '-').upper() if tx.customer and tx.customer.id else '-'
+            cust_name_str = tx.customer.name.title() if tx.customer and tx.customer.name else '-'
+            route_str = f"{tx.route.id.upper()} - {tx.route.name.title()}" if tx.route else 'Sin ruta'
+            bu_str = tx.route.business_unit.name.title() if tx.route and tx.route.business_unit and tx.route.business_unit.name else '-'
+            wh_str = tx.warehouse.name.title() if tx.warehouse and tx.warehouse.name else '-'
+            pclass_str = tx.product_class.name.title() if tx.product_class and tx.product_class.name else '-'
+            prod_id_str = (tx.product.id or '-').upper() if tx.product and tx.product.id else '-'
+            prod_name_str = (
+                tx.product.name.title()
+                if tx.product and tx.product.name
+                else (pclass_str if pclass_str != '-' else '-')
+            )
+
+            row_cells = [
+                (doc_str, center_align, data_font, None),
+                (date_str, center_align, data_font, None),
+                (cust_id_str, center_align, data_font, None),
+                (cust_name_str, left_align, data_font, None),
+                (route_str, left_align, data_font, None),
+                (bu_str, left_align, data_font, None),
+                (wh_str, left_align, data_font, None),
+                (pclass_str, left_align, data_font, None),
+                (prod_id_str, center_align, data_font, None),
+                (prod_name_str, left_align, data_font, None),
+                (qty_val, right_align, data_font, qty_format),
+                (net_val, right_align, red_font if net_val <= 0 else green_font, currency_format),
+            ]
+
+            if can_view_cost:
+                row_cells.append(
+                    (profit_val, right_align, red_font if profit_val <= 0 else green_font, currency_format)
+                )
+
+            if not is_vendor:
+                row_cells.append((margin_val / 100.0, right_align, data_font, pct_format))
+
+            row_cells.append((self._get_margin_status(margin_val), center_align, get_status_font(margin_val), None))
+
+            for col_num, (val, align, font, num_fmt) in enumerate(row_cells, 1):
+                c = ws_detail.cell(row=row_idx, column=col_num, value=val)
+                c.alignment = align
+                c.font = font
+                c.border = cell_border
+                if num_fmt:
+                    c.number_format = num_fmt
+
+            row_idx += 1
+
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        return buffer

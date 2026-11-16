@@ -1,9 +1,13 @@
 import os
 import uuid
+import datetime
 from datetime import date, timedelta
+from decimal import Decimal
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import models
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -12,11 +16,30 @@ from django_q.tasks import async_task
 from time import perf_counter
 
 from apps.core.models import GeneratedReport
+from apps.sales.filters import SaleTransactionFilter
+from apps.sales.services.sale_transactions import (
+    SaleTransactionsService,
+    SaleTransactionsExports,
+)
 from apps.sales.services.sale_targets_calculator import (
     SaleTargetCalculatorService,
     SaleTargetCalculatorExports,
     TargetCalculatorError,
 )
+
+
+def _make_serializable(val):
+    if isinstance(val, dict):
+        return {k: _make_serializable(v) for k, v in val.items()}
+    elif isinstance(val, (list, tuple, set, models.QuerySet)):
+        return [_make_serializable(x) for x in val]
+    elif isinstance(val, models.Model):
+        return val.pk
+    elif isinstance(val, (datetime.datetime, datetime.date, date)):
+        return val.isoformat()
+    elif isinstance(val, Decimal):
+        return float(val)
+    return val
 
 
 @login_required
@@ -147,6 +170,87 @@ def export_sale_targets_calculator_data(request):
     response = HttpResponse(
         file_bytes,
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["Content-Length"] = len(file_bytes)
+    return response
+
+
+
+
+@login_required
+def sale_transaction_export_view(request):
+    user = request.user
+    service = SaleTransactionsService(user=user)
+
+    today = timezone.localdate()
+    first_day_curr_month = today.replace(day=1)
+    last_day_curr_month = (first_day_curr_month + relativedelta(months=1)) - datetime.timedelta(days=1)
+
+    req_data = request.GET.copy()
+    if not req_data.get('date_from') and not req_data.get('date_start'):
+        req_data['date_from'] = first_day_curr_month.strftime('%Y-%m-%d')
+    if not req_data.get('date_to') and not req_data.get('date_end'):
+        req_data['date_to'] = last_day_curr_month.strftime('%Y-%m-%d')
+
+    transactions_qs = service.read_transactions()
+    transaction_filter = SaleTransactionFilter(req_data, queryset=transactions_qs, request=request)
+    filtered_transactions_qs = transaction_filter.qs
+
+    cleaned_data = {}
+    if transaction_filter.form.is_valid():
+        cleaned_data = transaction_filter.form.cleaned_data
+    else:
+        for k, v in req_data.items():
+            if k != 'page' and v:
+                cleaned_data[k] = v
+
+    date_from_val = cleaned_data.get('date_from') or req_data.get('date_from') or req_data.get('date_start') or ''
+    date_to_val = cleaned_data.get('date_to') or req_data.get('date_to') or req_data.get('date_end') or ''
+    date_start_str = date_from_val.strftime('%Y-%m-%d') if hasattr(date_from_val, 'strftime') else str(date_from_val)
+    date_end_str = date_to_val.strftime('%Y-%m-%d') if hasattr(date_to_val, 'strftime') else str(date_to_val)
+
+    exports_service = SaleTransactionsExports(sale_transactions_service=service)
+    excel_file = exports_service.export_sale_transactions_report(
+        qs=filtered_transactions_qs,
+        date_start=date_start_str,
+        date_end=date_end_str,
+    )
+    file_bytes = excel_file.getvalue()
+
+    timestamp_str = timezone.localtime().strftime('%Y%m%d_%H%M%S')
+    filename = f"transacciones_venta_{timestamp_str}.xlsx"
+
+    try:
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_reports')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_filename = f"{uuid.uuid4().hex}.xlsx"
+        temp_file_path = os.path.join(temp_dir, temp_filename)
+        with open(temp_file_path, 'wb') as f:
+            f.write(file_bytes)
+
+        serializable_cleaned_data = _make_serializable(cleaned_data)
+        report = GeneratedReport.objects.create(
+            user=user,
+            title="Reporte de Transacciones de Venta",
+            module_name="sale_transactions",
+            status=GeneratedReport.Status.PENDING,
+            filters=serializable_cleaned_data,
+            file_size=len(file_bytes),
+        )
+
+        async_task(
+            'apps.core.tasks.save_generated_report_file_task',
+            report.id,
+            temp_file_path,
+            filename,
+        )
+    except Exception as bg_err:
+        print(f"[SALE TRANSACTIONS EXPORT] Error queuing background persistence: {bg_err}", flush=True)
+
+    response = HttpResponse(
+        file_bytes,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     response["Content-Length"] = len(file_bytes)

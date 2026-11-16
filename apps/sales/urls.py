@@ -9,6 +9,7 @@ from .views import (
     route_detail_view,
     route_update_view,
     sale_transaction_list_view,
+    sale_transaction_export_view,
     sale_transaction_detail_view,
     sale_target_list_view,
     sale_target_detail_view,
@@ -33,6 +34,7 @@ urlpatterns = [
     path('routes/<str:pk>/update/', route_update_view, name='route_update_view'),
 
     path('transactions/', sale_transaction_list_view, name='sale_transaction_list_view'),
+    path('transactions/export/', sale_transaction_export_view, name='sale_transaction_export_view'),
     path('transactions/<str:pk>/', sale_transaction_detail_view, name='sale_transaction_detail_view'),
 
     path('targets/', sale_target_list_view, name='sale_target_list_view'),
