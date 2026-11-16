@@ -54,12 +54,30 @@ class Product(models.Model):
     cost = models.DecimalField(max_digits=14, decimal_places=4, default=Decimal('0.00'), blank=True, help_text='Costo del producto')
     price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'), blank=True, help_text='Precio del producto')
     unit_of_measure = models.CharField(max_length=255, default='', blank=True, help_text='Unidad de medida del producto')
+    weight = models.DecimalField(max_digits=14, decimal_places=4, default=Decimal('0.0000'), blank=True, help_text='Peso unitario del producto en libras')
+    pieces_per_box = models.PositiveIntegerField(default=1, blank=True, help_text='Piezas individuales por caja o bulto')
+    boxes_per_pallet = models.PositiveIntegerField(default=1, blank=True, help_text='Cajas o bultos por tarima')
     is_active = models.BooleanField(default=True, help_text='Indica si el producto está activo')
     properties = models.ManyToManyField('ProductProperty',through='ProductPropertyValue',related_name='products',blank=True,help_text='Propiedades del producto')
 
     class Meta:
         verbose_name = 'Producto'
         verbose_name_plural = 'Productos'
+
+    @property
+    def units_per_pallet(self) -> int:
+        pieces = self.pieces_per_box or 1
+        boxes = self.boxes_per_pallet or 1
+        return pieces * boxes
+
+    @property
+    def box_weight(self) -> Decimal:
+        pieces = Decimal(self.pieces_per_box or 1)
+        return (self.weight or Decimal('0.0000')) * pieces
+
+    @property
+    def pallet_weight(self) -> Decimal:
+        return (self.weight or Decimal('0.0000')) * Decimal(self.units_per_pallet)
 
     def __str__(self):
         name = (self.name or "").title()
