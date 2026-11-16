@@ -230,6 +230,32 @@ class CustomerKpisFilter(django_filters.FilterSet):
         label='Contribución máxima',
         widget=forms.NumberInput(attrs={'step': 'any', 'placeholder': 'Sin tope'})
     )
+    growth_min_op = django_filters.ChoiceFilter(
+        choices=[('gte', '≥'), ('gt', '>')],
+        method='filter_noop',
+        label='Operador crecimiento mínimo',
+        empty_label=None,
+        null_label=None,
+        initial='gte',
+    )
+    growth_min = django_filters.NumberFilter(
+        method='filter_noop',
+        label='Crecimiento mínimo (%)',
+        widget=forms.NumberInput(attrs={'step': 'any', 'placeholder': '0.00'})
+    )
+    growth_max_op = django_filters.ChoiceFilter(
+        choices=[('lte', '≤'), ('lt', '<')],
+        method='filter_noop',
+        label='Operador crecimiento máximo',
+        empty_label=None,
+        null_label=None,
+        initial='lte',
+    )
+    growth_max = django_filters.NumberFilter(
+        method='filter_noop',
+        label='Crecimiento máximo (%)',
+        widget=forms.NumberInput(attrs={'step': 'any', 'placeholder': 'Sin tope'})
+    )
     has_purchases = django_filters.TypedChoiceFilter(
         choices=[('True', 'Con compras'), ('False', 'Sin compras')],
         coerce=lambda x: x == 'True',

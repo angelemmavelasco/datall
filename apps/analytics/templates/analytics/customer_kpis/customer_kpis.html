@@ -48,14 +48,24 @@ KPIs por Clientes
             <span>
                 Métricas calculadas desde {{ selected_start_contrib }} hasta {{ selected_end_contrib }} <span class="cursor-pointer select-none">ⓘ</span>
             </span>
-            {% if request.GET.contrib_min_amount or request.GET.contrib_max_amount %}
-            <span class=" text-title rounded flex items-center gap-1">
-                <span class="text-title">Contribución monetaria por {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}Utilidad{% else %}Venta neta{% endif %}:</span>
-                {% if request.GET.contrib_min_amount %}{% if request.GET.contrib_min_op == 'gt' %}&gt;{% else %}≥{% endif %} ${{ request.GET.contrib_min_amount|floatformat:2|intcomma }}{% endif %}
-                {% if request.GET.contrib_min_amount and request.GET.contrib_max_amount %} y {% endif %}
-                {% if request.GET.contrib_max_amount %}{% if request.GET.contrib_max_op == 'lt' %}&lt;{% else %}≤{% endif %} ${{ request.GET.contrib_max_amount|floatformat:2|intcomma }}{% endif %}
+            <span class="flex items-center flex-wrap gap-3">
+                {% if request.GET.contrib_min_amount or request.GET.contrib_max_amount %}
+                <span class="text-title rounded flex items-center gap-1">
+                    <span class="text-title">Contribución monetaria por {% if order_contrib == 'profit' and not request.user|has_group:"vendedor" %}Utilidad{% else %}Venta neta{% endif %}:</span>
+                    {% if request.GET.contrib_min_amount %}{% if request.GET.contrib_min_op == 'gt' %}&gt;{% else %}≥{% endif %} ${{ request.GET.contrib_min_amount|floatformat:2|intcomma }}{% endif %}
+                    {% if request.GET.contrib_min_amount and request.GET.contrib_max_amount %} y {% endif %}
+                    {% if request.GET.contrib_max_amount %}{% if request.GET.contrib_max_op == 'lt' %}&lt;{% else %}≤{% endif %} ${{ request.GET.contrib_max_amount|floatformat:2|intcomma }}{% endif %}
+                </span>
+                {% endif %}
+                {% if request.GET.growth_min or request.GET.growth_max %}
+                <span class="text-title rounded flex items-center gap-1">
+                    <span class="text-title">Crecimiento mensual:</span>
+                    {% if request.GET.growth_min %}{% if request.GET.growth_min_op == 'gt' %}&gt;{% else %}≥{% endif %} {{ request.GET.growth_min|floatformat:2|intcomma }}%{% endif %}
+                    {% if request.GET.growth_min and request.GET.growth_max %} y {% endif %}
+                    {% if request.GET.growth_max %}{% if request.GET.growth_max_op == 'lt' %}&lt;{% else %}≤{% endif %} {{ request.GET.growth_max|floatformat:2|intcomma }}%{% endif %}
+                </span>
+                {% endif %}
             </span>
-            {% endif %}
         </p>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -402,6 +412,56 @@ KPIs por Clientes
             • Hábito de compra semanal <br>
             • Clases con consumo <br>
             • Métricas de contribución
+        </p>
+    </div>
+
+    <!-- Crecimiento mensual (mes actual vs mes anterior) -->
+    <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between border-b border-border pb-1">
+            <span class="font-semibold text-title text-xs flex items-center gap-1"
+                  title="Compara la venta neta del mes actual contra el mes anterior (en %). Este filtro no depende del periodo de análisis.">
+                Crecimiento mensual (%) <span class="cursor-pointer select-none">ⓘ</span>
+            </span>
+            <span class="text-[10px] text-muted font-mono">Fijo</span>
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <!-- lim Inferior -->
+            <div class="flex flex-col gap-0.5">
+                <span class="text-title">Límite inferior (%):</span>
+                <div class="grid grid-cols-[105px_1fr] gap-1">
+                    <select name="growth_min_op"
+                            class="bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong cursor-pointer font-mono">
+                        <option value="gte" {% if request.GET.growth_min_op == 'gte' or not request.GET.growth_min_op %}selected{% endif %}>≥ Mayor/igual</option>
+                        <option value="gt" {% if request.GET.growth_min_op == 'gt' %}selected{% endif %}>&gt; Mayor que</option>
+                    </select>
+                    <input type="number" step="any" name="growth_min"
+                           value="{{ request.GET.growth_min }}"
+                           placeholder="0.00"
+                           class="w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
+                </div>
+            </div>
+
+            <!-- lim Superior -->
+            <div class="flex flex-col gap-0.5">
+                <span class="text-title">Límite superior (%):</span>
+                <div class="grid grid-cols-[105px_1fr] gap-1">
+                    <select name="growth_max_op"
+                            class="bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong cursor-pointer font-mono">
+                        <option value="lte" {% if request.GET.growth_max_op == 'lte' or not request.GET.growth_max_op %}selected{% endif %}>≤ Menor/igual</option>
+                        <option value="lt" {% if request.GET.growth_max_op == 'lt' %}selected{% endif %}>&lt; Menor que</option>
+                    </select>
+                    <input type="number" step="any" name="growth_max"
+                           value="{{ request.GET.growth_max }}"
+                           placeholder="Sin tope"
+                           class="w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono">
+                </div>
+            </div>
+        </div>
+
+        <p class="text-[10px] text-muted leading-tight mt-0.5">
+            Mes actual vs. mes anterior (no afectado por el rango de fechas).<br>
+            Ej: <strong>&gt; 0</strong> han crecido, <strong>≤ 0</strong> no han crecido.
         </p>
     </div>
 
