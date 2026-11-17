@@ -58,6 +58,9 @@ class ProductAdmin(admin.ModelAdmin):
         'cost',
         'price',
         'unit_of_measure',
+        'weight',
+        'pieces_per_box',
+        'boxes_per_pallet',
         'is_active',
     )
     list_filter = (

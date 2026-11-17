@@ -293,6 +293,27 @@ class ProductsService(UsersService):
             submodule_url_name='core:upload_options_list_view',
             context='columna'
         )
+
+        fallback_map = {
+            'peso': 'weight',
+            'peso_lbs': 'weight',
+            'weight_lbs': 'weight',
+            'piezas_por_caja': 'pieces_per_box',
+            'piezas_caja': 'pieces_per_box',
+            'pzas_caja': 'pieces_per_box',
+            'cajas_por_tarima': 'boxes_per_pallet',
+            'cajas_por_pallet': 'boxes_per_pallet',
+            'bultos_por_tarima': 'boxes_per_pallet',
+            'tarima': 'boxes_per_pallet',
+        }
+        rename_dict = {}
+        for col in df.columns:
+            clean_col = str(col).strip().lower()
+            if clean_col in fallback_map and fallback_map[clean_col] not in df.columns:
+                rename_dict[col] = fallback_map[clean_col]
+        if rename_dict:
+            df.rename(columns=rename_dict, inplace=True)
+
         df = BaseETLHelper.resolve_foreign_key_columns(df, self.product_model)
 
         is_req_valid, req_msg = BaseETLHelper.validate_required_columns(df, {'id': 'Identificador de Producto'})
@@ -300,7 +321,6 @@ class ProductsService(UsersService):
             return False, req_msg
 
         valid_types_dict = {str(t.id).strip().lower(): t.id for t in self.product_class_model.objects.all()}
-        default_type = valid_types_dict.get('otr') or (next(iter(valid_types_dict.values())) if valid_types_dict else None)
 
         if 'product_class_id' in df.columns:
             df = BaseETLHelper.apply_reference_value_mappings(
@@ -312,10 +332,8 @@ class ProductsService(UsersService):
             )
 
             df['product_class_id'] = df['product_class_id'].apply(
-                lambda x: valid_types_dict.get(str(x).strip().lower(), default_type) if x not in (None, 'None', 'nan', '') else default_type
+                lambda x: valid_types_dict.get(str(x).strip().lower()) if x not in (None, 'None', 'nan', 'NaN', '') else None
             )
-        elif default_type:
-            df['product_class_id'] = default_type
 
         is_fk_valid, fk_msg = BaseETLHelper.validate_foreign_keys(df, self.product_model)
         if not is_fk_valid:
@@ -324,24 +342,32 @@ class ProductsService(UsersService):
         df['id'] = df['id'].astype(str).str.strip()
         df.drop_duplicates(subset=['id'], keep='last', inplace=True)
 
+        numeric_fields = {'cost', 'price', 'weight', 'pieces_per_box', 'boxes_per_pallet'}
         for col in df.columns:
-            if col not in ['cost', 'price', 'product_class_id', 'id']:
+            if col not in numeric_fields and col not in {'product_class_id', 'id'}:
                 df[col] = df[col].astype(str).str.strip()
-                df[col] = df[col].replace({'nan': None, '': None, 'None': None})
+                df[col] = df[col].replace({'nan': None, 'NaN': None, '': None, 'None': None, 'null': None})
 
-        num_cols = ['cost', 'price']
-        for c in num_cols:
+        for c in ('cost', 'price', 'weight'):
             if c in df.columns:
                 df[c] = pd.to_numeric(
                     df[c].astype(str).str.replace(r'[$, ]', '', regex=True),
                     errors='coerce'
-                ).fillna(0.0)
+                )
+
+        for c in ('pieces_per_box', 'boxes_per_pallet'):
+            if c in df.columns:
+                df[c] = pd.to_numeric(
+                    df[c].astype(str).str.replace(r'[$, ]', '', regex=True),
+                    errors='coerce'
+                )
 
         df = df.where(pd.notnull(df), None)
 
         return True, df
 
     def bulk_create_products(self, file_obj) -> object:
+        import pandas as pd
         from apps.core.services.uploads import ImportResult, PermissionsError, BaseETLHelper
         from django.db import transaction
 
@@ -363,11 +389,22 @@ class ProductsService(UsersService):
         
         valid_columns = [col for col in df.columns if col in model_fields]
 
+        valid_types_dict = {str(t.id).strip().lower(): t.id for t in self.product_class_model.objects.all()}
+        default_type = valid_types_dict.get('otr') or (next(iter(valid_types_dict.values())) if valid_types_dict else None)
+
         ids_in_df = df['id'].dropna().astype(str).tolist()
         existing_products = self.product_model.objects.in_bulk(ids_in_df)
 
         products_to_create = []
         products_to_update = []
+        changed_fields_set = set()
+
+        decimal_precision = {
+            'cost': Decimal('0.0001'),
+            'price': Decimal('0.01'),
+            'weight': Decimal('0.0001'),
+        }
+        int_fields = {'pieces_per_box', 'boxes_per_pallet'}
 
         for _, row in df.iterrows():
             cid = str(row.get('id')).strip()
@@ -377,7 +414,21 @@ class ProductsService(UsersService):
             data = {}
             for col in valid_columns:
                 val = row[col]
-                if val is not None and str(val).lower() != 'nan':
+                if val is None or pd.isna(val) or str(val).strip().lower() in ('', 'nan', 'none', 'null'):
+                    continue
+                if col in decimal_precision:
+                    try:
+                        data[col] = Decimal(str(val)).quantize(decimal_precision[col])
+                    except Exception:
+                        continue
+                elif col in int_fields:
+                    try:
+                        iv = int(float(val))
+                        if iv >= 1:
+                            data[col] = iv
+                    except Exception:
+                        continue
+                else:
                     data[col] = val
             data['id'] = cid
 
@@ -385,11 +436,26 @@ class ProductsService(UsersService):
 
             if cid in existing_products:
                 product = existing_products[cid]
+                has_changes = False
                 for key, value in data.items():
-                    setattr(product, key, value)
-                products_to_update.append(product)
-                updated_count += 1
+                    if key == 'id':
+                        continue
+                    current_val = getattr(product, key, None)
+                    if key in decimal_precision and current_val is not None:
+                        try:
+                            current_val = Decimal(str(current_val)).quantize(decimal_precision[key])
+                        except Exception:
+                            pass
+                    if current_val != value:
+                        setattr(product, key, value)
+                        changed_fields_set.add(key)
+                        has_changes = True
+                if has_changes:
+                    products_to_update.append(product)
+                    updated_count += 1
             else:
+                if not data.get('product_class_id') and default_type:
+                    data['product_class_id'] = default_type
                 product = self.product_model(**data)
                 products_to_create.append(product)
                 created_count += 1
@@ -399,10 +465,9 @@ class ProductsService(UsersService):
                 if products_to_create:
                     self.product_model.objects.bulk_create(products_to_create, batch_size=500)
                 
-                if products_to_update:
-                    update_fields = [col for col in valid_columns if col != 'id']
-                    if update_fields:
-                        self.product_model.objects.bulk_update(products_to_update, update_fields, batch_size=500)
+                if products_to_update and changed_fields_set:
+                    update_fields = list(changed_fields_set)
+                    self.product_model.objects.bulk_update(products_to_update, update_fields, batch_size=500)
             
             return ImportResult(
                 success=True,
