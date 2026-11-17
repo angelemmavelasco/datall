@@ -13,6 +13,12 @@ from .stocks import (
     StockTransfersService,
     StockTransferExports,
 )
+from .purchase_orders import (
+    PurchaseOrdersService,
+    PurchaseOrdersStats,
+    PurchaseOrderExports,
+    PurchaseOrderNotFound,
+)
 
 __all__ = [
     'ProductsService',
@@ -20,6 +26,10 @@ __all__ = [
     'StocksService',
     'StockTransfersService',
     'StockTransferExports',
+    'PurchaseOrdersService',
+    'PurchaseOrdersStats',
+    'PurchaseOrderExports',
+    'PurchaseOrderNotFound',
     'ServiceError',
     'PermissionsError',
     'ProductNotFound',
