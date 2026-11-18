@@ -1,6 +1,7 @@
 import time
 import logging
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from apps.core.models import ActivityLog, Submodule
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,17 @@ class ActivityTrackingMiddleware:
             if view_name:
                 submodule = Submodule.objects.filter(url_name=view_name).first()
 
+            extra_log = getattr(request, 'activity_log_extra', None) or {}
+            content_type = extra_log.get('content_type')
+            object_id = extra_log.get('object_id')
+            content_object = extra_log.get('content_object')
+            if content_object is not None and getattr(content_object, 'pk', None) is not None:
+                content_type = ContentType.objects.get_for_model(content_object)
+                object_id = str(content_object.pk)
+            if extra_log.get('action'):
+                action = extra_log['action']
+            changes = extra_log.get('changes') if isinstance(extra_log.get('changes'), dict) else {}
+
             ActivityLog.objects.create(
                 user=request.user,
                 path=path,
@@ -101,7 +113,10 @@ class ActivityTrackingMiddleware:
                 action=action,
                 result=result,
                 status_code=status_code,
+                content_type=content_type,
+                object_id=object_id,
                 params=params,
+                changes=changes,
                 ip_address=ip_address,
                 user_agent=user_agent,
                 duration_ms=duration_ms,

@@ -97,6 +97,36 @@ Nuevo producto
             </p>
         </div>
 
+        <span class="text-title">Peso unitario (lbs)</span>
+        <div>
+            {% render_field form.weight class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0.0000' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.weight.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Piezas por caja / bulto</span>
+        <div>
+            {% render_field form.pieces_per_box class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='1' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.pieces_per_box.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
+        <span class="text-title">Cajas / bultos por tarima</span>
+        <div>
+            {% render_field form.boxes_per_pallet class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='1' %}
+            <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
+                {% for error in form.boxes_per_pallet.errors %}
+                <span class="block">• {{ error }}</span>
+                {% endfor %}
+            </p>
+        </div>
+
         <span class="text-title">Precio de venta ($)</span>
         <div>
             {% render_field form.price class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono' placeholder='0.00' %}

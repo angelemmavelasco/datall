@@ -54,6 +54,26 @@ Producto: {{ product.id|upper }} - {{ product.name|title }}
             {{ product.unit_of_measure|default:"PZA" }}
         </div>
 
+        <span class="text-title">Peso unitario (lbs)</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ product.weight|default:0|floatformat:2|intcomma }} lbs
+        </div>
+
+        <span class="text-title">Piezas por caja / bulto</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ product.pieces_per_box|default:1|intcomma }}
+        </div>
+
+        <span class="text-title">Cajas / bultos por tarima</span>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ product.boxes_per_pallet|default:1|intcomma }}
+        </div>
+
+        <span class="text-title">Total piezas por tarima</span>
+        <div class="w-full text-body flex items-center font-mono font-medium">
+            {{ product.units_per_pallet|default:1|intcomma }} pzas ({{ product.pallet_weight|default:0|floatformat:2|intcomma }} lbs)
+        </div>
+
         <span class="text-title">Precio de venta</span>
         <div class="w-full text-body flex items-center font-mono">
             ${{ product.price|default:0|floatformat:2|intcomma }}

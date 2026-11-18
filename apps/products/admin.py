@@ -6,6 +6,8 @@ from .models import (
     Product,
     ProductPropertyValue,
     Stock,
+    PurchaseOrder,
+    PurchaseOrderItem,
 )
 
 
@@ -58,6 +60,9 @@ class ProductAdmin(admin.ModelAdmin):
         'cost',
         'price',
         'unit_of_measure',
+        'weight',
+        'pieces_per_box',
+        'boxes_per_pallet',
         'is_active',
     )
     list_filter = (
@@ -108,3 +113,28 @@ class StockAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ['product', 'warehouse']
     ordering = ('product', 'warehouse', 'expiration_date')
+
+
+class PurchaseOrderItemInline(admin.TabularInline):
+    model = PurchaseOrderItem
+    extra = 0
+    autocomplete_fields = ['product']
+
+
+@admin.register(PurchaseOrder)
+class PurchaseOrderAdmin(admin.ModelAdmin):
+    list_display = (
+        'folio',
+        'origin_type',
+        'status',
+        'grouping_mode',
+        'total_pallets',
+        'total_ordered_units',
+        'total_product_weight',
+        'created_by',
+        'created_at',
+    )
+    list_filter = ('status', 'origin_type', 'grouping_mode', 'created_at')
+    search_fields = ('folio', 'notes', 'created_by__username')
+    inlines = [PurchaseOrderItemInline]
+    ordering = ('-created_at',)
