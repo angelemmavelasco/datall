@@ -1,0 +1,410 @@
+{% load humanize %}
+
+{% if errors %}
+    <div class="bg-red-500/10 border border-red-500/30 rounded p-3 flex flex-col items-center gap-1">
+        {% for error in errors %}
+            <p class="text-red-500 text-xs font-medium">{{ error }}</p>
+        {% endfor %}
+    </div>
+{% elif not preview or not preview.groups %}
+    <div class="w-full border border-border rounded bg-container py-20 flex justify-center items-center">
+        {% include 'layouts/data_not_found.html' %}
+    </div>
+{% else %}
+    <div id="order-summary-panel"
+         data-pallet-wood-lbs="{{ preview.logistics_params.pallet_wood_weight_lbs|stringformat:'f' }}"
+         data-truck-capacity-lbs="{{ preview.logistics_params.truck_capacity_lbs|stringformat:'f' }}"
+         data-max-pallets-truck="{{ preview.logistics_params.max_pallets_per_truck }}"
+         class="flex flex-col gap-4">
+
+        <div class="text-title pb-1 border-b border-border flex items-center justify-between flex-wrap gap-2">
+            <span title="Resumen estimado para la orden considerando:&#10;• Capacidad de camión: {{ preview.logistics_params.truck_capacity_lbs|floatformat:0|intcomma }} lbs&#10;• Máximo por camión: {{ preview.logistics_params.max_pallets_per_truck }} tarimas&#10;• Peso madera por tarima: {{ preview.logistics_params.pallet_wood_weight_lbs|floatformat:0|intcomma }} lbs&#10;• Ajuste automático a tarima cerrada por producto">
+                Resumen estimado de la orden <span class="cursor-pointer select-none">ⓘ</span>
+            </span>
+
+            <button type="button"
+                    id="btn-save-order"
+                    onclick="submitPurchaseOrder()"
+                    class="border border-emerald-500/40 rounded px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-medium shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                <span>Generar orden de compra</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="border border-border rounded bg-container p-2" title="Total estimado de tarimas cerradas a solicitar y su equivalente en cajas o bultos.">
+                <span class="text-sm text-title">
+                    Tarimas estimadas <span class="cursor-pointer select-none">ⓘ</span>
+                </span><br>
+                <span id="summary-pallets" class="text-xl text-violet-500">
+                    {{ preview.summary.total_pallets|intcomma }}
+                </span>
+                <span class="text-sm text-title">
+                    <span id="summary-boxes">{{ preview.summary.total_boxes|intcomma }}</span> cajas
+                </span>
+            </div>
+
+            <div class="border border-border rounded bg-container p-2" title="Unidades finales ajustadas a tarima cerrada frente a las unidades requeridas originalmente.">
+                <span class="text-sm text-title">
+                    Unidades ordenadas <span class="cursor-pointer select-none">ⓘ</span>
+                </span><br>
+                <span id="summary-ord-units" class="text-xl text-emerald-500">
+                    {{ preview.summary.total_ordered_units|intcomma }}
+                </span>
+                <span class="text-sm text-title">
+                    <span id="summary-req-units">{{ preview.summary.total_requested_units|floatformat:0|intcomma }}</span> req.
+                </span>
+            </div>
+
+            <div class="border border-border rounded bg-container p-2" title="Peso neto total de la mercancía en libras, sin contemplar la madera de las tarimas.">
+                <span class="text-sm text-title">
+                    Peso neto producto <span class="cursor-pointer select-none">ⓘ</span>
+                </span><br>
+                <span id="summary-prod-weight" class="text-xl text-amber-500">
+                    {{ preview.summary.total_product_weight|floatformat:2|intcomma }}
+                </span>
+                <span class="text-xl text-amber-500">lbs</span>
+            </div>
+
+            <div class="border border-border rounded bg-container p-2" title="Peso bruto total incluyendo la madera de las tarimas ({{ preview.logistics_params.pallet_wood_weight_lbs|floatformat:0|intcomma }} lbs/tarima) y camiones estimados ({{ preview.logistics_params.truck_capacity_lbs|floatformat:0|intcomma }} lbs/camión).">
+                <span class="text-sm text-title">
+                    Peso bruto c/tarimas <span class="cursor-pointer select-none">ⓘ</span>
+                </span><br>
+                <span id="summary-total-weight" class="text-xl text-cyan-500">
+                    {{ preview.summary.total_pallet_weight|floatformat:2|intcomma }} lbs
+                </span>
+                <span id="summary-trucks" class="text-sm text-title">
+                    {{ preview.summary.estimated_trucks|floatformat:2 }} camiones
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col w-full gap-4">
+        <div class="text-title pb-1 border-b border-border flex items-center justify-between flex-wrap gap-2">
+            <span>
+                Desglose por producto
+                <span title="Ajusta la cobertura objetivo por SKU o el pedido por CEDIS; el sistema calcula automáticamente tarimas cerradas, cajas equivalentes y peso estimado" class="cursor-pointer select-none">ⓘ</span>
+            </span>
+        </div>
+
+        <div class="w-full overflow-auto border border-border rounded bg-container max-h-[75vh] relative @container">
+            <table class="w-max min-w-full border-separate border-spacing-0">
+                <thead class="sticky top-0 z-30 bg-page">
+                    <tr class="border-b border-border">
+                        <th colspan="1" class="p-1 text-center border-r border-border sticky top-0 md:left-0 z-35 bg-page h-8 whitespace-nowrap">Producto</th>
+                        <th colspan="6" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Demanda, inventario y cobertura</th>
+                        {% if preview.grouping_mode == 'separado' and preview.warehouses %}
+                            <th colspan="{{ preview.warehouses|length }}" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Pedido por CEDIS</th>
+                        {% endif %}
+                        <th colspan="6" class="p-1 text-center sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Consolidado de la orden</th>
+                    </tr>
+
+                    <tr class="border-b border-border text-xs">
+                        <th class="min-w-[240px] max-w-[240px] w-[240px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-0 z-35 bg-page" title="Código SKU, descripción del producto y especificación indicativa de empaque por caja y tarima.">
+                            Producto <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Unidades vendidas acumuladas durante los {{ preview.months_count }} meses evaluados.">
+                            Ventas ({{ preview.months_count }}m) <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Venta promedio mensual calculada sobre el periodo de evaluación.">
+                            Prom. mensual <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Existencia física disponible en los CEDIS seleccionados.">
+                            Stock físico <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Inventario actualmente en tránsito hacia los CEDIS seleccionados.">
+                            En tránsito <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Porcentaje o relación actual de inventario disponible respecto al consumo promedio mensual.">
+                            Cobertura actual <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Meses de cobertura objetivo para este producto; puedes editarlo para recalcular automáticamente.">
+                            Meta (meses) <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        {% if preview.grouping_mode == 'separado' %}
+                            {% for w in preview.warehouses %}
+                                <th class="w-[115px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page whitespace-nowrap" title="CEDIS: {{ w.id|upper }} - {{ w.name|title }}&#10;Unidades sugeridas para este centro de distribución.&#10;Referencia inferior:&#10;• S: Stock físico&#10;• T: En tránsito&#10;• P: Promedio mensual">
+                                    {{ w.id|upper }} <span class="cursor-pointer select-none">ⓘ</span>
+                                </th>
+                            {% endfor %}
+                        {% endif %}
+
+                        <th class="w-[125px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Cantidad total requerida antes del ajuste a tarimas cerradas.">
+                            Uds. requeridas <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[115px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Referencia indicativa de piezas que integran una tarima cerrada para este producto.">
+                            Uds. / tarima <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Tarimas cerradas resultantes del requerimiento.">
+                            Tarimas <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[115px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Cajas o bultos equivalentes a las tarimas estimadas.">
+                            Cajas / Bultos <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[125px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Unidades finales consideradas en la orden en tarimas cerradas.">
+                            Uds. ordenadas <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[125px] p-1 text-center text-title border-t border-b border-border sticky top-8 z-30 bg-page" title="Peso neto total estimado de la partida en libras.">
+                            Peso total (lbs) <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for group in preview.groups %}
+                        <tr class="bg-page">
+                            <td colspan="100%" class="p-2 border-t border-b border-border text-title font-semibold text-xs bg-page">
+                                <span class="sticky left-2">{{ group.class_name }} ({{ group.products|length }} productos)</span>
+                            </td>
+                        </tr>
+
+                        {% for row in group.products %}
+                            <tr class="order-product-row"
+                                data-product-id="{{ row.product_id }}"
+                                data-grouping-mode="{{ preview.grouping_mode }}"
+                                data-avg-monthly="{{ row.avg_monthly|stringformat:'f' }}"
+                                data-current-stock="{{ row.current_stock|stringformat:'f' }}"
+                                data-in-transit="{{ row.in_transit|stringformat:'f' }}"
+                                data-pieces-per-box="{{ row.pieces_per_box }}"
+                                data-boxes-per-pallet="{{ row.boxes_per_pallet }}"
+                                data-units-per-pallet="{{ row.units_per_pallet }}"
+                                data-unit-weight="{{ row.unit_weight|stringformat:'f' }}">
+
+                                <th class="min-w-[240px] max-w-[240px] w-[240px] p-2 sticky md:left-0 z-20 bg-container text-left border-r border-border">
+                                    <a href="{% url 'products:product_detail_view' row.product_id %}" target="_blank" class="block truncate w-[220px] max-w-[220px] underline text-title hover:text-hover transition-colors" title="{{ row.product_id|upper }} - {{ row.product_name }}">
+                                        {{ row.product_id|upper }} - {{ row.product_name }}
+                                    </a>
+                                    <p class="font-medium text-hover truncate text-[11px] font-mono" title="Empaque indicativo: {{ row.pieces_per_box }} pza/caja × {{ row.boxes_per_pallet }} = {{ row.units_per_pallet }} uds/tarima • {{ row.unit_weight|floatformat:2 }} lbs/ud">
+                                        {{ row.pieces_per_box }} pza/caja × {{ row.boxes_per_pallet }} = {{ row.units_per_pallet }} uds/tarima • {{ row.unit_weight|floatformat:2 }} lbs/ud
+                                    </p>
+                                </th>
+
+                                <td class="p-2 truncate text-right font-mono text-secondary">
+                                    {{ row.sold_qty|intcomma }}
+                                </td>
+
+                                <td class="p-2 truncate text-right font-mono text-secondary">
+                                    {{ row.avg_monthly|intcomma }}
+                                </td>
+
+                                <td class="p-2 truncate text-right font-mono text-body">
+                                    {{ row.current_stock|intcomma }}
+                                </td>
+
+                                <td class="p-2 truncate text-right font-mono text-blue-500">
+                                    {{ row.in_transit|intcomma }}
+                                </td>
+
+                                <td class="p-2 truncate text-right font-mono text-secondary">
+                                    {{ row.initial_coverage_pct|floatformat:1 }}%
+                                </td>
+
+                                <td class="p-2 text-center border-r border-border">
+                                    <input type="number"
+                                           step="0.1"
+                                           min="0"
+                                           name="coverage_{{ row.product_id }}"
+                                           value="{{ preview.coverage_months|stringformat:'f' }}"
+                                           oninput="recalculateRowFromCoverage(this)"
+                                           class="w-16 bg-page border border-border rounded text-center p-1 text-xs font-mono focus:border-strong focus:outline-none row-coverage-input order-dynamic-input">
+                                </td>
+
+                                {% if preview.grouping_mode == 'separado' %}
+                                    {% for wh in row.warehouses_breakdown %}
+                                        <td class="p-2 text-center {% if forloop.last %}border-r border-border{% endif %}">
+                                            <div class="flex flex-col items-center gap-0.5">
+                                                <input type="number"
+                                                       step="1"
+                                                       min="0"
+                                                       name="wh_qty__{{ row.product_id }}__{{ wh.warehouse_id }}"
+                                                       value="{{ wh.suggested_units }}"
+                                                       data-wh-avg="{{ wh.avg_monthly|stringformat:'f' }}"
+                                                       data-wh-stock="{{ wh.current_stock|stringformat:'f' }}"
+                                                       data-wh-transit="{{ wh.in_transit|stringformat:'f' }}"
+                                                       oninput="recalculateRowFromWarehouses(this)"
+                                                       class="w-20 bg-page border border-border rounded text-right p-1 text-xs font-mono focus:border-strong focus:outline-none wh-qty-input order-dynamic-input">
+                                                <span class="text-[9px] text-secondary font-mono" title="Stock físico | En tránsito | Promedio mensual">
+                                                    S:{{ wh.current_stock|floatformat:0 }} T:{{ wh.in_transit|floatformat:0 }} P:{{ wh.avg_monthly|floatformat:1 }}
+                                                </span>
+                                            </div>
+                                        </td>
+                                    {% endfor %}
+                                {% endif %}
+
+                                <td class="p-2 text-center">
+                                    <input type="number"
+                                           step="1"
+                                           min="0"
+                                           name="req_qty_{{ row.product_id }}"
+                                           value="{{ row.initial_requested_units }}"
+                                           {% if preview.grouping_mode == 'separado' %}readonly{% endif %}
+                                           oninput="recalculateRowPalletMultiple(this.closest('tr'))"
+                                           class="w-20 bg-page border border-border rounded text-right p-1 text-xs font-mono focus:border-strong focus:outline-none req-qty-input order-dynamic-input {% if preview.grouping_mode == 'separado' %}text-secondary cursor-not-allowed{% else %}text-title font-bold{% endif %}">
+                                </td>
+
+                                <td class="p-2 truncate text-center font-mono text-secondary" title="Capacidad indicativa por tarima cerrada">
+                                    {{ row.units_per_pallet|intcomma }} uds
+                                </td>
+
+                                <td class="p-2 truncate text-right font-mono font-bold text-violet-500 row-pallets-cell">
+                                    {{ row.pallets_ordered|intcomma }}
+                                </td>
+
+                                <td class="p-2 truncate text-right font-mono text-blue-500 row-boxes-cell">
+                                    {{ row.boxes_ordered|intcomma }}
+                                </td>
+
+                                <td class="p-2 truncate text-right font-mono font-bold text-emerald-500 row-ordered-units-cell">
+                                    {{ row.ordered_units|intcomma }}
+                                </td>
+
+                                <td class="p-2 truncate text-right font-mono text-amber-500 row-weight-cell">
+                                    {{ row.total_weight|floatformat:2|intcomma }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function recalculateRowFromCoverage(covInput) {
+            const tr = covInput.closest('tr');
+            if (!tr) return;
+            const coverage = Math.max(parseFloat(covInput.value) || 0, 0);
+            const mode = tr.dataset.groupingMode;
+
+            if (mode === 'separado') {
+                let sumReq = 0;
+                tr.querySelectorAll('.wh-qty-input').forEach(whInp => {
+                    const whAvg = parseFloat(whInp.dataset.whAvg) || 0;
+                    const whStock = parseFloat(whInp.dataset.whStock) || 0;
+                    const whTransit = parseFloat(whInp.dataset.whTransit) || 0;
+                    const suggested = Math.max(Math.round((whAvg * coverage) - whStock - whTransit), 0);
+                    whInp.value = suggested;
+                    sumReq += suggested;
+                });
+                const reqInp = tr.querySelector('.req-qty-input');
+                if (reqInp) reqInp.value = sumReq;
+            } else {
+                const avg = parseFloat(tr.dataset.avgMonthly) || 0;
+                const stock = parseFloat(tr.dataset.currentStock) || 0;
+                const transit = parseFloat(tr.dataset.inTransit) || 0;
+                const suggested = Math.max(Math.round((avg * coverage) - stock - transit), 0);
+                const reqInp = tr.querySelector('.req-qty-input');
+                if (reqInp) reqInp.value = suggested;
+            }
+
+            recalculateRowPalletMultiple(tr);
+            updateOrderSummaryTotals();
+        }
+
+        function recalculateRowFromWarehouses(whInput) {
+            const tr = whInput.closest('tr');
+            if (!tr) return;
+            let sumReq = 0;
+            tr.querySelectorAll('.wh-qty-input').forEach(inp => {
+                const val = Math.max(parseInt(inp.value, 10) || 0, 0);
+                sumReq += val;
+            });
+            const reqInp = tr.querySelector('.req-qty-input');
+            if (reqInp) reqInp.value = sumReq;
+
+            recalculateRowPalletMultiple(tr);
+            updateOrderSummaryTotals();
+        }
+
+        function recalculateRowPalletMultiple(tr) {
+            if (!tr) return;
+            const reqInp = tr.querySelector('.req-qty-input');
+            const reqUnits = Math.max(parseFloat(reqInp?.value) || 0, 0);
+            const boxesPerPallet = Math.max(parseInt(tr.dataset.boxesPerPallet, 10) || 1, 1);
+            const unitsPerPallet = Math.max(parseInt(tr.dataset.unitsPerPallet, 10) || 1, 1);
+            const unitWeight = Math.max(parseFloat(tr.dataset.unitWeight) || 0, 0);
+
+            const pallets = reqUnits > 0 ? Math.ceil(reqUnits / unitsPerPallet) : 0;
+            const boxes = pallets * boxesPerPallet;
+            const orderedUnits = pallets * unitsPerPallet;
+            const totalWeight = orderedUnits * unitWeight;
+
+            tr.dataset.currentReqUnits = reqUnits;
+            tr.dataset.currentPallets = pallets;
+            tr.dataset.currentBoxes = boxes;
+            tr.dataset.currentOrderedUnits = orderedUnits;
+            tr.dataset.currentWeight = totalWeight;
+
+            const palCell = tr.querySelector('.row-pallets-cell');
+            const boxCell = tr.querySelector('.row-boxes-cell');
+            const ordCell = tr.querySelector('.row-ordered-units-cell');
+            const wgtCell = tr.querySelector('.row-weight-cell');
+
+            if (palCell) palCell.textContent = pallets.toLocaleString('es-MX');
+            if (boxCell) boxCell.textContent = boxes.toLocaleString('es-MX');
+            if (ordCell) ordCell.textContent = orderedUnits.toLocaleString('es-MX');
+            if (wgtCell) wgtCell.textContent = totalWeight.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function updateOrderSummaryTotals() {
+            const panel = document.getElementById('order-summary-panel');
+            if (!panel) return;
+
+            const woodLbs = parseFloat(panel.dataset.palletWoodLbs) || 75;
+            const truckCapLbs = parseFloat(panel.dataset.truckCapacityLbs) || 44000;
+
+            let totalReq = 0;
+            let totalPallets = 0;
+            let totalBoxes = 0;
+            let totalOrdered = 0;
+            let totalProdWeight = 0;
+
+            document.querySelectorAll('.order-product-row').forEach(tr => {
+                if (tr.dataset.currentPallets === undefined) {
+                    recalculateRowPalletMultiple(tr);
+                }
+                totalReq += parseFloat(tr.dataset.currentReqUnits) || 0;
+                totalPallets += parseInt(tr.dataset.currentPallets, 10) || 0;
+                totalBoxes += parseInt(tr.dataset.currentBoxes, 10) || 0;
+                totalOrdered += parseInt(tr.dataset.currentOrderedUnits, 10) || 0;
+                totalProdWeight += parseFloat(tr.dataset.currentWeight) || 0;
+            });
+
+            const totalPalletWeight = totalProdWeight + (totalPallets * woodLbs);
+            const trucks = truckCapLbs > 0 ? (totalPalletWeight / truckCapLbs) : 0;
+
+            const elReq = document.getElementById('summary-req-units');
+            const elPal = document.getElementById('summary-pallets');
+            const elBox = document.getElementById('summary-boxes');
+            const elOrd = document.getElementById('summary-ord-units');
+            const elWgt = document.getElementById('summary-prod-weight');
+            const elTotWgt = document.getElementById('summary-total-weight');
+            const elTrucks = document.getElementById('summary-trucks');
+
+            if (elReq) elReq.textContent = Math.round(totalReq).toLocaleString('es-MX');
+            if (elPal) elPal.textContent = totalPallets.toLocaleString('es-MX');
+            if (elBox) elBox.textContent = totalBoxes.toLocaleString('es-MX');
+            if (elOrd) elOrd.textContent = totalOrdered.toLocaleString('es-MX');
+            if (elWgt) elWgt.textContent = totalProdWeight.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (elTotWgt) elTotWgt.textContent = `${totalPalletWeight.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} lbs`;
+            if (elTrucks) elTrucks.textContent = `${trucks.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} camiones`;
+        }
+
+        document.querySelectorAll('.order-product-row').forEach(tr => {
+            recalculateRowPalletMultiple(tr);
+        });
+        updateOrderSummaryTotals();
+    </script>
+{% endif %}

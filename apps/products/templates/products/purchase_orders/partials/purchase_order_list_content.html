@@ -1,0 +1,152 @@
+{% load humanize %}
+
+<div class="flex flex-col w-full gap-4" id="purchase-order-list-content">
+    <p class="text-title pb-1 border-b border-border">
+        Resumen de órdenes
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="border border-border rounded bg-container p-2" title="Cantidad total de órdenes de compra registradas conforme a los filtros aplicados.">
+            <span class="text-sm text-title" title="Cantidad total de órdenes de compra registradas conforme a los filtros aplicados.">
+                Órdenes registradas <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-title">
+                {{ kpis.total_orders|default:0|floatformat:0|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Órdenes de compra generadas o confirmadas que aún no han salido a tránsito.">
+            <span class="text-sm text-title" title="Órdenes de compra generadas o confirmadas que aún no han salido a tránsito.">
+                Órdenes pendientes <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-orange-500">
+                {{ kpis.pending_orders|default:0|floatformat:0|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Órdenes de compra confirmadas por el proveedor que ya se encuentran en ruta hacia el CEDIS.">
+            <span class="text-sm text-title" title="Órdenes de compra confirmadas por el proveedor que ya se encuentran en ruta hacia el CEDIS.">
+                En tránsito <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-blue-500">
+                {{ kpis.in_transit_orders|default:0|floatformat:0|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Órdenes de compra marcadas como recibidas y completadas dentro del seguimiento administrativo.">
+            <span class="text-sm text-title" title="Órdenes de compra marcadas como recibidas y completadas dentro del seguimiento administrativo.">
+                Completadas <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-emerald-500">
+                {{ kpis.completed_orders|default:0|floatformat:0|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Suma consolidada de tarimas cerradas contempladas en las órdenes de compra mostradas.">
+            <span class="text-sm text-title" title="Suma consolidada de tarimas cerradas contempladas en las órdenes de compra mostradas.">
+                Tarimas totales <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-violet-500">
+                {{ kpis.ordered_pallets|default:0|floatformat:0|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Cantidad de tarimas cerradas pertenecientes únicamente a órdenes actualmente en estatus En tránsito.">
+            <span class="text-sm text-title" title="Cantidad de tarimas cerradas pertenecientes únicamente a órdenes actualmente en estatus En tránsito.">
+                Tarimas en tránsito <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-cyan-500">
+                {{ kpis.in_transit_pallets|default:0|floatformat:0|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Suma acumulada de piezas o unidades finales ordenadas después del redondeo al múltiplo de tarima.">
+            <span class="text-sm text-title" title="Suma acumulada de piezas o unidades finales ordenadas después del redondeo al múltiplo de tarima.">
+                Unidades ordenadas <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-title">
+                {{ kpis.total_ordered_units|default:0|floatformat:0|intcomma }}
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Peso neto total del producto ordenado en libras (sin incluir el peso de la madera de las tarimas).">
+            <span class="text-sm text-title" title="Peso neto total del producto ordenado en libras (sin incluir el peso de la madera de las tarimas).">
+                Peso total ordenado <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-emerald-500">
+                {{ kpis.total_weight_lbs|default:0|floatformat:2|intcomma }} lbs
+            </span>
+        </div>
+    </div>
+
+    <div id="purchase-order-table-section" class="flex flex-col w-full gap-4">
+        <div class="text-title pb-1 border-b border-border flex items-center justify-between flex-wrap gap-2">
+            <span>Listado</span>
+            <div class="flex items-center gap-2 flex-wrap text-xs">
+                <a href="{% url 'products:purchase_order_create_view' %}"
+                   class="border border-border rounded px-2 py-0.5 bg-container hover:bg-hover hover:text-hover text-title transition-colors cursor-pointer flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    <span>Nueva orden</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+            <table class="w-max min-w-full border-separate border-spacing-0">
+                <thead class="sticky top-0 z-30 bg-page">
+                    <tr class="border-b border-border">
+                        <th colspan="1" class="p-1 text-center border-r border-border sticky top-0 md:left-0 z-35 bg-page h-8 whitespace-nowrap">Identificación</th>
+                        <th colspan="3" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Control y destino</th>
+                        <th colspan="4" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Cantidades y peso</th>
+                        <th colspan="2" class="p-1 text-center sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Auditoría</th>
+                    </tr>
+
+                    <tr class="border-b border-border text-xs">
+                        <th class="min-w-[200px] max-w-[200px] w-[200px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-0 z-35 bg-page" title="Folio de la orden de compra con acceso directo a su detalle, modo de cálculo y meses de cobertura objetivo.">
+                            Folio <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Tipo de abastecimiento de la orden: Importación (proveedor internacional) o Local.">
+                            Origen <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[140px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Estatus operativo actual dentro del ciclo: Realizada, Confirmada, En tránsito o Completada.">
+                            Estatus <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[220px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Centros de distribución contemplados en el cálculo de abasto de la orden.">
+                            CEDIS contemplados <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Total de tarimas cerradas resultantes después del redondeo forzoso al múltiplo de tarima por producto.">
+                            Tarimas <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[130px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Total de cajas o bultos equivalentes contemplados en la orden.">
+                            Cajas / Bultos <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[140px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Cantidad total de piezas o unidades finales ordenadas en múltiplos cerrados de tarima.">
+                            Unidades totales <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Peso neto total del producto y peso total incluyendo tarimas de madera en libras.">
+                            Peso total <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Usuario responsable de generar la orden de compra en el sistema.">
+                            Generada por <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+
+                        <th class="w-[150px] p-1 text-center text-title border-t border-b border-border sticky top-8 z-30 bg-page" title="Fecha y hora de creación de la orden de compra.">
+                            Fecha <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="purchase-order-report-container">
+                    {% include "products/purchase_orders/partials/purchase_order_list_rows.html" %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

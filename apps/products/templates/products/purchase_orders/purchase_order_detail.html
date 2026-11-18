@@ -1,0 +1,445 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block module_name %}
+Orden de compra: {{ order.folio|upper }}
+{% endblock %}
+
+{% block title %}
+Orden de compra: {{ order.folio|upper }}
+{% endblock %}
+
+{% block module_actions %}
+    <a href="{% url 'products:export_purchase_order_view' order.pk %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors text-emerald-500 font-medium" title="Descargar formato Excel bilingüe (ES / EN) de esta orden">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-spreadsheet"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>
+        <span>Exportar Excel (ES / EN)</span>
+    </a>
+
+    <a href="{% url 'products:purchase_order_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    <p class="text-title pb-2 border-b border-border">
+        Información general
+        <span title="Datos generales de identificación, origen, alcance de CEDIS, parámetros de cálculo y notas de la orden de compra" class="cursor-pointer">ⓘ</span>
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <div class="text-title">
+            Folio de orden
+            <span title="Código identificador único asignado a la orden de compra" class="cursor-pointer">ⓘ</span>
+        </div>
+        <div class="w-full text-body flex items-center font-mono font-bold">
+            {{ order.folio|upper }}
+        </div>
+
+        <div class="text-title">
+            Origen
+            <span title="Tipo de abastecimiento de la orden: Importación (proveedor internacional) o Local" class="cursor-pointer">ⓘ</span>
+        </div>
+        <div class="w-full text-body flex items-center">
+            {% if order.origin_type == 'importacion' %}
+                <span class="text-indigo-500 border border-indigo-500 font-medium text-xs px-2 py-0.5 rounded bg-indigo-500/10">Importación</span>
+            {% else %}
+                <span class="text-secondary border border-border font-medium text-xs px-2 py-0.5 rounded bg-page">Local</span>
+            {% endif %}
+        </div>
+
+        <div class="text-title">
+            Estatus
+            <span title="Etapa operativa vigente dentro del flujo de la orden de compra" class="cursor-pointer">ⓘ</span>
+        </div>
+        <div class="w-full text-body flex items-center">
+            {% if order.status == 'realizada' %}
+                <span class="text-amber-500 border border-amber-500 font-medium text-xs px-2 py-0.5 rounded bg-amber-500/10">Realizada</span>
+            {% elif order.status == 'confirmada' %}
+                <span class="text-sky-500 border border-sky-500 font-medium text-xs px-2 py-0.5 rounded bg-sky-500/10">Confirmada</span>
+            {% elif order.status == 'en_transito' %}
+                <span class="text-blue-500 border border-blue-500 font-medium text-xs px-2 py-0.5 rounded bg-blue-500/10">En tránsito</span>
+            {% elif order.status == 'completada' %}
+                <span class="text-emerald-500 border border-emerald-500 font-medium text-xs px-2 py-0.5 rounded bg-emerald-500/10">Completada</span>
+            {% endif %}
+        </div>
+
+        <div class="text-title">
+            Modo de cálculo
+            <span title="Criterio aplicado para consolidar existencias, demanda y necesidades de compra entre CEDIS" class="cursor-pointer">ⓘ</span>
+        </div>
+        <div class="w-full text-body flex items-center">
+            {{ order.get_grouping_mode_display }}
+        </div>
+
+        <div class="text-title">
+            CEDIS contemplados
+            <span title="Centros de distribución incluidos en la evaluación de inventario, ventas y prorrateo de la orden" class="cursor-pointer">ⓘ</span>
+        </div>
+        <div class="w-full text-body flex items-center flex-wrap gap-1">
+            {% for w in warehouses %}
+                <span class="bg-page border border-border rounded px-2 py-0.5 font-mono text-xs">{{ w.id|upper }} - {{ w.name|title }}</span>
+            {% empty %}
+                <span class="text-secondary italic">-</span>
+            {% endfor %}
+        </div>
+
+        <div class="text-title">
+            Periodo de ventas evaluado
+            <span title="Rango de fechas histórico utilizado para determinar el consumo promedio mensual de cada producto" class="cursor-pointer">ⓘ</span>
+        </div>
+        <div class="w-full text-body flex items-center font-mono">
+            {% if order.evaluation_start_date and order.evaluation_end_date %}
+                {{ order.evaluation_start_date|date:'Y-m-d' }} a {{ order.evaluation_end_date|date:'Y-m-d' }}
+            {% else %}
+                -
+            {% endif %}
+        </div>
+
+        <div class="text-title">
+            Cobertura objetivo
+            <span title="Meses de inventario que se busca cubrir considerando existencias físicas y stock en tránsito" class="cursor-pointer">ⓘ</span>
+        </div>
+        <div class="w-full text-body flex items-center font-mono">
+            {{ order.coverage_months|floatformat:1 }} meses
+        </div>
+
+        <div class="text-title">
+            Generada por
+            <span title="Usuario responsable de emitir la orden y fecha exacta de registro" class="cursor-pointer">ⓘ</span>
+        </div>
+        <div class="w-full text-body flex items-center">
+            {{ order.created_by.first_name|title }} {{ order.created_by.last_name|title }} ({{ order.created_by.username|default:'-' }}) • {{ order.created_at|date:'d M Y H:i' }}
+        </div>
+
+        <div class="text-title">
+            Parámetros logísticos vigentes
+            <span title="Pesos y capacidades de referencia configurados para estimar tarimas y camiones" class="cursor-pointer">ⓘ</span>
+        </div>
+        <div class="w-full text-body flex items-center font-mono text-xs flex-wrap gap-2">
+            <span>Madera/tarima: {{ logistics_params.pallet_wood_weight_lbs|floatformat:0|intcomma }} lbs</span>
+            <span class="text-secondary">•</span>
+            <span>Capacidad camión: {{ logistics_params.truck_capacity_lbs|floatformat:0|intcomma }} lbs</span>
+        </div>
+    </div>
+
+    <div class="flex justify-between items-center pb-2 border-b border-border">
+        <p class="text-title">
+            Seguimiento de estatus de la orden
+            <span title="Línea de progreso operativo de la orden de compra desde su generación hasta su conclusión administrativa" class="cursor-pointer">ⓘ</span>
+        </p>
+        <span class="text-xs text-secondary font-mono">{{ order.get_status_display }}</span>
+    </div>
+
+    <div class="flex flex-col gap-3 bg-container p-2 rounded border border-border">
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+            {% for step_code, step_label, step_date in status_steps %}
+                <div class="p-2.5 rounded border {% if order.status == step_code %}border-strong bg-page{% elif step_date %}border-emerald-500/40 bg-emerald-500/5{% else %}border-border bg-page/40 opacity-60{% endif %} flex flex-col gap-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-semibold flex items-center gap-1.5 {% if order.status == step_code %}text-title{% elif step_date %}text-emerald-500{% else %}text-secondary{% endif %}">
+                            {% if order.status == step_code %}
+                                <span class="w-1.5 h-1.5 rounded-full bg-strong animate-pulse"></span>
+                            {% endif %}
+                            <span>{{ forloop.counter }}. {{ step_label }}</span>
+                        </span>
+                        {% if step_date %}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-500 lucide lucide-circle-check"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                        {% endif %}
+                    </div>
+                    <span class="text-[11px] font-mono text-secondary">
+                        {% if step_date %}
+                            {{ step_date|date:'d M Y H:i' }}
+                        {% else %}
+                            Pendiente
+                        {% endif %}
+                    </span>
+                </div>
+            {% endfor %}
+        </div>
+
+        {% if can_manage_orders and next_status %}
+            <form method="POST" action="{% url 'products:purchase_order_status_update_view' order.pk %}" class="p-2 rounded bg-page border border-border flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="new_status" value="{{ next_status }}">
+                <input type="text"
+                       name="notes"
+                       placeholder="Agregar nota o comentario para el cambio a {{ next_status_label }} (opcional)"
+                       class="flex-1 bg-container border border-border rounded p-1.5 text-xs text-body focus:outline-none focus:border-strong">
+                <button type="submit"
+                        class="bg-container border border-border hover:bg-hover text-strong px-3 py-1.5 rounded transition-colors cursor-pointer flex items-center justify-center gap-1.5 text-xs font-medium shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right-circle"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 16 4-4-4-4"/></svg>
+                    <span>Marcar orden como "{{ next_status_label }}"</span>
+                </button>
+            </form>
+        {% endif %}
+    </div>
+
+    <p class="text-title pb-1 border-b border-border flex items-center justify-between flex-wrap gap-2" title="Resumen logístico consolidado para la orden {{ order.folio|upper }}:&#10;• Tarimas cerradas y cajas equivalentes&#10;• Unidades ordenadas vs requeridas&#10;• Peso neto del producto&#10;• Peso bruto con tarimas y camiones estimados">
+        <span>
+            Resumen logístico <span class="cursor-pointer select-none">ⓘ</span>
+        </span>
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="border border-border rounded bg-container p-2" title="Total de tarimas cerradas contempladas en la orden consolidada y su equivalente total en cajas o bultos.">
+            <span class="text-sm text-title">
+                Tarimas cerradas <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-violet-500">
+                {{ order.total_pallets|default:0|intcomma }}
+            </span>
+            <span class="text-sm text-title">
+                {{ order.total_boxes|default:0|intcomma }} cajas
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Total de piezas o unidades finales ordenadas después del ajuste a tarimas cerradas, comparado contra las unidades requeridas originalmente.">
+            <span class="text-sm text-title">
+                Unidades ordenadas <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-emerald-500">
+                {{ order.total_ordered_units|default:0|intcomma }}
+            </span>
+            <span class="text-sm text-title">
+                {{ order.total_requested_units|default:0|floatformat:0|intcomma }} req.
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Peso neto total del producto ordenado en libras, sin incluir el peso de la madera de las tarimas.">
+            <span class="text-sm text-title">
+                Peso neto producto <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-amber-500">
+                {{ order.total_product_weight|default:0|floatformat:2|intcomma }} lbs
+            </span>
+        </div>
+
+        <div class="border border-border rounded bg-container p-2" title="Peso bruto total incluyendo la madera de las tarimas ({{ logistics_params.pallet_wood_weight_lbs|floatformat:0|intcomma }} lbs/tarima) y estimación de camiones ({{ logistics_params.truck_capacity_lbs|floatformat:0|intcomma }} lbs/camión).">
+            <span class="text-sm text-title">
+                Peso bruto c/tarimas <span class="cursor-pointer select-none">ⓘ</span>
+            </span><br>
+            <span class="text-xl text-cyan-500">
+                {{ order.total_pallet_weight|default:0|floatformat:2|intcomma }} lbs
+            </span>
+            <span class="text-sm text-title">
+                {{ estimated_trucks|floatformat:2 }} camiones
+            </span>
+        </div>
+    </div>
+
+    <div class="flex justify-between items-center pb-2 border-b border-border">
+        <p class="text-title">
+            Desglose de productos
+            <span title="Detalle por SKU de demanda promedio, existencias físicas, stock en tránsito, requerimiento por CEDIS y conversión consolidada a múltiplos cerrados de tarima" class="cursor-pointer">ⓘ</span>
+        </p>
+        <span class="text-xs text-secondary font-mono">{{ items|length|default:0|intcomma }} partida(s)</span>
+    </div>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[75vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0">
+            <thead class="sticky top-0 z-30 bg-page">
+                <tr class="border-b border-border">
+                    <th colspan="1" class="p-1 text-center border-r border-border sticky top-0 md:left-0 z-35 bg-page h-8 whitespace-nowrap">Producto</th>
+                    <th colspan="4" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Catálogo e inventario</th>
+                    {% if warehouses %}
+                        <th colspan="{{ warehouses|length }}" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Requerimiento por CEDIS</th>
+                    {% endif %}
+                    <th colspan="6" class="p-1 text-center sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Consolidado y empaque ordenado</th>
+                </tr>
+
+                <tr class="border-b border-border text-xs">
+                    <th class="min-w-[240px] max-w-[240px] w-[240px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 md:left-0 z-35 bg-page" title="Código SKU, descripción del producto y especificación de empaque por caja y tarima.">
+                        Producto <span class="cursor-pointer select-none">ⓘ</span>
+                    </th>
+
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Clase o familia de producto dentro del catálogo.">
+                        Clase <span class="cursor-pointer select-none">ⓘ</span>
+                    </th>
+
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Venta promedio mensual calculada con base en el periodo evaluado.">
+                        Prom. mensual <span class="cursor-pointer select-none">ⓘ</span>
+                    </th>
+
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Existencia física disponible al momento de generar la orden en los CEDIS seleccionados.">
+                        Stock físico <span class="cursor-pointer select-none">ⓘ</span>
+                    </th>
+
+                    <th class="w-[110px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Inventario en almacenes de transferencia (tránsito) considerado al generar la orden.">
+                        En tránsito <span class="cursor-pointer select-none">ⓘ</span>
+                    </th>
+
+                    {% for w in warehouses %}
+                        <th class="w-[105px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Unidades requeridas estimadas para el CEDIS {{ w.id|upper }} - {{ w.name|title }}.">
+                            {{ w.id|upper }} <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+                    {% endfor %}
+
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Suma total de unidades requeridas antes del redondeo a múltiplos cerrados de tarima.">
+                        Uds. requeridas <span class="cursor-pointer select-none">ⓘ</span>
+                    </th>
+
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Cantidad de unidades que conforman una tarima cerrada para este producto.">
+                        Uds. / tarima <span class="cursor-pointer select-none">ⓘ</span>
+                    </th>
+
+                    <th class="w-[100px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Cantidad de tarimas cerradas ordenadas para este producto.">
+                        Tarimas <span class="cursor-pointer select-none">ⓘ</span>
+                    </th>
+
+                    <th class="w-[115px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Equivalente en cajas o bultos de las tarimas ordenadas.">
+                        Cajas / Bultos <span class="cursor-pointer select-none">ⓘ</span>
+                    </th>
+
+                    <th class="w-[125px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Unidades finales ordenadas en múltiplos cerrados de tarima.">
+                        Uds. ordenadas <span class="cursor-pointer select-none">ⓘ</span>
+                    </th>
+
+                    <th class="w-[130px] p-1 text-center text-title border-t border-b border-border sticky top-8 z-30 bg-page" title="Peso neto total de la mercancía ordenada para este producto en libras.">
+                        Peso total (lbs) <span class="cursor-pointer select-none">ⓘ</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                    <tr>
+                        <th class="min-w-[240px] max-w-[240px] w-[240px] p-2 sticky md:left-0 z-20 bg-container text-left border-r border-border">
+                            <a href="{% url 'products:product_detail_view' item.product_id %}" class="block truncate w-[220px] max-w-[220px] underline text-title hover:text-hover transition-colors" title="{{ item.product_id|upper }} - {{ item.product.name|title }}">
+                                {{ item.product_id|upper }} - {{ item.product.name|title }}
+                            </a>
+                            <p class="font-medium text-hover truncate text-[11px] font-mono" title="{{ item.pieces_per_box }} pza/caja × {{ item.boxes_per_pallet }} = {{ item.units_per_pallet }} uds/tarima • {{ item.unit_weight|floatformat:2 }} lbs/ud">
+                                {{ item.pieces_per_box }} pza/caja × {{ item.boxes_per_pallet }} = {{ item.units_per_pallet }} uds/tarima • {{ item.unit_weight|floatformat:2 }} lbs/ud
+                            </p>
+                        </th>
+
+                        <td class="p-2 truncate text-center text-secondary">
+                            {{ item.product.product_class.name|default:'-'|title }}
+                        </td>
+
+                        <td class="p-2 truncate text-right font-mono text-secondary">
+                            {{ item.avg_monthly|floatformat:2|intcomma }}
+                        </td>
+
+                        <td class="p-2 truncate text-right font-mono text-body">
+                            {{ item.current_stock|floatformat:2|intcomma }}
+                        </td>
+
+                        <td class="p-2 truncate text-right font-mono text-blue-500 border-r border-border">
+                            {{ item.in_transit_stock|floatformat:2|intcomma }}
+                        </td>
+
+                        {% for wh_entry in item.per_warehouse_list %}
+                            <td class="p-2 truncate text-right font-mono text-secondary {% if forloop.last %}border-r border-border{% endif %}">
+                                {{ wh_entry.qty|floatformat:0|intcomma }}
+                            </td>
+                        {% endfor %}
+
+                        <td class="p-2 truncate text-right font-mono text-body">
+                            {{ item.requested_units|floatformat:0|intcomma }}
+                        </td>
+
+                        <td class="p-2 truncate text-center font-mono text-secondary">
+                            {{ item.units_per_pallet|intcomma }} uds
+                        </td>
+
+                        <td class="p-2 truncate text-right font-mono font-bold text-violet-500">
+                            {{ item.pallets_ordered|intcomma }}
+                        </td>
+
+                        <td class="p-2 truncate text-right font-mono text-blue-500">
+                            {{ item.boxes_ordered|intcomma }}
+                        </td>
+
+                        <td class="p-2 truncate text-right font-mono font-bold text-emerald-500">
+                            {{ item.ordered_units|intcomma }}
+                        </td>
+
+                        <td class="p-2 truncate text-right font-mono text-amber-500">
+                            {{ item.total_weight|floatformat:2|intcomma }} lbs
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="{{ warehouses|length|add:11 }}" class="p-2 text-muted text-center border-border">
+                            <div class="sticky left-1/2 -translate-x-1/2 w-max">
+                                {% include 'layouts/data_not_found.html' %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- <p class="text-title pb-2 border-b border-border">
+        Notas y observaciones de la orden
+        <span title="Comentarios operativos registrados al generar la orden o durante los cambios de estatus" class="cursor-pointer">ⓘ</span>
+    </p>
+
+    <div class="bg-container p-2 rounded border border-border">
+        <div class="rounded bg-page p-2.5 border border-border">
+            {% if order.notes %}
+                <div class="text-xs text-body whitespace-pre-line font-mono">{{ order.notes }}</div>
+            {% else %}
+                <p class="text-xs text-secondary italic">Sin notas u observaciones registradas en esta orden.</p>
+            {% endif %}
+        </div>
+    </div> -->
+
+    <div class="flex justify-between items-center pb-2 border-b border-border">
+        <p class="text-title">
+            Bitácora de actividad y auditoría
+            <span title="Historial auditable de acciones realizadas sobre la orden: usuario responsable, movimiento o cambio de estatus, fecha y nota registrada" class="cursor-pointer">ⓘ</span>
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+        <span class="text-title md:col-span-2">{{ audit_logs|length|default:0|floatformat:0|intcomma }} movimiento(s) registrado(s)</span>
+
+        <ul class="md:col-span-2 w-full max-h-72 overflow-y-auto rounded bg-page p-2 flex flex-col gap-2 border border-border">
+            {% for log in audit_logs %}
+                <li class="pb-2 border-b border-border last:border-b-0 last:pb-0">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded border {% if log.action == 'create' %}bg-emerald-500/10 border-emerald-500/30 text-emerald-500{% elif log.action == 'update' %}bg-blue-500/10 border-blue-500/30 text-blue-500{% elif log.action == 'export' %}bg-purple-500/10 border-purple-500/30 text-purple-500{% else %}bg-container border-border text-title{% endif %}">
+                                {{ log.get_action_display }}
+                            </span>
+                            {% if log.changes.previous_status_label and log.changes.new_status_label %}
+                                <span class="text-[10px] px-2 py-0.5 rounded bg-container border border-border text-title font-mono">
+                                    {{ log.changes.previous_status_label }} → {{ log.changes.new_status_label }}
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <span class="text-[10px] text-secondary font-mono">
+                            {{ log.created_at|date:'d M Y H:i' }}
+                        </span>
+                    </div>
+
+                    <p class="text-[10px] text-hover mt-1">
+                        • Responsable: {% if log.user %}{{ log.user.get_full_name|default:log.user.username|title }} (@{{ log.user.username }}){% else %}Sistema{% endif %}
+                        {% if log.ip_address %} • IP: {{ log.ip_address }}{% endif %}
+                    </p>
+
+                    {% if log.changes.summary or log.changes.notes %}
+                        <div class="text-xs text-body mt-1 bg-container/50 p-1.5 rounded border border-border/50 flex flex-col gap-1">
+                            {% if log.changes.summary %}
+                                <span>{{ log.changes.summary }}</span>
+                            {% endif %}
+                            {% if log.changes.notes %}
+                                <span class="text-title italic{% if log.changes.summary %} border-t border-border/40 pt-1{% endif %}">
+                                    Nota: "{{ log.changes.notes }}"
+                                </span>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </li>
+            {% empty %}
+                <li class="py-4">
+                    {% include 'layouts/data_not_found.html' %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

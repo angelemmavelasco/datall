@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block module_name %}
+Nueva orden de compra
+{% endblock %}
+
+{% block title %}
+Nueva orden de compra
+{% endblock %}
+
+{% block module_actions %}
+    <a href="{% url 'products:purchase_order_list_view' %}" class="flex items-center gap-1 hover:text-hover cursor-pointer transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+        <span>Volver al listado</span>
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col w-full gap-4">
+    <p class="text-title pb-1 border-b border-border flex items-center justify-between flex-wrap gap-2" title="Define los criterios base para proyectar la orden de compra:&#10;• Origen y modalidad de cálculo entre CEDIS&#10;• Periodo histórico para venta promedio mensual&#10;• Cobertura objetivo y filtros de rotación, CEDIS y clases&#10;• Parámetros logísticos vigentes: camión {{ logistics_params.truck_capacity_lbs|floatformat:0|intcomma }} lbs, máx. {{ logistics_params.max_pallets_per_truck }} tarimas, madera {{ logistics_params.pallet_wood_weight_lbs|floatformat:0|intcomma }} lbs/tarima">
+        <span>
+            Parámetros de evaluación <span class="cursor-pointer select-none">ⓘ</span>
+        </span>
+    </p>
+
+    <form id="order-calculator-form"
+          hx-post="{% url 'products:purchase_order_create_view' %}"
+          hx-target="#order-calculator-results"
+          hx-indicator="#order-loading-indicator">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="calculate-order">
+    </form>
+
+    <div id="order-calculator-inputs" class="flex flex-col gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded border border-border">
+            <div class="text-title">
+                Origen de la orden
+                <span title="Clasificación logística y de seguimiento del abastecimiento:&#10;• Importación: de abastecimiento internacional&#10;• Local: de abastecimiento nacional" class="cursor-pointer select-none">ⓘ</span>
+            </div>
+            <div>
+                <select name="origin_type" id="origin_type" form="order-calculator-form" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body">
+                    {% for val, label in origin_choices %}
+                        <option value="{{ val }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="text-title">
+                Modo de cálculo
+                <span title="Define cómo se calcula la necesidad entre los CEDIS seleccionados:&#10;• Por separado: Evalúa stock, tránsito y demanda de cada CEDIS individualmente permitiendo ajustar por almacén antes de consolidar tarimas&#10;• Agrupado: Suma existencias, tránsito y venta promedio de todos los CEDIS en un solo cálculo global" class="cursor-pointer select-none">ⓘ</span>
+            </div>
+            <div>
+                <select name="grouping_mode" id="grouping_mode" form="order-calculator-form" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body">
+                    {% for val, label in grouping_choices %}
+                        <option value="{{ val }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="text-title">
+                Periodo de evaluación
+                <span title="Rango mensual histórico utilizado para calcular la venta acumulada y el promedio mensual de desplazamiento por producto.&#10;• Por defecto se preseleccionan los últimos 5 meses cerrados." class="cursor-pointer select-none">ⓘ</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <input type="month"
+                       name="start_date"
+                       id="start_date"
+                       form="order-calculator-form"
+                       required
+                       class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body font-mono">
+                <input type="month"
+                       name="end_date"
+                       id="end_date"
+                       form="order-calculator-form"
+                       required
+                       class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body font-mono">
+            </div>
+
+            <div class="text-title">
+                Cobertura objetivo (meses)
+                <span title="Meses de demanda objetivo a cubrir considerando existencias actuales y tránsito:&#10;• Requerimiento = (Prom. mensual × Cobertura) - Stock físico - En tránsito&#10;• Si ya calculaste la orden, modificar este campo actualiza la meta en todas las filas." class="cursor-pointer select-none">ⓘ</span>
+            </div>
+            <div>
+                <input type="number"
+                       name="coverage_months"
+                       id="coverage_months"
+                       form="order-calculator-form"
+                       step="0.1"
+                       min="0.1"
+                       value="1.0"
+                       required
+                       oninput="updateGlobalOrderCoverage(this)"
+                       class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body font-mono">
+            </div>
+
+            <div class="text-title">
+                Nivel de rotación
+                <span title="Filtra los productos según su volumen total desplazado durante el periodo evaluado:&#10;• Alta rotación: Más de 50 unidades&#10;• Media rotación: Entre 10 y 50 unidades&#10;• Baja rotación: Menos de 10 unidades" class="cursor-pointer select-none">ⓘ</span>
+            </div>
+            <div>
+                <select name="rotation_levels" form="order-calculator-form" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body">
+                    <option value="">Todos los niveles</option>
+                    <option value="1">Alta rotación (&gt; 50 uds)</option>
+                    <option value="2">Media rotación (10 a 50 uds)</option>
+                    <option value="3">Baja rotación (&lt; 10 uds)</option>
+                </select>
+            </div>
+
+            <div class="text-title">
+                Folio (opcional)
+                <span title="Código identificador único de la orden de compra.&#10;• Si ingresas un folio personalizado se validará que no exista previamente.&#10;• Si se deja en blanco se genera automáticamente con formato YYYYMMDD_UUID (ej. 20261117_A1B2C3D4)." class="cursor-pointer select-none">ⓘ</span>
+            </div>
+            <div>
+                <input type="text"
+                       name="custom_folio"
+                       id="custom_folio"
+                       form="order-calculator-form"
+                       placeholder="Automático si se deja vacío (ej. 20261117_A1B2C3D4)"
+                       class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body font-mono">
+            </div>
+
+            <div class="text-title">
+                Notas u observaciones
+                <span title="Comentarios operativos o referencia de carga registrados al crear la orden.&#10;• Quedarán guardados en las notas generales y en el evento de creación dentro de la bitácora." class="cursor-pointer select-none">ⓘ</span>
+            </div>
+            <div>
+                <input type="text"
+                       name="notes"
+                       id="order_notes"
+                       form="order-calculator-form"
+                       placeholder="Observaciones logísticas o referencia de carga"
+                       class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-body">
+            </div>
+
+            <div class="text-title">
+                Parámetros logísticos vigentes
+                <span title="Valores configurados para calcular el peso bruto con tarimas y la estimación de camiones requeridos." class="cursor-pointer select-none">ⓘ</span>
+            </div>
+            <div class="w-full text-body flex items-center font-mono text-xs flex-wrap gap-2">
+                <span>Madera/tarima: {{ logistics_params.pallet_wood_weight_lbs|floatformat:0|intcomma }} lbs</span>
+                <span class="text-secondary">•</span>
+                <span>Capacidad camión: {{ logistics_params.truck_capacity_lbs|floatformat:0|intcomma }} lbs</span>
+                <span class="text-secondary">•</span>
+                <span>Máx. {{ logistics_params.max_pallets_per_truck }} tarimas/camión</span>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between pb-1 border-b border-border flex-wrap gap-2">
+            <p class="text-title" title="Centros de distribución incluidos en el cálculo de venta promedio, stock físico disponible y stock en almacenes de transferencia (tránsito t_<cedis>).">
+                Centros de distribución <span class="cursor-pointer select-none">ⓘ</span>
+            </p>
+            <div class="flex items-center gap-3 text-xs">
+                <button type="button"
+                        onclick="toggleCheckboxes('.warehouse-checkbox', true)"
+                        class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer text-body">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-check-big"><path d="M21 10.656V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.344"/><path d="m9 11 3 3L22 4"/></svg>
+                    <span>Seleccionar todo</span>
+                </button>
+                <button type="button"
+                        onclick="toggleCheckboxes('.warehouse-checkbox', false)"
+                        class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer text-body">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                    <span>Desmarcar todo</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-container p-2 rounded border border-border">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {% for w in warehouses %}
+                    <label class="flex items-center gap-2 min-w-0 bg-page border border-border p-1.5 rounded cursor-pointer hover:bg-hover transition-colors text-xs select-none">
+                        <input type="checkbox" name="warehouses" value="{{ w.id }}" form="order-calculator-form" checked class="rounded border-border warehouse-checkbox">
+                        <span class="text-title truncate" title="{{ w.id|upper }} - {{ w.name|title }}">{{ w.id|upper }} - {{ w.name|title }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between pb-1 border-b border-border flex-wrap gap-2">
+            <p class="text-title" title="Familias de artículos incluidas en la proyección de compra. Por defecto se preseleccionan las clases principales de resurtido.">
+                Clases de producto <span class="cursor-pointer select-none">ⓘ</span>
+            </p>
+            <div class="flex items-center gap-3 text-xs">
+                <button type="button"
+                        onclick="toggleCheckboxes('.product-class-checkbox', true)"
+                        class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer text-body">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-check-big"><path d="M21 10.656V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.344"/><path d="m9 11 3 3L22 4"/></svg>
+                    <span>Seleccionar todo</span>
+                </button>
+                <button type="button"
+                        onclick="toggleCheckboxes('.product-class-checkbox', false)"
+                        class="hover:text-hover transition-colors flex items-center gap-1 cursor-pointer text-body">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                    <span>Desmarcar todo</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-container p-2 rounded border border-border">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                {% for pc in product_classes %}
+                    <label class="flex items-center gap-2 min-w-0 bg-page border border-border p-1.5 rounded cursor-pointer hover:bg-hover transition-colors text-xs select-none">
+                        <input type="checkbox" name="product_classes" value="{{ pc.id }}" form="order-calculator-form" {% if pc.id in 'dmd,nat,tow,care,cv' %}checked{% endif %} class="rounded border-border product-class-checkbox">
+                        <span class="text-title truncate" title="{{ pc.name|title }}">{{ pc.name|title }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+            <div id="order-loading-indicator" class="htmx-indicator flex items-center gap-2 text-xs text-title">
+                {% include 'layouts/loading_animation_icon.html' %}
+                <span>Calculando existencias, ventas y requerimiento de orden... Por favor espera.</span>
+            </div>
+
+            <div class="flex items-center gap-4 ml-auto">
+                <button type="submit"
+                        form="order-calculator-form"
+                        class="bg-container border border-border px-3 py-1.5 rounded hover:bg-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 text-xs font-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calculator"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
+                    <span>Calcular orden</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="order-calculator-results" class="flex flex-col gap-4">
+        <div class="w-full border border-border rounded bg-container py-16 flex justify-center items-center gap-2 text-secondary text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-info"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <span>Selecciona los CEDIS, clases y periodo de evaluación para calcular la orden de compra.</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function initDefaultFiveMonths() {
+        const now = new Date();
+        const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const startMonth = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+        const formatYM = (d) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            return `${year}-${month}`;
+        };
+
+        const startInp = document.getElementById('start_date');
+        const endInp = document.getElementById('end_date');
+        if (startInp && !startInp.value) startInp.value = formatYM(startMonth);
+        if (endInp && !endInp.value) endInp.value = formatYM(prevMonth);
+    })();
+
+    function toggleCheckboxes(selector, selectAll) {
+        document.querySelectorAll(selector).forEach(function(cb) {
+            cb.checked = selectAll;
+        });
+    }
+
+    function updateGlobalOrderCoverage(inputElement) {
+        const val = inputElement.value;
+        document.querySelectorAll('#order-calculator-results .row-coverage-input').forEach(inp => {
+            inp.value = val;
+            if (typeof recalculateRowFromCoverage === 'function') {
+                recalculateRowFromCoverage(inp);
+            }
+        });
+        if (typeof updateOrderSummaryTotals === 'function') {
+            updateOrderSummaryTotals();
+        }
+    }
+
+    function submitPurchaseOrder() {
+        const calcForm = document.getElementById('order-calculator-form');
+        if (!calcForm) return;
+
+        const saveForm = document.createElement('form');
+        saveForm.method = 'POST';
+        saveForm.action = "{% url 'products:purchase_order_create_view' %}";
+        saveForm.style.display = 'none';
+
+        const formData = new FormData(calcForm);
+        for (const [k, v] of formData.entries()) {
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = k;
+            inp.value = k === 'action' ? 'save-order' : v;
+            saveForm.appendChild(inp);
+        }
+
+        document.querySelectorAll('#order-calculator-results .order-dynamic-input').forEach(inp => {
+            if (inp.name) {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = inp.name;
+                hidden.value = inp.value;
+                saveForm.appendChild(hidden);
+            }
+        });
+
+        document.body.appendChild(saveForm);
+        saveForm.submit();
+        document.body.removeChild(saveForm);
+    }
+</script>
+{% endblock content %}

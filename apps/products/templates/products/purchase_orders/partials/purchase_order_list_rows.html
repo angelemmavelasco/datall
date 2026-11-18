@@ -1,0 +1,105 @@
+{% load humanize %}
+
+{% for order in orders %}
+    <tr class="">
+        <th class="min-w-[200px] max-w-[200px] w-[200px] p-2 sticky md:left-0 z-20 bg-container text-left border-r border-border">
+            <a href="{% url 'products:purchase_order_detail_view' order.id %}" class="block truncate w-[180px] max-w-[180px] underline text-title hover:text-hover transition-colors" title="{{ order.folio|upper }}">
+                {{ order.folio|upper }}
+            </a>
+            <p class="font-medium text-hover truncate text-[11px]" title="{{ order.get_grouping_mode_display }} • {{ order.coverage_months|floatformat:1 }} meses">
+                {{ order.get_grouping_mode_display }} • {{ order.coverage_months|floatformat:1 }} m
+            </p>
+        </th>
+
+        <td class="p-2 truncate text-center">
+            {% if order.origin_type == 'importacion' %}
+                <span class="text-indigo-500 border border-indigo-500 font-medium text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10">Importación</span>
+            {% else %}
+                <span class="text-secondary border border-border font-medium text-[10px] px-1.5 py-0.5 rounded bg-page">Local</span>
+            {% endif %}
+        </td>
+
+        <td class="p-2 truncate text-center">
+            {% if order.status == 'realizada' %}
+                <span class="text-amber-500 border border-amber-500 font-medium text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10">Realizada</span>
+            {% elif order.status == 'confirmada' %}
+                <span class="text-sky-500 border border-sky-500 font-medium text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10">Confirmada</span>
+            {% elif order.status == 'en_transito' %}
+                <span class="text-blue-500 border border-blue-500 font-medium text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10">En tránsito</span>
+            {% elif order.status == 'completada' %}
+                <span class="text-emerald-500 border border-emerald-500 font-medium text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10">Completada</span>
+            {% endif %}
+        </td>
+
+        <td class="p-2 truncate text-left border-r border-border">
+            {% for w in order.warehouses.all %}
+                <span class="inline-block bg-page border border-border rounded px-1 py-0.5 text-[10px] font-mono mr-1">{{ w.id|upper }}</span>
+            {% empty %}
+                <span class="text-muted">-</span>
+            {% endfor %}
+        </td>
+
+        <td class="p-2 truncate text-right text-title font-bold">
+            {{ order.total_pallets|default:0|intcomma }}
+        </td>
+
+        <td class="p-2 truncate text-right text-title">
+            {{ order.total_boxes|default:0|intcomma }}
+        </td>
+
+        <td class="p-2 truncate text-right text-title">
+            {{ order.total_ordered_units|default:0|intcomma }}
+        </td>
+
+        <td class="p-2 text-right text-title border-r border-border">
+            <span class="font-medium">{{ order.total_product_weight|default:0|floatformat:2|intcomma }} lbs</span><br>
+            <span class="text-[10px] text-muted">c/tarima: {{ order.total_pallet_weight|default:0|floatformat:2|intcomma }} lbs</span>
+        </td>
+
+        <td class="p-2 truncate text-left text-title">
+            {% if order.created_by %}
+                <span class="block truncate">{{ order.created_by.first_name|title }} {{ order.created_by.last_name|title }}</span>
+                <span class="text-[10px] text-muted">@{{ order.created_by.username }}</span>
+            {% else %}
+                <span class="text-muted">-</span>
+            {% endif %}
+        </td>
+
+        <td class="p-2 truncate text-center text-title">
+            <span>{{ order.created_at|date:'d M Y' }}</span><br>
+            <span class="text-[10px] text-muted">{{ order.created_at|date:'H:i' }} hrs</span>
+        </td>
+    </tr>
+{% empty %}
+    {% if not page_obj.has_previous %}
+    <tr>
+        <td colspan="10" class="p-2 text-muted text-center border-border">
+            <div class="sticky left-1/2 -translate-x-1/2 w-max">
+                {% include 'layouts/data_not_found.html' %}
+            </div>
+        </td>
+    </tr>
+    {% endif %}
+{% endfor %}
+
+{% if page_obj.has_next %}
+<tr id="load-more-row-{{ page_obj.number }}">
+    <td colspan="10" class="p-4 border-t border-border">
+        <div class="sticky left-1/2 -translate-x-1/2 w-max">
+            <button hx-get="{{ request.path }}?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}"
+                    hx-target="#load-more-row-{{ page_obj.number }}"
+                    hx-swap="outerHTML"
+                    class="group hover:text-hover text-strong transition-colors cursor-pointer border border-border rounded p-1 bg-page">
+                <div class="flex items-center gap-2 group-[.htmx-request]:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-chevron-down"><circle cx="12" cy="12" r="10"/><path d="m16 10-4 4-4-4"/></svg>
+                    <span>Mostrar más</span>
+                </div>
+                <div class="hidden items-center gap-2 group-[.htmx-request]:flex">
+                    {% include 'layouts/loading_animation_icon.html' %}
+                    <span class="text-strong">Cargando...</span>
+                </div>
+            </button>
+        </div>
+    </td>
+</tr>
+{% endif %}

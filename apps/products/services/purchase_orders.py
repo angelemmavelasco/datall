@@ -2,6 +2,7 @@ import calendar
 import datetime
 import io
 import math
+import uuid
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import ClassVar
@@ -481,24 +482,11 @@ class PurchaseOrdersService(UsersService):
             },
         }
 
-    def _generate_next_folio(self, origin_type: str) -> str:
-        prefix = 'OCI' if origin_type == PurchaseOrder.OriginChoices.IMPORTACION else 'OCL'
-        year_str = timezone.localdate().strftime('%Y')
-        base_prefix = f'{prefix}-{year_str}-'
-        last_order = (
-            self.purchase_order_model.objects.filter(folio__startswith=base_prefix)
-            .order_by('-folio')
-            .first()
-        )
-        next_num = 1
-        if last_order:
-            suffix = last_order.folio.replace(base_prefix, '').strip()
-            if suffix.isdigit():
-                next_num = int(suffix) + 1
-        candidate = f'{base_prefix}{next_num:04d}'
+    def _generate_next_folio(self, origin_type: str = '') -> str:
+        date_str = timezone.localdate().strftime('%Y%m%d')
+        candidate = f'{date_str}_{uuid.uuid4().hex[:8]}'
         while self.purchase_order_model.objects.filter(folio=candidate).exists():
-            next_num += 1
-            candidate = f'{base_prefix}{next_num:04d}'
+            candidate = f'{date_str}_{uuid.uuid4().hex[:8]}'
         return candidate
 
     def create_purchase_order(
@@ -733,11 +721,12 @@ class PurchaseOrdersStats:
                 filter=Q(status=PurchaseOrder.StatusChoices.COMPLETADA),
                 distinct=True,
             ),
-            total_pallets=Coalesce(Sum('total_pallets'), 0),
+            ordered_pallets=Coalesce(Sum('total_pallets'), 0),
             in_transit_pallets=Coalesce(
                 Sum('total_pallets', filter=Q(status=PurchaseOrder.StatusChoices.EN_TRANSITO)),
                 0,
             ),
+            total_ordered_units=Coalesce(Sum('total_ordered_units'), 0),
             total_weight_lbs=Coalesce(Sum('total_product_weight'), Decimal('0.00')),
         )
 

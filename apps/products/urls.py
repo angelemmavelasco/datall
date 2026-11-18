@@ -13,4 +13,10 @@ urlpatterns = [
 
     path('stock-transfers/', stock_transfers_view, name='stock_transfers_view'),
     path('stock-transfers/export/', export_stock_transfers_view, name='export_stock_transfers_view'),
+
+    path('purchase-orders/', purchase_order_list_view, name='purchase_order_list_view'),
+    path('purchase-orders/create/', purchase_order_create_view, name='purchase_order_create_view'),
+    path('purchase-orders/<int:pk>/', purchase_order_detail_view, name='purchase_order_detail_view'),
+    path('purchase-orders/<int:pk>/status/', purchase_order_status_update_view, name='purchase_order_status_update_view'),
+    path('purchase-orders/<int:pk>/export/', export_purchase_order_view, name='export_purchase_order_view'),
 ]
