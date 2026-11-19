@@ -536,12 +536,14 @@ class PurchaseOrdersService(UsersService):
         total_pallets = 0
         total_prod_weight = Decimal('0.00')
 
+        is_accumulated = grouping_mode == PurchaseOrder.GroupingModeChoices.ACCUMULATED
+
         for group in preview['groups']:
             for row in group['products']:
                 pid = row['product_id']
                 wh_breakdown = {}
 
-                if pid in wh_qty_map and wh_qty_map[pid]:
+                if not is_accumulated and pid in wh_qty_map and wh_qty_map[pid]:
                     prod_req = Decimal('0.00')
                     for wid, qval in wh_qty_map[pid].items():
                         clean_q = max(Decimal(str(qval or '0')), Decimal('0.00'))
@@ -549,12 +551,14 @@ class PurchaseOrdersService(UsersService):
                         prod_req += clean_q
                 elif pid in req_map:
                     prod_req = max(Decimal(str(req_map[pid] or '0')), Decimal('0.00'))
-                    for w_item in row['warehouses_breakdown']:
-                        wh_breakdown[w_item['warehouse_id']] = float(w_item['suggested_units'])
+                    if not is_accumulated:
+                        for w_item in row['warehouses_breakdown']:
+                            wh_breakdown[w_item['warehouse_id']] = float(w_item['suggested_units'])
                 else:
                     prod_req = Decimal(str(row['initial_requested_units']))
-                    for w_item in row['warehouses_breakdown']:
-                        wh_breakdown[w_item['warehouse_id']] = float(w_item['suggested_units'])
+                    if not is_accumulated:
+                        for w_item in row['warehouses_breakdown']:
+                            wh_breakdown[w_item['warehouse_id']] = float(w_item['suggested_units'])
 
                 if prod_req <= 0:
                     continue
@@ -569,7 +573,24 @@ class PurchaseOrdersService(UsersService):
                 if rounding['ordered_units'] <= 0:
                     continue
 
-                prod_cov = cov_map.get(pid, preview['coverage_months'])
+                prod_cov = max(Decimal(str(cov_map.get(pid, preview['coverage_months']))), Decimal('0.00'))
+                if prod_cov == preview['coverage_months']:
+                    prod_suggested = Decimal(str(row['initial_requested_units']))
+                elif is_accumulated:
+                    global_target = Decimal(str(row['avg_monthly'])) * prod_cov
+                    prod_suggested = max(
+                        global_target - Decimal(str(row['current_stock'])) - Decimal(str(row['in_transit'])),
+                        Decimal('0.00'),
+                    ).quantize(Decimal('1'))
+                else:
+                    prod_suggested = Decimal('0.00')
+                    for w_item in row['warehouses_breakdown']:
+                        w_target = Decimal(str(w_item['avg_monthly'])) * prod_cov
+                        w_sug = max(
+                            w_target - Decimal(str(w_item['current_stock'])) - Decimal(str(w_item['in_transit'])),
+                            Decimal('0.00'),
+                        ).quantize(Decimal('1'))
+                        prod_suggested += w_sug
 
                 total_req_units += prod_req
                 total_ord_units += rounding['ordered_units']
@@ -583,8 +604,8 @@ class PurchaseOrdersService(UsersService):
                     'avg_monthly': Decimal(str(row['avg_monthly'])),
                     'current_stock': Decimal(str(row['current_stock'])),
                     'in_transit_stock': Decimal(str(row['in_transit'])),
-                    'coverage_months': Decimal(str(prod_cov)),
-                    'suggested_units': Decimal(str(row['initial_requested_units'])),
+                    'coverage_months': prod_cov,
+                    'suggested_units': prod_suggested,
                     'requested_units': prod_req,
                     'pieces_per_box': rounding['pieces_per_box'],
                     'boxes_per_pallet': rounding['boxes_per_pallet'],
@@ -732,41 +753,75 @@ class PurchaseOrdersStats:
 
 
 class PurchaseOrderExports:
+    ORDER_SHEET_TITLE = "Orden - Purchase Order"
+    FORECAST_SHEET_TITLE = "Proyección - Forecast"
 
     @staticmethod
-    def export_order_excel(
-        *,
-        order: PurchaseOrder,
-        logistics_params: dict,
-    ) -> bytes | None:
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-        from openpyxl.utils import get_column_letter
-
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = f"Orden {order.folio}"[:31]
-
-        header_es_fill = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
-        header_en_fill = PatternFill(start_color="334155", end_color="334155", fill_type="solid")
-        class_fill = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
-        total_fill = PatternFill(start_color="E2E8F0", end_color="E2E8F0", fill_type="solid")
-
-        white_bold = Font(name="Calibri", color="FFFFFF", bold=True, size=10)
-        white_italic = Font(name="Calibri", color="E2E8F0", italic=True, size=9)
-        title_font = Font(name="Calibri", color="0F172A", bold=True, size=13)
-        bold_font = Font(name="Calibri", color="0F172A", bold=True, size=10)
-        regular_font = Font(name="Calibri", color="0F172A", size=10)
-        muted_font = Font(name="Calibri", color="475569", size=9)
+    def _build_excel_styles() -> dict:
+        from openpyxl.styles import Font, PatternFill, Border, Side
 
         thin_side = Side(style='thin', color='CBD5E1')
-        thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+        med_side = Side(style='medium', color='64748B')
 
-        warehouses = list(order.warehouses.all().order_by('name'))
-        wh_names = ', '.join([w.name.title() for w in warehouses]) or 'Global'
+        def make_border(right_side=thin_side):
+            return Border(left=thin_side, right=right_side, top=thin_side, bottom=thin_side)
 
-        ws.append([f"ORDEN DE COMPRA / PURCHASE ORDER: {order.folio.upper()}"])
-        ws.cell(row=ws.max_row, column=1).font = title_font
+        return {
+            'fonts': {
+                'title': Font(name="Calibri", color="0F172A", bold=True, size=13),
+                'bold': Font(name="Calibri", color="0F172A", bold=True, size=10),
+                'regular': Font(name="Calibri", color="0F172A", size=10),
+                'attr': Font(name="Calibri", color="334155", size=10),
+                'muted': Font(name="Calibri", color="475569", italic=True, size=9),
+                'white_bold': Font(name="Calibri", color="FFFFFF", bold=True, size=10),
+                'white_italic': Font(name="Calibri", color="F1F5F9", italic=True, size=9),
+            },
+            'fills': {
+                'attr_super': PatternFill(start_color="334155", end_color="334155", fill_type="solid"),
+                'attr_es': PatternFill(start_color="475569", end_color="475569", fill_type="solid"),
+                'attr_en': PatternFill(start_color="64748B", end_color="64748B", fill_type="solid"),
+                'attr_data': PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid"),
+                'cedis_super': PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid"),
+                'cedis_es': PatternFill(start_color="1D4ED8", end_color="1D4ED8", fill_type="solid"),
+                'cedis_en': PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid"),
+                'cedis_data': PatternFill(start_color="EFF6FF", end_color="EFF6FF", fill_type="solid"),
+                'order_super': PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid"),
+                'order_es': PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid"),
+                'order_en': PatternFill(start_color="334155", end_color="334155", fill_type="solid"),
+                'order_data': PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid"),
+                'order_input_data': PatternFill(start_color="FEFCE8", end_color="FEFCE8", fill_type="solid"),
+                'class_banner': PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid"),
+                'total': PatternFill(start_color="E2E8F0", end_color="E2E8F0", fill_type="solid"),
+                'note': PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid"),
+            },
+            'borders': {
+                'thin': make_border(thin_side),
+                'section_end': make_border(med_side),
+            },
+        }
+
+    @staticmethod
+    def _write_metadata_header(
+        ws,
+        *,
+        title: str,
+        order: PurchaseOrder,
+        wh_names: str,
+        eval_period_str: str,
+        creator_str: str,
+        is_separated: bool,
+        note_text: str,
+        total_cols: int,
+        styles: dict,
+    ) -> None:
+        from openpyxl.styles import Alignment
+
+        merge_end = max(total_cols, 6)
+        ws.append([title])
+        r_title = ws.max_row
+        ws.cell(row=r_title, column=1).font = styles['fonts']['title']
+        ws.merge_cells(start_row=r_title, start_column=1, end_row=r_title, end_column=merge_end)
+        ws.row_dimensions[r_title].height = 24
 
         ws.append([
             "Origen / Origin:",
@@ -776,21 +831,191 @@ class PurchaseOrderExports:
             "Fecha / Date:",
             timezone.localtime(order.created_at).strftime('%Y-%m-%d %H:%M'),
         ])
+        r_meta1 = ws.max_row
         for c_idx in (1, 3, 5):
-            ws.cell(row=ws.max_row, column=c_idx).font = bold_font
+            ws.cell(row=r_meta1, column=c_idx).font = styles['fonts']['bold']
+        for c_idx in (2, 4, 6):
+            ws.cell(row=r_meta1, column=c_idx).font = styles['fonts']['regular']
 
         ws.append([
-            "CEDIS / Warehouses:",
+            "CEDIS / Whse.:",
             wh_names,
-            "Cobertura (Meses) / Coverage (Months):",
-            float(order.coverage_months),
+            "",
+            "",
             "Modo / Mode:",
             order.get_grouping_mode_display(),
         ])
+        r_meta2 = ws.max_row
+        ws.merge_cells(start_row=r_meta2, start_column=2, end_row=r_meta2, end_column=4)
+        ws.merge_cells(start_row=r_meta2, start_column=6, end_row=r_meta2, end_column=7)
+        for c_idx in (1, 5):
+            ws.cell(row=r_meta2, column=c_idx).font = styles['fonts']['bold']
+        ws.cell(row=r_meta2, column=2).font = styles['fonts']['regular']
+        ws.cell(row=r_meta2, column=2).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        ws.cell(row=r_meta2, column=6).font = styles['fonts']['regular']
+
+        cedis_breakdown_label = (
+            "Sí (Separado) / Yes"
+            if is_separated
+            else "No (Acumulado) / No"
+        )
+        ws.append([
+            "Periodo / Period:",
+            eval_period_str,
+            "Cobertura / Cov.:",
+            f"{float(order.coverage_months):g} meses / mos.",
+            "Desglose CEDIS:",
+            cedis_breakdown_label,
+        ])
+        r_meta3 = ws.max_row
+        ws.merge_cells(start_row=r_meta3, start_column=6, end_row=r_meta3, end_column=7)
         for c_idx in (1, 3, 5):
-            ws.cell(row=ws.max_row, column=c_idx).font = bold_font
+            ws.cell(row=r_meta3, column=c_idx).font = styles['fonts']['bold']
+        for c_idx in (2, 4, 6):
+            ws.cell(row=r_meta3, column=c_idx).font = styles['fonts']['regular']
+
+        ws.append([
+            "Generada por / By:",
+            creator_str,
+            "Notas / Notes:",
+            (order.notes or '').strip() or '-',
+        ])
+        r_meta4 = ws.max_row
+        ws.merge_cells(start_row=r_meta4, start_column=4, end_row=r_meta4, end_column=merge_end)
+        for c_idx in (1, 3):
+            ws.cell(row=r_meta4, column=c_idx).font = styles['fonts']['bold']
+        ws.cell(row=r_meta4, column=2).font = styles['fonts']['regular']
+        ws.cell(row=r_meta4, column=4).font = styles['fonts']['regular']
+        ws.cell(row=r_meta4, column=4).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+        ws.append([note_text])
+        r_note = ws.max_row
+        ws.merge_cells(start_row=r_note, start_column=1, end_row=r_note, end_column=merge_end)
+        for c_idx in range(1, merge_end + 1):
+            c = ws.cell(row=r_note, column=c_idx)
+            c.font = styles['fonts']['muted']
+            c.fill = styles['fills']['note']
+            c.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        ws.row_dimensions[r_note].height = 20
 
         ws.append([])
+
+    @staticmethod
+    def _write_section_headers(
+        ws,
+        *,
+        sections: list[tuple[int, int, str, str]],
+        headers_es: list[str],
+        headers_en: list[str],
+        styles: dict,
+    ) -> set[int]:
+        from openpyxl.styles import Alignment
+
+        total_cols = len(headers_es)
+        section_end_cols = {end_col for _, end_col, _, _ in sections if end_col < total_cols}
+        col_prefix_map = {}
+        for start_col, end_col, _, prefix in sections:
+            for c_idx in range(start_col, end_col + 1):
+                col_prefix_map[c_idx] = prefix
+
+        ws.append([''] * total_cols)
+        r_super = ws.max_row
+        for start_col, end_col, title, prefix in sections:
+            if end_col > start_col:
+                ws.merge_cells(start_row=r_super, start_column=start_col, end_row=r_super, end_column=end_col)
+            ws.cell(row=r_super, column=start_col, value=title)
+            for c_idx in range(start_col, end_col + 1):
+                c = ws.cell(row=r_super, column=c_idx)
+                c.font = styles['fonts']['white_bold']
+                c.fill = styles['fills'][f'{prefix}_super']
+                c.border = styles['borders']['section_end'] if c_idx in section_end_cols else styles['borders']['thin']
+                c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        ws.row_dimensions[r_super].height = 22
+
+        ws.append(headers_es)
+        r_es = ws.max_row
+        for c_idx in range(1, total_cols + 1):
+            prefix = col_prefix_map[c_idx]
+            c = ws.cell(row=r_es, column=c_idx)
+            c.font = styles['fonts']['white_bold']
+            c.fill = styles['fills'][f'{prefix}_es']
+            c.border = styles['borders']['section_end'] if c_idx in section_end_cols else styles['borders']['thin']
+            c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        ws.row_dimensions[r_es].height = 24
+
+        ws.append(headers_en)
+        r_en = ws.max_row
+        for c_idx in range(1, total_cols + 1):
+            prefix = col_prefix_map[c_idx]
+            c = ws.cell(row=r_en, column=c_idx)
+            c.font = styles['fonts']['white_italic']
+            c.fill = styles['fills'][f'{prefix}_en']
+            c.border = styles['borders']['section_end'] if c_idx in section_end_cols else styles['borders']['thin']
+            c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        ws.row_dimensions[r_en].height = 20
+
+        return section_end_cols
+
+    @staticmethod
+    def _write_class_banner(ws, *, cls_name: str, total_cols: int, styles: dict) -> None:
+        from openpyxl.styles import Alignment
+
+        ws.append([f"Línea / Brand: {cls_name}"])
+        r_cls = ws.max_row
+        ws.merge_cells(start_row=r_cls, start_column=1, end_row=r_cls, end_column=total_cols)
+        for c_idx in range(1, total_cols + 1):
+            c = ws.cell(row=r_cls, column=c_idx)
+            c.font = styles['fonts']['bold']
+            c.fill = styles['fills']['class_banner']
+            c.border = styles['borders']['thin']
+            c.alignment = Alignment(horizontal="left", vertical="center")
+        ws.row_dimensions[r_cls].height = 20
+
+    @classmethod
+    def _build_order_sheet(
+        cls,
+        ws,
+        *,
+        order: PurchaseOrder,
+        warehouses: list,
+        wh_names: str,
+        eval_period_str: str,
+        creator_str: str,
+        grouped_items: dict,
+        logistics_params: dict,
+        styles: dict,
+    ) -> tuple[dict[str, int], int, int]:
+        from openpyxl.styles import Alignment
+        from openpyxl.utils import get_column_letter
+
+        is_separated = order.grouping_mode == PurchaseOrder.GroupingModeChoices.SEPARATED
+        wh_columns = warehouses if is_separated else []
+        wh_count = len(wh_columns)
+
+        col_req = 8 + wh_count
+        col_pal = 9 + wh_count
+        col_box = 10 + wh_count
+        col_ord = 11 + wh_count
+        col_wgt = 12 + wh_count
+        total_cols = col_wgt
+
+        mode_note = (
+            "Nota: Cálculo separado por CEDIS; cada almacén muestra su pedido antes del redondeo a tarima cerrada. Para ver existencias, ventas y proyección consulta la pestaña 'Proyección - Forecast'."
+            if is_separated
+            else "Nota: Cálculo en modo Acumulado global (sin desglose por CEDIS); existencias, tránsito y ventas se evaluaron en conjunto. Para ver el análisis proyectado consulta la pestaña 'Proyección - Forecast'."
+        )
+        cls._write_metadata_header(
+            ws,
+            title=f"ORDEN DE COMPRA / PURCHASE ORDER: {order.folio.upper()}",
+            order=order,
+            wh_names=wh_names,
+            eval_period_str=eval_period_str,
+            creator_str=creator_str,
+            is_separated=is_separated,
+            note_text=mode_note,
+            total_cols=total_cols,
+            styles=styles,
+        )
 
         headers_es = [
             "Clave",
@@ -800,10 +1025,6 @@ class PurchaseOrderExports:
             "Piezas / Caja",
             "Cajas / Tarima",
             "Unidades / Tarima",
-            "Ventas Periodo",
-            "Promedio Mensual",
-            "Existencia Física",
-            "En Tránsito",
         ]
         headers_en = [
             "Item ID",
@@ -813,15 +1034,16 @@ class PurchaseOrderExports:
             "Pieces / Box",
             "Boxes / Pallet",
             "Units / Pallet",
-            "Period Sales",
-            "Monthly Average",
-            "Current Stock",
-            "In Transit",
         ]
 
-        for w in warehouses:
-            headers_es.append(f"Pedido {w.name.title()}")
-            headers_en.append(f"{w.name.title()} Ordered")
+        sections = [
+            (1, 7, "Atributos del Producto / Product Attributes", "attr"),
+        ]
+        if wh_count > 0:
+            for w in wh_columns:
+                headers_es.append(f"Pedido {w.name.title()}")
+                headers_en.append(f"{w.name.title()} Ordered")
+            sections.append((8, 7 + wh_count, "Desglose por CEDIS / CEDIS Breakdown", "cedis"))
 
         headers_es.extend([
             "Unidades Requeridas",
@@ -837,6 +1059,407 @@ class PurchaseOrderExports:
             "Total Qty Ordered",
             "Total Weight (lbs)",
         ])
+        sections.append((col_req, col_wgt, "Consolidado de la Orden / Order Consolidation", "order"))
+
+        req_letter = get_column_letter(col_req)
+        pal_letter = get_column_letter(col_pal)
+        box_letter = get_column_letter(col_box)
+        ord_letter = get_column_letter(col_ord)
+        wgt_letter = get_column_letter(col_wgt)
+
+        s1_row_map = {}
+        class_weight_rows = []
+
+        for cls_name, cls_items in grouped_items.items():
+            cls._write_class_banner(ws, cls_name=cls_name, total_cols=total_cols, styles=styles)
+            section_end_cols = cls._write_section_headers(
+                ws,
+                sections=sections,
+                headers_es=headers_es,
+                headers_en=headers_en,
+                styles=styles,
+            )
+
+            first_cls_row = ws.max_row + 1
+            for item in cls_items:
+                breakdown = item.warehouse_breakdown or {}
+                row_vals = [
+                    item.product_id,
+                    (item.product.name or '').title(),
+                    cls_name,
+                    float(item.unit_weight),
+                    int(item.pieces_per_box),
+                    int(item.boxes_per_pallet),
+                    0,
+                ]
+                for w in wh_columns:
+                    row_vals.append(float(breakdown.get(w.id, 0)))
+
+                row_vals.extend([
+                    float(item.requested_units),
+                    int(item.pallets_ordered),
+                    0,
+                    0,
+                    0,
+                ])
+                ws.append(row_vals)
+                d_row = ws.max_row
+                s1_row_map[item.product_id] = d_row
+
+                ws.cell(row=d_row, column=7, value=f"=E{d_row}*F{d_row}")
+                if wh_count > 0:
+                    first_wh_letter = get_column_letter(8)
+                    last_wh_letter = get_column_letter(7 + wh_count)
+                    ws.cell(row=d_row, column=col_req, value=f"=SUM({first_wh_letter}{d_row}:{last_wh_letter}{d_row})")
+
+                ws.cell(row=d_row, column=col_pal, value=f"=IF({req_letter}{d_row}>0, CEILING({req_letter}{d_row}/G{d_row}, 1), 0)")
+                ws.cell(row=d_row, column=col_box, value=f"={pal_letter}{d_row}*F{d_row}")
+                ws.cell(row=d_row, column=col_ord, value=f"={pal_letter}{d_row}*G{d_row}")
+                ws.cell(row=d_row, column=col_wgt, value=f"={ord_letter}{d_row}*D{d_row}")
+
+                for c_idx in range(1, total_cols + 1):
+                    c = ws.cell(row=d_row, column=c_idx)
+                    c.border = styles['borders']['section_end'] if c_idx in section_end_cols else styles['borders']['thin']
+                    if c_idx <= 7:
+                        c.fill = styles['fills']['attr_data']
+                        c.font = styles['fonts']['attr']
+                    elif wh_count > 0 and 8 <= c_idx <= 7 + wh_count:
+                        c.fill = styles['fills']['cedis_data']
+                        c.font = styles['fonts']['regular']
+                    elif c_idx == col_req and wh_count == 0:
+                        c.fill = styles['fills']['order_input_data']
+                        c.font = styles['fonts']['bold']
+                    else:
+                        c.fill = styles['fills']['order_data']
+                        c.font = styles['fonts']['bold'] if c_idx in (col_pal, col_ord) else styles['fonts']['regular']
+
+                    if c_idx in (1, 2, 3):
+                        c.alignment = Alignment(horizontal="left", vertical="center")
+                    elif c_idx == 4:
+                        c.number_format = '#,##0.00##'
+                        c.alignment = Alignment(horizontal="right", vertical="center")
+                    elif c_idx == col_wgt:
+                        c.number_format = '#,##0.00'
+                        c.alignment = Alignment(horizontal="right", vertical="center")
+                    else:
+                        c.number_format = '#,##0'
+                        c.alignment = Alignment(horizontal="right", vertical="center")
+
+            last_cls_row = ws.max_row
+            sub_row_vals = [''] * total_cols
+            sub_row_vals[1] = f"Subtotal {cls_name} / {cls_name} Subtotal"
+            ws.append(sub_row_vals)
+            sub_row = ws.max_row
+
+            sum_cols = list(range(8, 8 + wh_count)) + [col_req, col_pal, col_box, col_ord, col_wgt]
+            for sum_col in sum_cols:
+                col_l = get_column_letter(sum_col)
+                ws.cell(row=sub_row, column=sum_col, value=f"=SUM({col_l}{first_cls_row}:{col_l}{last_cls_row})")
+
+            for c_idx in range(1, total_cols + 1):
+                c = ws.cell(row=sub_row, column=c_idx)
+                c.font = styles['fonts']['bold']
+                c.fill = styles['fills']['total']
+                c.border = styles['borders']['section_end'] if c_idx in section_end_cols else styles['borders']['thin']
+                if c_idx == col_wgt:
+                    c.number_format = '#,##0.00'
+                    c.alignment = Alignment(horizontal="right", vertical="center")
+                elif c_idx in sum_cols:
+                    c.number_format = '#,##0'
+                    c.alignment = Alignment(horizontal="right", vertical="center")
+                elif c_idx == 2:
+                    c.alignment = Alignment(horizontal="left", vertical="center")
+
+            class_weight_rows.append((cls_name, sub_row))
+            ws.append([])
+
+        ws.append(["RESUMEN DE ORDEN / ORDER SUMMARY", "", "Valor / Value"])
+        r_sum_head = ws.max_row
+        ws.merge_cells(start_row=r_sum_head, start_column=1, end_row=r_sum_head, end_column=2)
+        for c_idx in (1, 2, 3):
+            c = ws.cell(row=r_sum_head, column=c_idx)
+            c.font = styles['fonts']['white_bold']
+            c.fill = styles['fills']['order_super']
+            c.border = styles['borders']['thin']
+            c.alignment = Alignment(horizontal="center" if c_idx == 3 else "left", vertical="center")
+
+        pal_refs = '+'.join([f"{pal_letter}{r}" for _, r in class_weight_rows]) or '0'
+        wgt_refs = '+'.join([f"{wgt_letter}{r}" for _, r in class_weight_rows]) or '0'
+
+        def add_summary_row(label: str, formula: str, num_fmt: str, is_bold: bool = False, is_total: bool = False) -> int:
+            ws.append([label, "", formula])
+            r_idx = ws.max_row
+            ws.merge_cells(start_row=r_idx, start_column=1, end_row=r_idx, end_column=2)
+            for c_idx in (1, 2, 3):
+                c = ws.cell(row=r_idx, column=c_idx)
+                c.font = styles['fonts']['bold'] if (is_bold or is_total) else styles['fonts']['regular']
+                if is_total:
+                    c.fill = styles['fills']['total']
+                c.border = styles['borders']['thin']
+                c.alignment = Alignment(horizontal="right" if c_idx == 3 else "left", vertical="center")
+            ws.cell(row=r_idx, column=3).number_format = num_fmt
+            return r_idx
+
+        for cls_name, sub_r in class_weight_rows:
+            add_summary_row(f"Libras {cls_name} / {cls_name} Pounds", f"={wgt_letter}{sub_r}", '#,##0.00')
+
+        wood_lbs = float(logistics_params.get('pallet_wood_weight_lbs', 75))
+        truck_lbs = float(logistics_params.get('truck_capacity_lbs', 44000))
+
+        total_pal_summary_row = add_summary_row("Total Tarimas / Total Pallets", f"={pal_refs}", '#,##0', is_bold=True)
+        pal_weight_row = add_summary_row(
+            f"Peso de Tarimas ({wood_lbs:g} lbs) / Pallets Weight",
+            f"=C{total_pal_summary_row}*{wood_lbs}",
+            '#,##0.00',
+        )
+        grand_total_wgt_row = add_summary_row(
+            "Total Libras Ordenadas / Total Pounds Ordered",
+            f"={wgt_refs}+C{pal_weight_row}",
+            '#,##0.00',
+            is_total=True,
+        )
+        add_summary_row(
+            f"Camiones Estimados ({truck_lbs:,.0f} lbs) / Estimated Trucks",
+            f"=C{grand_total_wgt_row}/{truck_lbs}" if truck_lbs > 0 else "0",
+            '0.00',
+            is_bold=True,
+        )
+
+        ws.column_dimensions['A'].width = 19
+        ws.column_dimensions['B'].width = 40
+        ws.column_dimensions['C'].width = 20
+        for col_idx in range(4, total_cols + 1):
+            ws.column_dimensions[get_column_letter(col_idx)].width = 18
+
+        return s1_row_map, col_req, col_ord
+
+    @classmethod
+    def _build_forecast_sheet(
+        cls,
+        ws,
+        *,
+        order: PurchaseOrder,
+        wh_names: str,
+        eval_period_str: str,
+        creator_str: str,
+        grouped_items: dict,
+        s1_row_map: dict[str, int],
+        s1_req_col: int,
+        s1_ord_col: int,
+        styles: dict,
+    ) -> None:
+        from openpyxl.styles import Alignment
+        from openpyxl.utils import get_column_letter
+
+        is_separated = order.grouping_mode == PurchaseOrder.GroupingModeChoices.SEPARATED
+        total_cols = 12
+        mode_note = (
+            "Nota: Modo Separado — 'Sugerido Sistema' refleja la suma de necesidades positivas individuales por CEDIS; 'Seleccionado (Req.)' y 'Ordenado Final' se vinculan en vivo desde la pestaña 'Orden - Purchase Order'."
+            if is_separated
+            else "Nota: Modo Acumulado — 'Sugerido Sistema' resulta del balance global ((Prom. Mensual × Meta) − Stock Físico − En Tránsito); 'Seleccionado (Req.)' y 'Ordenado Final' se vinculan en vivo desde 'Orden - Purchase Order'."
+        )
+        cls._write_metadata_header(
+            ws,
+            title=f"PROYECCIÓN Y ANÁLISIS DE COMPRA / FORECAST & ANALYSIS: {order.folio.upper()}",
+            order=order,
+            wh_names=wh_names,
+            eval_period_str=eval_period_str,
+            creator_str=creator_str,
+            is_separated=is_separated,
+            note_text=mode_note,
+            total_cols=total_cols,
+            styles=styles,
+        )
+
+        sections = [
+            (1, 3, "Atributos del Producto / Product Attributes", "attr"),
+            (4, 7, "Inventario y Ventas Históricas / Inventory & Sales History", "cedis"),
+            (8, 12, "Proyección vs Selección / Forecast vs Selection", "order"),
+        ]
+        headers_es = [
+            "Clave",
+            "Producto",
+            "Clase",
+            "Existencia Física",
+            "En Tránsito",
+            "Ventas Periodo",
+            "Promedio Mensual",
+            "Meta (Meses)",
+            "Sugerido Sistema",
+            "Seleccionado (Req.)",
+            "Diferencia (Sel. - Sug.)",
+            "Ordenado Final (Uds.)",
+        ]
+        headers_en = [
+            "Item ID",
+            "Product",
+            "Class",
+            "Current Stock",
+            "In Transit",
+            "Period Sales",
+            "Monthly Average",
+            "Target (Months)",
+            "System Suggested",
+            "User Requested",
+            "Variance (Req. - Sug.)",
+            "Final Ordered (Units)",
+        ]
+
+        s1_req_letter = get_column_letter(s1_req_col)
+        s1_ord_letter = get_column_letter(s1_ord_col)
+        sum_cols = (4, 5, 6, 7, 9, 10, 11, 12)
+        class_subtotal_rows = []
+
+        for cls_name, cls_items in grouped_items.items():
+            cls._write_class_banner(ws, cls_name=cls_name, total_cols=total_cols, styles=styles)
+            section_end_cols = cls._write_section_headers(
+                ws,
+                sections=sections,
+                headers_es=headers_es,
+                headers_en=headers_en,
+                styles=styles,
+            )
+
+            first_cls_row = ws.max_row + 1
+            for item in cls_items:
+                s1_row = s1_row_map[item.product_id]
+                ws.append([
+                    item.product_id,
+                    (item.product.name or '').title(),
+                    cls_name,
+                    float(item.current_stock),
+                    float(item.in_transit_stock),
+                    float(item.sold_qty),
+                    float(item.avg_monthly),
+                    float(item.coverage_months),
+                    float(item.suggested_units),
+                    f"='{cls.ORDER_SHEET_TITLE}'!{s1_req_letter}{s1_row}",
+                    0,
+                    f"='{cls.ORDER_SHEET_TITLE}'!{s1_ord_letter}{s1_row}",
+                ])
+                d_row = ws.max_row
+                ws.cell(row=d_row, column=11, value=f"=J{d_row}-I{d_row}")
+
+                for c_idx in range(1, total_cols + 1):
+                    c = ws.cell(row=d_row, column=c_idx)
+                    c.border = styles['borders']['section_end'] if c_idx in section_end_cols else styles['borders']['thin']
+                    if c_idx <= 3:
+                        c.fill = styles['fills']['attr_data']
+                        c.font = styles['fonts']['attr']
+                    elif 4 <= c_idx <= 7:
+                        c.fill = styles['fills']['cedis_data']
+                        c.font = styles['fonts']['regular']
+                    else:
+                        c.fill = styles['fills']['order_data']
+                        c.font = styles['fonts']['bold'] if c_idx in (10, 12) else styles['fonts']['regular']
+
+                    if c_idx in (1, 2, 3):
+                        c.alignment = Alignment(horizontal="left", vertical="center")
+                    elif c_idx in (4, 5, 6, 7):
+                        c.number_format = '#,##0.00'
+                        c.alignment = Alignment(horizontal="right", vertical="center")
+                    elif c_idx == 8:
+                        c.number_format = '0.0'
+                        c.alignment = Alignment(horizontal="right", vertical="center")
+                    elif c_idx == 11:
+                        c.number_format = '+#,##0;-#,##0;0'
+                        c.alignment = Alignment(horizontal="right", vertical="center")
+                    else:
+                        c.number_format = '#,##0'
+                        c.alignment = Alignment(horizontal="right", vertical="center")
+
+            last_cls_row = ws.max_row
+            sub_row_vals = [''] * total_cols
+            sub_row_vals[1] = f"Subtotal {cls_name} / {cls_name} Subtotal"
+            ws.append(sub_row_vals)
+            sub_row = ws.max_row
+            for sum_col in sum_cols:
+                col_l = get_column_letter(sum_col)
+                ws.cell(row=sub_row, column=sum_col, value=f"=SUM({col_l}{first_cls_row}:{col_l}{last_cls_row})")
+
+            for c_idx in range(1, total_cols + 1):
+                c = ws.cell(row=sub_row, column=c_idx)
+                c.font = styles['fonts']['bold']
+                c.fill = styles['fills']['total']
+                c.border = styles['borders']['section_end'] if c_idx in section_end_cols else styles['borders']['thin']
+                if c_idx in (4, 5, 6, 7):
+                    c.number_format = '#,##0.00'
+                    c.alignment = Alignment(horizontal="right", vertical="center")
+                elif c_idx == 11:
+                    c.number_format = '+#,##0;-#,##0;0'
+                    c.alignment = Alignment(horizontal="right", vertical="center")
+                elif c_idx in sum_cols:
+                    c.number_format = '#,##0'
+                    c.alignment = Alignment(horizontal="right", vertical="center")
+                elif c_idx == 2:
+                    c.alignment = Alignment(horizontal="left", vertical="center")
+
+            class_subtotal_rows.append(sub_row)
+            ws.append([])
+
+        if class_subtotal_rows:
+            grand_vals = [''] * total_cols
+            grand_vals[1] = "TOTAL GENERAL / GRAND TOTAL"
+            ws.append(grand_vals)
+            g_row = ws.max_row
+            for sum_col in sum_cols:
+                col_l = get_column_letter(sum_col)
+                refs = '+'.join([f"{col_l}{r}" for r in class_subtotal_rows])
+                ws.cell(row=g_row, column=sum_col, value=f"={refs}")
+
+            grand_end_cols = {3, 7}
+            for c_idx in range(1, total_cols + 1):
+                c = ws.cell(row=g_row, column=c_idx)
+                c.font = styles['fonts']['white_bold'] if c_idx <= 3 else styles['fonts']['bold']
+                c.fill = styles['fills']['order_super'] if c_idx <= 3 else styles['fills']['total']
+                c.border = styles['borders']['section_end'] if c_idx in grand_end_cols else styles['borders']['thin']
+                if c_idx in (4, 5, 6, 7):
+                    c.number_format = '#,##0.00'
+                    c.alignment = Alignment(horizontal="right", vertical="center")
+                elif c_idx == 11:
+                    c.number_format = '+#,##0;-#,##0;0'
+                    c.alignment = Alignment(horizontal="right", vertical="center")
+                elif c_idx in sum_cols:
+                    c.number_format = '#,##0'
+                    c.alignment = Alignment(horizontal="right", vertical="center")
+                elif c_idx == 2:
+                    c.alignment = Alignment(horizontal="left", vertical="center")
+
+        ws.column_dimensions['A'].width = 19
+        ws.column_dimensions['B'].width = 40
+        ws.column_dimensions['C'].width = 20
+        for col_idx in range(4, total_cols + 1):
+            ws.column_dimensions[get_column_letter(col_idx)].width = 19
+
+    @classmethod
+    def export_order_excel(
+        cls,
+        *,
+        order: PurchaseOrder,
+        logistics_params: dict,
+    ) -> bytes | None:
+        import openpyxl
+
+        wb = openpyxl.Workbook()
+        ws_order = wb.active
+        ws_order.title = cls.ORDER_SHEET_TITLE
+        ws_forecast = wb.create_sheet(title=cls.FORECAST_SHEET_TITLE)
+
+        styles = cls._build_excel_styles()
+
+        warehouses = list(order.warehouses.all().order_by('name'))
+        wh_names = ', '.join([w.name.title() for w in warehouses]) or 'Global'
+
+        if order.evaluation_start_date and order.evaluation_end_date:
+            eval_period_str = f"{order.evaluation_start_date:%Y-%m-%d} a {order.evaluation_end_date:%Y-%m-%d}"
+        else:
+            eval_period_str = "-"
+
+        if order.created_by:
+            full_name = f"{order.created_by.first_name} {order.created_by.last_name}".strip()
+            creator_str = full_name.title() if full_name else order.created_by.username
+        else:
+            creator_str = "-"
 
         items = list(
             order.items.select_related('product', 'product__product_class')
@@ -852,180 +1475,30 @@ class PurchaseOrderExports:
             )
             grouped_items.setdefault(cls_name, []).append(item)
 
-        wh_count = len(warehouses)
-        col_req = 12 + wh_count
-        col_pal = 13 + wh_count
-        col_box = 14 + wh_count
-        col_ord = 15 + wh_count
-        col_wgt = 16 + wh_count
+        s1_row_map, s1_req_col, s1_ord_col = cls._build_order_sheet(
+            ws_order,
+            order=order,
+            warehouses=warehouses,
+            wh_names=wh_names,
+            eval_period_str=eval_period_str,
+            creator_str=creator_str,
+            grouped_items=grouped_items,
+            logistics_params=logistics_params,
+            styles=styles,
+        )
 
-        data_rows = []
-        class_weight_rows = []
-
-        for cls_name, cls_items in grouped_items.items():
-            ws.append([f"Línea / Brand: {cls_name}"])
-            cls_header_row = ws.max_row
-            ws.cell(row=cls_header_row, column=1).font = bold_font
-            ws.cell(row=cls_header_row, column=1).fill = class_fill
-
-            ws.append(headers_es)
-            r_es = ws.max_row
-            for idx in range(1, len(headers_es) + 1):
-                c = ws.cell(row=r_es, column=idx)
-                c.font = white_bold
-                c.fill = header_es_fill
-                c.border = thin_border
-                c.alignment = Alignment(horizontal="center", vertical="center")
-
-            ws.append(headers_en)
-            r_en = ws.max_row
-            for idx in range(1, len(headers_en) + 1):
-                c = ws.cell(row=r_en, column=idx)
-                c.font = white_italic
-                c.fill = header_en_fill
-                c.border = thin_border
-                c.alignment = Alignment(horizontal="center", vertical="center")
-
-            first_cls_row = ws.max_row + 1
-            for item in cls_items:
-                breakdown = item.warehouse_breakdown or {}
-                row_vals = [
-                    item.product_id,
-                    (item.product.name or '').title(),
-                    cls_name,
-                    float(item.unit_weight),
-                    int(item.pieces_per_box),
-                    int(item.boxes_per_pallet),
-                    0,
-                    float(item.sold_qty),
-                    float(item.avg_monthly),
-                    float(item.current_stock),
-                    float(item.in_transit_stock),
-                ]
-                for w in warehouses:
-                    row_vals.append(float(breakdown.get(w.id, 0)))
-
-                row_vals.extend([
-                    float(item.requested_units),
-                    int(item.pallets_ordered),
-                    0,
-                    0,
-                    0,
-                ])
-                ws.append(row_vals)
-                d_row = ws.max_row
-                data_rows.append(d_row)
-
-                req_letter = get_column_letter(col_req)
-                pal_letter = get_column_letter(col_pal)
-                box_letter = get_column_letter(col_box)
-                ord_letter = get_column_letter(col_ord)
-
-                ws.cell(row=d_row, column=7, value=f"=E{d_row}*F{d_row}")
-                if wh_count > 0:
-                    first_wh_letter = get_column_letter(12)
-                    last_wh_letter = get_column_letter(11 + wh_count)
-                    ws.cell(row=d_row, column=col_req, value=f"=SUM({first_wh_letter}{d_row}:{last_wh_letter}{d_row})")
-
-                ws.cell(row=d_row, column=col_pal, value=f"=IF({req_letter}{d_row}>0, CEILING({req_letter}{d_row}/G{d_row}, 1), 0)")
-                ws.cell(row=d_row, column=col_box, value=f"={pal_letter}{d_row}*F{d_row}")
-                ws.cell(row=d_row, column=col_ord, value=f"={pal_letter}{d_row}*G{d_row}")
-                ws.cell(row=d_row, column=col_wgt, value=f"={ord_letter}{d_row}*D{d_row}")
-
-                for c_idx in range(1, len(headers_es) + 1):
-                    c = ws.cell(row=d_row, column=c_idx)
-                    c.font = regular_font
-                    c.border = thin_border
-                    if c_idx in (1, 2, 3):
-                        c.alignment = Alignment(horizontal="left", vertical="center")
-                    elif c_idx in (4, 8, 9, 10, 11, col_wgt):
-                        c.number_format = '#,##0.00'
-                        c.alignment = Alignment(horizontal="right", vertical="center")
-                    else:
-                        c.number_format = '#,##0'
-                        c.alignment = Alignment(horizontal="right", vertical="center")
-                        if c_idx in (col_pal, col_ord):
-                            c.font = bold_font
-
-            last_cls_row = ws.max_row
-            pal_letter = get_column_letter(col_pal)
-            box_letter = get_column_letter(col_box)
-            ord_letter = get_column_letter(col_ord)
-            wgt_letter = get_column_letter(col_wgt)
-
-            sub_row_vals = [''] * len(headers_es)
-            sub_row_vals[1] = f"Subtotal {cls_name} / {cls_name} Subtotal"
-            ws.append(sub_row_vals)
-            sub_row = ws.max_row
-            ws.cell(row=sub_row, column=col_pal, value=f"=SUM({pal_letter}{first_cls_row}:{pal_letter}{last_cls_row})")
-            ws.cell(row=sub_row, column=col_box, value=f"=SUM({box_letter}{first_cls_row}:{box_letter}{last_cls_row})")
-            ws.cell(row=sub_row, column=col_ord, value=f"=SUM({ord_letter}{first_cls_row}:{ord_letter}{last_cls_row})")
-            ws.cell(row=sub_row, column=col_wgt, value=f"=SUM({wgt_letter}{first_cls_row}:{wgt_letter}{last_cls_row})")
-            for c_idx in range(1, len(headers_es) + 1):
-                c = ws.cell(row=sub_row, column=c_idx)
-                c.font = bold_font
-                c.fill = total_fill
-                c.border = thin_border
-                if c_idx == col_wgt:
-                    c.number_format = '#,##0.00'
-                elif c_idx in (col_pal, col_box, col_ord):
-                    c.number_format = '#,##0'
-
-            class_weight_rows.append((cls_name, sub_row))
-            ws.append([])
-
-        ws.append(["RESUMEN DE ORDEN / ORDER SUMMARY", "Valor / Value"])
-        r_sum_head = ws.max_row
-        ws.cell(row=r_sum_head, column=1).font = white_bold
-        ws.cell(row=r_sum_head, column=1).fill = header_es_fill
-        ws.cell(row=r_sum_head, column=2).font = white_bold
-        ws.cell(row=r_sum_head, column=2).fill = header_es_fill
-
-        pal_letter = get_column_letter(col_pal)
-        wgt_letter = get_column_letter(col_wgt)
-        pal_refs = '+'.join([f"{pal_letter}{r}" for _, r in class_weight_rows]) or '0'
-
-        for cls_name, sub_r in class_weight_rows:
-            ws.append([f"Libras {cls_name} / {cls_name} Pounds", f"={wgt_letter}{sub_r}"])
-            ws.cell(row=ws.max_row, column=1).font = regular_font
-            ws.cell(row=ws.max_row, column=2).font = regular_font
-            ws.cell(row=ws.max_row, column=2).number_format = '#,##0.00'
-
-        wood_lbs = float(logistics_params.get('pallet_wood_weight_lbs', 75))
-        truck_lbs = float(logistics_params.get('truck_capacity_lbs', 44000))
-
-        ws.append(["Total Tarimas / Total Pallets", f"={pal_refs}"])
-        total_pal_summary_row = ws.max_row
-        ws.cell(row=total_pal_summary_row, column=1).font = bold_font
-        ws.cell(row=total_pal_summary_row, column=2).font = bold_font
-        ws.cell(row=total_pal_summary_row, column=2).number_format = '#,##0'
-
-        ws.append([f"Peso de Tarimas ({wood_lbs:g} lbs) / Pallets Weight", f"=B{total_pal_summary_row}*{wood_lbs}"])
-        pal_weight_row = ws.max_row
-        ws.cell(row=pal_weight_row, column=1).font = regular_font
-        ws.cell(row=pal_weight_row, column=2).font = regular_font
-        ws.cell(row=pal_weight_row, column=2).number_format = '#,##0.00'
-
-        wgt_refs = '+'.join([f"{wgt_letter}{r}" for _, r in class_weight_rows]) or '0'
-        ws.append(["Total Libras Ordenadas / Total Pounds Ordered", f"={wgt_refs}+B{pal_weight_row}"])
-        grand_total_wgt_row = ws.max_row
-        ws.cell(row=grand_total_wgt_row, column=1).font = bold_font
-        ws.cell(row=grand_total_wgt_row, column=1).fill = total_fill
-        ws.cell(row=grand_total_wgt_row, column=2).font = bold_font
-        ws.cell(row=grand_total_wgt_row, column=2).fill = total_fill
-        ws.cell(row=grand_total_wgt_row, column=2).number_format = '#,##0.00'
-
-        ws.append([f"Camiones Estimados ({truck_lbs:,.0f} lbs) / Estimated Trucks", f"=B{grand_total_wgt_row}/{truck_lbs}"])
-        truck_row = ws.max_row
-        ws.cell(row=truck_row, column=1).font = bold_font
-        ws.cell(row=truck_row, column=2).font = bold_font
-        ws.cell(row=truck_row, column=2).number_format = '0.00'
-
-        ws.column_dimensions['A'].width = 16
-        ws.column_dimensions['B'].width = 40
-        ws.column_dimensions['C'].width = 18
-        for col_idx in range(4, len(headers_es) + 1):
-            ws.column_dimensions[get_column_letter(col_idx)].width = 18
+        cls._build_forecast_sheet(
+            ws_forecast,
+            order=order,
+            wh_names=wh_names,
+            eval_period_str=eval_period_str,
+            creator_str=creator_str,
+            grouped_items=grouped_items,
+            s1_row_map=s1_row_map,
+            s1_req_col=s1_req_col,
+            s1_ord_col=s1_ord_col,
+            styles=styles,
+        )
 
         output = io.BytesIO()
         wb.save(output)

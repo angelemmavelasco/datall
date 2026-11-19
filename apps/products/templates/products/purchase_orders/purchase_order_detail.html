@@ -242,7 +242,7 @@ Orden de compra: {{ order.folio|upper }}
                 <tr class="border-b border-border">
                     <th colspan="1" class="p-1 text-center border-r border-border sticky top-0 md:left-0 z-35 bg-page h-8 whitespace-nowrap">Producto</th>
                     <th colspan="4" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Catálogo e inventario</th>
-                    {% if warehouses %}
+                    {% if order.grouping_mode == 'separado' and warehouses %}
                         <th colspan="{{ warehouses|length }}" class="p-1 text-center border-r border-border sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Requerimiento por CEDIS</th>
                     {% endif %}
                     <th colspan="6" class="p-1 text-center sticky top-0 z-30 bg-page h-8 whitespace-nowrap">Consolidado y empaque ordenado</th>
@@ -269,11 +269,13 @@ Orden de compra: {{ order.folio|upper }}
                         En tránsito <span class="cursor-pointer select-none">ⓘ</span>
                     </th>
 
-                    {% for w in warehouses %}
-                        <th class="w-[105px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Unidades requeridas estimadas para el CEDIS {{ w.id|upper }} - {{ w.name|title }}.">
-                            {{ w.id|upper }} <span class="cursor-pointer select-none">ⓘ</span>
-                        </th>
-                    {% endfor %}
+                    {% if order.grouping_mode == 'separado' %}
+                        {% for w in warehouses %}
+                            <th class="w-[105px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Unidades requeridas estimadas para el CEDIS {{ w.id|upper }} - {{ w.name|title }}.">
+                                {{ w.id|upper }} <span class="cursor-pointer select-none">ⓘ</span>
+                            </th>
+                        {% endfor %}
+                    {% endif %}
 
                     <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-8 z-30 bg-page" title="Suma total de unidades requeridas antes del redondeo a múltiplos cerrados de tarima.">
                         Uds. requeridas <span class="cursor-pointer select-none">ⓘ</span>
@@ -328,11 +330,13 @@ Orden de compra: {{ order.folio|upper }}
                             {{ item.in_transit_stock|floatformat:2|intcomma }}
                         </td>
 
-                        {% for wh_entry in item.per_warehouse_list %}
-                            <td class="p-2 truncate text-right font-mono text-secondary {% if forloop.last %}border-r border-border{% endif %}">
-                                {{ wh_entry.qty|floatformat:0|intcomma }}
-                            </td>
-                        {% endfor %}
+                        {% if order.grouping_mode == 'separado' %}
+                            {% for wh_entry in item.per_warehouse_list %}
+                                <td class="p-2 truncate text-right font-mono text-secondary {% if forloop.last %}border-r border-border{% endif %}">
+                                    {{ wh_entry.qty|floatformat:0|intcomma }}
+                                </td>
+                            {% endfor %}
+                        {% endif %}
 
                         <td class="p-2 truncate text-right font-mono text-body">
                             {{ item.requested_units|floatformat:0|intcomma }}
@@ -360,7 +364,7 @@ Orden de compra: {{ order.folio|upper }}
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="{{ warehouses|length|add:11 }}" class="p-2 text-muted text-center border-border">
+                        <td colspan="{% if order.grouping_mode == 'separado' %}{{ warehouses|length|add:11 }}{% else %}11{% endif %}" class="p-2 text-muted text-center border-border">
                             <div class="sticky left-1/2 -translate-x-1/2 w-max">
                                 {% include 'layouts/data_not_found.html' %}
                             </div>
