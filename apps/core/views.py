@@ -11,6 +11,7 @@ from django_q.tasks import async_task
 
 from apps.core.services.uploads import UploadsService, BaseETLHelper
 from apps.human_resources.services.employees import EmployeesService
+from apps.core.services.activity_logs import ActivityLogsService
 
 from django.utils import timezone
 from .filters import UserFilter
@@ -615,4 +616,18 @@ def user_docs_view(request):
     template = 'core/user_docs/user_docs.html'
     service = UserDocsService(user=request.user)
     context = service.read_user_docs()
+    return render(request, template, context)
+
+@login_required
+def activity_logs_view(request):
+    template = 'core/activity_logs/activity_logs_list.html'
+
+    s = ActivityLogsService(request.user)
+    qs = s.get()
+
+
+    context = {
+        "logs": qs,
+    }
+
     return render(request, template, context)

@@ -53,6 +53,9 @@ urlpatterns = [
     path('reports/indicator/', reports_indicator_view, name='reports_indicator_view'),
     path('reports/<int:pk>/download/', report_download_view, name='report_download_view'),
 
+    #activity logs
+    path('activity_logs/list', activity_logs_view, name='activity_logs_view'),
+
     # App Versions / Changelog
     path('versions/', app_version_list_view, name='app_version_list_view'),
 
