@@ -624,10 +624,14 @@ def activity_logs_view(request):
 
     s = ActivityLogsService(request.user)
     qs = s.get()
+    stats = s.stats(qs=qs)
+    heatmap = s.heatmap_calendar()
+    print(heatmap)
 
 
     context = {
         "logs": qs,
+        "stats": stats
     }
 
     return render(request, template, context)
