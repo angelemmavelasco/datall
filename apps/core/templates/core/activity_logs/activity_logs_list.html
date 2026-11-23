@@ -24,6 +24,12 @@
 
 {% block content %}
 
+    <p class="text-title pb-1 border-b border-border flex items-center justify-between flex-wrap gap-2 mb-4" title="Métricas calculadas desde {{ selected_date_start }} hasta {{ selected_date_end }}">
+        <span>
+            Métricas calculadas desde {{ selected_date_start }} hasta {{ selected_date_end }} <span class="cursor-pointer select-none">ⓘ</span>
+        </span>
+    </p>
+
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 cursor-pointer">
             <span class="text-sm text-title">

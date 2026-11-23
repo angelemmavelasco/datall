@@ -639,6 +639,9 @@ def activity_logs_view(request):
 
     filter_set = ActivityLogFilter(req_data, queryset=qs, request=request)
     qs = filter_set.qs
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+    selected_date_start = cleaned_data.get('date_start') or first_day_curr_month
+    selected_date_end = cleaned_data.get('date_end') or last_day_curr_month
 
     paginator = Paginator(qs, 100)
     page_number = req_data.get('page', 1)
@@ -653,6 +656,8 @@ def activity_logs_view(request):
         "page_obj": page_obj,
         "query_string": query_dict.urlencode(),
         "filter": filter_set,
+        "selected_date_start": selected_date_start,
+        "selected_date_end": selected_date_end,
     }
 
     if request.htmx:
