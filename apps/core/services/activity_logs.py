@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 from apps.core.models import ActivityLog
 from apps.core.services.users import UsersService
 from django.db.models import QuerySet, Avg, Count
-from django.db.models.functions import TruncHour, TruncDay
+from django.db.models.functions import TruncHour
 from django.utils import timezone
 
 if TYPE_CHECKING:
@@ -48,14 +48,26 @@ class ActivityLogsService(UsersService):
         return qs
 
 
-    def heatmap_calendar(self,*, qs: QuerySet) -> dict:
-        heatmap = defaultdict(list)
+    def heatmap_calendar(self, *, qs: QuerySet) -> dict:
+        tz = timezone.get_current_timezone()
+        occurrences = (
+            qs.prefetch_related(None)
+            .order_by()
+            .annotate(hour_bucket=TruncHour('created_at', tzinfo=tz))
+            .values('hour_bucket')
+            .annotate(requests_count=Count('id'))
+            .values_list('hour_bucket', 'requests_count')
+            .order_by('hour_bucket')
+        )
 
-        # occurrances = (qs
-        #     .annotate(day=TruncDay('created_at'))
-        #     .values('')
-        #     .aggregate()
-        #     )
+        heatmap = {}
+        for hour_bucket, requests_count in occurrences:
+            if hour_bucket is None:
+                continue
+            local_dt = timezone.localtime(hour_bucket, tz) if timezone.is_aware(hour_bucket) else hour_bucket
+            day_key = local_dt.strftime('%Y-%m-%d')
+            hour_key = local_dt.strftime('%H:00')
+            heatmap.setdefault(day_key, {})[hour_key] = requests_count
 
         return heatmap
 

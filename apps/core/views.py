@@ -1,5 +1,6 @@
 import os
 import uuid
+
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
@@ -665,7 +666,8 @@ def activity_logs_view(request):
 
     stats = s.stats(qs=qs)
     heatmap = s.heatmap_calendar(qs=qs)
-    print(heatmap)
     context["stats"] = stats
+    context["heatmap"] = heatmap
+    print(heatmap)
 
     return render(request, template, context)
