@@ -14,7 +14,7 @@ from apps.human_resources.services.employees import EmployeesService
 from apps.core.services.activity_logs import ActivityLogsService
 
 from django.utils import timezone
-from .filters import UserFilter
+from .filters import UserFilter, ActivityLogFilter
 from .forms import UserForm
 from .models import User, GeneratedReport, Reference, AppVersion
 
@@ -625,6 +625,9 @@ def activity_logs_view(request):
     s = ActivityLogsService(request.user)
     qs = s.get()
 
+    filter_set = ActivityLogFilter(request.GET, queryset=qs, request=request)
+    qs = filter_set.qs
+
     paginator = Paginator(qs, 100)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
@@ -637,6 +640,7 @@ def activity_logs_view(request):
         "logs": page_obj.object_list,
         "page_obj": page_obj,
         "query_string": query_dict.urlencode(),
+        "filter": filter_set,
     }
 
     if request.htmx:

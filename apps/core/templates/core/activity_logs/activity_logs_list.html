@@ -96,7 +96,170 @@
     }
 </script>
 
-
-    
 {% endblock %}
 
+{% block filters %}
+<form id="activity-logs-filter-form"
+      method="get"
+      action="{% url 'core:activity_logs_view' %}"
+      class="flex flex-col gap-4">
+
+    <!-- Rango de fechas -->
+    <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between border-b border-border pb-1">
+            <span class="font-semibold text-title text-xs flex items-center gap-1">
+                Rango de fechas
+            </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+            <div class="flex flex-col gap-0.5">
+                <label for="{{ filter.form.date_start.id_for_label }}" class="text-title">{{ filter.form.date_start.label }}:</label>
+                {% render_field filter.form.date_start class="w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono" %}
+            </div>
+            <div class="flex flex-col gap-0.5">
+                <label for="{{ filter.form.date_end.id_for_label }}" class="text-title">{{ filter.form.date_end.label }}:</label>
+                {% render_field filter.form.date_end class="w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono" %}
+            </div>
+        </div>
+    </div>
+
+    <p class="text-title border-b border-border pb-1">
+        Atributos de actividad
+    </p>
+
+    <!-- Usuario -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.user.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar usuario">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.user %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const normalizeString = (str) => {
+                return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            };
+
+            const debounce = (fn, delay = 120) => {
+                let timeout;
+                return (...args) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => fn(...args), delay);
+                };
+            };
+
+            const initFilters = () => {
+                const filterGroups = document.querySelectorAll('.filter-group');
+
+                filterGroups.forEach(group => {
+                    if (group.dataset.filtersInit === 'true') return;
+                    group.dataset.filtersInit = 'true';
+
+                    const searchInput = group.querySelector('.filter-search');
+                    const selectAllCheckbox = group.querySelector('.filter-select-all');
+
+                    const getItems = () => {
+                        return Array.from(group.querySelectorAll('.filter-option')).map(option => {
+                            const label = option.querySelector('.option-label');
+                            const checkbox = option.querySelector('input[type="checkbox"]');
+                            return {
+                                el: option,
+                                checkbox: checkbox,
+                                text: normalizeString(label ? label.textContent : '')
+                            };
+                        });
+                    };
+
+                    const updateSelectAllState = () => {
+                        if (!selectAllCheckbox) return;
+                        let visibleCount = 0;
+                        let checkedCount = 0;
+                        const items = getItems();
+
+                        for (let i = 0; i < items.length; i++) {
+                            if (items[i].el.style.display !== 'none') {
+                                visibleCount++;
+                                if (items[i].checkbox && items[i].checkbox.checked) {
+                                    checkedCount++;
+                                }
+                            }
+                        }
+                        selectAllCheckbox.checked = visibleCount > 0 && visibleCount === checkedCount;
+                    };
+
+                    if (searchInput) {
+                        const performSearch = (term) => {
+                            const items = getItems();
+                            for (let i = 0; i < items.length; i++) {
+                                const item = items[i];
+                                const matches = !term || item.text.includes(term);
+                                item.el.style.display = matches ? '' : 'none';
+                            }
+                            updateSelectAllState();
+                        };
+
+                        searchInput.addEventListener('input', debounce(function (e) {
+                            const term = normalizeString(e.target.value.trim());
+                            performSearch(term);
+                        }, 120));
+                    }
+
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.addEventListener('change', function (e) {
+                            const isChecked = e.target.checked;
+                            const items = getItems();
+                            for (let i = 0; i < items.length; i++) {
+                                if (items[i].el.style.display !== 'none' && items[i].checkbox && !items[i].checkbox.disabled) {
+                                    items[i].checkbox.checked = isChecked;
+                                }
+                            }
+                        });
+                    }
+
+                    group.addEventListener('change', function(e) {
+                        if (e.target.matches('.filter-option input[type="checkbox"]')) {
+                            updateSelectAllState();
+                        }
+                    });
+
+                    group.addEventListener('htmx:afterSwap', function() {
+                        updateSelectAllState();
+                    });
+
+                    updateSelectAllState();
+                });
+            };
+
+            initFilters();
+            document.body.addEventListener('htmx:afterSwap', initFilters);
+        });
+    </script>
+</form>
+{% endblock %}
