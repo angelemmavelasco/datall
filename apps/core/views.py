@@ -624,14 +624,27 @@ def activity_logs_view(request):
 
     s = ActivityLogsService(request.user)
     qs = s.get()
-    stats = s.stats(qs=qs)
-    heatmap = s.heatmap_calendar()
-    print(heatmap)
 
+    paginator = Paginator(qs, 100)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    query_dict = request.GET.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
 
     context = {
-        "logs": qs,
-        "stats": stats
+        "logs": page_obj.object_list,
+        "page_obj": page_obj,
+        "query_string": query_dict.urlencode(),
     }
+
+    if request.htmx:
+        return render(request, 'core/activity_logs/partials/_activity_logs_rows.html', context)
+
+    stats = s.stats(qs=qs)
+    heatmap = s.heatmap_calendar(qs=qs)
+    print(heatmap)
+    context["stats"] = stats
 
     return render(request, template, context)

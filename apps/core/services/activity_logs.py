@@ -45,7 +45,7 @@ class ActivityLogsService(UsersService):
         if not self._is_full_access:
             qs = qs.filter(user=self.user)
 
-        return qs[:100]
+        return qs
 
 
     def heatmap_calendar(self,*, qs: QuerySet) -> dict:
