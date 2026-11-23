@@ -1,5 +1,8 @@
 import os
 import uuid
+
+from datetime import timedelta
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -11,9 +14,10 @@ from django_q.tasks import async_task
 
 from apps.core.services.uploads import UploadsService, BaseETLHelper
 from apps.human_resources.services.employees import EmployeesService
+from apps.core.services.activity_logs import ActivityLogsService
 
 from django.utils import timezone
-from .filters import UserFilter
+from .filters import UserFilter, ActivityLogFilter
 from .forms import UserForm
 from .models import User, GeneratedReport, Reference, AppVersion
 
@@ -615,4 +619,55 @@ def user_docs_view(request):
     template = 'core/user_docs/user_docs.html'
     service = UserDocsService(user=request.user)
     context = service.read_user_docs()
+    return render(request, template, context)
+
+@login_required
+def activity_logs_view(request):
+    template = 'core/activity_logs/activity_logs_list.html'
+
+    today = timezone.localdate()
+    first_day_curr_month = today.replace(day=1)
+    last_day_curr_month = (first_day_curr_month + relativedelta(months=1)) - timedelta(days=1)
+
+    req_data = request.GET.copy()
+    if not req_data.get('date_start'):
+        req_data['date_start'] = first_day_curr_month.strftime('%Y-%m-%d')
+    if not req_data.get('date_end'):
+        req_data['date_end'] = last_day_curr_month.strftime('%Y-%m-%d')
+
+    s = ActivityLogsService(request.user)
+    qs = s.get()
+
+    filter_set = ActivityLogFilter(req_data, queryset=qs, request=request)
+    qs = filter_set.qs
+    cleaned_data = filter_set.form.cleaned_data if filter_set.is_valid() else {}
+    selected_date_start = cleaned_data.get('date_start') or first_day_curr_month
+    selected_date_end = cleaned_data.get('date_end') or last_day_curr_month
+
+    paginator = Paginator(qs, 100)
+    page_number = req_data.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    query_dict = req_data.copy()
+    if 'page' in query_dict:
+        del query_dict['page']
+
+    context = {
+        "logs": page_obj.object_list,
+        "page_obj": page_obj,
+        "query_string": query_dict.urlencode(),
+        "filter": filter_set,
+        "selected_date_start": selected_date_start,
+        "selected_date_end": selected_date_end,
+    }
+
+    if request.htmx:
+        return render(request, 'core/activity_logs/partials/_activity_logs_rows.html', context)
+
+    stats = s.stats(qs=qs)
+    heatmap = s.heatmap_calendar(qs=qs)
+    context["stats"] = stats
+    context["heatmap"] = heatmap
+    print(heatmap)
+
     return render(request, template, context)

@@ -1,0 +1,442 @@
+{% extends 'base.html' %}
+{% load humanize widget_tweaks %}
+
+{% block title %}
+    Actividad
+{% endblock %}
+
+{% block module_name %}
+    Actividad
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+
+    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
+        <span>
+            Filtrar
+        </span>
+    </button>
+{% endblock %}
+
+{% block content %}
+
+    <p class="text-title pb-1 border-b border-border flex items-center justify-between flex-wrap gap-2 mb-4" title="Métricas calculadas desde {{ selected_date_start }} hasta {{ selected_date_end }}">
+        <span>
+            Métricas calculadas desde {{ selected_date_start }} hasta {{ selected_date_end }} <span class="cursor-pointer select-none">ⓘ</span>
+        </span>
+    </p>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 cursor-pointer">
+            <span class="text-sm text-title">
+                Número de peticiones
+            </span><br>
+            <span class="text-xl text-title">
+                {{ stats.requests_count|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 cursor-pointer">
+            <span class="text-sm text-title">
+                MS promedio por petición
+            </span><br>
+            <span class="text-xl text-blue-500">
+                {{ stats.avg_performance_ms|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 cursor-pointer">
+            <span class="text-sm text-title">
+                Vistas consultadas
+            </span><br>
+            <span class="text-xl text-emerald-500">
+                {{ stats.unique_views|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+
+        <a class="border border-border rounded bg-container p-2 hover:bg-hover hover:scale-101 transition-transform duration-300 cursor-pointer">
+            <span class="text-sm text-title">
+                Usuarios con actividad
+            </span><br>
+            <span class="text-xl text-violet-500">
+                {{ stats.unique_users|default:0|floatformat:0|intcomma }}
+            </span>
+        </a>
+    </div>
+
+    <div class="border border-border rounded bg-container p-3 mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2">
+                <p class="text-sm font-semibold text-body">
+                    Mapa de actividad por hora
+                </p>
+                {% if heatmap %}
+                    <span id="heatmap-max-badge" class="text-[11px] font-mono text-title"></span>
+                {% endif %}
+            </div>
+
+            {% if heatmap %}
+            <div class="flex items-center gap-1.5 text-[11px] text-title select-none">
+                <span>Menos</span>
+                <span class="hm-legend-box w-3 h-3 rounded-[3px] inline-block border border-slate-400/25 dark:border-white/10 bg-neutral-quaternary dark:bg-slate-400/15" data-level="0" title="0 peticiones"></span>
+                <span class="hm-legend-box w-3 h-3 rounded-[3px] inline-block border border-slate-400/25 dark:border-white/10 bg-neutral-quaternary dark:bg-slate-400/15" data-level="1" title="Baja actividad"></span>
+                <span class="hm-legend-box w-3 h-3 rounded-[3px] inline-block border border-slate-400/25 dark:border-white/10 bg-neutral-quaternary dark:bg-slate-400/15" data-level="2" title="Actividad media"></span>
+                <span class="hm-legend-box w-3 h-3 rounded-[3px] inline-block border border-slate-400/25 dark:border-white/10 bg-neutral-quaternary dark:bg-slate-400/15" data-level="3" title="Actividad alta"></span>
+                <span class="hm-legend-box w-3 h-3 rounded-[3px] inline-block border border-slate-400/25 dark:border-white/10 bg-neutral-quaternary dark:bg-slate-400/15" data-level="4" title="Máxima actividad"></span>
+                <span>Más</span>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if heatmap %}
+        <div class="overflow-x-auto pb-1">
+            <div id="activity-heatmap-grid" class="w-max min-w-full flex items-start gap-1">
+                <div class="sticky left-0 z-10 bg-container pr-2 flex flex-col gap-1 shrink-0">
+                    <div class="h-5 flex items-center">
+                        <span class="text-[11px] font-mono text-title">Hora</span>
+                    </div>
+                    {% for day, hours in heatmap.items %}
+                        {% if forloop.first %}
+                            {% for hour in hours.keys %}
+                                <div class="h-4.5 flex items-center">
+                                    <span class="text-[11px] font-mono text-title whitespace-nowrap">{{ hour }}</span>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                {% for day, hours in heatmap.items %}
+                    <div class="flex flex-col gap-1 items-center shrink-0 w-8">
+                        <div class="h-5 flex items-center justify-center">
+                            <span class="text-[10px] font-mono text-title whitespace-nowrap" title="{{ day }}">{{ day|slice:"5:" }}</span>
+                        </div>
+                        {% for hour, requests in hours.items %}
+                            <button type="button"
+                                    class="heatmap-cell w-4.5 h-4.5 rounded-[3px] inline-block border border-slate-400/25 dark:border-white/10 bg-neutral-quaternary dark:bg-slate-400/15 cursor-pointer p-0 transition-transform duration-150 hover:scale-120 hover:z-10 hover:relative hover:ring-2 hover:ring-purple-600/70 focus-visible:scale-120 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600/70"
+                                    data-day="{{ day }}"
+                                    data-hour="{{ hour }}"
+                                    data-count="{{ requests }}"
+                                    aria-label="{{ day }} {{ hour }}: {{ requests }} {% if requests == 1 %}petición{% else %}peticiones{% endif %}"
+                                    title="{{ day }} · {{ hour }} · {{ requests }} {% if requests == 1 %}petición{% else %}peticiones{% endif %}"></button>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div id="activity-heatmap-tooltip" class="fixed z-50 pointer-events-none bg-slate-900 text-slate-50 border border-purple-500/45 rounded-md px-2.5 py-1.5 text-[11px] leading-snug shadow-xl whitespace-nowrap opacity-0 transition-opacity duration-75"></div>
+        {% else %}
+            <div class="py-4 text-center text-title">
+                {% include 'layouts/data_not_found.html' %}
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        (function () {
+            const cells = Array.from(document.querySelectorAll('#activity-heatmap-grid .heatmap-cell'));
+            if (!cells.length) return;
+
+            let maxCount = 0;
+            for (const cell of cells) {
+                const count = Number(cell.dataset.count || 0);
+                if (count > maxCount) maxCount = count;
+            }
+
+            const maxBadge = document.getElementById('heatmap-max-badge');
+            if (maxBadge) {
+                maxBadge.textContent = `(Máx: ${maxCount} pet./h)`;
+            }
+
+            const getPurpleColor = (ratio, isDark) => {
+                if (ratio <= 0) return null;
+                const alpha = 0.22 + (0.78 * Math.pow(ratio, 0.78));
+                const rgb = isDark ? '168, 85, 247' : '126, 34, 206';
+                const borderAlpha = Math.min(1, alpha + 0.15);
+                return {
+                    bg: `rgba(${rgb}, ${alpha.toFixed(3)})`,
+                    border: `rgba(${rgb}, ${borderAlpha.toFixed(3)})`,
+                };
+            };
+
+            const paintHeatmap = () => {
+                const isDark = document.documentElement.classList.contains('dark');
+
+                for (const cell of cells) {
+                    const count = Number(cell.dataset.count || 0);
+                    if (count <= 0 || maxCount <= 0) {
+                        cell.style.backgroundColor = '';
+                        cell.style.borderColor = '';
+                    } else {
+                        const style = getPurpleColor(count / maxCount, isDark);
+                        cell.style.backgroundColor = style.bg;
+                        cell.style.borderColor = style.border;
+                    }
+                }
+
+                const legendRatios = { '0': 0, '1': 0.2, '2': 0.45, '3': 0.72, '4': 1 };
+                document.querySelectorAll('.hm-legend-box').forEach((box) => {
+                    const ratio = legendRatios[box.dataset.level] || 0;
+                    if (ratio <= 0) {
+                        box.style.backgroundColor = '';
+                        box.style.borderColor = '';
+                    } else {
+                        const style = getPurpleColor(ratio, isDark);
+                        box.style.backgroundColor = style.bg;
+                        box.style.borderColor = style.border;
+                    }
+                });
+            };
+
+            paintHeatmap();
+
+            const themeObserver = new MutationObserver(paintHeatmap);
+            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+            const tooltip = document.getElementById('activity-heatmap-tooltip');
+            if (tooltip && tooltip.parentElement !== document.body) {
+                document.body.appendChild(tooltip);
+            }
+
+            const showTooltip = (cell) => {
+                if (!tooltip) return;
+                const day = cell.dataset.day;
+                const hour = cell.dataset.hour;
+                const count = Number(cell.dataset.count || 0);
+                const label = count === 1 ? 'petición' : 'peticiones';
+
+                tooltip.innerHTML = `<div class="font-bold text-purple-300">${count} ${label}</div><div>Día: <span class="font-mono">${day}</span> · Hora: <span class="font-mono">${hour}</span></div>`;
+                tooltip.classList.remove('opacity-0');
+                tooltip.classList.add('opacity-100');
+
+                const rect = cell.getBoundingClientRect();
+                const ttRect = tooltip.getBoundingClientRect();
+
+                let left = rect.left + (rect.width / 2) - (ttRect.width / 2);
+                left = Math.max(8, Math.min(left, window.innerWidth - ttRect.width - 8));
+
+                let top = rect.top - ttRect.height - 8;
+                if (top < 8) {
+                    top = rect.bottom + 8;
+                }
+
+                tooltip.style.left = `${left}px`;
+                tooltip.style.top = `${top}px`;
+            };
+
+            const hideTooltip = () => {
+                if (!tooltip) return;
+                tooltip.classList.remove('opacity-100');
+                tooltip.classList.add('opacity-0');
+            };
+
+            const grid = document.getElementById('activity-heatmap-grid');
+            grid.addEventListener('mouseover', (e) => {
+                const cell = e.target.closest('.heatmap-cell');
+                if (cell) showTooltip(cell);
+            });
+            grid.addEventListener('mouseout', (e) => {
+                if (e.target.closest('.heatmap-cell')) hideTooltip();
+            });
+            grid.addEventListener('focusin', (e) => {
+                const cell = e.target.closest('.heatmap-cell');
+                if (cell) showTooltip(cell);
+            });
+            grid.addEventListener('focusout', (e) => {
+                if (e.target.closest('.heatmap-cell')) hideTooltip();
+            });
+        })();
+    </script>
+
+    <ul class="flex flex-col gap-10 max-h-[75vh] overflow-y-auto pr-1">
+        {% include 'core/activity_logs/partials/_activity_logs_rows.html' %}
+    </ul>
+
+<script>
+    function toggleActivityLogDetails(liElement) {
+        if (window.getSelection && window.getSelection().toString().length > 0) {
+            return;
+        }
+        const details = liElement.querySelector('.log-details');
+        const chevron = liElement.querySelector('.log-chevron');
+        if (!details) return;
+
+        const isHidden = details.classList.toggle('hidden');
+        liElement.setAttribute('aria-expanded', String(!isHidden));
+        if (chevron) {
+            chevron.classList.toggle('rotate-180', !isHidden);
+        }
+    }
+</script>
+
+{% endblock %}
+
+{% block filters %}
+<form id="activity-logs-filter-form"
+      method="get"
+      action="{% url 'core:activity_logs_view' %}"
+      class="flex flex-col gap-4">
+
+    <!-- Rango de fechas -->
+    <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between border-b border-border pb-1">
+            <span class="font-semibold text-title text-xs flex items-center gap-1">
+                Rango de fechas
+            </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+            <div class="flex flex-col gap-0.5">
+                <label for="{{ filter.form.date_start.id_for_label }}" class="text-title">{{ filter.form.date_start.label }}:</label>
+                {% render_field filter.form.date_start class="w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono" %}
+            </div>
+            <div class="flex flex-col gap-0.5">
+                <label for="{{ filter.form.date_end.id_for_label }}" class="text-title">{{ filter.form.date_end.label }}:</label>
+                {% render_field filter.form.date_end class="w-full bg-container border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono" %}
+            </div>
+        </div>
+    </div>
+
+    <p class="text-title border-b border-border pb-1">
+        Atributos de actividad
+    </p>
+
+    <!-- Usuario -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.user.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar usuario">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.user %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit"
+            class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">Aplicar
+            filtros</button>
+        <a href="{{ request.path }}"
+            class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">Limpiar
+            filtros</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const normalizeString = (str) => {
+                return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            };
+
+            const debounce = (fn, delay = 120) => {
+                let timeout;
+                return (...args) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => fn(...args), delay);
+                };
+            };
+
+            const initFilters = () => {
+                const filterGroups = document.querySelectorAll('.filter-group');
+
+                filterGroups.forEach(group => {
+                    if (group.dataset.filtersInit === 'true') return;
+                    group.dataset.filtersInit = 'true';
+
+                    const searchInput = group.querySelector('.filter-search');
+                    const selectAllCheckbox = group.querySelector('.filter-select-all');
+
+                    const getItems = () => {
+                        return Array.from(group.querySelectorAll('.filter-option')).map(option => {
+                            const label = option.querySelector('.option-label');
+                            const checkbox = option.querySelector('input[type="checkbox"]');
+                            return {
+                                el: option,
+                                checkbox: checkbox,
+                                text: normalizeString(label ? label.textContent : '')
+                            };
+                        });
+                    };
+
+                    const updateSelectAllState = () => {
+                        if (!selectAllCheckbox) return;
+                        let visibleCount = 0;
+                        let checkedCount = 0;
+                        const items = getItems();
+
+                        for (let i = 0; i < items.length; i++) {
+                            if (items[i].el.style.display !== 'none') {
+                                visibleCount++;
+                                if (items[i].checkbox && items[i].checkbox.checked) {
+                                    checkedCount++;
+                                }
+                            }
+                        }
+                        selectAllCheckbox.checked = visibleCount > 0 && visibleCount === checkedCount;
+                    };
+
+                    if (searchInput) {
+                        const performSearch = (term) => {
+                            const items = getItems();
+                            for (let i = 0; i < items.length; i++) {
+                                const item = items[i];
+                                const matches = !term || item.text.includes(term);
+                                item.el.style.display = matches ? '' : 'none';
+                            }
+                            updateSelectAllState();
+                        };
+
+                        searchInput.addEventListener('input', debounce(function (e) {
+                            const term = normalizeString(e.target.value.trim());
+                            performSearch(term);
+                        }, 120));
+                    }
+
+                    if (selectAllCheckbox) {
+                        selectAllCheckbox.addEventListener('change', function (e) {
+                            const isChecked = e.target.checked;
+                            const items = getItems();
+                            for (let i = 0; i < items.length; i++) {
+                                if (items[i].el.style.display !== 'none' && items[i].checkbox && !items[i].checkbox.disabled) {
+                                    items[i].checkbox.checked = isChecked;
+                                }
+                            }
+                        });
+                    }
+
+                    group.addEventListener('change', function(e) {
+                        if (e.target.matches('.filter-option input[type="checkbox"]')) {
+                            updateSelectAllState();
+                        }
+                    });
+
+                    group.addEventListener('htmx:afterSwap', function() {
+                        updateSelectAllState();
+                    });
+
+                    updateSelectAllState();
+                });
+            };
+
+            initFilters();
+            document.body.addEventListener('htmx:afterSwap', initFilters);
+        });
+    </script>
+</form>
+{% endblock %}

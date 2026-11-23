@@ -15,3 +15,5 @@ legacy_code
 db.*
 user_docs.md
 integrations.md
+data_flow.md
+conceptual_model.md
