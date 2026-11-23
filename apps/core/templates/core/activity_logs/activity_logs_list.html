@@ -68,18 +68,189 @@
         </a>
     </div>
 
-    <div class="p-1">
+    <div class="border border-border rounded bg-container p-3 mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2">
+                <p class="text-sm font-semibold text-body">
+                    Mapa de actividad por hora
+                </p>
+                {% if heatmap %}
+                    <span id="heatmap-max-badge" class="text-[11px] font-mono text-title"></span>
+                {% endif %}
+            </div>
 
-        <p>
-            Heatmap
-        </p>
-
-        <div class="border border-title rounded overflow-x-auto">
-            
-
+            {% if heatmap %}
+            <div class="flex items-center gap-1.5 text-[11px] text-title select-none">
+                <span>Menos</span>
+                <span class="hm-legend-box w-3 h-3 rounded-[3px] inline-block border border-slate-400/25 dark:border-white/10 bg-neutral-quaternary dark:bg-slate-400/15" data-level="0" title="0 peticiones"></span>
+                <span class="hm-legend-box w-3 h-3 rounded-[3px] inline-block border border-slate-400/25 dark:border-white/10 bg-neutral-quaternary dark:bg-slate-400/15" data-level="1" title="Baja actividad"></span>
+                <span class="hm-legend-box w-3 h-3 rounded-[3px] inline-block border border-slate-400/25 dark:border-white/10 bg-neutral-quaternary dark:bg-slate-400/15" data-level="2" title="Actividad media"></span>
+                <span class="hm-legend-box w-3 h-3 rounded-[3px] inline-block border border-slate-400/25 dark:border-white/10 bg-neutral-quaternary dark:bg-slate-400/15" data-level="3" title="Actividad alta"></span>
+                <span class="hm-legend-box w-3 h-3 rounded-[3px] inline-block border border-slate-400/25 dark:border-white/10 bg-neutral-quaternary dark:bg-slate-400/15" data-level="4" title="Máxima actividad"></span>
+                <span>Más</span>
+            </div>
+            {% endif %}
         </div>
 
+        {% if heatmap %}
+        <div class="overflow-x-auto pb-1">
+            <div id="activity-heatmap-grid" class="w-max min-w-full flex items-start gap-1">
+                <div class="sticky left-0 z-10 bg-container pr-2 flex flex-col gap-1 shrink-0">
+                    <div class="h-5 flex items-center">
+                        <span class="text-[11px] font-mono text-title">Hora</span>
+                    </div>
+                    {% for day, hours in heatmap.items %}
+                        {% if forloop.first %}
+                            {% for hour in hours.keys %}
+                                <div class="h-4.5 flex items-center">
+                                    <span class="text-[11px] font-mono text-title whitespace-nowrap">{{ hour }}</span>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                {% for day, hours in heatmap.items %}
+                    <div class="flex flex-col gap-1 items-center shrink-0 w-8">
+                        <div class="h-5 flex items-center justify-center">
+                            <span class="text-[10px] font-mono text-title whitespace-nowrap" title="{{ day }}">{{ day|slice:"5:" }}</span>
+                        </div>
+                        {% for hour, requests in hours.items %}
+                            <button type="button"
+                                    class="heatmap-cell w-4.5 h-4.5 rounded-[3px] inline-block border border-slate-400/25 dark:border-white/10 bg-neutral-quaternary dark:bg-slate-400/15 cursor-pointer p-0 transition-transform duration-150 hover:scale-120 hover:z-10 hover:relative hover:ring-2 hover:ring-purple-600/70 focus-visible:scale-120 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600/70"
+                                    data-day="{{ day }}"
+                                    data-hour="{{ hour }}"
+                                    data-count="{{ requests }}"
+                                    aria-label="{{ day }} {{ hour }}: {{ requests }} {% if requests == 1 %}petición{% else %}peticiones{% endif %}"
+                                    title="{{ day }} · {{ hour }} · {{ requests }} {% if requests == 1 %}petición{% else %}peticiones{% endif %}"></button>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div id="activity-heatmap-tooltip" class="fixed z-50 pointer-events-none bg-slate-900 text-slate-50 border border-purple-500/45 rounded-md px-2.5 py-1.5 text-[11px] leading-snug shadow-xl whitespace-nowrap opacity-0 transition-opacity duration-75"></div>
+        {% else %}
+            <div class="py-4 text-center text-title">
+                {% include 'layouts/data_not_found.html' %}
+            </div>
+        {% endif %}
     </div>
+
+    <script>
+        (function () {
+            const cells = Array.from(document.querySelectorAll('#activity-heatmap-grid .heatmap-cell'));
+            if (!cells.length) return;
+
+            let maxCount = 0;
+            for (const cell of cells) {
+                const count = Number(cell.dataset.count || 0);
+                if (count > maxCount) maxCount = count;
+            }
+
+            const maxBadge = document.getElementById('heatmap-max-badge');
+            if (maxBadge) {
+                maxBadge.textContent = `(Máx: ${maxCount} pet./h)`;
+            }
+
+            const getPurpleColor = (ratio, isDark) => {
+                if (ratio <= 0) return null;
+                const alpha = 0.22 + (0.78 * Math.pow(ratio, 0.78));
+                const rgb = isDark ? '168, 85, 247' : '126, 34, 206';
+                const borderAlpha = Math.min(1, alpha + 0.15);
+                return {
+                    bg: `rgba(${rgb}, ${alpha.toFixed(3)})`,
+                    border: `rgba(${rgb}, ${borderAlpha.toFixed(3)})`,
+                };
+            };
+
+            const paintHeatmap = () => {
+                const isDark = document.documentElement.classList.contains('dark');
+
+                for (const cell of cells) {
+                    const count = Number(cell.dataset.count || 0);
+                    if (count <= 0 || maxCount <= 0) {
+                        cell.style.backgroundColor = '';
+                        cell.style.borderColor = '';
+                    } else {
+                        const style = getPurpleColor(count / maxCount, isDark);
+                        cell.style.backgroundColor = style.bg;
+                        cell.style.borderColor = style.border;
+                    }
+                }
+
+                const legendRatios = { '0': 0, '1': 0.2, '2': 0.45, '3': 0.72, '4': 1 };
+                document.querySelectorAll('.hm-legend-box').forEach((box) => {
+                    const ratio = legendRatios[box.dataset.level] || 0;
+                    if (ratio <= 0) {
+                        box.style.backgroundColor = '';
+                        box.style.borderColor = '';
+                    } else {
+                        const style = getPurpleColor(ratio, isDark);
+                        box.style.backgroundColor = style.bg;
+                        box.style.borderColor = style.border;
+                    }
+                });
+            };
+
+            paintHeatmap();
+
+            const themeObserver = new MutationObserver(paintHeatmap);
+            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+            const tooltip = document.getElementById('activity-heatmap-tooltip');
+            if (tooltip && tooltip.parentElement !== document.body) {
+                document.body.appendChild(tooltip);
+            }
+
+            const showTooltip = (cell) => {
+                if (!tooltip) return;
+                const day = cell.dataset.day;
+                const hour = cell.dataset.hour;
+                const count = Number(cell.dataset.count || 0);
+                const label = count === 1 ? 'petición' : 'peticiones';
+
+                tooltip.innerHTML = `<div class="font-bold text-purple-300">${count} ${label}</div><div>Día: <span class="font-mono">${day}</span> · Hora: <span class="font-mono">${hour}</span></div>`;
+                tooltip.classList.remove('opacity-0');
+                tooltip.classList.add('opacity-100');
+
+                const rect = cell.getBoundingClientRect();
+                const ttRect = tooltip.getBoundingClientRect();
+
+                let left = rect.left + (rect.width / 2) - (ttRect.width / 2);
+                left = Math.max(8, Math.min(left, window.innerWidth - ttRect.width - 8));
+
+                let top = rect.top - ttRect.height - 8;
+                if (top < 8) {
+                    top = rect.bottom + 8;
+                }
+
+                tooltip.style.left = `${left}px`;
+                tooltip.style.top = `${top}px`;
+            };
+
+            const hideTooltip = () => {
+                if (!tooltip) return;
+                tooltip.classList.remove('opacity-100');
+                tooltip.classList.add('opacity-0');
+            };
+
+            const grid = document.getElementById('activity-heatmap-grid');
+            grid.addEventListener('mouseover', (e) => {
+                const cell = e.target.closest('.heatmap-cell');
+                if (cell) showTooltip(cell);
+            });
+            grid.addEventListener('mouseout', (e) => {
+                if (e.target.closest('.heatmap-cell')) hideTooltip();
+            });
+            grid.addEventListener('focusin', (e) => {
+                const cell = e.target.closest('.heatmap-cell');
+                if (cell) showTooltip(cell);
+            });
+            grid.addEventListener('focusout', (e) => {
+                if (e.target.closest('.heatmap-cell')) hideTooltip();
+            });
+        })();
+    </script>
 
     <ul class="flex flex-col gap-10 max-h-[75vh] overflow-y-auto pr-1">
         {% include 'core/activity_logs/partials/_activity_logs_rows.html' %}

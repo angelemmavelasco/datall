@@ -29,6 +29,7 @@ class ActivityLogsService(UsersService):
             'acceso_total_actividad',
             'acceso_total',
         )
+    HEATMAP_HOURS: ClassVar[tuple[str, ...]] = tuple(f'{h:02d}:00' for h in range(24))
 
     def __post_init__(self):
         self._is_full_access = self._evaluate_full_access()
@@ -67,7 +68,9 @@ class ActivityLogsService(UsersService):
             local_dt = timezone.localtime(hour_bucket, tz) if timezone.is_aware(hour_bucket) else hour_bucket
             day_key = local_dt.strftime('%Y-%m-%d')
             hour_key = local_dt.strftime('%H:00')
-            heatmap.setdefault(day_key, {})[hour_key] = requests_count
+            if day_key not in heatmap:
+                heatmap[day_key] = dict.fromkeys(self.HEATMAP_HOURS, 0)
+            heatmap[day_key][hour_key] = requests_count
 
         return heatmap
 
