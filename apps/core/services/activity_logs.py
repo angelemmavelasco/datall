@@ -74,6 +74,9 @@ class ActivityLogsService(UsersService):
 
         return heatmap
 
+    def heatmap_hours(self, *, qs: QuerySet) -> dict:
+        return
+
     
     def stats(self, *, qs: QuerySet) -> dict:
         stats = defaultdict(float)
