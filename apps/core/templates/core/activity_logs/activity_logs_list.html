@@ -496,11 +496,262 @@
     </script>
     {% endif %}
 
+    <div class="flex flex-col w-full gap-2 mb-4">
+        <div class="text-title pb-1 border-b border-border flex items-center justify-between flex-wrap gap-2">
+            <span class="flex items-center gap-2">
+                <span>Vistas más visitadas y rendimiento</span>
+                {% if most_visited_views %}
+                    <span class="text-[11px] font-mono text-title">({{ most_visited_views|length }} rutas)</span>
+                {% endif %}
+            </span>
+
+            {% if most_visited_views %}
+            <div class="flex items-center gap-2 flex-wrap text-xs">
+                <input type="text"
+                       id="most-visited-search"
+                       placeholder="Buscar vista o usuario..."
+                       class="bg-page border border-border rounded px-2 py-1 text-xs text-title focus:outline-none focus:border-strong w-48 sm:w-56">
+
+                <button type="button"
+                        data-sort="requests"
+                        onclick="sortMostVisitedViews('requests')"
+                        class="mv-sort-btn border border-strong rounded px-2 py-1 bg-hover text-title transition-colors cursor-pointer flex items-center gap-1">
+                    <span>Más visitadas</span>
+                </button>
+
+                <button type="button"
+                        data-sort="avg_ms"
+                        onclick="sortMostVisitedViews('avg_ms')"
+                        class="mv-sort-btn border border-border rounded px-2 py-1 bg-container hover:bg-hover text-title transition-colors cursor-pointer flex items-center gap-1">
+                    <span>Más lentas</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if most_visited_views %}
+        <div class="w-full overflow-auto border border-border rounded bg-container max-h-[55vh] relative">
+            <table class="w-max min-w-full border-separate border-spacing-0">
+                <thead class="sticky top-0 z-30 bg-page">
+                    <tr class="border-b border-border text-xs">
+                        <th class="min-w-[260px] p-2 text-left text-title border-r border-b border-border sticky top-0 md:left-0 z-35 bg-page">Vista / Método</th>
+                        <th class="w-[160px] p-2 text-right text-title border-r border-b border-border bg-page" title="Total de peticiones registradas en el periodo para esta vista y método HTTP">
+                            Peticiones <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+                        <th class="w-[140px] p-2 text-center text-title border-r border-b border-border bg-page" title="Cantidad de usuarios únicos que consultaron esta vista">
+                            Usuarios <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+                        <th class="w-[170px] p-2 text-right text-title border-r border-b border-border bg-page" title="Tiempo promedio general de respuesta en milisegundos">
+                            Carga promedio <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+                        <th class="min-w-[220px] p-2 text-left text-title border-b border-border bg-page" title="Usuario con mayor cantidad de peticiones en esta vista">
+                            Usuario principal <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="most-visited-tbody" class="text-xs">
+                    {% for key, item in most_visited_views.items %}
+                    <tr class="most-visited-row cursor-pointer hover:bg-hover/40 transition-colors"
+                        data-key="{{ key }}"
+                        data-requests="{{ item.requests|stringformat:'d' }}"
+                        data-avg-ms="{{ item.avg_duration_ms|stringformat:'f' }}"
+                        data-search="{{ item.http_method|lower }} {{ item.view_name|lower }} {% for u in item.users %}{{ u.username|lower }} {{ u.full_name|lower }} {% endfor %}"
+                        onclick="toggleMostVisitedDetails(this)"
+                        aria-expanded="false">
+                        <th class="min-w-[260px] p-2 sticky md:left-0 z-20 bg-container text-left border-r border-b border-border font-normal">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="px-1.5 py-0.5 text-[10px] font-medium text-white rounded shrink-0 {% if item.http_method == 'POST' %}bg-blue-600{% elif item.http_method == 'GET' %}bg-emerald-600{% elif item.http_method == 'PUT' or item.http_method == 'PATCH' %}bg-yellow-500{% elif item.http_method == 'DELETE' %}bg-red-600{% else %}bg-slate-600{% endif %}">
+                                        {{ item.http_method }}
+                                    </span>
+                                    <span class="font-mono text-title truncate max-w-[260px]" title="{{ item.view_name|default:'(Sin vista)' }}">
+                                        {{ item.view_name|default:"(Sin vista)" }}
+                                    </span>
+                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mv-chevron text-title shrink-0 transition-transform duration-200"><path d="m6 9 6 6 6-6"/></svg>
+                            </div>
+                        </th>
+
+                        <td class="p-2 text-right border-r border-b border-border">
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="font-medium text-body font-mono">{{ item.requests|intcomma }}</span>
+                                <div class="w-full h-1.5 bg-page rounded overflow-hidden">
+                                    <div class="mv-req-bar h-full bg-purple-500 rounded"></div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="p-2 text-center border-r border-b border-border">
+                            <span class="font-mono font-medium text-violet-500">{{ item.unique_users|intcomma }}</span>
+                        </td>
+
+                        <td class="p-2 text-right border-r border-b border-border font-mono font-medium {% if item.avg_duration_ms >= 1000 %}text-red-500{% elif item.avg_duration_ms >= 300 %}text-amber-500{% else %}text-emerald-500{% endif %}">
+                            {{ item.avg_duration_ms|floatformat:2|intcomma }} ms
+                        </td>
+
+                        <td class="p-2 text-left border-b border-border">
+                            {% if item.users %}
+                                {% with top_user=item.users.0 %}
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-title truncate max-w-[150px]" title="{{ top_user.full_name }} (@{{ top_user.username }})">
+                                        @{{ top_user.username }}
+                                    </span>
+                                    <span class="text-[11px] font-mono text-muted shrink-0">
+                                        {{ top_user.requests|intcomma }} · {{ top_user.avg_duration_ms|floatformat:1 }} ms
+                                    </span>
+                                </div>
+                                {% endwith %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <tr class="most-visited-details hidden bg-page/70" data-parent-key="{{ key }}">
+                        <td colspan="5" class="p-2 border-b border-border">
+                            <div class="border border-border rounded bg-container overflow-x-auto">
+                                <table class="w-full border-collapse text-xs">
+                                    <thead>
+                                        <tr class="border-b border-border bg-page text-title">
+                                            <th class="p-1.5 text-left font-medium">Usuario</th>
+                                            <th class="p-1.5 text-left font-medium">Nombre</th>
+                                            <th class="p-1.5 text-right font-medium">Peticiones</th>
+                                            <th class="p-1.5 text-right font-medium">% de la vista</th>
+                                            <th class="p-1.5 text-right font-medium">Carga promedio</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for u in item.users %}
+                                        <tr class="border-b border-border/50 last:border-b-0 hover:bg-hover/30">
+                                            <td class="p-1.5 font-mono text-title">@{{ u.username }}</td>
+                                            <td class="p-1.5 text-body">{{ u.full_name }}</td>
+                                            <td class="p-1.5 text-right font-mono font-medium text-body">{{ u.requests|intcomma }}</td>
+                                            <td class="p-1.5 text-right font-mono text-title">{% widthratio u.requests item.requests 100 %}%</td>
+                                            <td class="p-1.5 text-right font-mono font-medium {% if u.avg_duration_ms >= 1000 %}text-red-500{% elif u.avg_duration_ms >= 300 %}text-amber-500{% else %}text-emerald-500{% endif %}">
+                                                {{ u.avg_duration_ms|floatformat:2|intcomma }} ms
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="border border-border rounded bg-container p-4 text-center text-title">
+            {% include 'layouts/data_not_found.html' %}
+        </div>
+        {% endif %}
+    </div>
+
+    <p class="text-title pb-1 border-b border-border flex items-center justify-between flex-wrap gap-2 mb-3">
+        <span>Listado de peticiones</span>
+    </p>
+
     <ul class="flex flex-col gap-10 max-h-[75vh] overflow-y-auto pr-1">
         {% include 'core/activity_logs/partials/_activity_logs_rows.html' %}
     </ul>
 
 <script>
+    function toggleMostVisitedDetails(rowElement) {
+        if (window.getSelection && window.getSelection().toString().length > 0) {
+            return;
+        }
+        const detailRow = rowElement.nextElementSibling;
+        const chevron = rowElement.querySelector('.mv-chevron');
+        if (!detailRow || !detailRow.classList.contains('most-visited-details')) return;
+
+        const isHidden = detailRow.classList.toggle('hidden');
+        rowElement.setAttribute('aria-expanded', String(!isHidden));
+        if (chevron) {
+            chevron.classList.toggle('rotate-180', !isHidden);
+        }
+    }
+
+    function sortMostVisitedViews(criteria) {
+        const tbody = document.getElementById('most-visited-tbody');
+        if (!tbody) return;
+
+        const pairs = [];
+        const rows = Array.from(tbody.querySelectorAll('tr.most-visited-row'));
+        for (const row of rows) {
+            const detail = row.nextElementSibling;
+            pairs.push({
+                row,
+                detail: detail && detail.classList.contains('most-visited-details') ? detail : null,
+                requests: Number(row.dataset.requests || 0),
+                avgMs: Number(row.dataset.avgMs || 0),
+            });
+        }
+
+        pairs.sort((a, b) => {
+            if (criteria === 'avg_ms') {
+                return b.avgMs - a.avgMs || b.requests - a.requests;
+            }
+            return b.requests - a.requests || b.avgMs - a.avgMs;
+        });
+
+        for (const pair of pairs) {
+            tbody.appendChild(pair.row);
+            if (pair.detail) tbody.appendChild(pair.detail);
+        }
+
+        document.querySelectorAll('.mv-sort-btn').forEach((btn) => {
+            const isActive = btn.dataset.sort === criteria;
+            btn.classList.toggle('border-strong', isActive);
+            btn.classList.toggle('bg-hover', isActive);
+            btn.classList.toggle('border-border', !isActive);
+            btn.classList.toggle('bg-container', !isActive);
+        });
+    }
+
+    (function () {
+        const tbody = document.getElementById('most-visited-tbody');
+        if (!tbody) return;
+
+        const rows = Array.from(tbody.querySelectorAll('tr.most-visited-row'));
+        let maxReqs = 0;
+        for (const row of rows) {
+            const r = Number(row.dataset.requests || 0);
+            if (r > maxReqs) maxReqs = r;
+        }
+        if (maxReqs > 0) {
+            for (const row of rows) {
+                const bar = row.querySelector('.mv-req-bar');
+                if (bar) {
+                    const pct = Math.max(2, (Number(row.dataset.requests || 0) / maxReqs) * 100);
+                    bar.style.width = `${pct.toFixed(1)}%`;
+                }
+            }
+        }
+
+        const searchInput = document.getElementById('most-visited-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function (e) {
+                const term = e.target.value.trim().toLowerCase();
+                for (const row of rows) {
+                    const detail = row.nextElementSibling;
+                    const haystack = row.dataset.search || '';
+                    const matches = !term || haystack.includes(term);
+                    row.style.display = matches ? '' : 'none';
+                    if (!matches && detail && detail.classList.contains('most-visited-details')) {
+                        detail.classList.add('hidden');
+                        row.setAttribute('aria-expanded', 'false');
+                        const chevron = row.querySelector('.mv-chevron');
+                        if (chevron) chevron.classList.remove('rotate-180');
+                    }
+                    if (detail && detail.classList.contains('most-visited-details')) {
+                        detail.style.display = matches ? '' : 'none';
+                    }
+                }
+            });
+        }
+    })();
+
     function toggleActivityLogDetails(liElement) {
         if (window.getSelection && window.getSelection().toString().length > 0) {
             return;

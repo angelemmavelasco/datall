@@ -667,8 +667,10 @@ def activity_logs_view(request):
     stats = s.stats(qs=qs)
     heatmap = s.heatmap_calendar(qs=qs)
     hourly_heatmap = s.heatmap_hours(qs=qs)
+    most_visited_views = s.most_visited_views(qs=qs)
     context["stats"] = stats
     context["heatmap"] = heatmap
     context["hourly_heatmap"] = hourly_heatmap
+    context["most_visited_views"] = most_visited_views
 
     return render(request, template, context)
