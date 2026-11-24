@@ -136,6 +136,26 @@
         {% endif %}
     </div>
 
+    <div class="border border-border rounded bg-container p-3 mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <p class="text-sm font-semibold text-body">
+                Picos de actividad por hora (24h)
+            </p>
+            {% if heatmap %}
+                <span id="hourly-peak-badge" class="text-[11px] font-mono text-title"></span>
+            {% endif %}
+        </div>
+
+        {% if heatmap %}
+            {{ hourly_heatmap|json_script:"activity-hourly-chart-data" }}
+            <div id="activityHourlyChart" class="w-full h-80 min-h-72"></div>
+        {% else %}
+            <div class="py-4 text-center text-title">
+                {% include 'layouts/data_not_found.html' %}
+            </div>
+        {% endif %}
+    </div>
+
     <script>
         (function () {
             const cells = Array.from(document.querySelectorAll('#activity-heatmap-grid .heatmap-cell'));
@@ -251,6 +271,225 @@
             });
         })();
     </script>
+
+    {% if heatmap %}
+    <script>
+        (function () {
+            function initHourlyActivityChart() {
+                const chartDom = document.getElementById('activityHourlyChart');
+                const dataScript = document.getElementById('activity-hourly-chart-data');
+                if (!chartDom || !dataScript || typeof echarts === 'undefined') return;
+
+                if (echarts.getInstanceByDom(chartDom)) {
+                    echarts.dispose(chartDom);
+                }
+
+                const hourlyData = JSON.parse(dataScript.textContent || '{}');
+                const hours = Object.keys(hourlyData);
+                const requestsSeries = hours.map((h) => Number(hourlyData[h]?.requests_count || 0));
+                const usersSeries = hours.map((h) => Number(hourlyData[h]?.unique_users || 0));
+                const totalRequests = requestsSeries.reduce((acc, v) => acc + v, 0);
+
+                let peakIdx = 0;
+                for (let i = 1; i < requestsSeries.length; i++) {
+                    if (requestsSeries[i] > requestsSeries[peakIdx]) peakIdx = i;
+                }
+                const peakBadge = document.getElementById('hourly-peak-badge');
+                if (peakBadge && hours.length) {
+                    peakBadge.textContent = `Pico: ${hours[peakIdx]} (${requestsSeries[peakIdx].toLocaleString('es-MX')} pet. / ${usersSeries[peakIdx].toLocaleString('es-MX')} usr.)`;
+                }
+
+                const chart = echarts.init(chartDom);
+
+                const buildOptions = () => {
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const isMobile = window.innerWidth < 768;
+                    const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim() || (isDark ? '#94a3b8' : '#64748b');
+                    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--color-border').trim() || (isDark ? '#334155' : '#cbd5e1');
+                    const containerBg = getComputedStyle(document.documentElement).getPropertyValue('--color-container').trim() || (isDark ? '#0f172a' : '#ffffff');
+
+                    const purpleLine = isDark ? '#a855f7' : '#9333ea';
+                    const yellowLine = isDark ? '#facc15' : '#eab308';
+
+                    return {
+                        color: [purpleLine, yellowLine],
+                        tooltip: {
+                            trigger: 'axis',
+                            backgroundColor: isDark ? '#1e1b2e' : '#0f172a',
+                            borderColor: 'rgba(168, 85, 247, 0.45)',
+                            borderWidth: 1,
+                            textStyle: {
+                                color: '#f8fafc',
+                                fontSize: 12,
+                            },
+                            axisPointer: {
+                                type: 'line',
+                                lineStyle: {
+                                    color: 'rgba(168, 85, 247, 0.4)',
+                                    type: 'dashed',
+                                },
+                            },
+                            formatter: function (params) {
+                                if (!params || !params.length) return '';
+                                const idx = params[0].dataIndex;
+                                const hourLabel = params[0].axisValue || '';
+                                const reqCount = requestsSeries[idx] || 0;
+                                const usrCount = usersSeries[idx] || 0;
+                                const reqPerUser = usrCount > 0 ? (reqCount / usrCount).toFixed(1) : '-';
+                                const sharePct = totalRequests > 0 ? ((reqCount / totalRequests) * 100).toFixed(1) : '0.0';
+
+                                let html = `<div style="font-weight:700;margin-bottom:4px;color:#e9d5ff;">Hora ${hourLabel}</div>`;
+                                params.forEach((p) => {
+                                    const formattedVal = Number(p.value || 0).toLocaleString('es-MX');
+                                    html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;"><span>${p.marker} ${p.seriesName}</span><b>${formattedVal}</b></div>`;
+                                });
+                                html += `<div style="border-top:1px solid rgba(148,163,184,0.28);margin-top:6px;padding-top:5px;font-size:11px;color:#cbd5e1;">`;
+                                html += `<div style="display:flex;justify-content:space-between;gap:14px;"><span>Participación del periodo:</span><b>${sharePct}%</b></div>`;
+                                html += `<div style="display:flex;justify-content:space-between;gap:14px;"><span>Prom. peticiones / usuario:</span><b>${reqPerUser}</b></div>`;
+                                html += `</div>`;
+                                return html;
+                            },
+                        },
+                        legend: {
+                            data: ['Peticiones por hora', 'Usuarios únicos'],
+                            bottom: 0,
+                            left: 'center',
+                            textStyle: {
+                                color: titleColor,
+                                fontSize: isMobile ? 11 : 12,
+                            },
+                        },
+                        grid: {
+                            left: isMobile ? 36 : 46,
+                            right: isMobile ? 34 : 44,
+                            top: 24,
+                            bottom: isMobile ? 60 : 48,
+                        },
+                        xAxis: {
+                            type: 'category',
+                            boundaryGap: false,
+                            data: hours,
+                            axisLine: {
+                                lineStyle: { color: borderColor },
+                            },
+                            axisTick: {
+                                lineStyle: { color: borderColor },
+                            },
+                            axisLabel: {
+                                color: titleColor,
+                                fontSize: isMobile ? 9 : 11,
+                                rotate: isMobile ? 45 : 0,
+                                interval: isMobile ? 1 : 0,
+                            },
+                        },
+                        yAxis: [
+                            {
+                                type: 'value',
+                                name: isMobile ? '' : 'Peticiones',
+                                minInterval: 1,
+                                nameTextStyle: {
+                                    color: titleColor,
+                                    fontSize: 11,
+                                },
+                                splitLine: {
+                                    lineStyle: {
+                                        color: titleColor,
+                                        opacity: 0.12,
+                                    },
+                                },
+                                axisLabel: {
+                                    color: titleColor,
+                                    fontSize: 10,
+                                },
+                            },
+                            {
+                                type: 'value',
+                                name: isMobile ? '' : 'Usuarios',
+                                minInterval: 1,
+                                nameTextStyle: {
+                                    color: titleColor,
+                                    fontSize: 11,
+                                },
+                                splitLine: {
+                                    show: false,
+                                },
+                                axisLabel: {
+                                    color: titleColor,
+                                    fontSize: 10,
+                                },
+                            },
+                        ],
+                        series: [
+                            {
+                                name: 'Peticiones por hora',
+                                type: 'line',
+                                yAxisIndex: 0,
+                                smooth: 0.25,
+                                symbol: 'circle',
+                                symbolSize: isMobile ? 4 : 6,
+                                showSymbol: false,
+                                data: requestsSeries,
+                                lineStyle: {
+                                    width: 2.5,
+                                    color: purpleLine,
+                                },
+                                itemStyle: {
+                                    color: purpleLine,
+                                    borderColor: containerBg,
+                                    borderWidth: 1.5,
+                                },
+                                areaStyle: {
+                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                        { offset: 0, color: isDark ? 'rgba(168, 85, 247, 0.30)' : 'rgba(147, 51, 234, 0.24)' },
+                                        { offset: 1, color: isDark ? 'rgba(168, 85, 247, 0.02)' : 'rgba(147, 51, 234, 0.02)' },
+                                    ]),
+                                },
+                            },
+                            {
+                                name: 'Usuarios únicos',
+                                type: 'line',
+                                yAxisIndex: 1,
+                                smooth: 0.25,
+                                symbol: 'circle',
+                                symbolSize: isMobile ? 4 : 6,
+                                showSymbol: false,
+                                data: usersSeries,
+                                lineStyle: {
+                                    width: 2.5,
+                                    color: yellowLine,
+                                },
+                                itemStyle: {
+                                    color: yellowLine,
+                                    borderColor: containerBg,
+                                    borderWidth: 1.5,
+                                },
+                            },
+                        ],
+                    };
+                };
+
+                chart.setOption(buildOptions());
+
+                const handleResize = () => {
+                    chart.setOption(buildOptions(), true);
+                    chart.resize();
+                };
+                window.addEventListener('resize', handleResize);
+
+                const chartThemeObserver = new MutationObserver(() => {
+                    chart.setOption(buildOptions(), true);
+                });
+                chartThemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initHourlyActivityChart);
+            } else {
+                initHourlyActivityChart();
+            }
+        })();
+    </script>
+    {% endif %}
 
     <ul class="flex flex-col gap-10 max-h-[75vh] overflow-y-auto pr-1">
         {% include 'core/activity_logs/partials/_activity_logs_rows.html' %}
