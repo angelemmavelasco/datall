@@ -61,6 +61,14 @@ class UserMultipleChoiceFilter(django_filters.ModelMultipleChoiceFilter):
 
 
 class ActivityLogFilter(django_filters.FilterSet):
+    HTTP_METHOD_CHOICES = (
+        ('GET', 'GET'),
+        ('POST', 'POST'),
+        ('PUT', 'PUT'),
+        ('PATCH', 'PATCH'),
+        ('DELETE', 'DELETE'),
+    )
+
     date_start = django_filters.DateFilter(
         method='filter_date_start',
         label='Desde',
@@ -76,6 +84,24 @@ class ActivityLogFilter(django_filters.FilterSet):
         queryset=User.objects.none(),
         widget=forms.CheckboxSelectMultiple,
         label='Usuario'
+    )
+    http_method = django_filters.MultipleChoiceFilter(
+        field_name='http_method',
+        choices=HTTP_METHOD_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        label='Método HTTP'
+    )
+    result = django_filters.MultipleChoiceFilter(
+        field_name='result',
+        choices=ActivityLog.Result.choices,
+        widget=forms.CheckboxSelectMultiple,
+        label='Resultado'
+    )
+    action = django_filters.MultipleChoiceFilter(
+        field_name='action',
+        choices=ActivityLog.Action.choices,
+        widget=forms.CheckboxSelectMultiple,
+        label='Acción'
     )
 
     class Meta:

@@ -136,6 +136,26 @@
         {% endif %}
     </div>
 
+    <div class="border border-border rounded bg-container p-3 mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <p class="text-sm font-semibold text-body">
+                Picos de actividad por hora (24h)
+            </p>
+            {% if heatmap %}
+                <span id="hourly-peak-badge" class="text-[11px] font-mono text-title"></span>
+            {% endif %}
+        </div>
+
+        {% if heatmap %}
+            {{ hourly_heatmap|json_script:"activity-hourly-chart-data" }}
+            <div id="activityHourlyChart" class="w-full h-80 min-h-72"></div>
+        {% else %}
+            <div class="py-4 text-center text-title">
+                {% include 'layouts/data_not_found.html' %}
+            </div>
+        {% endif %}
+    </div>
+
     <script>
         (function () {
             const cells = Array.from(document.querySelectorAll('#activity-heatmap-grid .heatmap-cell'));
@@ -252,11 +272,486 @@
         })();
     </script>
 
+    {% if heatmap %}
+    <script>
+        (function () {
+            function initHourlyActivityChart() {
+                const chartDom = document.getElementById('activityHourlyChart');
+                const dataScript = document.getElementById('activity-hourly-chart-data');
+                if (!chartDom || !dataScript || typeof echarts === 'undefined') return;
+
+                if (echarts.getInstanceByDom(chartDom)) {
+                    echarts.dispose(chartDom);
+                }
+
+                const hourlyData = JSON.parse(dataScript.textContent || '{}');
+                const hours = Object.keys(hourlyData);
+                const requestsSeries = hours.map((h) => Number(hourlyData[h]?.requests_count || 0));
+                const avgUsersSeries = hours.map((h) => Number(hourlyData[h]?.avg_users || 0));
+                const activeDaysSeries = hours.map((h) => Number(hourlyData[h]?.active_days || 0));
+                const totalRequests = requestsSeries.reduce((acc, v) => acc + v, 0);
+
+                let peakIdx = 0;
+                for (let i = 1; i < requestsSeries.length; i++) {
+                    if (requestsSeries[i] > requestsSeries[peakIdx]) peakIdx = i;
+                }
+                const peakBadge = document.getElementById('hourly-peak-badge');
+                if (peakBadge && hours.length) {
+                    const peakAvgUsers = avgUsersSeries[peakIdx].toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                    peakBadge.textContent = `Pico: ${hours[peakIdx]} (${requestsSeries[peakIdx].toLocaleString('es-MX')} pet. / ${peakAvgUsers} usr. prom.)`;
+                }
+
+                const chart = echarts.init(chartDom);
+
+                const buildOptions = () => {
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const isMobile = window.innerWidth < 768;
+                    const titleColor = getComputedStyle(document.documentElement).getPropertyValue('--color-title').trim() || (isDark ? '#94a3b8' : '#64748b');
+                    const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--color-border').trim() || (isDark ? '#334155' : '#cbd5e1');
+                    const containerBg = getComputedStyle(document.documentElement).getPropertyValue('--color-container').trim() || (isDark ? '#0f172a' : '#ffffff');
+
+                    const purpleLine = isDark ? '#a855f7' : '#9333ea';
+                    const yellowLine = isDark ? '#facc15' : '#eab308';
+
+                    return {
+                        color: [purpleLine, yellowLine],
+                        tooltip: {
+                            trigger: 'axis',
+                            backgroundColor: isDark ? '#1e1b2e' : '#0f172a',
+                            borderColor: 'rgba(168, 85, 247, 0.45)',
+                            borderWidth: 1,
+                            textStyle: {
+                                color: '#f8fafc',
+                                fontSize: 12,
+                            },
+                            axisPointer: {
+                                type: 'line',
+                                lineStyle: {
+                                    color: 'rgba(168, 85, 247, 0.4)',
+                                    type: 'dashed',
+                                },
+                            },
+                            formatter: function (params) {
+                                if (!params || !params.length) return '';
+                                const idx = params[0].dataIndex;
+                                const hourLabel = params[0].axisValue || '';
+                                const reqCount = requestsSeries[idx] || 0;
+                                const activeDays = activeDaysSeries[idx] || 0;
+                                const avgPerDay = activeDays > 0 ? (reqCount / activeDays).toFixed(1) : '0.0';
+                                const sharePct = totalRequests > 0 ? ((reqCount / totalRequests) * 100).toFixed(1) : '0.0';
+
+                                let html = `<div style="font-weight:700;margin-bottom:4px;color:#e9d5ff;">Hora ${hourLabel}</div>`;
+                                params.forEach((p) => {
+                                    const isAvg = p.seriesName === 'Promedio usuarios / hora';
+                                    const formattedVal = isAvg
+                                        ? Number(p.value || 0).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                                        : Number(p.value || 0).toLocaleString('es-MX');
+                                    html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;"><span>${p.marker} ${p.seriesName}</span><b>${formattedVal}</b></div>`;
+                                });
+                                html += `<div style="border-top:1px solid rgba(148,163,184,0.28);margin-top:6px;padding-top:5px;font-size:11px;color:#cbd5e1;">`;
+                                html += `<div style="display:flex;justify-content:space-between;gap:14px;"><span>Días con actividad en esta hora:</span><b>${activeDays}</b></div>`;
+                                html += `<div style="display:flex;justify-content:space-between;gap:14px;"><span>Prom. peticiones / día activo:</span><b>${avgPerDay}</b></div>`;
+                                html += `<div style="display:flex;justify-content:space-between;gap:14px;"><span>Participación del periodo:</span><b>${sharePct}%</b></div>`;
+                                html += `</div>`;
+                                return html;
+                            },
+                        },
+                        legend: {
+                            data: ['Peticiones por hora', 'Promedio usuarios / hora'],
+                            bottom: 0,
+                            left: 'center',
+                            textStyle: {
+                                color: titleColor,
+                                fontSize: isMobile ? 11 : 12,
+                            },
+                        },
+                        grid: {
+                            left: isMobile ? 36 : 46,
+                            right: isMobile ? 34 : 44,
+                            top: 24,
+                            bottom: isMobile ? 60 : 48,
+                        },
+                        xAxis: {
+                            type: 'category',
+                            boundaryGap: false,
+                            data: hours,
+                            axisLine: {
+                                lineStyle: { color: borderColor },
+                            },
+                            axisTick: {
+                                lineStyle: { color: borderColor },
+                            },
+                            axisLabel: {
+                                color: titleColor,
+                                fontSize: isMobile ? 9 : 11,
+                                rotate: isMobile ? 45 : 0,
+                                interval: isMobile ? 1 : 0,
+                            },
+                        },
+                        yAxis: [
+                            {
+                                type: 'value',
+                                name: isMobile ? '' : 'Peticiones',
+                                minInterval: 1,
+                                nameTextStyle: {
+                                    color: titleColor,
+                                    fontSize: 11,
+                                },
+                                splitLine: {
+                                    lineStyle: {
+                                        color: titleColor,
+                                        opacity: 0.12,
+                                    },
+                                },
+                                axisLabel: {
+                                    color: titleColor,
+                                    fontSize: 10,
+                                },
+                            },
+                            {
+                                type: 'value',
+                                name: isMobile ? '' : 'Prom. usuarios',
+                                nameTextStyle: {
+                                    color: titleColor,
+                                    fontSize: 11,
+                                },
+                                splitLine: {
+                                    show: false,
+                                },
+                                axisLabel: {
+                                    color: titleColor,
+                                    fontSize: 10,
+                                },
+                            },
+                        ],
+                        series: [
+                            {
+                                name: 'Peticiones por hora',
+                                type: 'line',
+                                yAxisIndex: 0,
+                                smooth: 0.25,
+                                symbol: 'circle',
+                                symbolSize: isMobile ? 4 : 6,
+                                showSymbol: false,
+                                data: requestsSeries,
+                                lineStyle: {
+                                    width: 2.5,
+                                    color: purpleLine,
+                                },
+                                itemStyle: {
+                                    color: purpleLine,
+                                    borderColor: containerBg,
+                                    borderWidth: 1.5,
+                                },
+                                areaStyle: {
+                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                        { offset: 0, color: isDark ? 'rgba(168, 85, 247, 0.30)' : 'rgba(147, 51, 234, 0.24)' },
+                                        { offset: 1, color: isDark ? 'rgba(168, 85, 247, 0.02)' : 'rgba(147, 51, 234, 0.02)' },
+                                    ]),
+                                },
+                            },
+                            {
+                                name: 'Promedio usuarios / hora',
+                                type: 'line',
+                                yAxisIndex: 1,
+                                smooth: 0.25,
+                                symbol: 'circle',
+                                symbolSize: isMobile ? 4 : 6,
+                                showSymbol: false,
+                                data: avgUsersSeries,
+                                lineStyle: {
+                                    width: 2.5,
+                                    color: yellowLine,
+                                },
+                                itemStyle: {
+                                    color: yellowLine,
+                                    borderColor: containerBg,
+                                    borderWidth: 1.5,
+                                },
+                            },
+                        ],
+                    };
+                };
+
+                chart.setOption(buildOptions());
+
+                const handleResize = () => {
+                    chart.setOption(buildOptions(), true);
+                    chart.resize();
+                };
+                window.addEventListener('resize', handleResize);
+
+                const chartThemeObserver = new MutationObserver(() => {
+                    chart.setOption(buildOptions(), true);
+                });
+                chartThemeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initHourlyActivityChart);
+            } else {
+                initHourlyActivityChart();
+            }
+        })();
+    </script>
+    {% endif %}
+
+    <div class="flex flex-col w-full gap-2 mb-4">
+        <div class="text-title pb-1 border-b border-border flex items-center justify-between flex-wrap gap-2">
+            <span class="flex items-center gap-2">
+                <span>Vistas más visitadas y rendimiento</span>
+                {% if most_visited_views %}
+                    <span class="text-[11px] font-mono text-title">({{ most_visited_views|length }} rutas)</span>
+                {% endif %}
+            </span>
+
+            {% if most_visited_views %}
+            <div class="flex items-center gap-2 flex-wrap text-xs">
+                <input type="text"
+                       id="most-visited-search"
+                       placeholder="Buscar vista o usuario..."
+                       class="bg-page border border-border rounded px-2 py-1 text-xs text-title focus:outline-none focus:border-strong w-48 sm:w-56">
+
+                <button type="button"
+                        data-sort="requests"
+                        onclick="sortMostVisitedViews('requests')"
+                        class="mv-sort-btn border border-strong rounded px-2 py-1 bg-hover text-title transition-colors cursor-pointer flex items-center gap-1">
+                    <span>Más visitadas</span>
+                </button>
+
+                <button type="button"
+                        data-sort="avg_ms"
+                        onclick="sortMostVisitedViews('avg_ms')"
+                        class="mv-sort-btn border border-border rounded px-2 py-1 bg-container hover:bg-hover text-title transition-colors cursor-pointer flex items-center gap-1">
+                    <span>Más lentas</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if most_visited_views %}
+        <div class="w-full overflow-auto border border-border rounded bg-container max-h-[55vh] relative">
+            <table class="w-max min-w-full border-separate border-spacing-0">
+                <thead class="sticky top-0 z-30 bg-page">
+                    <tr class="border-b border-border text-xs">
+                        <th class="min-w-[260px] p-2 text-left text-title border-r border-b border-border sticky top-0 md:left-0 z-35 bg-page">Vista / Método</th>
+                        <th class="w-[160px] p-2 text-right text-title border-r border-b border-border bg-page" title="Total de peticiones registradas en el periodo para esta vista y método HTTP">
+                            Peticiones <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+                        <th class="w-[140px] p-2 text-center text-title border-r border-b border-border bg-page" title="Cantidad de usuarios únicos que consultaron esta vista">
+                            Usuarios <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+                        <th class="w-[170px] p-2 text-right text-title border-r border-b border-border bg-page" title="Tiempo promedio general de respuesta en milisegundos">
+                            Carga promedio <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+                        <th class="min-w-[220px] p-2 text-left text-title border-b border-border bg-page" title="Usuario con mayor cantidad de peticiones en esta vista">
+                            Usuario principal <span class="cursor-pointer select-none">ⓘ</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="most-visited-tbody" class="text-xs">
+                    {% for key, item in most_visited_views.items %}
+                    <tr class="most-visited-row cursor-pointer hover:bg-hover/40 transition-colors"
+                        data-key="{{ key }}"
+                        data-requests="{{ item.requests|stringformat:'d' }}"
+                        data-avg-ms="{{ item.avg_duration_ms|stringformat:'f' }}"
+                        data-search="{{ item.http_method|lower }} {{ item.view_name|lower }} {% for u in item.users %}{{ u.username|lower }} {{ u.full_name|lower }} {% endfor %}"
+                        onclick="toggleMostVisitedDetails(this)"
+                        aria-expanded="false">
+                        <th class="min-w-[260px] p-2 sticky md:left-0 z-20 bg-container text-left border-r border-b border-border font-normal">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="px-1.5 py-0.5 text-[10px] font-medium text-white rounded shrink-0 {% if item.http_method == 'POST' %}bg-blue-600{% elif item.http_method == 'GET' %}bg-emerald-600{% elif item.http_method == 'PUT' or item.http_method == 'PATCH' %}bg-yellow-500{% elif item.http_method == 'DELETE' %}bg-red-600{% else %}bg-slate-600{% endif %}">
+                                        {{ item.http_method }}
+                                    </span>
+                                    <span class="font-mono text-title truncate max-w-[260px]" title="{{ item.view_name|default:'(Sin vista)' }}">
+                                        {{ item.view_name|default:"(Sin vista)" }}
+                                    </span>
+                                </div>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mv-chevron text-title shrink-0 transition-transform duration-200"><path d="m6 9 6 6 6-6"/></svg>
+                            </div>
+                        </th>
+
+                        <td class="p-2 text-right border-r border-b border-border">
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="font-medium text-body font-mono">{{ item.requests|intcomma }}</span>
+                                <div class="w-full h-1.5 bg-page rounded overflow-hidden">
+                                    <div class="mv-req-bar h-full bg-purple-500 rounded"></div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="p-2 text-center border-r border-b border-border">
+                            <span class="font-mono font-medium text-violet-500">{{ item.unique_users|intcomma }}</span>
+                        </td>
+
+                        <td class="p-2 text-right border-r border-b border-border font-mono font-medium {% if item.avg_duration_ms >= 1000 %}text-red-500{% elif item.avg_duration_ms >= 300 %}text-amber-500{% else %}text-emerald-500{% endif %}">
+                            {{ item.avg_duration_ms|floatformat:2|intcomma }} ms
+                        </td>
+
+                        <td class="p-2 text-left border-b border-border">
+                            {% if item.users %}
+                                {% with top_user=item.users.0 %}
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-title truncate max-w-[150px]" title="{{ top_user.full_name }} (@{{ top_user.username }})">
+                                        @{{ top_user.username }}
+                                    </span>
+                                    <span class="text-[11px] font-mono text-muted shrink-0">
+                                        {{ top_user.requests|intcomma }} · {{ top_user.avg_duration_ms|floatformat:1 }} ms
+                                    </span>
+                                </div>
+                                {% endwith %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <tr class="most-visited-details hidden bg-page/70" data-parent-key="{{ key }}">
+                        <td colspan="5" class="p-2 border-b border-border">
+                            <div class="border border-border rounded bg-container overflow-x-auto">
+                                <table class="w-full border-collapse text-xs">
+                                    <thead>
+                                        <tr class="border-b border-border bg-page text-title">
+                                            <th class="p-1.5 text-left font-medium">Usuario</th>
+                                            <th class="p-1.5 text-left font-medium">Nombre</th>
+                                            <th class="p-1.5 text-right font-medium">Peticiones</th>
+                                            <th class="p-1.5 text-right font-medium">% de la vista</th>
+                                            <th class="p-1.5 text-right font-medium">Carga promedio</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for u in item.users %}
+                                        <tr class="border-b border-border/50 last:border-b-0 hover:bg-hover/30">
+                                            <td class="p-1.5 font-mono text-title">@{{ u.username }}</td>
+                                            <td class="p-1.5 text-body">{{ u.full_name }}</td>
+                                            <td class="p-1.5 text-right font-mono font-medium text-body">{{ u.requests|intcomma }}</td>
+                                            <td class="p-1.5 text-right font-mono text-title">{% widthratio u.requests item.requests 100 %}%</td>
+                                            <td class="p-1.5 text-right font-mono font-medium {% if u.avg_duration_ms >= 1000 %}text-red-500{% elif u.avg_duration_ms >= 300 %}text-amber-500{% else %}text-emerald-500{% endif %}">
+                                                {{ u.avg_duration_ms|floatformat:2|intcomma }} ms
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="border border-border rounded bg-container p-4 text-center text-title">
+            {% include 'layouts/data_not_found.html' %}
+        </div>
+        {% endif %}
+    </div>
+
+    <p class="text-title pb-1 border-b border-border flex items-center justify-between flex-wrap gap-2 mb-3">
+        <span>Listado de peticiones</span>
+    </p>
+
     <ul class="flex flex-col gap-10 max-h-[75vh] overflow-y-auto pr-1">
         {% include 'core/activity_logs/partials/_activity_logs_rows.html' %}
     </ul>
 
 <script>
+    function toggleMostVisitedDetails(rowElement) {
+        if (window.getSelection && window.getSelection().toString().length > 0) {
+            return;
+        }
+        const detailRow = rowElement.nextElementSibling;
+        const chevron = rowElement.querySelector('.mv-chevron');
+        if (!detailRow || !detailRow.classList.contains('most-visited-details')) return;
+
+        const isHidden = detailRow.classList.toggle('hidden');
+        rowElement.setAttribute('aria-expanded', String(!isHidden));
+        if (chevron) {
+            chevron.classList.toggle('rotate-180', !isHidden);
+        }
+    }
+
+    function sortMostVisitedViews(criteria) {
+        const tbody = document.getElementById('most-visited-tbody');
+        if (!tbody) return;
+
+        const pairs = [];
+        const rows = Array.from(tbody.querySelectorAll('tr.most-visited-row'));
+        for (const row of rows) {
+            const detail = row.nextElementSibling;
+            pairs.push({
+                row,
+                detail: detail && detail.classList.contains('most-visited-details') ? detail : null,
+                requests: Number(row.dataset.requests || 0),
+                avgMs: Number(row.dataset.avgMs || 0),
+            });
+        }
+
+        pairs.sort((a, b) => {
+            if (criteria === 'avg_ms') {
+                return b.avgMs - a.avgMs || b.requests - a.requests;
+            }
+            return b.requests - a.requests || b.avgMs - a.avgMs;
+        });
+
+        for (const pair of pairs) {
+            tbody.appendChild(pair.row);
+            if (pair.detail) tbody.appendChild(pair.detail);
+        }
+
+        document.querySelectorAll('.mv-sort-btn').forEach((btn) => {
+            const isActive = btn.dataset.sort === criteria;
+            btn.classList.toggle('border-strong', isActive);
+            btn.classList.toggle('bg-hover', isActive);
+            btn.classList.toggle('border-border', !isActive);
+            btn.classList.toggle('bg-container', !isActive);
+        });
+    }
+
+    (function () {
+        const tbody = document.getElementById('most-visited-tbody');
+        if (!tbody) return;
+
+        const rows = Array.from(tbody.querySelectorAll('tr.most-visited-row'));
+        let maxReqs = 0;
+        for (const row of rows) {
+            const r = Number(row.dataset.requests || 0);
+            if (r > maxReqs) maxReqs = r;
+        }
+        if (maxReqs > 0) {
+            for (const row of rows) {
+                const bar = row.querySelector('.mv-req-bar');
+                if (bar) {
+                    const pct = Math.max(2, (Number(row.dataset.requests || 0) / maxReqs) * 100);
+                    bar.style.width = `${pct.toFixed(1)}%`;
+                }
+            }
+        }
+
+        const searchInput = document.getElementById('most-visited-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function (e) {
+                const term = e.target.value.trim().toLowerCase();
+                for (const row of rows) {
+                    const detail = row.nextElementSibling;
+                    const haystack = row.dataset.search || '';
+                    const matches = !term || haystack.includes(term);
+                    row.style.display = matches ? '' : 'none';
+                    if (!matches && detail && detail.classList.contains('most-visited-details')) {
+                        detail.classList.add('hidden');
+                        row.setAttribute('aria-expanded', 'false');
+                        const chevron = row.querySelector('.mv-chevron');
+                        if (chevron) chevron.classList.remove('rotate-180');
+                    }
+                    if (detail && detail.classList.contains('most-visited-details')) {
+                        detail.style.display = matches ? '' : 'none';
+                    }
+                }
+            });
+        }
+    })();
+
     function toggleActivityLogDetails(liElement) {
         if (window.getSelection && window.getSelection().toString().length > 0) {
             return;
@@ -326,6 +821,68 @@
                 </label>
                 {% endfor %}
             </div>
+        </div>
+    </div>
+
+    <!-- Acción -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.action.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-2 max-h-48">
+            <input type="text"
+                class="filter-search border border-border bg-page text-title rounded p-1 focus:outline-none focus:border-strong focus:ring-strong text-xs"
+                placeholder="Buscar acción">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            <div class="h-32 overflow-y-auto flex flex-col gap-1 filter-options [content-visibility:auto]">
+                {% for choice in filter.form.action %}
+                <label
+                    class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                    {{ choice.tag }}
+                    <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Resultado -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.result.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-1">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            {% for choice in filter.form.result %}
+            <label
+                class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                {{ choice.tag }}
+                <span class="option-label truncate" title="{{ choice.choice_label }}">{{ choice.choice_label }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Método HTTP -->
+    <div class="flex flex-col gap-1 filter-group">
+        <label class="text-title">{{ filter.form.http_method.label }}</label>
+        <div class="border border-border rounded bg-page p-1 flex flex-col gap-1">
+            <label
+                class="flex items-center gap-1 text-title cursor-pointer hover:bg-hover p-1 rounded transition-colors border-b border-border">
+                <input type="checkbox" class="filter-select-all rounded border-border focus:outline-none bg-page">
+                <span>Seleccionar todo</span>
+            </label>
+            {% for choice in filter.form.http_method %}
+            <label
+                class="filter-option flex items-center gap-1 cursor-pointer hover:bg-hover p-1 rounded transition-colors text-xs">
+                {{ choice.tag }}
+                <span class="option-label truncate font-mono" title="{{ choice.choice_label }}">{{ choice.choice_label }}</span>
+            </label>
+            {% endfor %}
         </div>
     </div>
 

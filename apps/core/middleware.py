@@ -34,6 +34,101 @@ class ActivityTrackingMiddleware:
         'session_key',
     }
 
+    OBJECT_ID_KWARGS = (
+        'contact_id',
+        'period_id',
+        'pk',
+        'id',
+        'object_id',
+    )
+
+    VIEW_MODEL_MAP = {
+        'core:user_list_view': ('core', 'user'),
+        'core:user_detail_view': ('core', 'user'),
+        'core:user_create_form_view': ('core', 'user'),
+        'core:user_update_form_view': ('core', 'user'),
+        'core:report_download_view': ('core', 'generatedreport'),
+        'core:app_version_list_view': ('core', 'appversion'),
+        'core:user_docs_view': ('core', 'supportarticle'),
+        'core:activity_logs_view': ('core', 'activitylog'),
+        'sales:warehouse_list_view': ('sales', 'warehouse'),
+        'sales:warehouse_create_view': ('sales', 'warehouse'),
+        'sales:warehouse_detail_view': ('sales', 'warehouse'),
+        'sales:warehouse_update_view': ('sales', 'warehouse'),
+        'sales:route_list_view': ('sales', 'route'),
+        'sales:route_create_view': ('sales', 'route'),
+        'sales:route_detail_view': ('sales', 'route'),
+        'sales:route_update_view': ('sales', 'route'),
+        'sales:sale_transaction_list_view': ('sales', 'saletransaction'),
+        'sales:sale_transaction_export_view': ('sales', 'saletransaction'),
+        'sales:sale_transaction_detail_view': ('sales', 'saletransaction'),
+        'sales:sale_target_list_view': ('sales', 'saletarget'),
+        'sales:sale_target_detail_view': ('sales', 'saletarget'),
+        'sales:sale_target_update_view': ('sales', 'saletarget'),
+        'customers:customer_list_view': ('customers', 'customer'),
+        'customers:customer_create_view': ('customers', 'customer'),
+        'customers:customer_detail_view': ('customers', 'customer'),
+        'customers:customer_update_view': ('customers', 'customer'),
+        'customers:customer_set_visit_schedule_view': ('customers', 'customer'),
+        'customers:customer_add_note_view': ('customers', 'customer'),
+        'customers:customer_add_contact_view': ('customers', 'customer'),
+        'customers:customer_update_contact_view': ('customers', 'customercontact'),
+        'customers:customer_delete_contact_view': ('customers', 'customercontact'),
+        'customers:ar_list_view': ('customers', 'accountsreceivable'),
+        'customers:export_ars_view': ('customers', 'accountsreceivable'),
+        'customers:ar_detail_view': ('customers', 'accountsreceivable'),
+        'customers:customer_agreement_list_view': ('customers', 'customeragreement'),
+        'customers:customer_agreement_create_view': ('customers', 'customeragreement'),
+        'customers:customer_agreement_detail_view': ('customers', 'customeragreement'),
+        'customers:customer_agreement_update_document_view': ('customers', 'customeragreement'),
+        'customers:customer_agreement_evaluate_action_view': ('customers', 'customeragreement'),
+        'products:product_list_view': ('products', 'product'),
+        'products:product_create_view': ('products', 'product'),
+        'products:product_detail_view': ('products', 'product'),
+        'products:product_update_view': ('products', 'product'),
+        'products:stock_transfers_view': ('products', 'stock'),
+        'products:export_stock_transfers_view': ('products', 'stock'),
+        'products:purchase_order_list_view': ('products', 'purchaseorder'),
+        'products:purchase_order_create_view': ('products', 'purchaseorder'),
+        'products:purchase_order_detail_view': ('products', 'purchaseorder'),
+        'products:purchase_order_status_update_view': ('products', 'purchaseorder'),
+        'products:export_purchase_order_view': ('products', 'purchaseorder'),
+        'human_resources:business_unit_list_view': ('human_resources', 'businessunit'),
+        'human_resources:business_unit_detail_view': ('human_resources', 'businessunit'),
+        'human_resources:business_unit_create_view': ('human_resources', 'businessunit'),
+        'human_resources:business_unit_update_view': ('human_resources', 'businessunit'),
+        'human_resources:department_list_view': ('human_resources', 'department'),
+        'human_resources:department_detail_view': ('human_resources', 'department'),
+        'human_resources:department_create_view': ('human_resources', 'department'),
+        'human_resources:department_update_view': ('human_resources', 'department'),
+        'human_resources:position_list_view': ('human_resources', 'position'),
+        'human_resources:position_detail_view': ('human_resources', 'position'),
+        'human_resources:position_create_view': ('human_resources', 'position'),
+        'human_resources:position_update_view': ('human_resources', 'position'),
+        'human_resources:position_skill_list_view': ('human_resources', 'positionskill'),
+        'human_resources:position_skill_detail_view': ('human_resources', 'positionskill'),
+        'human_resources:position_skill_create_view': ('human_resources', 'positionskill'),
+        'human_resources:position_skill_update_view': ('human_resources', 'positionskill'),
+        'human_resources:monitoring_form_field_list_view': ('human_resources', 'monitoringformfield'),
+        'human_resources:monitoring_form_field_detail_view': ('human_resources', 'monitoringformfield'),
+        'human_resources:monitoring_form_field_create_view': ('human_resources', 'monitoringformfield'),
+        'human_resources:monitoring_form_field_update_view': ('human_resources', 'monitoringformfield'),
+        'human_resources:monitoring_form_list_view': ('human_resources', 'monitoringform'),
+        'human_resources:monitoring_form_detail_view': ('human_resources', 'monitoringform'),
+        'human_resources:monitoring_form_create_view': ('human_resources', 'monitoringform'),
+        'human_resources:monitoring_form_update_view': ('human_resources', 'monitoringform'),
+        'human_resources:monitoring_form_submission_list_view': ('human_resources', 'monitoringformsubmission'),
+        'human_resources:monitoring_form_submission_detail_view': ('human_resources', 'monitoringformsubmission'),
+        'human_resources:monitoring_form_submission_create_view': ('human_resources', 'monitoringperiod'),
+        'human_resources:monitoring_form_submission_update_view': ('human_resources', 'monitoringformsubmission'),
+        'human_resources:monitoring_form_submission_delete_view': ('human_resources', 'monitoringformsubmission'),
+        'human_resources:employee_list_view': ('human_resources', 'employee'),
+        'human_resources:employee_detail_view': ('human_resources', 'employee'),
+        'human_resources:employee_create_view': ('human_resources', 'employee'),
+        'human_resources:employee_update_view': ('human_resources', 'employee'),
+        'mapser:mapser_view': ('mapser', 'customergeoprofile'),
+    }
+
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -94,12 +189,7 @@ class ActivityTrackingMiddleware:
                 submodule = Submodule.objects.filter(url_name=view_name).first()
 
             extra_log = getattr(request, 'activity_log_extra', None) or {}
-            content_type = extra_log.get('content_type')
-            object_id = extra_log.get('object_id')
-            content_object = extra_log.get('content_object')
-            if content_object is not None and getattr(content_object, 'pk', None) is not None:
-                content_type = ContentType.objects.get_for_model(content_object)
-                object_id = str(content_object.pk)
+            content_type, object_id = self._resolve_object_reference(resolver_match, extra_log)
             if extra_log.get('action'):
                 action = extra_log['action']
             changes = extra_log.get('changes') if isinstance(extra_log.get('changes'), dict) else {}
@@ -148,3 +238,35 @@ class ActivityTrackingMiddleware:
         if method == 'GET' and params:
             return ActivityLog.Action.FILTER
         return ActivityLog.Action.VIEW
+
+    def _resolve_object_reference(self, resolver_match, extra_log: dict):
+        """
+        Resolves ContentType and object_id from explicit view metadata or falls back
+        to URL kwargs and VIEW_MODEL_MAP when the view does not set activity_log_extra.
+        """
+        content_object = extra_log.get('content_object')
+        if content_object is not None and getattr(content_object, 'pk', None) is not None:
+            return ContentType.objects.get_for_model(content_object), str(content_object.pk)[:255]
+
+        content_type = extra_log.get('content_type')
+        object_id = extra_log.get('object_id')
+
+        if object_id is None and resolver_match and resolver_match.kwargs:
+            for kwarg_name in self.OBJECT_ID_KWARGS:
+                val = resolver_match.kwargs.get(kwarg_name)
+                if val is not None:
+                    object_id = val
+                    break
+
+        if object_id is not None:
+            object_id = str(object_id)[:255]
+
+        if content_type is None and resolver_match and resolver_match.view_name:
+            model_key = self.VIEW_MODEL_MAP.get(resolver_match.view_name)
+            if model_key:
+                try:
+                    content_type = ContentType.objects.get_by_natural_key(*model_key)
+                except ContentType.DoesNotExist:
+                    content_type = None
+
+        return content_type, object_id
