@@ -287,7 +287,8 @@
                 const hourlyData = JSON.parse(dataScript.textContent || '{}');
                 const hours = Object.keys(hourlyData);
                 const requestsSeries = hours.map((h) => Number(hourlyData[h]?.requests_count || 0));
-                const usersSeries = hours.map((h) => Number(hourlyData[h]?.unique_users || 0));
+                const avgUsersSeries = hours.map((h) => Number(hourlyData[h]?.avg_users || 0));
+                const activeDaysSeries = hours.map((h) => Number(hourlyData[h]?.active_days || 0));
                 const totalRequests = requestsSeries.reduce((acc, v) => acc + v, 0);
 
                 let peakIdx = 0;
@@ -296,7 +297,8 @@
                 }
                 const peakBadge = document.getElementById('hourly-peak-badge');
                 if (peakBadge && hours.length) {
-                    peakBadge.textContent = `Pico: ${hours[peakIdx]} (${requestsSeries[peakIdx].toLocaleString('es-MX')} pet. / ${usersSeries[peakIdx].toLocaleString('es-MX')} usr.)`;
+                    const peakAvgUsers = avgUsersSeries[peakIdx].toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+                    peakBadge.textContent = `Pico: ${hours[peakIdx]} (${requestsSeries[peakIdx].toLocaleString('es-MX')} pet. / ${peakAvgUsers} usr. prom.)`;
                 }
 
                 const chart = echarts.init(chartDom);
@@ -334,24 +336,28 @@
                                 const idx = params[0].dataIndex;
                                 const hourLabel = params[0].axisValue || '';
                                 const reqCount = requestsSeries[idx] || 0;
-                                const usrCount = usersSeries[idx] || 0;
-                                const reqPerUser = usrCount > 0 ? (reqCount / usrCount).toFixed(1) : '-';
+                                const activeDays = activeDaysSeries[idx] || 0;
+                                const avgPerDay = activeDays > 0 ? (reqCount / activeDays).toFixed(1) : '0.0';
                                 const sharePct = totalRequests > 0 ? ((reqCount / totalRequests) * 100).toFixed(1) : '0.0';
 
                                 let html = `<div style="font-weight:700;margin-bottom:4px;color:#e9d5ff;">Hora ${hourLabel}</div>`;
                                 params.forEach((p) => {
-                                    const formattedVal = Number(p.value || 0).toLocaleString('es-MX');
+                                    const isAvg = p.seriesName === 'Promedio usuarios / hora';
+                                    const formattedVal = isAvg
+                                        ? Number(p.value || 0).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+                                        : Number(p.value || 0).toLocaleString('es-MX');
                                     html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;"><span>${p.marker} ${p.seriesName}</span><b>${formattedVal}</b></div>`;
                                 });
                                 html += `<div style="border-top:1px solid rgba(148,163,184,0.28);margin-top:6px;padding-top:5px;font-size:11px;color:#cbd5e1;">`;
+                                html += `<div style="display:flex;justify-content:space-between;gap:14px;"><span>Días con actividad en esta hora:</span><b>${activeDays}</b></div>`;
+                                html += `<div style="display:flex;justify-content:space-between;gap:14px;"><span>Prom. peticiones / día activo:</span><b>${avgPerDay}</b></div>`;
                                 html += `<div style="display:flex;justify-content:space-between;gap:14px;"><span>Participación del periodo:</span><b>${sharePct}%</b></div>`;
-                                html += `<div style="display:flex;justify-content:space-between;gap:14px;"><span>Prom. peticiones / usuario:</span><b>${reqPerUser}</b></div>`;
                                 html += `</div>`;
                                 return html;
                             },
                         },
                         legend: {
-                            data: ['Peticiones por hora', 'Usuarios únicos'],
+                            data: ['Peticiones por hora', 'Promedio usuarios / hora'],
                             bottom: 0,
                             left: 'center',
                             textStyle: {
@@ -404,8 +410,7 @@
                             },
                             {
                                 type: 'value',
-                                name: isMobile ? '' : 'Usuarios',
-                                minInterval: 1,
+                                name: isMobile ? '' : 'Prom. usuarios',
                                 nameTextStyle: {
                                     color: titleColor,
                                     fontSize: 11,
@@ -446,14 +451,14 @@
                                 },
                             },
                             {
-                                name: 'Usuarios únicos',
+                                name: 'Promedio usuarios / hora',
                                 type: 'line',
                                 yAxisIndex: 1,
                                 smooth: 0.25,
                                 symbol: 'circle',
                                 symbolSize: isMobile ? 4 : 6,
                                 showSymbol: false,
-                                data: usersSeries,
+                                data: avgUsersSeries,
                                 lineStyle: {
                                     width: 2.5,
                                     color: yellowLine,

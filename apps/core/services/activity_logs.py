@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 from apps.core.models import ActivityLog
 from apps.core.services.users import UsersService
 from django.db.models import QuerySet, Avg, Count
-from django.db.models.functions import TruncHour, ExtractHour
+from django.db.models.functions import TruncHour
 from django.utils import timezone
 
 if TYPE_CHECKING:
@@ -79,29 +79,39 @@ class ActivityLogsService(UsersService):
         occurrences = (
             qs.prefetch_related(None)
             .order_by()
-            .annotate(hour=ExtractHour('created_at', tzinfo=tz))
-            .values('hour')
+            .annotate(hour_bucket=TruncHour('created_at', tzinfo=tz))
+            .values('hour_bucket')
             .annotate(
                 requests_count=Count('id'),
                 unique_users=Count('user', distinct=True),
             )
-            .values_list('hour', 'requests_count', 'unique_users')
-            .order_by('hour')
+            .values_list('hour_bucket', 'requests_count', 'unique_users')
+            .order_by('hour_bucket')
         )
 
-        hourly_data = {
-            hour: {'requests_count': 0, 'unique_users': 0}
+        totals_by_hour = {
+            hour: {'requests_count': 0, 'users_sum': 0, 'active_days': 0}
             for hour in self.HEATMAP_HOURS
         }
-        for hour, requests_count, unique_users in occurrences:
-            if hour is None:
+        for hour_bucket, requests_count, unique_users in occurrences:
+            if hour_bucket is None or requests_count <= 0:
                 continue
-            hour_key = f'{int(hour):02d}:00'
-            if hour_key in hourly_data:
-                hourly_data[hour_key] = {
-                    'requests_count': requests_count,
-                    'unique_users': unique_users,
-                }
+            local_dt = timezone.localtime(hour_bucket, tz) if timezone.is_aware(hour_bucket) else hour_bucket
+            hour_key = local_dt.strftime('%H:00')
+            bucket = totals_by_hour[hour_key]
+            bucket['requests_count'] += requests_count
+            bucket['users_sum'] += unique_users
+            bucket['active_days'] += 1
+
+        hourly_data = {}
+        for hour_key, metrics in totals_by_hour.items():
+            active_days = metrics['active_days']
+            avg_users = round(metrics['users_sum'] / active_days, 2) if active_days > 0 else 0.0
+            hourly_data[hour_key] = {
+                'requests_count': metrics['requests_count'],
+                'avg_users': avg_users,
+                'active_days': active_days,
+            }
 
         return hourly_data
 
