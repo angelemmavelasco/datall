@@ -26,6 +26,7 @@ from apps.customers.services.customer_agreements import (
     CustomerAgreementsStats,
     CustomerAgreementNotFound,
     PermissionsError,
+    ServiceError,
     parse_month_input,
 )
 from apps.customers.forms import CustomerAgreementCreateForm
@@ -1058,6 +1059,375 @@ class CustomerVisitScheduleTests(TestCase):
         content_form = res_form.content.decode()
         self.assertNotIn('Esquema de visitas comercial', content_form)
         self.assertNotIn('id_visit_schedule-visit_monday', content_form)
+
+
+class CommercialBenefitAndDiscountAgreementsTests(TestCase):
+    def setUp(self):
+        from django.contrib.contenttypes.models import ContentType
+        from apps.core.models import Module, Submodule
+        from apps.sales.models import SaleTransaction, UserRouteAccess
+
+        self.ContentType = ContentType
+        self.SaleTransaction = SaleTransaction
+        self.Module = Module
+        self.Submodule = Submodule
+
+        self.admin = User.objects.create_user(username='admin_disc', is_superuser=True)
+        self.cust_type = CustomerType.objects.create(name='Veterinaria Disc')
+        self.customer = Customer.objects.create(
+            id='CUST_DISC',
+            name='Veterinaria Descuentos',
+            customer_type=self.cust_type,
+            registration_date=date(2026, 1, 1),
+        )
+        self.route_type = RouteType.objects.create(id='rt_disc', name='Tipo Disc')
+        self.sale_channel = SaleChannel.objects.create(id='sc_disc', name='Canal Disc')
+        self.route = Route.objects.create(id='R_DISC', name='Ruta Disc', route_type=self.route_type, sale_channel=self.sale_channel)
+        CustomerAssignment.objects.create(customer=self.customer, route=self.route, start_date=date(2026, 1, 1))
+
+        self.cat = ProductCategory.objects.create(id='CAT_DISC', name='Categoria Disc')
+        self.class_a = ProductClass.objects.create(id='CLS_A', name='Clase Alimentos', product_category=self.cat)
+        self.class_b = ProductClass.objects.create(id='CLS_B', name='Clase Farmacia', product_category=self.cat)
+
+        CustomerClassMargin.objects.create(customer=self.customer, product_class=self.class_a, min_margin_percentage=Decimal('25.00'))
+        CustomerClassMargin.objects.create(customer=self.customer, product_class=self.class_b, min_margin_percentage=Decimal('25.00'))
+
+        self.SaleTransaction.objects.create(
+            doc_id='INV-A1',
+            sale_date=date(2026, 1, 15),
+            net_amount=Decimal('10000.00'),
+            profit=Decimal('3000.00'),
+            customer=self.customer,
+            route=self.route,
+            product_class=self.class_a,
+        )
+        self.SaleTransaction.objects.create(
+            doc_id='INV-B1',
+            sale_date=date(2026, 1, 20),
+            net_amount=Decimal('10000.00'),
+            profit=Decimal('3000.00'),
+            customer=self.customer,
+            route=self.route,
+            product_class=self.class_b,
+        )
+        self.SaleTransaction.objects.create(
+            doc_id='INV-A2',
+            sale_date=date(2026, 2, 15),
+            net_amount=Decimal('10000.00'),
+            profit=Decimal('3000.00'),
+            customer=self.customer,
+            route=self.route,
+            product_class=self.class_a,
+        )
+        self.SaleTransaction.objects.create(
+            doc_id='INV-B2',
+            sale_date=date(2026, 2, 20),
+            net_amount=Decimal('10000.00'),
+            profit=Decimal('3000.00'),
+            customer=self.customer,
+            route=self.route,
+            product_class=self.class_b,
+        )
+
+        self.module = self.Module.objects.create(name='Clientes', order=9, is_active=True)
+        self.benefit_submodule = self.Submodule.objects.create(
+            name='beneficios comerciales',
+            module=self.module,
+            url_name='customers:commercial_benefit_list_view',
+            is_active=True,
+        )
+        self.viewer_group = Group.objects.create(name='lector_beneficios')
+        self.editor_group = Group.objects.create(name='editor_beneficios')
+        self.benefit_submodule.allowed_groups.add(self.viewer_group, self.editor_group)
+
+        Reference.objects.create(
+            context='editar_beneficioscomerciales',
+            key='editor_beneficios',
+            value='1',
+            content_type=self.ContentType.objects.get_for_model(Reference),
+        )
+
+        self.viewer_user = User.objects.create_user(username='viewer_user')
+        self.viewer_user.groups.add(self.viewer_group)
+
+        self.editor_user = User.objects.create_user(username='editor_user')
+        self.editor_user.groups.add(self.editor_group)
+
+        self.outsider_user = User.objects.create_user(username='outsider_user')
+        UserRouteAccess.objects.create(user=self.outsider_user, route=self.route, can_view=True)
+
+        self.admin_service = CustomerAgreementsService(user=self.admin)
+
+    def test_commercial_benefit_percentage_validation_and_display(self):
+        """
+        verifica la validacion y formato visual de beneficios porcentuales y monetarios.
+        requiere instancias de beneficio comercial y comprueba errores de rango y texto de salida.
+        """
+        pct_benefit = CommercialBenefit(
+            benefit_type=CommercialBenefitTypeChoices.PERCENTAGE_DISCOUNT,
+            name='Rebate Anual',
+            cost=Decimal('5.00'),
+        )
+        pct_benefit.full_clean()
+        self.assertEqual(pct_benefit.display_value, '5.00%')
+        self.assertIn('5.00%', str(pct_benefit))
+
+        bad_pct = CommercialBenefit(
+            benefit_type=CommercialBenefitTypeChoices.PERCENTAGE_DISCOUNT,
+            name='Invalido',
+            cost=Decimal('120.00'),
+        )
+        with self.assertRaises(ValidationError):
+            bad_pct.full_clean()
+
+        zero_pct = CommercialBenefit(
+            benefit_type=CommercialBenefitTypeChoices.PERCENTAGE_DISCOUNT,
+            name='Cero',
+            cost=Decimal('0.00'),
+        )
+        with self.assertRaises(ValidationError):
+            zero_pct.full_clean()
+
+    def test_commercial_benefit_permissions_submodule_and_reference(self):
+        """
+        comprueba permisos de lectura por submodulo y edicion dinamica por tabla reference.
+        requiere usuarios lector, editor y sin acceso y verifica codigo http y atajo en convenios.
+        """
+        client = Client()
+
+        client.force_login(self.outsider_user)
+        r_out = client.get(reverse('customers:commercial_benefit_list_view'))
+        self.assertEqual(r_out.status_code, 302)
+        r_out_agreements = client.get(reverse('customers:customer_agreement_list_view'))
+        self.assertNotContains(r_out_agreements, 'Beneficios comerciales')
+
+        client.force_login(self.viewer_user)
+        r_view = client.get(reverse('customers:commercial_benefit_list_view'))
+        self.assertEqual(r_view.status_code, 200)
+        self.assertNotContains(r_view, 'Nuevo beneficio')
+
+        r_viewer_create = client.post(
+            reverse('customers:commercial_benefit_create_view'),
+            {'benefit_type': 'percentage_discount', 'name': 'Test 5%', 'cost': '5.00'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(r_viewer_create.status_code, 403)
+
+        client.force_login(self.editor_user)
+        r_edit_list = client.get(reverse('customers:commercial_benefit_list_view'))
+        self.assertEqual(r_edit_list.status_code, 200)
+        self.assertContains(r_edit_list, 'Nuevo beneficio')
+
+        r_agreements = client.get(reverse('customers:customer_agreement_list_view'))
+        self.assertContains(r_agreements, 'Beneficios comerciales')
+
+        r_create_ok = client.post(
+            reverse('customers:commercial_benefit_create_view'),
+            {'benefit_type': 'percentage_discount', 'name': 'Descuento UI 5%', 'cost': '5.00'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(r_create_ok.status_code, 200)
+        self.assertEqual(r_create_ok.json()['benefit']['display_value'], '5.00%')
+
+    def test_percentage_discount_margin_calculation_all_vs_specific_classes(self):
+        """
+        verifica calculo de margen en descuento porcentual sobre todas las clases o clases especificas.
+        requiere ventas historicas conocidas y compara el margen simulado y promedio mensual estimado.
+        """
+        pct_benefit = self.admin_service.create_commercial_benefit(
+            benefit_type=CommercialBenefitTypeChoices.PERCENTAGE_DISCOUNT,
+            name='Bonificacion 5%',
+            cost=Decimal('5.00'),
+        )
+
+        is_valid_all, sim_all, _, _, res_all = self.admin_service.validate_agreement_margin(
+            customer_id=self.customer.id,
+            benefit_id=pct_benefit.id,
+            participating_classes_data=[],
+            eval_start='2026-01',
+            eval_end='2026-02',
+            agreement_start_date='2026-03',
+            agreement_end_date='2026-06',
+            target_frequency=PeriodicityChoices.MONTHLY,
+            global_target_amount=Decimal('20000.00'),
+            apply_discount_to_all_classes=True,
+        )
+        self.assertTrue(is_valid_all)
+        self.assertEqual(res_all['historic_margin'], Decimal('30.00'))
+        self.assertEqual(sim_all, Decimal('25.00'))
+        self.assertEqual(res_all['avg_monthly_discountable_sales'], Decimal('20000.00'))
+        self.assertEqual(res_all['estimated_monthly_discount'], Decimal('1000.00'))
+        self.assertEqual(res_all['cme'], Decimal('1000.00'))
+
+        is_valid_spec, sim_spec, _, _, res_spec = self.admin_service.validate_agreement_margin(
+            customer_id=self.customer.id,
+            benefit_id=pct_benefit.id,
+            participating_classes_data=[
+                {'product_class_id': 'CLS_A', 'is_mandatory': True, 'required_target': Decimal('10000.00')},
+            ],
+            eval_start='2026-01',
+            eval_end='2026-02',
+            agreement_start_date='2026-03',
+            agreement_end_date='2026-06',
+            target_frequency=PeriodicityChoices.MONTHLY,
+            global_target_amount=Decimal('10000.00'),
+            apply_discount_to_all_classes=False,
+            discount_class_ids=['CLS_B'],
+        )
+        self.assertTrue(is_valid_spec)
+        self.assertEqual(res_spec['discountable_net'], Decimal('20000.00'))
+        self.assertEqual(res_spec['avg_monthly_discountable_sales'], Decimal('10000.00'))
+        self.assertEqual(res_spec['estimated_monthly_discount'], Decimal('500.00'))
+        self.assertEqual(sim_spec, Decimal('25.00'))
+        self.assertTrue(res_spec['has_extra_discount_classes'])
+
+    def test_agreement_discount_creation_preview_immutability_and_evaluation(self):
+        """
+        prueba ciclo completo de convenio con descuento porcentual en clase especifica y evaluacion real.
+        requiere cliente y ventas reales y verifica contrato legal, inmutabilidad y costo amortizado calculado.
+        """
+        from apps.customers.models import DiscountApplicationModeChoices
+
+        pct_benefit = self.admin_service.create_commercial_benefit(
+            benefit_type=CommercialBenefitTypeChoices.PERCENTAGE_DISCOUNT,
+            name='Descuento 5% Farmacia',
+            cost=Decimal('5.00'),
+        )
+
+        with self.assertRaises(ServiceError):
+            self.admin_service.create_customer_agreement(
+                customer_id=self.customer.id,
+                benefit_id=pct_benefit.id,
+                agreement_type=AgreementTypeChoices.SHORT_TERM,
+                discount_application_mode=DiscountApplicationModeChoices.AT_END,
+                apply_discount_to_all_classes=False,
+                discount_class_ids=[],
+                start_date=date(2026, 1, 1),
+                end_date=date(2026, 2, 28),
+                global_target_amount=Decimal('15000.00'),
+                target_frequency=PeriodicityChoices.MONTHLY,
+                margin_warning_accepted=True,
+            )
+
+        agreement = self.admin_service.create_customer_agreement(
+            customer_id=self.customer.id,
+            benefit_id=pct_benefit.id,
+            agreement_type=AgreementTypeChoices.SHORT_TERM,
+            discount_application_mode=DiscountApplicationModeChoices.AT_END,
+            apply_discount_to_all_classes=False,
+            discount_class_ids=['CLS_B'],
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 2, 28),
+            global_target_amount=Decimal('15000.00'),
+            target_frequency=PeriodicityChoices.MONTHLY,
+            participating_classes_data=[
+                {'product_class_id': 'CLS_A', 'is_mandatory': True, 'required_target': Decimal('8000.00')},
+            ],
+            margin_warning_accepted=True,
+        )
+
+        self.assertEqual(agreement.discount_application_mode, DiscountApplicationModeChoices.AT_END)
+        self.assertFalse(agreement.apply_discount_to_all_classes)
+        self.assertEqual(list(agreement.discount_classes.values_list('id', flat=True)), ['CLS_B'])
+
+        agreement.apply_discount_to_all_classes = True
+        with self.assertRaises(ValidationError):
+            agreement.save()
+
+        agreement.refresh_from_db()
+        self.admin_service.evaluate_pending_periods(pk=agreement.pk)
+        p1 = agreement.evaluation_periods.order_by('period_number').first()
+        self.assertEqual(p1.achieved_global_sales, Decimal('20000.00'))
+        self.assertEqual(p1.amortized_benefit_cost, Decimal('500.00'))
+        self.assertEqual(p1.period_profit, Decimal('5500.00'))
+
+        client = Client()
+        client.force_login(self.admin)
+        preview_resp = client.get(
+            reverse('customers:customer_agreement_preview_view'),
+            {'agreement_id': agreement.pk},
+        )
+        self.assertEqual(preview_resp.status_code, 200)
+        self.assertContains(preview_resp, '5.00%')
+        self.assertContains(preview_resp, 'al finalizar la vigencia del convenio')
+        self.assertContains(preview_resp, 'Clase Farmacia')
+
+        detail_resp = client.get(reverse('customers:customer_agreement_detail_view', kwargs={'pk': agreement.pk}))
+        self.assertEqual(detail_resp.status_code, 200)
+        self.assertContains(detail_resp, '5.00%')
+        self.assertContains(detail_resp, 'Al finalizar el convenio')
+        self.assertContains(detail_resp, 'Clase Farmacia')
+
+    def test_fixed_discount_specific_classes_and_http_create(self):
+        """
+        valida descuentos fijos con clases especificas y la creacion completa por formulario http.
+        requiere superusuario y clases de producto y comprueba la simulacion, persistencia y redaccion legal.
+        """
+        from apps.customers.models import DiscountApplicationModeChoices
+
+        fixed_benefit = self.admin_service.create_commercial_benefit(
+            benefit_type=CommercialBenefitTypeChoices.FIXED_DISCOUNT,
+            name='Descuento Fijo $2,000',
+            cost=Decimal('2000.00'),
+        )
+
+        is_valid, sim_margin, _, _, res_dict = self.admin_service.validate_agreement_margin(
+            customer_id=self.customer.id,
+            benefit_id=fixed_benefit.id,
+            participating_classes_data=[
+                {'product_class_id': 'CLS_A', 'is_mandatory': True, 'required_target': Decimal('10000.00')},
+            ],
+            eval_start='2026-01',
+            eval_end='2026-02',
+            agreement_start_date='2026-01',
+            agreement_end_date='2026-02',
+            target_frequency=PeriodicityChoices.MONTHLY,
+            global_target_amount=Decimal('10000.00'),
+            apply_discount_to_all_classes=False,
+            discount_class_ids=['CLS_B'],
+            discount_application_mode=DiscountApplicationModeChoices.PERIODIC,
+        )
+        self.assertTrue(is_valid)
+        self.assertEqual(res_dict['cme'], Decimal('1000.00'))
+        self.assertEqual(sim_margin, Decimal('20.00'))
+
+        client = Client()
+        client.force_login(self.admin)
+        post_resp = client.post(
+            reverse('customers:customer_agreement_create_view'),
+            {
+                'customer': self.customer.id,
+                'benefit': fixed_benefit.id,
+                'agreement_type': AgreementTypeChoices.SHORT_TERM,
+                'evaluation_mode': EvaluationModeChoices.PERIODIC,
+                'discount_application_mode': DiscountApplicationModeChoices.PERIODIC,
+                'apply_discount_to_all_classes': 'False',
+                'discount_classes': ['CLS_B'],
+                'start_date': '2026-03',
+                'end_date': '2026-04',
+                'global_target_amount': '20000.00',
+                'target_frequency': PeriodicityChoices.MONTHLY,
+                'participating_classes': ['CLS_A'],
+                'mandatory_target_CLS_A': '12000.00',
+                'margin_warning_accepted': 'on',
+            },
+        )
+        self.assertEqual(post_resp.status_code, 302)
+        created = CustomerAgreement.objects.order_by('-id').first()
+        self.assertEqual(created.discount_application_mode, DiscountApplicationModeChoices.PERIODIC)
+        self.assertFalse(created.apply_discount_to_all_classes)
+        self.assertEqual(list(created.discount_classes.values_list('id', flat=True)), ['CLS_B'])
+
+        preview_resp = client.get(
+            reverse('customers:customer_agreement_preview_view'),
+            {'agreement_id': created.pk},
+        )
+        self.assertEqual(preview_resp.status_code, 200)
+        self.assertContains(preview_resp, '$2,000.00 MXN')
+        self.assertContains(preview_resp, 'por cada periodo de evaluación')
+        self.assertContains(preview_resp, 'Clase Farmacia')
+
+
 
 
 
