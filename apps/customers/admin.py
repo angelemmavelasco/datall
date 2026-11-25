@@ -256,10 +256,18 @@ class AgreementEvaluationPeriodInline(admin.TabularInline):
 
 @admin.register(CommercialBenefit)
 class CommercialBenefitAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'benefit_type', 'cost', 'is_active')
+    list_display = ('id', 'name', 'benefit_type', 'formatted_value', 'is_active')
     list_filter = ('benefit_type', 'is_active')
     search_fields = ('name',)
     ordering = ('name',)
+
+    @admin.display(description='Valor / Costo')
+    def formatted_value(self, obj):
+        """
+        retorna el valor formateado del beneficio comercial segun su tipo.
+        requiere una instancia de commercialbenefit y devuelve un texto con porcentaje o moneda.
+        """
+        return obj.display_value
 
 
 @admin.register(CustomerAgreement)
@@ -271,6 +279,8 @@ class CustomerAgreementAdmin(admin.ModelAdmin):
         'benefit',
         'agreement_type',
         'evaluation_mode',
+        'discount_application_mode',
+        'apply_discount_to_all_classes',
         'start_date',
         'end_date',
         'global_target_amount',
@@ -283,6 +293,8 @@ class CustomerAgreementAdmin(admin.ModelAdmin):
     list_filter = (
         'agreement_type',
         'evaluation_mode',
+        'discount_application_mode',
+        'apply_discount_to_all_classes',
         'target_frequency',
         'signed',
         'benefit_already_provided',
@@ -300,11 +312,16 @@ class CustomerAgreementAdmin(admin.ModelAdmin):
         'benefit__name',
     )
     autocomplete_fields = ['customer', 'route', 'benefit', 'created_by']
+    filter_horizontal = ('discount_classes',)
     readonly_fields = ('created_at', 'updated_at')
     inlines = [AgreementClassTargetInline, AgreementEvaluationPeriodInline]
     ordering = ('-start_date', '-created_at')
 
     def get_readonly_fields(self, request, obj=None):
+        """
+        protege contra edicion los campos contractuales de un convenio existente en el administrador.
+        requiere el request actual y la instancia opcional y retorna la tupla de campos de solo lectura.
+        """
         if obj:
             return self.readonly_fields + (
                 'customer',
@@ -313,6 +330,9 @@ class CustomerAgreementAdmin(admin.ModelAdmin):
                 'doc_id',
                 'agreement_type',
                 'evaluation_mode',
+                'discount_application_mode',
+                'apply_discount_to_all_classes',
+                'discount_classes',
                 'start_date',
                 'end_date',
                 'global_target_amount',
