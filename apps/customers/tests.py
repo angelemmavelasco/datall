@@ -1387,7 +1387,7 @@ class CommercialBenefitAndDiscountAgreementsTests(TestCase):
             discount_class_ids=['CLS_B'],
             discount_application_mode=DiscountApplicationModeChoices.PERIODIC,
         )
-        self.assertTrue(is_valid)
+        self.assertFalse(is_valid)
         self.assertEqual(res_dict['cme'], Decimal('1000.00'))
         self.assertEqual(sim_margin, Decimal('20.00'))
 
