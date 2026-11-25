@@ -74,9 +74,8 @@ class MarginValidationException(ServiceError):
 
 def parse_month_input(date_str: str | date | None, is_end: bool = False) -> Optional[date]:
     """
-    parses a string in format 'YYYY-MM' or 'YYYY-MM-DD' or a date object.
-    always snaps to the 1st of the month (if is_end=False) or the last day
-    of that month (if is_end=True) to enforce complete monthly periods.
+    convierte una fecha o cadena mensual al primer o ultimo dia del mes segun se indique.
+    requiere cadena de fecha y bandera is_end y retorna un objeto date o none si es invalida.
     """
     if not date_str:
         return None
@@ -108,8 +107,8 @@ def parse_month_input(date_str: str | date | None, is_end: bool = False) -> Opti
 
 def get_periods_count(start_date: date, end_date: Optional[date], freq_val: str) -> int:
     """
-    calculates how many evaluation periods occur between start_date and end_date
-    according to the specified PeriodicityChoices.
+    calcula la cantidad de periodos comprendidos entre la fecha inicial y final segun la periodicidad.
+    requiere fechas de vigencia y clave de frecuencia y retorna un entero mayor o igual a uno.
     """
     if not end_date or start_date > end_date:
         return 1
@@ -130,7 +129,8 @@ def get_periods_count(start_date: date, end_date: Optional[date], freq_val: str)
 
 def get_traffic_light_status(margin: Decimal | float | None) -> dict:
     """
-    standard qualitative traffic light representation for seller role.
+    asigna una etiqueta y color cualitativo de rentabilidad para visualizacion comercial.
+    requiere el margen numerico o none y retorna un diccionario con etiqueta y clase de estilo.
     """
     if margin is None:
         return {'label': 'Sin datos', 'color_class': 'text-secondary'}
@@ -354,9 +354,8 @@ class CustomerAgreementsService(UsersService):
 
     def get_allowed_agreements(self) -> QuerySet:
         """
-        agreements visible to a user are those whose customers are currently
-        assigned to routes the user has permission to view (or if user has full access).
-        the agreement itself still records the originating route.
+        filtra los convenios cuyo cliente corresponde a rutas autorizadas para el usuario actual.
+        no requiere parametros adicionales y devuelve un queryset de convenios visibles.
         """
         if self.has_full_access:
             return self.agreement_model.objects.all()
@@ -399,7 +398,8 @@ class CustomerAgreementsService(UsersService):
 
     def read_agreement(self, pk: int | str) -> CustomerAgreement:
         """
-        retrieves a single agreement enforcing permissions.
+        recupera un convenio comercial verificando permisos de lectura para el usuario.
+        requiere el identificador del convenio y retorna la instancia o lanza permissionserror o notfound.
         """
         agreement = self.read_agreements().filter(pk=pk).first()
         if agreement:
@@ -412,7 +412,8 @@ class CustomerAgreementsService(UsersService):
 
     def read_agreement_details(self, pk: int | str) -> dict[str, Any]:
         """
-        prepares complete agreement details for presentation.
+        reune los datos detallados, margenes de clase y periodos evaluados de un convenio.
+        requiere el identificador del convenio y retorna el contexto o lanza permissionserror o notfound.
         """
         agreement = self.read_agreement(pk)
         customer = agreement.customer
@@ -1015,8 +1016,8 @@ class CustomerAgreementsService(UsersService):
 
     def get_assigned_advisor_name(self, route: Route | None, target_date: date | None = None) -> str:
         """
-        finds the full name of the collaborator assigned to the route via RouteAssignment.
-        checks active assignment (date_end__isnull=True), assignment at target_date, or latest assignment.
+        obtiene el nombre del asesor comercial asignado a una ruta en una fecha determinada.
+        requiere la ruta y fecha opcional y retorna el nombre formateado o cadena vacia.
         """
         if not route:
             return ""
@@ -1050,7 +1051,8 @@ class CustomerAgreementsService(UsersService):
 
     def generate_random_doc_id(self) -> str:
         """
-        generates a unique 5 character random alphanumeric uppercase folio (doc_id).
+        genera un folio alfanumerico unico de cinco caracteres en mayusculas para un convenio.
+        no requiere argumentos y devuelve una cadena unica garantizada en base de datos.
         """
         while True:
             candidate = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
@@ -1793,8 +1795,8 @@ class CustomerAgreementsService(UsersService):
         related_doc: Any = None,
     ) -> CustomerAgreement:
         """
-        updates execution state (signed, benefit_already_provided, and/or related_doc)
-        of an existing agreement. only authorized users (can_edit_agreement) can perform this.
+        actualiza el estado de firma, entrega del beneficio y archivo adjunto de un convenio.
+        requiere el id del convenio y permiso de edicion y retorna el convenio o lanza permissionserror.
         """
         if not self.can_edit_agreement:
             raise PermissionsError("No tienes permiso para modificar el convenio ni su documentación.")
@@ -1820,8 +1822,8 @@ class CustomerAgreementsService(UsersService):
 
     def update_agreement_document(self, *, pk: int | str, file_obj: Any = None, related_doc: Any = None) -> CustomerAgreement:
         """
-        only the related_doc file is updated on the existing agreement.
-        enforces can_edit_agreement permission.
+        reemplaza unicamente el archivo escaneado asociado a un convenio comercial.
+        requiere el id del convenio y el archivo nuevo y retorna la instancia o lanza validationerror o permissionserror.
         """
         doc = file_obj if file_obj is not None else related_doc
         if not doc:
