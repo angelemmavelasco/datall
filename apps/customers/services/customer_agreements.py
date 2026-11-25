@@ -1832,16 +1832,20 @@ class CustomerAgreementsService(UsersService):
     @transaction.atomic
     def evaluate_pending_periods(self, agreement_id: int | str | None = None, pk: int | str | None = None) -> tuple[int, int]:
         """
-        evaluates periods that are pending or ended within the last 45 days (or all periods of a specific agreement if agreement_id/pk given).
-        updates achieved sales, statuses, penalties and margins in batch.
+        evalua periodos pendientes o recientes con ventas reales y recalcula costo de beneficio porcentual, utilidad y margen.
+        requiere opcionalmente el id del convenio y retorna una tupla con total de periodos y convenios actualizados.
         """
         target_agreement_id = agreement_id or pk
         today = timezone.localdate()
         limit_date = today - timedelta(days=45)
 
-        periods_qs = self.evaluation_period_model.objects.select_related('agreement').prefetch_related(
+        periods_qs = self.evaluation_period_model.objects.select_related(
+            'agreement',
+            'agreement__benefit',
+        ).prefetch_related(
             'agreement__class_targets',
-            'class_results'
+            'agreement__discount_classes',
+            'class_results',
         )
 
         if target_agreement_id:
@@ -1951,6 +1955,19 @@ class CustomerAgreementsService(UsersService):
                         period.penalty_applied = True
                         period.observations = "Periodo vencido sin alcanzar objetivo global o metas obligatorias."
 
+            if agreement.benefit.is_percentage_discount:
+                pct_ratio = agreement.benefit.cost / Decimal('100.0')
+                if agreement.apply_discount_to_all_classes:
+                    discountable_sales = total_net
+                else:
+                    discount_class_ids = {dc.pk for dc in agreement.discount_classes.all()}
+                    discountable_sales = sum(
+                        (s['net_amount'] or Decimal('0.00'))
+                        for s in p_sales
+                        if s['product_class_id'] in discount_class_ids
+                    )
+                period.amortized_benefit_cost = (discountable_sales * pct_ratio).quantize(Decimal('0.01'))
+
             if period.penalty_applied:
                 period.period_profit = total_profit
             else:
@@ -1974,7 +1991,13 @@ class CustomerAgreementsService(UsersService):
 
         if periods_to_update:
             self.evaluation_period_model.objects.bulk_update(periods_to_update, [
-                'achieved_global_sales', 'status', 'penalty_applied', 'observations', 'period_profit', 'period_margin'
+                'achieved_global_sales',
+                'amortized_benefit_cost',
+                'status',
+                'penalty_applied',
+                'observations',
+                'period_profit',
+                'period_margin',
             ])
 
         return len(periods_to_update), len(agreements_affected)
