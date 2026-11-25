@@ -830,6 +830,10 @@ def customer_agreement_detail_view(request, pk: int):
 
 @login_required
 def customer_agreement_create_view(request):
+    """
+    gestiona la creacion de un convenio comercial incluyendo metas por clase y configuracion de descuentos.
+    requiere acceso completo al modulo y retorna el formulario html o redirige al detalle del convenio creado.
+    """
     template = 'customers/customer_agreements/agreement_create.html'
     service = CustomerAgreementsService(user=request.user)
     cust_service = CustomersService(user=request.user)
@@ -842,8 +846,18 @@ def customer_agreement_create_view(request):
     initial_customers = allowed_customers[:30]
     product_classes = ProductClass.objects.all().order_by('name', 'id')
     benefits = CommercialBenefit.objects.filter(is_active=True).order_by('name')
+    benefits_metadata = {str(b.pk): _serialize_commercial_benefit(b) for b in benefits}
+    can_edit_benefits = service.can_edit_commercial_benefits
+    benefit_form = CommercialBenefitForm()
+    selected_discount_classes = []
+    selected_apply_all_classes = True
 
     if request.method == 'POST':
+        selected_discount_classes = [str(x) for x in request.POST.getlist('discount_classes')]
+        selected_apply_all_classes = _parse_bool_flag(
+            request.POST.get('apply_discount_to_all_classes'),
+            default=True,
+        )
         form = CustomerAgreementCreateForm(request.POST, request.FILES, allowed_customers=allowed_customers)
         if form.is_valid():
             try:
@@ -888,6 +902,9 @@ def customer_agreement_create_view(request):
                     benefit_id=form.cleaned_data['benefit'].pk,
                     agreement_type=form.cleaned_data['agreement_type'],
                     evaluation_mode=form.cleaned_data.get('evaluation_mode', EvaluationModeChoices.PERIODIC),
+                    discount_application_mode=form.cleaned_data.get('discount_application_mode', ''),
+                    apply_discount_to_all_classes=bool(form.cleaned_data.get('apply_discount_to_all_classes', True)),
+                    discount_class_ids=selected_discount_classes,
                     start_date=form.cleaned_data['start_date'],
                     end_date=form.cleaned_data['end_date'],
                     global_target_amount=form.cleaned_data['global_target_amount'],
@@ -907,9 +924,14 @@ def customer_agreement_create_view(request):
                 form.add_error(None, f"Alerta de Margen: {e.message}")
                 context = {
                     'form': form,
+                    'benefit_form': benefit_form,
                     'benefits': benefits,
+                    'benefits_metadata': benefits_metadata,
+                    'can_edit_benefits': can_edit_benefits,
                     'product_classes': product_classes,
                     'initial_customers': initial_customers,
+                    'selected_discount_classes': selected_discount_classes,
+                    'selected_apply_all_classes': selected_apply_all_classes,
                     'margin_error': str(e),
                     'simulated_margin': e.simulated_margin,
                     'min_margin': e.min_margin,
@@ -924,9 +946,14 @@ def customer_agreement_create_view(request):
 
     context = {
         'form': form,
+        'benefit_form': benefit_form,
         'benefits': benefits,
+        'benefits_metadata': benefits_metadata,
+        'can_edit_benefits': can_edit_benefits,
         'product_classes': product_classes,
         'initial_customers': initial_customers,
+        'selected_discount_classes': selected_discount_classes,
+        'selected_apply_all_classes': selected_apply_all_classes,
     }
     return render(request, template, context)
 
