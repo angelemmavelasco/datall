@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.urls import reverse
-from django.http import QueryDict
+from django.http import QueryDict, JsonResponse
 from django.utils import timezone
 from .exports import *
 
@@ -16,7 +16,15 @@ from django.db.models import Q
 from dateutil.relativedelta import relativedelta
 from apps.core.models import PeriodicityChoices
 from apps.products.models import ProductClass
-from .models import Customer, CommercialBenefit, CustomerAgreement, AgreementTypeChoices, EvaluationModeChoices
+from .models import (
+    Customer,
+    CommercialBenefit,
+    CommercialBenefitTypeChoices,
+    CustomerAgreement,
+    AgreementTypeChoices,
+    EvaluationModeChoices,
+    DiscountApplicationModeChoices,
+)
 from .services.customer_agreements import parse_month_input
 
 from .services import (
@@ -46,6 +54,7 @@ from .forms import (
     CustomerContactForm,
     CustomerAgreementCreateForm,
     CustomerAgreementDocumentForm,
+    CommercialBenefitForm,
     CustomerVisitScheduleForm,
 )
 from apps.sales.services.sale_transactions import SaleTransactionsService
@@ -1221,6 +1230,212 @@ def customer_agreement_evaluate_action_view(request, pk: int):
     except Exception as e:
         messages.error(request, f"Error durante la evaluación: {str(e)}")
     return redirect('customers:customer_agreement_detail_view', pk=pk)
+
+
+def _parse_bool_flag(raw_value, default: bool = True) -> bool:
+    """
+    convierte un valor booleano recibido por peticion http a tipo bool de python.
+    requiere el valor crudo y un valor por defecto y devuelve verdadero o falso.
+    """
+    if raw_value is None:
+        return default
+    if isinstance(raw_value, bool):
+        return raw_value
+    return str(raw_value).strip().lower() not in ('false', '0', 'no', '')
+
+
+def _serialize_commercial_benefit(benefit: CommercialBenefit) -> dict:
+    """
+    serializa un beneficio comercial a diccionario para respuestas json y metadatos de interfaz.
+    requiere una instancia de beneficio comercial y retorna sus campos y banderas de descuento.
+    """
+    return {
+        'id': benefit.pk,
+        'name': benefit.name,
+        'benefit_type': benefit.benefit_type,
+        'benefit_type_display': benefit.get_benefit_type_display(),
+        'cost': str(benefit.cost),
+        'display_value': benefit.display_value,
+        'label': str(benefit),
+        'is_discount': benefit.is_discount,
+        'is_percentage_discount': benefit.is_percentage_discount,
+        'is_active': benefit.is_active,
+    }
+
+
+@login_required
+def commercial_benefit_list_view(request):
+    """
+    muestra el catalogo de beneficios comerciales filtrando segun permisos del submodulo.
+    requiere acceso al submodulo y retorna la vista html o parcial htmx o redirige sin permiso.
+    """
+    template = 'customers/customer_agreements/benefit_list.html'
+    service = CustomerAgreementsService(user=request.user)
+
+    try:
+        benefits_qs = service.read_benefits(include_inactive=True)
+    except PermissionsError as e:
+        messages.error(request, str(e))
+        return redirect('customers:customer_agreement_list_view')
+
+    search = request.GET.get('search', '').strip()
+    benefit_type = request.GET.get('benefit_type', '').strip()
+    is_active_param = request.GET.get('is_active', '').strip()
+
+    if search:
+        benefits_qs = benefits_qs.filter(name__icontains=search)
+    if benefit_type in CommercialBenefitTypeChoices.values:
+        benefits_qs = benefits_qs.filter(benefit_type=benefit_type)
+    if is_active_param in ('true', 'false'):
+        benefits_qs = benefits_qs.filter(is_active=(is_active_param == 'true'))
+
+    can_edit_benefits = service.can_edit_commercial_benefits
+    available_actions = (
+        'customers/customer_agreements/partials/benefit_list__actions.html'
+        if can_edit_benefits else None
+    )
+
+    context = {
+        'benefits': benefits_qs,
+        'benefit_form': CommercialBenefitForm(),
+        'benefit_type_choices': CommercialBenefitTypeChoices.choices,
+        'search': search,
+        'selected_type': benefit_type,
+        'selected_active': is_active_param,
+        'can_edit_benefits': can_edit_benefits,
+        'available_actions': available_actions,
+    }
+
+    if request.htmx:
+        return render(request, 'customers/customer_agreements/partials/benefit_list_content.html', context)
+
+    return render(request, template, context)
+
+
+@login_required
+@require_POST
+def commercial_benefit_create_view(request):
+    """
+    registra un nuevo beneficio comercial validando permisos dinamicos en reference y datos del formulario.
+    requiere peticion post autenticada y retorna respuesta json en ajax o redirige al catalogo.
+    """
+    service = CustomerAgreementsService(user=request.user)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    if not service.can_edit_commercial_benefits:
+        err_msg = "No tienes permiso para agregar o editar beneficios comerciales."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': err_msg}, status=403)
+        messages.error(request, err_msg)
+        return redirect('customers:commercial_benefit_list_view')
+
+    post_data = request.POST.copy()
+    if 'is_active' not in post_data and is_ajax:
+        post_data['is_active'] = 'on'
+
+    form = CommercialBenefitForm(post_data)
+    if not form.is_valid():
+        error_text = " ".join(str(err) for errs in form.errors.values() for err in errs)
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': error_text}, status=400)
+        messages.error(request, error_text or "Datos inválidos para el beneficio comercial.")
+        return redirect('customers:commercial_benefit_list_view')
+
+    try:
+        benefit = service.create_commercial_benefit(
+            benefit_type=form.cleaned_data['benefit_type'],
+            name=form.cleaned_data['name'],
+            cost=form.cleaned_data['cost'],
+            is_active=bool(form.cleaned_data.get('is_active', True)),
+        )
+    except (PermissionsError, ServiceError) as e:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        messages.error(request, str(e))
+        return redirect('customers:commercial_benefit_list_view')
+
+    if is_ajax:
+        return JsonResponse({
+            'success': True,
+            'benefit': _serialize_commercial_benefit(benefit),
+        })
+
+    messages.success(request, f"Beneficio comercial '{benefit.name}' registrado correctamente.")
+    return redirect('customers:commercial_benefit_list_view')
+
+
+@login_required
+@require_POST
+def commercial_benefit_update_view(request, pk: int):
+    """
+    actualiza un beneficio comercial existente si el rol del usuario esta autorizado en reference.
+    requiere el identificador del beneficio y retorna json en ajax o redirige al listado.
+    """
+    service = CustomerAgreementsService(user=request.user)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    try:
+        benefit_instance = service.read_benefit(pk)
+    except (CommercialBenefitNotFound, PermissionsError) as e:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': str(e)}, status=404)
+        messages.error(request, str(e))
+        return redirect('customers:commercial_benefit_list_view')
+
+    if not service.can_edit_commercial_benefits:
+        err_msg = "No tienes permiso para agregar o editar beneficios comerciales."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': err_msg}, status=403)
+        messages.error(request, err_msg)
+        return redirect('customers:commercial_benefit_list_view')
+
+    form = CommercialBenefitForm(request.POST, instance=benefit_instance)
+    if not form.is_valid():
+        error_text = " ".join(str(err) for errs in form.errors.values() for err in errs)
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': error_text}, status=400)
+        messages.error(request, error_text or "Datos inválidos para actualizar el beneficio.")
+        return redirect('customers:commercial_benefit_list_view')
+
+    try:
+        updated = service.update_commercial_benefit(
+            pk=pk,
+            benefit_type=form.cleaned_data['benefit_type'],
+            name=form.cleaned_data['name'],
+            cost=form.cleaned_data['cost'],
+            is_active=bool(form.cleaned_data.get('is_active', False)),
+        )
+    except (PermissionsError, ServiceError, CommercialBenefitNotFound) as e:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        messages.error(request, str(e))
+        return redirect('customers:commercial_benefit_list_view')
+
+    if is_ajax:
+        return JsonResponse({
+            'success': True,
+            'benefit': _serialize_commercial_benefit(updated),
+        })
+
+    messages.success(request, f"Beneficio comercial '{updated.name}' actualizado correctamente.")
+    return redirect('customers:commercial_benefit_list_view')
+
+
+@login_required
+@require_POST
+def commercial_benefit_toggle_active_view(request, pk: int):
+    """
+    cambia el estado activo o inactivo de un beneficio comercial desde el catalogo.
+    requiere permiso de edicion en reference y redirige al catalogo con mensaje de resultado.
+    """
+    service = CustomerAgreementsService(user=request.user)
+    try:
+        benefit = service.toggle_commercial_benefit_status(pk=pk)
+        estado = "activado" if benefit.is_active else "desactivado"
+        messages.success(request, f"Beneficio '{benefit.name}' {estado} correctamente.")
+    except (PermissionsError, CommercialBenefitNotFound, ServiceError) as e:
+        messages.error(request, str(e))
+    return redirect('customers:commercial_benefit_list_view')
 
 
 @login_required
