@@ -1259,6 +1259,10 @@ def customer_agreement_preview_view(request):
 @login_required
 @require_POST
 def customer_agreement_update_document_view(request, pk: int):
+    """
+    actualiza el documento adjunto y banderas operativas de firma o entrega de beneficio en un convenio.
+    requiere permiso de edicion de convenio y retorna redireccion al detalle del convenio.
+    """
     service = CustomerAgreementsService(user=request.user)
     if not service.can_edit_agreement:
         messages.error(request, "No tienes permiso para modificar este convenio.")
@@ -1292,6 +1296,10 @@ def customer_agreement_update_document_view(request, pk: int):
 @login_required
 @require_POST
 def customer_agreement_evaluate_action_view(request, pk: int):
+    """
+    ejecuta manualmente la evaluacion de periodos pendientes o recientes de un convenio comercial.
+    requiere el id del convenio y redirige al detalle mostrando resultado o mensaje de error.
+    """
     service = CustomerAgreementsService(user=request.user)
     try:
         periods_count, _ = service.evaluate_pending_periods(pk=pk)
@@ -1509,6 +1517,10 @@ def commercial_benefit_toggle_active_view(request, pk: int):
 
 @login_required
 def customer_agreement_search_customers_view(request):
+    """
+    busca clientes autorizados por clave o nombre para el selector de convenios comerciales.
+    requiere el parametro de consulta q y devuelve un parcial html con hasta veinticinco coincidencias.
+    """
     query = request.GET.get('q', '').strip()
     cust_service = CustomersService(user=request.user)
     customers_qs = cust_service.read_customers()
@@ -1520,11 +1532,11 @@ def customer_agreement_search_customers_view(request):
     })
 
 
-# used universally
 @login_required
 def customer_options_view(request):
     """
-    Returns HTML option items for searchable customer dropdowns via HTMX.
+    genera opciones html de clientes filtrados para selectores desplegables mediante htmx.
+    requiere parametro de busqueda opcional y nombre de campo y retorna el parcial de opciones.
     """
     q = request.GET.get('q_customer', request.GET.get('q', '')).strip()
     field_name = request.GET.get('field_name', 'customer')
