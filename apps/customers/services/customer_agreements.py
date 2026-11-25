@@ -296,6 +296,62 @@ class CustomerAgreementsService(UsersService):
         benefit.save()
         return benefit
 
+    @transaction.atomic
+    def update_commercial_benefit(
+        self,
+        *,
+        pk: int | str,
+        benefit_type: str,
+        name: str,
+        cost: Decimal | float | str,
+        is_active: Optional[bool] = None,
+    ) -> CommercialBenefit:
+        """
+        actualiza los datos de un beneficio comercial existente verificando permisos de edicion.
+        requiere id, tipo, nombre y monto o porcentaje valido y devuelve la instancia actualizada o lanza serviceerror.
+        """
+        if not self.can_edit_commercial_benefits:
+            raise PermissionsError("No tienes permiso para agregar o editar beneficios comerciales.")
+        benefit = self.read_benefit(pk)
+        clean_name = (name or '').strip()
+        if not clean_name:
+            raise ServiceError("El nombre del beneficio comercial es obligatorio.")
+        if benefit_type not in CommercialBenefitTypeChoices.values:
+            raise ServiceError("El tipo de beneficio comercial seleccionado no es válido.")
+        try:
+            clean_cost = Decimal(str(cost))
+        except Exception:
+            raise ServiceError("El costo o porcentaje proporcionado no es un número válido.")
+        benefit.benefit_type = benefit_type
+        benefit.name = clean_name
+        benefit.cost = clean_cost
+        if is_active is not None:
+            benefit.is_active = bool(is_active)
+        try:
+            benefit.full_clean()
+        except ValidationError as exc:
+            err_msg = " ".join(
+                str(msg)
+                for msgs in exc.message_dict.values()
+                for msg in msgs
+            ) if hasattr(exc, 'message_dict') else str(exc)
+            raise ServiceError(err_msg)
+        benefit.save()
+        return benefit
+
+    @transaction.atomic
+    def toggle_commercial_benefit_status(self, *, pk: int | str) -> CommercialBenefit:
+        """
+        alterna el estado activo o inactivo de un beneficio comercial existente.
+        requiere el identificador del beneficio y permiso de edicion y retorna la instancia actualizada.
+        """
+        if not self.can_edit_commercial_benefits:
+            raise PermissionsError("No tienes permiso para agregar o editar beneficios comerciales.")
+        benefit = self.read_benefit(pk)
+        benefit.is_active = not benefit.is_active
+        benefit.save(update_fields=['is_active'])
+        return benefit
+
     def get_allowed_agreements(self) -> QuerySet:
         """
         agreements visible to a user are those whose customers are currently
