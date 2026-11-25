@@ -600,7 +600,6 @@ class CustomerVisitScheduleForm(forms.ModelForm):
         if not self.instance.pk and 'start_date' not in self.initial:
             self.initial['start_date'] = timezone.localdate()
 
-        # periodicity choices with a empty label for weekly
         valid_choices = [
             ('', 'Semanal (todas las semanas)')
         ] + [
