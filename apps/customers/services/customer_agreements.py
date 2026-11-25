@@ -42,18 +42,10 @@ from apps.customers.models import (
     EvaluationModeChoices,
     DiscountApplicationModeChoices,
 )
-from apps.customers.services.customers import CustomersService
+from apps.customers.services.customers import CustomersService, ServiceError, PermissionsError
 from apps.products.models import ProductClass
 from apps.sales.models import Route, SaleTransaction, RouteAssignment
 from apps.sales.services.routes import RoutesService
-
-
-class ServiceError(Exception):
-    pass
-
-
-class PermissionsError(ServiceError):
-    pass
 
 
 class CustomerAgreementNotFound(ServiceError):
