@@ -673,6 +673,7 @@ function updateDiscountClassesCount() {
     }
 }
 
+{% if can_edit_benefits %}
 function openCreateBenefitModal() {
     const modal = document.getElementById('create-benefit-modal');
     if (!modal) return;
@@ -768,6 +769,7 @@ async function submitQuickBenefit(event) {
         if (submitBtn) submitBtn.disabled = false;
     }
 }
+{% endif %}
 
 function handleParticipatesChange(classId) {
     const partCheck = document.getElementById('part_' + classId);
