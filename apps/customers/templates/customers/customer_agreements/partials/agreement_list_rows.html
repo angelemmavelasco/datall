@@ -21,6 +21,9 @@
 
     <td class="p-2 truncate text-left">
         {{ agreement.benefit.name|title }}
+        {% if agreement.benefit.is_discount %}
+            <span class="text-secondary text-xs font-mono">({{ agreement.benefit.display_value }})</span>
+        {% endif %}
     </td>
 
     <td class="p-2 truncate text-center">
