@@ -63,7 +63,7 @@
                     <td class="p-2 truncate text-center border-b border-border">
                         <div class="flex items-center justify-center gap-2 text-xs">
                             <button type="button"
-                                    onclick="openBenefitModal({{ benefit.pk }}, '{{ benefit.benefit_type|escapejs }}', '{{ benefit.name|escapejs }}', '{{ benefit.cost }}', {{ benefit.is_active|yesno:'true,false' }})"
+                                    onclick="openBenefitModal({{ benefit.pk }}, '{{ benefit.benefit_type|escapejs }}', '{{ benefit.name|escapejs }}', '{{ benefit.cost|stringformat:'s' }}', {{ benefit.is_active|yesno:'true,false' }})"
                                     class="px-2 py-0.5 rounded border border-border bg-page hover:bg-hover text-title transition-colors cursor-pointer">
                                 Editar
                             </button>
