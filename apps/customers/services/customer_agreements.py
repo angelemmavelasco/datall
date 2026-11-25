@@ -1104,13 +1104,19 @@ class CustomerAgreementsService(UsersService):
             growth_value = Decimal('0.00')
 
         customer = Customer.objects.filter(pk=customer_id).first()
+        if not customer:
+            raise ServiceError("El cliente seleccionado no existe.")
         benefit = self.benefit_model.objects.filter(pk=benefit_id).first()
+        if not benefit:
+            raise CommercialBenefitNotFound("El beneficio comercial seleccionado no existe.")
 
         start_date = parse_month_input(start_date_str)
         end_date = parse_month_input(end_date_str, is_end=True)
 
         if not start_date or not end_date:
             raise ServiceError("Las fechas de inicio y fin son obligatorias.")
+        if end_date < start_date:
+            raise ServiceError("La fecha de fin del convenio no puede ser anterior a la fecha de inicio.")
 
         delta_agr = relativedelta(end_date + timedelta(days=1), start_date)
         duration_months = delta_agr.years * 12 + delta_agr.months
@@ -1519,8 +1525,8 @@ class CustomerAgreementsService(UsersService):
         benefit_id: int | None = None,
         agreement_type: str = AgreementTypeChoices.SHORT_TERM,
         evaluation_mode: str = EvaluationModeChoices.PERIODIC,
-        discount_application_mode: str = '',
-        apply_discount_to_all_classes: bool = True,
+        discount_application_mode: str | None = None,
+        apply_discount_to_all_classes: bool | None = None,
         discount_class_ids: list[str] | None = None,
         start_date: Any = None,
         end_date: Any = None,
@@ -1555,9 +1561,9 @@ class CustomerAgreementsService(UsersService):
             payload['agreement_type'] = agreement_type
         if evaluation_mode is not None:
             payload['evaluation_mode'] = evaluation_mode
-        if discount_application_mode:
+        if discount_application_mode is not None:
             payload['discount_application_mode'] = discount_application_mode
-        if 'apply_discount_to_all_classes' not in payload:
+        if apply_discount_to_all_classes is not None:
             payload['apply_discount_to_all_classes'] = apply_discount_to_all_classes
         if discount_class_ids is not None:
             payload['discount_class_ids'] = discount_class_ids
@@ -1593,8 +1599,14 @@ class CustomerAgreementsService(UsersService):
         if not customers_service.get_allowed_customers(can_view=True).filter(pk=customer_id).exists():
             raise PermissionsError(f"No tienes permiso para generar convenios para el cliente {customer_id}.")
 
-        customer = Customer.objects.get(pk=customer_id)
-        benefit = self.benefit_model.objects.get(pk=data['benefit_id'])
+        customer = Customer.objects.filter(pk=customer_id).first()
+        if not customer:
+            raise ServiceError("El cliente seleccionado no existe.")
+        benefit = self.benefit_model.objects.filter(pk=data.get('benefit_id')).first()
+        if not benefit:
+            raise CommercialBenefitNotFound("El beneficio comercial seleccionado no existe.")
+        if not benefit.is_active:
+            raise ServiceError("El beneficio comercial seleccionado no está activo.")
 
         if benefit.is_discount:
             effective_discount_mode = data.get('discount_application_mode') or DiscountApplicationModeChoices.PERIODIC
@@ -1605,11 +1617,18 @@ class CustomerAgreementsService(UsersService):
                 effective_apply_all = raw_apply_all.strip().lower() not in ('false', '0', 'no', '')
             else:
                 effective_apply_all = bool(raw_apply_all)
-            clean_discount_class_ids = [
+            clean_discount_class_ids = list(dict.fromkeys(
                 str(cid).strip() for cid in (data.get('discount_class_ids') or []) if str(cid).strip()
-            ]
+            ))
             if not effective_apply_all and not clean_discount_class_ids:
                 raise ServiceError("Debes seleccionar al menos una clase de producto para aplicar el descuento específico.")
+            if not effective_apply_all and clean_discount_class_ids:
+                existing_discount_ids = set(
+                    self.product_class_model.objects.filter(pk__in=clean_discount_class_ids).values_list('pk', flat=True)
+                )
+                missing_discount_ids = [cid for cid in clean_discount_class_ids if cid not in existing_discount_ids]
+                if missing_discount_ids:
+                    raise ServiceError(f"Las siguientes clases de producto para descuento no existen: {', '.join(missing_discount_ids)}.")
         else:
             effective_discount_mode = ''
             effective_apply_all = True
@@ -1645,6 +1664,8 @@ class CustomerAgreementsService(UsersService):
 
         if not start_date or not end_date:
             raise ServiceError("Fechas de inicio y fin requeridas.")
+        if end_date < start_date:
+            raise ServiceError("La fecha de fin del convenio no puede ser anterior a la fecha de inicio.")
 
         doc_id = data.get('doc_id')
         if doc_id and str(doc_id).strip():
