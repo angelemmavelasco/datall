@@ -1521,6 +1521,9 @@ class CustomerAgreementsService(UsersService):
         benefit_id: int | None = None,
         agreement_type: str = AgreementTypeChoices.SHORT_TERM,
         evaluation_mode: str = EvaluationModeChoices.PERIODIC,
+        discount_application_mode: str = '',
+        apply_discount_to_all_classes: bool = True,
+        discount_class_ids: list[str] | None = None,
         start_date: Any = None,
         end_date: Any = None,
         global_target_amount: Decimal | None = None,
@@ -1540,9 +1543,8 @@ class CustomerAgreementsService(UsersService):
         **kwargs,
     ) -> CustomerAgreement:
         """
-        creates CustomerAgreement, AgreementClassTarget, and up-front generation
-        of all AgreementEvaluationPeriod and AgreementPeriodClassResult records.
-        guarantees doc_id uniqueness and sets immutability.
+        registra un convenio comercial, sus metas por clase, clases con descuento y periodos de evaluacion.
+        requiere cliente autorizado, beneficio, vigencia y cuotas y retorna el convenio creado o lanza serviceerror.
         """
         user = user or self.user
         payload = dict(data or {})
@@ -1555,6 +1557,12 @@ class CustomerAgreementsService(UsersService):
             payload['agreement_type'] = agreement_type
         if evaluation_mode is not None:
             payload['evaluation_mode'] = evaluation_mode
+        if discount_application_mode:
+            payload['discount_application_mode'] = discount_application_mode
+        if 'apply_discount_to_all_classes' not in payload:
+            payload['apply_discount_to_all_classes'] = apply_discount_to_all_classes
+        if discount_class_ids is not None:
+            payload['discount_class_ids'] = discount_class_ids
         if start_date is not None:
             payload['start_date'] = start_date
         if end_date is not None:
@@ -1589,6 +1597,25 @@ class CustomerAgreementsService(UsersService):
 
         customer = Customer.objects.get(pk=customer_id)
         benefit = self.benefit_model.objects.get(pk=data['benefit_id'])
+
+        if benefit.is_discount:
+            effective_discount_mode = data.get('discount_application_mode') or DiscountApplicationModeChoices.PERIODIC
+            if effective_discount_mode not in DiscountApplicationModeChoices.values:
+                effective_discount_mode = DiscountApplicationModeChoices.PERIODIC
+            raw_apply_all = data.get('apply_discount_to_all_classes', True)
+            if isinstance(raw_apply_all, str):
+                effective_apply_all = raw_apply_all.strip().lower() not in ('false', '0', 'no', '')
+            else:
+                effective_apply_all = bool(raw_apply_all)
+            clean_discount_class_ids = [
+                str(cid).strip() for cid in (data.get('discount_class_ids') or []) if str(cid).strip()
+            ]
+            if not effective_apply_all and not clean_discount_class_ids:
+                raise ServiceError("Debes seleccionar al menos una clase de producto para aplicar el descuento específico.")
+        else:
+            effective_discount_mode = ''
+            effective_apply_all = True
+            clean_discount_class_ids = []
 
         route_id = data.get('route_id')
         route = Route.objects.filter(pk=route_id).first() if route_id else None
@@ -1636,6 +1663,8 @@ class CustomerAgreementsService(UsersService):
             doc_id=doc_id,
             agreement_type=data.get('agreement_type', AgreementTypeChoices.SHORT_TERM),
             evaluation_mode=data.get('evaluation_mode', EvaluationModeChoices.PERIODIC),
+            discount_application_mode=effective_discount_mode,
+            apply_discount_to_all_classes=effective_apply_all,
             start_date=start_date,
             end_date=end_date,
             global_target_amount=Decimal(str(data.get('global_target_amount') or '0')),
@@ -1649,6 +1678,9 @@ class CustomerAgreementsService(UsersService):
             margin_warning_accepted=margin_warning_accepted,
             created_by=user,
         )
+
+        if not effective_apply_all and clean_discount_class_ids:
+            agreement.discount_classes.set(clean_discount_class_ids)
 
         created_targets = []
         for td in targets_data:
@@ -1667,7 +1699,10 @@ class CustomerAgreementsService(UsersService):
             )
 
         total_periods = get_periods_count(start_date, end_date, agreement.target_frequency)
-        amortized_cost = (benefit.cost / Decimal(str(total_periods))).quantize(Decimal('0.01')) if total_periods > 0 else Decimal('0.00')
+        if benefit.is_percentage_discount:
+            amortized_cost = Decimal('0.00')
+        else:
+            amortized_cost = (benefit.cost / Decimal(str(total_periods))).quantize(Decimal('0.01')) if total_periods > 0 else Decimal('0.00')
 
         if agreement.target_frequency in (PeriodicityChoices.AT_END, 'end'):
             freq_delta = relativedelta(end_date + timedelta(days=1), start_date)
