@@ -397,7 +397,7 @@ Cliente: {{ customer.id|upper }} - {{ customer.name|title }}
                                 · {{ agr.benefit.name|title }}
                             </span>
                             <span class="text-[10px] text-secondary font-mono">
-                                (${{ agr.benefit.cost|floatformat:2|intcomma }} MXN)
+                                ({{ agr.benefit.display_value }}{% if not agr.benefit.is_percentage_discount %} MXN{% endif %})
                             </span>
                         </div>
 

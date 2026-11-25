@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}
+    Beneficios comerciales
+{% endblock %}
+
+{% block module_name %}
+    Beneficios comerciales
+{% endblock %}
+
+{% block module_actions %}
+    {% if available_actions %}
+        {% include available_actions %}
+    {% endif %}
+
+    <button onclick="toggleFilters()" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal-icon lucide-sliders-horizontal"> <path d="M10 5H3" /><path d="M12 19H3" /><path d="M14 3v4" /><path d="M16 17v4" /><path d="M21 12h-9" /><path d="M21 19h-5" /><path d="M21 5h-7" /><path d="M8 10v4" /><path d="M8 12H3" /></svg>
+        <span>Filtrar</span>
+    </button>
+
+    <a href="{% url 'customers:customer_agreement_list_view' %}" class="hover:text-hover text-strong transition-colors cursor-pointer shrink-0 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+        <span>Convenios</span>
+    </a>
+{% endblock %}
+
+{% block filters %}
+<form method="GET"
+      action="{% url 'customers:commercial_benefit_list_view' %}"
+      hx-get="{% url 'customers:commercial_benefit_list_view' %}"
+      hx-target="#benefit-list-content"
+      hx-swap="outerHTML"
+      hx-push-url="true"
+      class="flex flex-col gap-4">
+
+    <div class="flex flex-col gap-1">
+        <label for="id_benefit_search" class="text-title">Buscar beneficio</label>
+        <input type="text"
+               name="search"
+               id="id_benefit_search"
+               value="{{ search|default:'' }}"
+               placeholder="Nombre del beneficio..."
+               class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs">
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="id_benefit_type_filter" class="text-title">Tipo de beneficio</label>
+        <select name="benefit_type" id="id_benefit_type_filter" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs">
+            <option value="">Todos los tipos</option>
+            {% for value, label in benefit_type_choices %}
+            <option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="flex flex-col gap-1">
+        <label for="id_benefit_active_filter" class="text-title">Estado</label>
+        <select name="is_active" id="id_benefit_active_filter" class="w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-title text-xs">
+            <option value="">Todos</option>
+            <option value="true" {% if selected_active == 'true' %}selected{% endif %}>Disponibles</option>
+            <option value="false" {% if selected_active == 'false' %}selected{% endif %}>Inactivos</option>
+        </select>
+    </div>
+
+    <div class="flex gap-2 flex-col mt-2">
+        <button type="submit"
+                class="bg-container border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full">
+            Aplicar filtros
+        </button>
+        <a href="{{ request.path }}"
+           class="bg-page border border-border text-strong hover:bg-hover p-2 rounded transition-colors cursor-pointer w-full text-center">
+            Limpiar filtros
+        </a>
+    </div>
+</form>
+{% endblock %}
+
+{% block content %}
+    {% include "customers/customer_agreements/partials/benefit_list_content.html" %}
+
+    {% if can_edit_benefits %}
+    <div id="benefit-form-modal" class="fixed inset-0 z-50 bg-black/60 hidden items-center justify-center p-4">
+        <div class="bg-container border border-border rounded max-w-md w-full shadow-xl overflow-hidden">
+            <div class="border-b border-border p-3 flex items-center justify-between bg-page">
+                <span id="benefit-modal-title" class="text-title text-sm font-medium">Nuevo beneficio comercial</span>
+                <button type="button" onclick="closeBenefitModal()" class="text-secondary hover:text-hover cursor-pointer p-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+
+            <form id="benefit-modal-form" method="POST" action="{% url 'customers:commercial_benefit_create_view' %}" class="p-4 flex flex-col gap-3 text-xs">
+                {% csrf_token %}
+
+                <div class="flex flex-col gap-1">
+                    <label for="modal_benefit_type" class="text-title">Tipo de beneficio</label>
+                    <select name="benefit_type" id="modal_benefit_type" onchange="updateModalBenefitCostMeta()" class="w-full bg-page border border-border rounded p-1.5 text-xs text-title focus:outline-none focus:border-strong">
+                        {% for value, label in benefit_type_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label for="modal_benefit_name" class="text-title">Nombre del beneficio</label>
+                    <input type="text" name="name" id="modal_benefit_name" required placeholder="Ej. Refrigerador 400L o Descuento 5%" class="w-full bg-page border border-border rounded p-1.5 text-xs text-title focus:outline-none focus:border-strong">
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label for="modal_benefit_cost" id="modal_benefit_cost_label" class="text-title">Costo total ($ MXN)</label>
+                    <input type="number" step="0.01" min="0" name="cost" id="modal_benefit_cost" required placeholder="0.00" class="w-full bg-page border border-border rounded p-1.5 font-mono text-xs text-title focus:outline-none focus:border-strong">
+                    <span id="modal_benefit_cost_help" class="text-[11px] text-secondary">Monto total del beneficio comercial en pesos mexicanos.</span>
+                </div>
+
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" name="is_active" id="modal_benefit_active" checked class="rounded border-border text-primary focus:ring-primary">
+                    <span class="text-title">Beneficio disponible</span>
+                </label>
+
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                    <button type="button" onclick="closeBenefitModal()" class="border border-border text-strong hover:bg-hover px-3 py-1.5 rounded transition-colors cursor-pointer">Cancelar</button>
+                    <button type="submit" class="bg-page border border-border text-strong hover:bg-hover px-3 py-1.5 rounded transition-colors cursor-pointer font-medium">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    const BENEFIT_CREATE_URL = "{% url 'customers:commercial_benefit_create_view' %}";
+
+    function updateModalBenefitCostMeta() {
+        const typeSelect = document.getElementById('modal_benefit_type');
+        const costLabel = document.getElementById('modal_benefit_cost_label');
+        const costInput = document.getElementById('modal_benefit_cost');
+        const costHelp = document.getElementById('modal_benefit_cost_help');
+        if (!typeSelect || !costLabel || !costInput || !costHelp) return;
+
+        if (typeSelect.value === 'percentage_discount') {
+            costLabel.textContent = 'Porcentaje de descuento (%)';
+            costInput.max = '100';
+            costInput.min = '0.01';
+            costInput.placeholder = '5.00';
+            costHelp.textContent = 'Porcentaje entre 0.01% y 100.00% aplicable a ventas elegibles.';
+        } else {
+            costLabel.textContent = 'Costo total ($ MXN)';
+            costInput.removeAttribute('max');
+            costInput.min = '0';
+            costInput.placeholder = '0.00';
+            costHelp.textContent = 'Monto total del beneficio comercial en pesos mexicanos.';
+        }
+    }
+
+    function openBenefitModal(pk = null, benefitType = 'physical', name = '', cost = '', isActive = true) {
+        const modal = document.getElementById('benefit-form-modal');
+        const form = document.getElementById('benefit-modal-form');
+        const title = document.getElementById('benefit-modal-title');
+        const typeSelect = document.getElementById('modal_benefit_type');
+        const nameInput = document.getElementById('modal_benefit_name');
+        const costInput = document.getElementById('modal_benefit_cost');
+        const activeCb = document.getElementById('modal_benefit_active');
+        if (!modal || !form) return;
+
+        if (pk) {
+            form.action = BENEFIT_CREATE_URL.replace('/create/', '/' + pk + '/update/');
+            title.textContent = 'Editar beneficio comercial #' + pk;
+        } else {
+            form.action = BENEFIT_CREATE_URL;
+            title.textContent = 'Nuevo beneficio comercial';
+        }
+
+        if (typeSelect) typeSelect.value = benefitType || 'physical';
+        if (nameInput) nameInput.value = name || '';
+        if (costInput) costInput.value = cost !== '' && cost !== null ? cost : '';
+        if (activeCb) activeCb.checked = Boolean(isActive);
+
+        updateModalBenefitCostMeta();
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeBenefitModal() {
+        const modal = document.getElementById('benefit-form-modal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    </script>
+    {% endif %}
+{% endblock %}
