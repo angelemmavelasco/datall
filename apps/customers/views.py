@@ -1089,20 +1089,31 @@ def customer_agreement_validate_margin_view(request):
 @login_required
 def customer_agreement_preview_view(request):
     """
-    modal endpoint returning printable contract preview and expected consumption matrix.
+    genera el previo imprimible del contrato comercial y la matriz de consumos proyectados.
+    requiere datos de un convenio existente o formulario y retorna el parcial html o un error descriptivo.
     """
     service = CustomerAgreementsService(user=request.user)
     data = request.POST if request.method == 'POST' else request.GET
 
     agreement_id = data.get('agreement_id') or data.get('agreement')
     participating_classes_data = None
+    discount_class_ids = []
     if agreement_id:
-        agr = CustomerAgreement.objects.filter(pk=agreement_id).first()
+        agr = (
+            CustomerAgreement.objects
+            .select_related('benefit', 'customer', 'route')
+            .prefetch_related('class_targets__product_class', 'discount_classes')
+            .filter(pk=agreement_id)
+            .first()
+        )
         if agr:
             customer_id = agr.customer_id
             benefit_id = agr.benefit_id
             agreement_type = agr.agreement_type
             evaluation_mode = agr.evaluation_mode
+            discount_application_mode = agr.discount_application_mode
+            apply_discount_to_all_classes = agr.apply_discount_to_all_classes
+            discount_class_ids = [str(dc.pk) for dc in agr.discount_classes.all()]
             start_date = agr.start_date.strftime('%Y-%m') if agr.start_date else None
             end_date = agr.end_date.strftime('%Y-%m') if agr.end_date else None
             target_frequency = agr.target_frequency
@@ -1118,7 +1129,7 @@ def customer_agreement_preview_view(request):
                     'is_mandatory': ct.is_mandatory,
                     'required_target': ct.required_target,
                 }
-                for ct in agr.class_targets.select_related('product_class')
+                for ct in agr.class_targets.all()
             ]
         else:
             return render(request, 'customers/customer_agreements/partials/agreement_preview.html', {
@@ -1137,6 +1148,9 @@ def customer_agreement_preview_view(request):
         benefit_id = data.get('benefit')
         agreement_type = data.get('agreement_type', AgreementTypeChoices.SHORT_TERM)
         evaluation_mode = data.get('evaluation_mode', EvaluationModeChoices.PERIODIC)
+        discount_application_mode = data.get('discount_application_mode', '')
+        apply_discount_to_all_classes = _parse_bool_flag(data.get('apply_discount_to_all_classes'), default=True)
+        discount_class_ids = [str(cid).strip() for cid in data.getlist('discount_classes') if str(cid).strip()]
         start_date = data.get('start_date')
         end_date = data.get('end_date')
         target_frequency = data.get('target_frequency', PeriodicityChoices.MONTHLY)
@@ -1205,6 +1219,9 @@ def customer_agreement_preview_view(request):
             benefit_id=int(benefit_id),
             agreement_type=agreement_type,
             evaluation_mode=evaluation_mode,
+            discount_application_mode=discount_application_mode,
+            apply_discount_to_all_classes=apply_discount_to_all_classes,
+            discount_class_ids=discount_class_ids,
             start_date=start_date,
             end_date=end_date,
             global_target_amount=Decimal(str(global_target)),
