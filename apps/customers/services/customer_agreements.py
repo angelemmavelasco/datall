@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import ClassVar, Optional, Any
 from dateutil.relativedelta import relativedelta
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import transaction, IntegrityError
 from django.db.models import (
@@ -24,13 +25,14 @@ from django.db.models import (
 )
 from django.utils import timezone
 
-from apps.core.models import PeriodicityChoices, Reference
+from apps.core.models import PeriodicityChoices, Reference, Submodule
 from apps.core.services.users import UsersService
 from apps.customers.models import (
     Customer,
     CustomerAssignment,
     CustomerClassMargin,
     CommercialBenefit,
+    CommercialBenefitTypeChoices,
     CustomerAgreement,
     AgreementClassTarget,
     AgreementEvaluationPeriod,
@@ -38,6 +40,7 @@ from apps.customers.models import (
     PeriodStatusChoices,
     AgreementTypeChoices,
     EvaluationModeChoices,
+    DiscountApplicationModeChoices,
 )
 from apps.customers.services.customers import CustomersService
 from apps.products.models import ProductClass
@@ -168,11 +171,8 @@ class CustomerAgreementsService(UsersService):
     @property
     def can_edit_agreement(self) -> bool:
         """
-        determines whether the user has permission to modify the agreement's
-        execution parameters (signed, benefit_already_provided, and related_doc).
-        allowed users are those with full access (superuser, staff, or configured
-        full-access groups) or users belonging to any group defined in Reference
-        with key='can_edit_customer_agreement'.
+        evalua si el usuario puede modificar el estado operativo y documento de un convenio existente.
+        requiere usuario autenticado y retorna verdadero si tiene acceso total o rol configurado en reference.
         """
         if self.has_full_access:
             return True
@@ -180,6 +180,121 @@ class CustomerAgreementsService(UsersService):
         if not allowed_groups:
             return False
         return self.user.groups.filter(name__in=allowed_groups).exists()
+
+    @property
+    def can_view_commercial_benefits(self) -> bool:
+        """
+        determina si el usuario tiene acceso al modulo de beneficios comerciales.
+        consulta el submodulo asignado por usuario o grupo y retorna un booleano de autorizacion.
+        """
+        if getattr(self.user, 'is_superuser', False) or getattr(self.user, 'is_staff', False):
+            return True
+        submodule = Submodule.objects.filter(
+            url_name='customers:commercial_benefit_list_view',
+            is_active=True,
+            module__is_active=True,
+        ).first()
+        if not submodule:
+            return False
+        user_group_ids = self.user.groups.values_list('pk', flat=True)
+        return (
+            submodule.allowed_users.filter(pk=self.user.pk).exists()
+            or submodule.allowed_groups.filter(pk__in=user_group_ids).exists()
+        )
+
+    @property
+    def can_edit_commercial_benefits(self) -> bool:
+        """
+        evalua si el usuario puede agregar o editar beneficios comerciales segun mapeo de roles en reference.
+        requiere grupos del usuario activos y retorna verdadero para superusuario, staff o rol autorizado.
+        """
+        if getattr(self.user, 'is_superuser', False) or getattr(self.user, 'is_staff', False):
+            return True
+        user_group_names = {
+            g.strip().lower()
+            for g in self.user.groups.values_list('name', flat=True)
+            if g and g.strip()
+        }
+        if not user_group_names:
+            return False
+        ref_ct = ContentType.objects.get_for_model(Reference)
+        refs = Reference.objects.filter(
+            context='editar_beneficioscomerciales'
+        ).filter(
+            Q(content_type=ref_ct) | Q(content_type__isnull=True)
+        ).values_list('key', 'value')
+        for key, val in refs:
+            clean_key = (key or '').strip().lower()
+            clean_val = (val or '').strip().lower()
+            if clean_key in user_group_names and clean_val not in ('false', '0', 'no'):
+                return True
+        return False
+
+    def read_benefits(self, *, include_inactive: bool = False) -> QuerySet:
+        """
+        obtiene el catalogo de beneficios comerciales ordenado alfabeticamente para usuarios con acceso al modulo.
+        requiere permiso de visualizacion y retorna el queryset filtrado o lanza permissionserror.
+        """
+        if not self.can_view_commercial_benefits:
+            raise PermissionsError("No tienes permiso para visualizar el catálogo de beneficios comerciales.")
+        qs = self.benefit_model.objects.all().order_by('-is_active', 'name', 'id')
+        if not include_inactive:
+            qs = qs.filter(is_active=True)
+        return qs
+
+    def read_benefit(self, pk: int | str) -> CommercialBenefit:
+        """
+        recupera un beneficio comercial especifico verificando acceso al modulo.
+        requiere el identificador del beneficio y retorna la instancia o lanza commercialbenefitnotfound o permissionserror.
+        """
+        if not self.can_view_commercial_benefits and not self.can_edit_commercial_benefits:
+            raise PermissionsError("No tienes permiso para consultar este beneficio comercial.")
+        benefit = self.benefit_model.objects.filter(pk=pk).first()
+        if not benefit:
+            raise CommercialBenefitNotFound(f'No se encontró el beneficio comercial con ID "{pk}".')
+        return benefit
+
+    @transaction.atomic
+    def create_commercial_benefit(
+        self,
+        *,
+        benefit_type: str,
+        name: str,
+        cost: Decimal | float | str,
+        is_active: bool = True,
+    ) -> CommercialBenefit:
+        """
+        crea un nuevo beneficio comercial validando permisos de edicion, tipo, nombre y monto o porcentaje.
+        requiere tipo, nombre y valor numerico y retorna la instancia guardada o lanza permissionserror o serviceerror.
+        """
+        if not self.can_edit_commercial_benefits:
+            raise PermissionsError("No tienes permiso para agregar o editar beneficios comerciales.")
+        clean_name = (name or '').strip()
+        if not clean_name:
+            raise ServiceError("El nombre del beneficio comercial es obligatorio.")
+        if benefit_type not in CommercialBenefitTypeChoices.values:
+            raise ServiceError("El tipo de beneficio comercial seleccionado no es válido.")
+        try:
+            clean_cost = Decimal(str(cost))
+        except Exception:
+            raise ServiceError("El costo o porcentaje proporcionado no es un número válido.")
+        benefit = self.benefit_model(
+            benefit_type=benefit_type,
+            name=clean_name,
+            cost=clean_cost,
+            is_active=bool(is_active),
+        )
+        try:
+            benefit.full_clean()
+        except ValidationError as exc:
+            err_msg = " ".join(
+                str(msg)
+                for msgs in exc.message_dict.values()
+                for msg in msgs
+            ) if hasattr(exc, 'message_dict') else str(exc)
+            raise ServiceError(err_msg)
+        benefit.save()
+        return benefit
 
     def get_allowed_agreements(self) -> QuerySet:
         """
