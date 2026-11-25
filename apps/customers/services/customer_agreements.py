@@ -367,7 +367,8 @@ class CustomerAgreementsService(UsersService):
 
     def read_agreements(self) -> QuerySet:
         """
-        Returns the queryset of allowed agreements annotated and optimized for listing.
+        retorna el queryset de convenios visibles con relaciones precargadas para evitar consultas repetidas.
+        usa los permisos del usuario activo y devuelve los convenios ordenados del mas reciente al mas antiguo.
         """
         today = timezone.localdate()
         base_qs = self.get_allowed_agreements().select_related(
@@ -380,6 +381,8 @@ class CustomerAgreementsService(UsersService):
         ).prefetch_related(
             'class_targets',
             'class_targets__product_class',
+            'discount_classes',
+            'discount_classes__product_category',
             'evaluation_periods'
         ).annotate(
             is_active_now=Case(
