@@ -112,8 +112,28 @@ Convenio comercial: {{ agreement.doc_id }}
         <span class="text-title">Beneficio otorgado</span>
         <div class="text-title">
             {{ agreement.benefit.name|title }}
-            <span class="text-secondary">({{ agreement.benefit.get_benefit_type_display|title }}{% if not is_seller %} - ${{ agreement.benefit.cost|floatformat:2|intcomma }}{% endif %})</span>
+            <span class="text-secondary">({{ agreement.benefit.get_benefit_type_display|title }}{% if not is_seller or agreement.benefit.is_discount %} - {{ agreement.benefit.display_value }}{% endif %})</span>
         </div>
+
+        {% if agreement.benefit.is_discount %}
+        <span class="text-title">Aplicación del descuento</span>
+        <div class="text-title">
+            {{ agreement.get_discount_application_mode_display|default:'Por periodo de evaluación' }}
+        </div>
+
+        <span class="text-title">Alcance del descuento</span>
+        <div class="text-title flex flex-wrap gap-1">
+            {% if agreement.apply_discount_to_all_classes %}
+                <span>Todas las clases de producto</span>
+            {% else %}
+                {% for dc in discount_classes %}
+                    <span class="px-1.5 py-0.5 rounded bg-page border border-border text-[11px]">{{ dc.name|title }}</span>
+                {% empty %}
+                    <span class="text-secondary">Sin clases específicas</span>
+                {% endfor %}
+            {% endif %}
+        </div>
+        {% endif %}
 
         <span class="text-title">Vigencia</span>
         <div class="text-title font-mono">
@@ -198,7 +218,6 @@ Convenio comercial: {{ agreement.doc_id }}
         Gestión operativa del convenio
     </p>
 
-    <!-- form para actualizar estado de firma, entrega de beneficio y documento adjunto -->
     <form method="POST" action="{% url 'customers:customer_agreement_update_document_view' agreement.pk %}" enctype="multipart/form-data" class="bg-container border border-border p-3 rounded text-xs flex flex-col gap-3">
         {% csrf_token %}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
@@ -444,7 +463,6 @@ Convenio comercial: {{ agreement.doc_id }}
 
 </div>
 
-<!-- modal para formato imprimible de contrato -->
 <div id="contract-modal" class="fixed inset-0 z-50 bg-black/60 hidden items-center justify-center p-4 overflow-y-auto">
     <div class="bg-container border border-border rounded max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-xl relative">
         <div class="sticky top-0 bg-container border-b border-border p-2 flex items-center justify-between z-10 print:hidden">
@@ -455,7 +473,7 @@ Convenio comercial: {{ agreement.doc_id }}
         </div>
 
         <div id="contract-modal-content" class="p-4"
-             hx-get="{% url 'customers:customer_agreement_preview_view' %}?customer={{ agreement.customer.id }}&benefit={{ agreement.benefit.id }}&agreement_type={{ agreement.agreement_type }}&evaluation_mode={{ agreement.evaluation_mode }}&start_date={{ agreement.start_date|date:'Y-m' }}&end_date={{ agreement.end_date|date:'Y-m' }}&target_frequency={{ agreement.target_frequency }}&global_target_amount={{ agreement.global_target_amount }}&growth_value={{ agreement.growth_value }}&growth_frequency={{ agreement.growth_frequency|default:'' }}&penalty_amount={{ agreement.penalty_amount }}&doc_id={{ agreement.doc_id }}{% for ct in class_targets %}&participating_classes={{ ct.product_class.id }}{% if ct.is_mandatory %}&mandatory_target_{{ ct.product_class.id }}={{ ct.required_target }}{% endif %}{% endfor %}"
+             hx-get="{% url 'customers:customer_agreement_preview_view' %}?agreement_id={{ agreement.pk }}"
              hx-trigger="load">
             <div class="p-8 text-center text-xs text-secondary italic">
                 Cargando formato contractual...
