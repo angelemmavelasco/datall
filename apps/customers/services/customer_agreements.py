@@ -1964,7 +1964,8 @@ class CustomerAgreementsService(UsersService):
                         for s in p_sales
                         if s['product_class_id'] in discount_class_ids
                     )
-                period.amortized_benefit_cost = (discountable_sales * pct_ratio).quantize(Decimal('0.01'))
+                effective_discountable_sales = max(Decimal('0.00'), discountable_sales)
+                period.amortized_benefit_cost = (effective_discountable_sales * pct_ratio).quantize(Decimal('0.01'))
 
             if period.penalty_applied:
                 period.period_profit = total_profit
