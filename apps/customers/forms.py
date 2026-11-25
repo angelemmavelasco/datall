@@ -550,8 +550,8 @@ class CustomerAgreementDocumentForm(forms.ModelForm):
 
 class CustomerVisitScheduleForm(forms.ModelForm):
     """
-    form for configuring and updating customer visit schedules.
-    uses PeriodicityChoices from core (excluding daily, weekly, and at_end).
+    formulario para configurar y actualizar esquemas de visitas de clientes.
+    utiliza opciones de periodicidad de core excluyendo diaria, semanal y al termino.
     """
 
     class Meta:
