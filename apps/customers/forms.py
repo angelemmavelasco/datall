@@ -358,6 +358,8 @@ class CustomerAgreementCreateForm(forms.ModelForm):
             'benefit',
             'agreement_type',
             'evaluation_mode',
+            'discount_application_mode',
+            'apply_discount_to_all_classes',
             'start_date',
             'end_date',
             'global_target_amount',
@@ -384,6 +386,12 @@ class CustomerAgreementCreateForm(forms.ModelForm):
             'evaluation_mode': forms.Select(attrs={
                 'class': 'w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
             }),
+            'discount_application_mode': forms.Select(attrs={
+                'class': 'w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
+            }),
+            'apply_discount_to_all_classes': forms.RadioSelect(
+                choices=[(True, 'Todas las clases de producto'), (False, 'Clases específicas')],
+            ),
             'global_target_amount': forms.NumberInput(attrs={
                 'step': '0.01',
                 'min': '0',
@@ -423,6 +431,10 @@ class CustomerAgreementCreateForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        """
+        configura querysets permitidos, valores iniciales y campos opcionales del convenio.
+        requiere allowed_customers opcional y ajusta modalidad de evaluacion y fechas iniciales.
+        """
         allowed_customers = kwargs.pop('allowed_customers', None)
         super().__init__(*args, **kwargs)
         self.fields['benefit'].queryset = CommercialBenefit.objects.filter(is_active=True).order_by('name')
@@ -436,6 +448,12 @@ class CustomerAgreementCreateForm(forms.ModelForm):
         self.fields['benefit_already_provided'].required = False
         self.fields['evaluation_mode'].required = False
         self.fields['evaluation_mode'].initial = EvaluationModeChoices.PERIODIC
+        self.fields['discount_application_mode'].required = False
+        self.fields['discount_application_mode'].choices = DiscountApplicationModeChoices.choices
+        self.fields['discount_application_mode'].initial = DiscountApplicationModeChoices.PERIODIC
+        self.fields['apply_discount_to_all_classes'].required = False
+        if not (self.instance and self.instance.pk):
+            self.fields['apply_discount_to_all_classes'].initial = True
 
         if self.instance and self.instance.pk:
             if self.instance.start_date:
@@ -479,11 +497,26 @@ class CustomerAgreementCreateForm(forms.ModelForm):
         return d
 
     def clean(self):
+        """
+        valida fechas del convenio y normaliza la modalidad y alcance del descuento segun el beneficio.
+        requiere datos limpios del formulario y agrega errores si la fecha final precede a la inicial.
+        """
         cleaned_data = super().clean()
         start_date = cleaned_data.get('start_date')
         end_date = cleaned_data.get('end_date')
         if start_date and end_date and end_date < start_date:
             self.add_error('end_date', 'El mes de fin no puede ser anterior al mes de inicio.')
+
+        benefit = cleaned_data.get('benefit')
+        if benefit and benefit.is_discount:
+            if not cleaned_data.get('discount_application_mode'):
+                cleaned_data['discount_application_mode'] = DiscountApplicationModeChoices.PERIODIC
+            if 'apply_discount_to_all_classes' not in self.data:
+                cleaned_data['apply_discount_to_all_classes'] = True
+        else:
+            cleaned_data['discount_application_mode'] = ''
+            cleaned_data['apply_discount_to_all_classes'] = True
+
         return cleaned_data
 
 
