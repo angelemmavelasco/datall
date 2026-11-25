@@ -749,12 +749,18 @@ def ar_detail_view(request, pk: str | int):
 
 @login_required
 def customer_agreement_list_view(request):
+    """
+    lista los convenios comerciales filtrados por permisos y criterios de busqueda.
+    requiere sesion iniciada y retorna la tabla completa o parciales htmx de convenios y metricas.
+    """
     template = 'customers/customer_agreements/agreement_list.html'
     service = CustomerAgreementsService(user=request.user)
     stats_service = CustomerAgreementsStats(agreements_service=service)
 
+    can_create_agreement = service.has_full_access
+    can_view_benefits = service.can_view_commercial_benefits
     available_actions = None
-    if service.has_full_access:
+    if can_create_agreement or can_view_benefits:
         available_actions = 'customers/customer_agreements/partials/agreement_list__actions.html'
 
     agreements_qs = service.read_agreements()
@@ -778,6 +784,8 @@ def customer_agreement_list_view(request):
         'query_string': query_dict.urlencode(),
         'page_obj': page_obj,
         'available_actions': available_actions,
+        'can_create_agreement': can_create_agreement,
+        'can_view_benefits': can_view_benefits,
         'filter': agreement_filter,
     }
 
@@ -792,6 +800,10 @@ def customer_agreement_list_view(request):
 
 @login_required
 def customer_agreement_detail_view(request, pk: int):
+    """
+    presenta el detalle integral del convenio comercial, sus clases participantes, descuentos y periodos.
+    requiere el id del convenio y retorna la vista html o redirige al listado ante falta de permisos o existencia.
+    """
     template = 'customers/customer_agreements/agreement_detail.html'
     service = CustomerAgreementsService(user=request.user)
 
@@ -807,6 +819,7 @@ def customer_agreement_detail_view(request, pk: int):
     is_seller = request.user.groups.filter(name='vendedor').exists()
     periods = agreement.evaluation_periods.all().prefetch_related('class_results__product_class')
     class_targets = agreement.class_targets.all().select_related('product_class')
+    discount_classes = agreement.discount_classes.all().select_related('product_category')
     doc_form = CustomerAgreementDocumentForm(instance=agreement)
 
     available_actions = None
@@ -820,6 +833,7 @@ def customer_agreement_detail_view(request, pk: int):
         'advisor_name': advisor_name,
         'periods': periods,
         'class_targets': class_targets,
+        'discount_classes': discount_classes,
         'doc_form': doc_form,
         'is_seller': is_seller,
         'can_edit': service.can_edit_agreement,
