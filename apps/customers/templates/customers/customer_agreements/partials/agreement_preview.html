@@ -8,7 +8,6 @@
 {% elif preview %}
 <div class="bg-container border border-border rounded overflow-hidden text-title my-4" id="printable-contract-container">
 
-    <!-- acciones para pantalla -->
     <div class="p-2 bg-container border-b border-border flex flex-wrap items-center justify-between gap-2 print:hidden">
         <div class="flex items-center gap-2 text-xs text-secondary">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text text-title"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
@@ -20,10 +19,6 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                 <span>Descargar PDF</span>
             </button>
-            <!-- <button type="button" id="btn-print-agreement-contract" onclick="printAgreementContract()" class="bg-container border border-border text-strong hover:bg-hover px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer" title="Imprimir contrato tamaño Carta">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
-                <span>Imprimir contrato</span>
-            </button> -->
         </div>
     </div>
 
@@ -35,7 +30,6 @@
         </div>
         <div class="contract-page-sheet bg-page p-6 md:p-8 border border-border print:border-none rounded print:rounded-none flex flex-col justify-between" id="contract-page-1">
             <div>
-                <!-- header corporativo institucional -->
                 <div class="flex items-start justify-between border-b border-border mb-4 rounded print:rounded-none">
                     <div>
                         <h1 class="text-lg font-bold tracking-wide uppercase">
@@ -56,7 +50,6 @@
                     </div>
                 </div>
 
-                <!-- header de partes -->
                 <div class="grid grid-cols-2 gap-3 p-2.5 bg-container border border-border rounded text-xs mb-4">
                     <div>
                         <span class="block text-secondary text-[11px]">Cliente</span>
@@ -70,14 +63,20 @@
                     </div>
                 </div>
 
-                <!-- redaccion amigable -->
                 <div class="space-y-3 text-xs leading-relaxed text-title text-justify">
                     <p>
                         Con el gusto de saludarlo y dándole seguimiento a nuestras negociaciones previas, nos es grato plasmarle por escrito el <strong>Contrato Comercial</strong> que hemos acordado. Dicho contrato tiene el objetivo y finalidad de lograr el crecimiento mutuo, posicionar nuestra marca y brindar calidad y servicio a nuestro cliente final.
                     </p>
 
                     <p>
-                        El contrato tendrá una duración de <strong>{{ preview.duration_months }} meses</strong> iniciando el <strong>{{ preview.start_date|date:"j \d\e F \d\e Y" }}</strong> con vigencia al <strong>{{ preview.end_date|date:"j \d\e F \d\e Y" }}</strong> <span class="font-bold text-[#018e88]">[1]</span>. Como parte de este acuerdo comercial, usted será acreedor a <strong>{{ preview.benefit.name|title }}</strong> (con valor de referencia de <strong>${{ preview.benefit.cost|floatformat:2|intcomma }} MXN</strong>) <span class="font-bold text-[#018e88]">[2]</span>.
+                        El contrato tendrá una duración de <strong>{{ preview.duration_months }} meses</strong> iniciando el <strong>{{ preview.start_date|date:"j \d\e F \d\e Y" }}</strong> con vigencia al <strong>{{ preview.end_date|date:"j \d\e F \d\e Y" }}</strong> <span class="font-bold text-[#018e88]">[1]</span>.
+                        {% if preview.is_percentage_discount %}
+                            Como parte de este acuerdo comercial, usted será acreedor a un descuento comercial del <strong>{{ preview.benefit.cost|floatformat:2 }}%</strong> ({{ preview.benefit.name|title }}), aplicable <strong>{{ preview.discount_mode_phrase }}</strong> sobre <strong>{{ preview.discount_scope_phrase }}</strong> <span class="font-bold text-[#018e88]">[2]</span>.
+                        {% elif preview.is_fixed_discount %}
+                            Como parte de este acuerdo comercial, usted será acreedor a un descuento comercial fijo de <strong>${{ preview.benefit.cost|floatformat:2|intcomma }} MXN</strong> ({{ preview.benefit.name|title }}), aplicable <strong>{{ preview.discount_mode_phrase }}</strong> sobre <strong>{{ preview.discount_scope_phrase }}</strong> <span class="font-bold text-[#018e88]">[2]</span>.
+                        {% else %}
+                            Como parte de este acuerdo comercial, usted será acreedor a <strong>{{ preview.benefit.name|title }}</strong> (con valor de referencia de <strong>${{ preview.benefit.cost|floatformat:2|intcomma }} MXN</strong>) <span class="font-bold text-[#018e88]">[2]</span>.
+                        {% endif %}
                     </p>
 
                     <p>
@@ -116,17 +115,25 @@
                             • <strong>Penalización por periodo:</strong> La evaluación y penalización se aplicarán al corte de cada periodo de evaluación ({{ preview.frequency_phrase }}). En caso de no cumplir con la cuota de compra establecida en cualquiera de los periodos de evaluación, me comprometo a pagar la factura que se genere por penalización de incumplimiento por cada periodo no cubierto, por el monto convenido de <strong>${{ preview.penalty_amount|floatformat:2|intcomma }} MXN</strong> <span class="font-bold text-[#018e88]">[6]</span>.
                         </p>
                         {% endif %}
+                        {% if preview.is_discount %}
+                        <p>
+                            • <strong>Compensación de descuentos:</strong> En dado caso de no cumplir con las cuotas establecidas o en caso de rescisión anticipada, el cliente se compromete a cubrir el cargo compensatorio equivalente a los descuentos comerciales ya aplicados bajo el presente instrumento.
+                        </p>
+                        <p>
+                            • <strong>Rescisión y revocación:</strong> En caso de negarme a realizar los pagos o liquidar las penalizaciones, estoy de acuerdo en que se me rescinda el presente convenio y se me suspenda de pleno derecho el descuento comercial otorgado <span class="font-bold text-[#018e88]">[7]</span>.
+                        </p>
+                        {% else %}
                         <p>
                             • <strong>Valor comercial del beneficio:</strong> En dado caso de no cumplir con las cuotas establecidas o en caso de rescisión anticipada, me comprometo a pagar el valor comercial íntegro de dicho producto o beneficio otorgado.
                         </p>
                         <p>
                             • <strong>Rescisión y restitución:</strong> En caso de negarme a realizar los pagos o liquidar las penalizaciones, estoy de acuerdo en que se me rescinda el presente convenio y se me restituya o embargue el beneficio comercial otorgado <span class="font-bold text-[#018e88]">[7]</span>.
                         </p>
+                        {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- aceptacion firmas -->
             <div class="mt-6 pt-4 border-t border-border">
                 <p class="text-center text-xs font-semibold text-title mb-6 uppercase tracking-wide">
                     Firmas de Compromiso / Aceptación
@@ -154,7 +161,6 @@
         </div>
         <div class="contract-page-sheet page-break-before bg-page p-6 md:p-8 border border-border print:border-none rounded print:rounded-none flex flex-col justify-between" id="contract-page-2">
             <div>
-                <!-- header -->
                 <div class="flex items-center justify-between border-b border-border pb-3 mb-4">
                     <div>
                         <h2 class="text-sm md:text-base font-bold text-title uppercase">
@@ -172,7 +178,6 @@
                     </div>
                 </div>
 
-                <!-- clausulas -->
                 <div class="space-y-2.5 text-xs leading-relaxed">
                     {% for clause in preview.clauses %}
                     <div class="border-b border-border/50 pb-2">
@@ -183,7 +188,6 @@
                 </div>
             </div>
 
-            <!-- firmas definitivas -->
             <div class="mt-6 pt-3 border-t border-border">
                 <p class="text-center text-[11px] text-secondary mb-5 italic">
                     Leído que fue el presente instrumento y enteradas las partes de su contenido, fuerza y alcance legal, lo firman y ratifican por duplicado en Guadalajara, Jalisco a {% now "j \d\e F \d\e Y" %}.
@@ -211,8 +215,6 @@
 
     </div>
 
-
-    <!-- matriz de consumos proyectados -->
 
     <div class="p-6 md:p-8 bg-container border-t border-border print:hidden" id="projection-matrix-container">
         <div class="flex items-center justify-between mb-2">
@@ -250,7 +252,6 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- clases obligatorias -->
                     {% for row in preview.projection_matrix.mandatory_rows %}
                     <tr>
                         <td class="p-2 truncate text-left text-title border-r border-b border-border">
@@ -270,7 +271,6 @@
                     </tr>
                     {% endfor %}
 
-                    <!-- clases complementarias agrupadas -->
                     {% if preview.projection_matrix.complementary_row %}
                     <tr>
                         <td class="p-2 truncate text-left border-r border-b border-border">
@@ -293,7 +293,6 @@
                     </tr>
                     {% endif %}
 
-                    <!-- total cuota global -->
                     <tr>
                         <td colspan="2" class="p-2 text-title border-r border-b border-border font-medium">
                             Cuota global comprometida
@@ -382,8 +381,6 @@ async function buildAgreementPDF() {
         throw new Error('Las librerías de generación PDF no están disponibles.');
     }
 
-    // Contenedor sandbox para renderizar a tamaño estándar Carta (816px x 1056px a 96 DPI = 8.5in x 11in)
-    // Garantiza que tanto en celular como en computadora se renderice con exactamente las mismas proporciones
     const sandbox = document.createElement('div');
     sandbox.id = 'contract-pdf-sandbox';
     sandbox.style.position = 'fixed';
@@ -396,7 +393,6 @@ async function buildAgreementPDF() {
     sandbox.style.color = '#0f172a';
     sandbox.style.fontFamily = 'ui-sans-serif, system-ui, sans-serif';
 
-    // Variables de tema limpias para contrato oficial impreso
     sandbox.style.setProperty('--theme-body', '#0f172a');
     sandbox.style.setProperty('--theme-title', '#334155');
     sandbox.style.setProperty('--theme-border', '#cbd5e1');
@@ -416,7 +412,7 @@ async function buildAgreementPDF() {
         sheet.style.minHeight = '1056px';
         sheet.style.maxHeight = '1056px';
         sheet.style.boxSizing = 'border-box';
-        sheet.style.padding = '32px'; // Mantiene exactamente el padding p-8 de pantalla
+        sheet.style.padding = '32px';
         sheet.style.margin = '0';
         sheet.style.border = 'none';
         sheet.style.borderRadius = '0';
@@ -438,7 +434,7 @@ async function buildAgreementPDF() {
 
     try {
         const renderOpts = {
-            scale: 2.2, // Alta resolución para nitidez tipográfica
+            scale: 2.2,
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
@@ -461,7 +457,6 @@ async function buildAgreementPDF() {
             compress: true
         });
 
-        // Carta: 215.9mm de ancho x 279.4mm de alto
         const img1 = canvas1.toDataURL('image/jpeg', 0.96);
         pdf.addImage(img1, 'JPEG', 0, 0, 215.9, 279.4, undefined, 'FAST');
 
@@ -498,10 +493,8 @@ async function printAgreementContract() {
         const blobUrl = pdf.output('bloburl');
 
         if (isMobile) {
-            // En móvil se abre el visor nativo con AirPrint / Guardar / Compartir
             window.open(blobUrl, '_blank');
         } else {
-            // En computadora se invoca el diálogo de impresión con iframe oculto
             const printIframe = document.createElement('iframe');
             printIframe.style.position = 'fixed';
             printIframe.style.right = '0';
@@ -629,7 +622,7 @@ async function downloadAgreementPDF() {
         height: 279.4mm !important;
         min-height: 279.4mm !important;
         max-height: 279.4mm !important;
-        padding: 2rem !important; /* Preserva exactamente los paddings p-8 */
+        padding: 2rem !important;
         margin: 0 auto !important;
         box-sizing: border-box !important;
         background: #ffffff !important;
