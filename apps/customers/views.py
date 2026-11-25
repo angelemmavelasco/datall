@@ -1023,8 +1023,8 @@ def customer_agreement_validate_margin_view(request):
     if not target_frequency:
         missing_fields.append("Frecuencia de evaluación")
 
-    if benefit_id:
-        benefit_obj = CommercialBenefit.objects.filter(pk=benefit_id).first()
+    if benefit_id and str(benefit_id).strip().isdigit():
+        benefit_obj = CommercialBenefit.objects.filter(pk=int(str(benefit_id).strip())).first()
         if benefit_obj and benefit_obj.is_discount and not apply_discount_to_all_classes and not discount_class_ids:
             missing_fields.append("Al menos una clase de producto para aplicar el descuento específico")
 
@@ -1113,11 +1113,14 @@ def customer_agreement_preview_view(request):
     participating_classes_data = None
     discount_class_ids = []
     if agreement_id:
+        agreement_id_str = str(agreement_id).strip()
+        if not agreement_id_str.isdigit():
+            return render(request, 'customers/customer_agreements/partials/agreement_preview.html', {
+                'error': f"Convenio #{agreement_id} no encontrado.",
+            })
         agr = (
-            CustomerAgreement.objects
-            .select_related('benefit', 'customer', 'route')
-            .prefetch_related('class_targets__product_class', 'discount_classes')
-            .filter(pk=agreement_id)
+            service.read_agreements()
+            .filter(pk=int(agreement_id_str))
             .first()
         )
         if agr:
@@ -1146,8 +1149,12 @@ def customer_agreement_preview_view(request):
                 for ct in agr.class_targets.all()
             ]
         else:
+            if CustomerAgreement.objects.filter(pk=int(agreement_id_str)).exists():
+                err_msg = f'No tienes permiso para acceder al convenio con ID "{agreement_id_str}".'
+            else:
+                err_msg = f"Convenio #{agreement_id} no encontrado."
             return render(request, 'customers/customer_agreements/partials/agreement_preview.html', {
-                'error': f"Convenio #{agreement_id} no encontrado.",
+                'error': err_msg,
             })
     else:
         customer_id = data.get('customer') or data.get('q')
@@ -1451,19 +1458,24 @@ def commercial_benefit_update_view(request, pk: int):
     service = CustomerAgreementsService(user=request.user)
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
-    try:
-        benefit_instance = service.read_benefit(pk)
-    except (CommercialBenefitNotFound, PermissionsError) as e:
-        if is_ajax:
-            return JsonResponse({'success': False, 'error': str(e)}, status=404)
-        messages.error(request, str(e))
-        return redirect('customers:commercial_benefit_list_view')
-
     if not service.can_edit_commercial_benefits:
         err_msg = "No tienes permiso para agregar o editar beneficios comerciales."
         if is_ajax:
             return JsonResponse({'success': False, 'error': err_msg}, status=403)
         messages.error(request, err_msg)
+        return redirect('customers:commercial_benefit_list_view')
+
+    try:
+        benefit_instance = service.read_benefit(pk)
+    except CommercialBenefitNotFound as e:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': str(e)}, status=404)
+        messages.error(request, str(e))
+        return redirect('customers:commercial_benefit_list_view')
+    except PermissionsError as e:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': str(e)}, status=403)
+        messages.error(request, str(e))
         return redirect('customers:commercial_benefit_list_view')
 
     form = CommercialBenefitForm(request.POST, instance=benefit_instance)
