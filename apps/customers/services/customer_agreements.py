@@ -495,6 +495,66 @@ class CustomerAgreementsService(UsersService):
             'estimated_total_discount': benefit_cost,
         }
 
+    def calculate_percentage_benefit_margin_impact(
+        self,
+        *,
+        discount_pct: Decimal,
+        hist_months: int,
+        periodicity_months: int,
+        total_agreement_periods: int,
+        total_net: Decimal,
+        total_profit: Decimal,
+        discountable_net: Decimal,
+        sub_period_metrics: list[dict[str, Decimal]],
+    ) -> dict[str, Decimal]:
+        """
+        calcula el impacto en margen aplicando el descuento porcentual al promedio mensual de venta evaluada.
+        requiere porcentaje, meses historicos, periodicidad, ventas totales y ventas con descuento y retorna margenes y montos estimados.
+        """
+        pct_ratio = discount_pct / Decimal('100.0')
+        months_dec = Decimal(str(hist_months if hist_months > 0 else 1))
+        period_months_dec = Decimal(str(periodicity_months if periodicity_months > 0 else 1))
+        agreement_periods_dec = Decimal(str(total_agreement_periods if total_agreement_periods > 0 else 1))
+
+        avg_monthly_discountable_sales = discountable_net / months_dec
+        estimated_monthly_discount = avg_monthly_discountable_sales * pct_ratio
+        cme = estimated_monthly_discount * period_months_dec
+        past_cost = discountable_net * pct_ratio
+        estimated_total_discount = cme * agreement_periods_dec
+
+        if total_net > 0:
+            simulated_net_margin = ((total_profit - past_cost) / total_net) * Decimal('100.0')
+            historic_margin = (total_profit / total_net) * Decimal('100.0')
+        else:
+            simulated_net_margin = Decimal('0.00')
+            historic_margin = Decimal('0.00')
+
+        period_margins = []
+        hist_period_margins = []
+        for metric in sub_period_metrics:
+            p_net = metric['net']
+            p_profit = metric['profit']
+            p_disc_net = metric.get('discountable_net', Decimal('0.00'))
+            if p_net > 0:
+                p_disc_cost = p_disc_net * pct_ratio
+                period_margins.append(((p_profit - p_disc_cost) / p_net) * Decimal('100.0'))
+                hist_period_margins.append((p_profit / p_net) * Decimal('100.0'))
+
+        avg_period_margin = sum(period_margins) / len(period_margins) if period_margins else Decimal('0.00')
+        avg_hist_period_margin = sum(hist_period_margins) / len(hist_period_margins) if hist_period_margins else Decimal('0.00')
+
+        return {
+            'cme': cme,
+            'past_cost': past_cost,
+            'simulated_net_margin': simulated_net_margin,
+            'historic_margin': historic_margin,
+            'avg_period_margin': avg_period_margin,
+            'avg_hist_period_margin': avg_hist_period_margin,
+            'avg_monthly_discountable_sales': avg_monthly_discountable_sales,
+            'estimated_monthly_discount': estimated_monthly_discount,
+            'estimated_total_discount': estimated_total_discount,
+        }
+
     def validate_agreement_margin(
         self,
         *,
