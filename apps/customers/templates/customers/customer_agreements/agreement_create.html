@@ -552,10 +552,7 @@ Nuevo convenio comercial
                 <span id="quick_benefit_cost_help" class="text-[11px] text-secondary">Monto total invertido en el artículo o descuento fijo del convenio.</span>
             </div>
 
-            <label class="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" name="is_active" id="quick_benefit_active" checked class="rounded border-border text-primary focus:ring-primary">
-                <span class="text-title">Beneficio disponible inmediatamente</span>
-            </label>
+            <input type="hidden" name="is_active" value="on">
 
             <div class="flex items-center justify-end gap-2 pt-2 border-t border-border">
                 <button type="button" onclick="closeCreateBenefitModal()" class="border border-border text-strong hover:bg-hover px-3 py-1.5 rounded transition-colors cursor-pointer">Cancelar</button>
@@ -760,8 +757,6 @@ async function submitQuickBenefit(event) {
             select.value = String(benefit.id);
         }
         form.reset();
-        const activeCb = document.getElementById('quick_benefit_active');
-        if (activeCb) activeCb.checked = true;
         handleBenefitChange();
         closeCreateBenefitModal();
     } catch (err) {
