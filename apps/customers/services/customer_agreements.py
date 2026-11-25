@@ -493,7 +493,7 @@ class CustomerAgreementsService(UsersService):
         *,
         discount_pct: Decimal,
         hist_months: int,
-        periodicity_months: int,
+        agr_duration_months: int,
         total_agreement_periods: int,
         total_net: Decimal,
         total_profit: Decimal,
@@ -502,18 +502,19 @@ class CustomerAgreementsService(UsersService):
     ) -> dict[str, Decimal]:
         """
         calcula el impacto en margen aplicando el descuento porcentual al promedio mensual de venta evaluada.
-        requiere porcentaje, meses historicos, periodicidad, ventas totales y ventas con descuento y retorna margenes y montos estimados.
+        requiere porcentaje, meses historicos y de vigencia, periodos, ventas totales y con descuento y retorna margenes y montos estimados.
         """
         pct_ratio = discount_pct / Decimal('100.0')
         months_dec = Decimal(str(hist_months if hist_months > 0 else 1))
-        period_months_dec = Decimal(str(periodicity_months if periodicity_months > 0 else 1))
+        agr_months_dec = Decimal(str(agr_duration_months if agr_duration_months > 0 else 1))
         agreement_periods_dec = Decimal(str(total_agreement_periods if total_agreement_periods > 0 else 1))
+        effective_discountable_net = max(Decimal('0.00'), discountable_net)
 
-        avg_monthly_discountable_sales = discountable_net / months_dec
+        avg_monthly_discountable_sales = effective_discountable_net / months_dec
         estimated_monthly_discount = avg_monthly_discountable_sales * pct_ratio
-        cme = estimated_monthly_discount * period_months_dec
-        past_cost = discountable_net * pct_ratio
-        estimated_total_discount = cme * agreement_periods_dec
+        estimated_total_discount = estimated_monthly_discount * agr_months_dec
+        cme = estimated_total_discount / agreement_periods_dec
+        past_cost = effective_discountable_net * pct_ratio
 
         if total_net > 0:
             simulated_net_margin = ((total_profit - past_cost) / total_net) * Decimal('100.0')
@@ -527,7 +528,7 @@ class CustomerAgreementsService(UsersService):
         for metric in sub_period_metrics:
             p_net = metric['net']
             p_profit = metric['profit']
-            p_disc_net = metric.get('discountable_net', Decimal('0.00'))
+            p_disc_net = max(Decimal('0.00'), metric.get('discountable_net', Decimal('0.00')))
             if p_net > 0:
                 p_disc_cost = p_disc_net * pct_ratio
                 period_margins.append(((p_profit - p_disc_cost) / p_net) * Decimal('100.0'))
@@ -584,6 +585,10 @@ class CustomerAgreementsService(UsersService):
 
         if not start_date or not end_date or not agr_start or not agr_end:
             raise ServiceError("Fechas de evaluación o vigencia inválidas.")
+        if end_date < start_date:
+            raise ServiceError("La fecha final de evaluación no puede ser anterior a la fecha inicial.")
+        if agr_end < agr_start:
+            raise ServiceError("La fecha de fin del convenio no puede ser anterior a la fecha de inicio.")
 
         benefit = self.benefit_model.objects.filter(pk=benefit_id).first()
         if not benefit:
@@ -648,7 +653,7 @@ class CustomerAgreementsService(UsersService):
 
         total_agreement_periods = get_periods_count(agr_start, agr_end, target_frequency)
         delta_agr = relativedelta(agr_end + timedelta(days=1), agr_start)
-        agr_duration_months = delta_agr.years * 12 + delta_agr.months
+        agr_duration_months = max(1, delta_agr.years * 12 + delta_agr.months)
 
         if target_frequency in (PeriodicityChoices.AT_END, 'end'):
             freq_delta = relativedelta(end_date + timedelta(days=1), start_date)
@@ -700,7 +705,7 @@ class CustomerAgreementsService(UsersService):
             impact = self.calculate_percentage_benefit_margin_impact(
                 discount_pct=discount_pct,
                 hist_months=hist_months,
-                periodicity_months=periodicity_months,
+                agr_duration_months=agr_duration_months,
                 total_agreement_periods=total_agreement_periods,
                 total_net=total_net,
                 total_profit=total_profit,
@@ -847,7 +852,7 @@ class CustomerAgreementsService(UsersService):
         comp_disc_ids = comp_class_ids if apply_discount_to_all_classes else [cid for cid in comp_class_ids if cid in discounted_class_set]
         if is_pct_discount and comp_disc_ids:
             comp_disc_sales = comp_sales.filter(product_class_id__in=comp_disc_ids)
-            comp_disc_net = comp_disc_sales.aggregate(d_net=Sum('net_amount'))['d_net'] or Decimal('0.00')
+            comp_disc_net = max(Decimal('0.00'), comp_disc_sales.aggregate(d_net=Sum('net_amount'))['d_net'] or Decimal('0.00'))
             comp_eff_profit = comp_profit - (comp_disc_net * pct_ratio)
         else:
             comp_disc_sales = comp_sales.none()
@@ -862,7 +867,10 @@ class CustomerAgreementsService(UsersService):
             p_comp_profit = p_comp_totals['profit'] or Decimal('0.00')
             if p_comp_net > 0:
                 if is_pct_discount and comp_disc_ids:
-                    p_cd_net = comp_disc_sales.filter(sale_date__gte=p_start, sale_date__lte=p_end).aggregate(d_net=Sum('net_amount'))['d_net'] or Decimal('0.00')
+                    p_cd_net = max(
+                        Decimal('0.00'),
+                        comp_disc_sales.filter(sale_date__gte=p_start, sale_date__lte=p_end).aggregate(d_net=Sum('net_amount'))['d_net'] or Decimal('0.00')
+                    )
                     p_comp_eff = p_comp_profit - (p_cd_net * pct_ratio)
                 else:
                     p_comp_eff = p_comp_profit
@@ -908,7 +916,7 @@ class CustomerAgreementsService(UsersService):
                     'product_class_id': cid,
                     'product_class_name': pc_name,
                     'in_participating': (cid in participating_set) or (not participating_class_ids),
-                    'estimated_discount': (metrics['total_net'] * pct_ratio) if is_pct_discount else Decimal('0.00'),
+                    'estimated_discount': (max(Decimal('0.00'), metrics['total_net']) * pct_ratio) if is_pct_discount else Decimal('0.00'),
                     **metrics,
                 })
 
@@ -939,21 +947,17 @@ class CustomerAgreementsService(UsersService):
         overall_is_valid = True
         overall_volatility = False
 
-        if total_net > 0 and (max_required_margin > 0 or failed_discount_extra or volatile_discount_extra):
-            if max_required_margin > 0 and simulated_net_margin < max_required_margin:
-                if avg_period_margin >= max_required_margin:
-                    overall_is_valid = False
-                    overall_volatility = True
-                else:
-                    overall_is_valid = False
-            elif failed_mandatory or failed_comp or failed_discount_extra:
-                overall_is_valid = False
-            elif volatile_mandatory or volatile_comp or volatile_discount_extra:
+        if total_net > 0 and max_required_margin > 0 and simulated_net_margin < max_required_margin:
+            if avg_period_margin >= max_required_margin:
                 overall_is_valid = False
                 overall_volatility = True
-        else:
-            overall_is_valid = True
-            overall_volatility = False
+            else:
+                overall_is_valid = False
+        elif failed_mandatory or failed_comp or failed_discount_extra:
+            overall_is_valid = False
+        elif volatile_mandatory or volatile_comp or volatile_discount_extra:
+            overall_is_valid = False
+            overall_volatility = True
 
         result_data = {
             'avg_period_margin': avg_period_margin,
