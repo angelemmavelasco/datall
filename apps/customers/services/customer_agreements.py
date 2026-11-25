@@ -447,6 +447,54 @@ class CustomerAgreementsService(UsersService):
             'can_edit': self.can_edit_agreement,
         }
 
+    def calculate_fixed_benefit_margin_impact(
+        self,
+        *,
+        benefit_cost: Decimal,
+        total_agreement_periods: int,
+        hist_periods_count: int,
+        total_net: Decimal,
+        total_profit: Decimal,
+        sub_period_metrics: list[dict[str, Decimal]],
+    ) -> dict[str, Decimal]:
+        """
+        calcula el impacto en margen neto amortizando el costo fijo del beneficio entre los periodos del convenio.
+        requiere costo total, conteos de periodos, totales historicos y metricas por subperiodo y devuelve margen simulado y amortizacion.
+        """
+        cme = benefit_cost / Decimal(str(total_agreement_periods)) if total_agreement_periods > 0 else benefit_cost
+        past_cost = cme * Decimal(str(hist_periods_count))
+
+        if total_net > 0:
+            simulated_net_margin = ((total_profit - past_cost) / total_net) * Decimal('100.0')
+            historic_margin = (total_profit / total_net) * Decimal('100.0')
+        else:
+            simulated_net_margin = Decimal('0.00')
+            historic_margin = Decimal('0.00')
+
+        period_margins = []
+        hist_period_margins = []
+        for metric in sub_period_metrics:
+            p_net = metric['net']
+            p_profit = metric['profit']
+            if p_net > 0:
+                period_margins.append(((p_profit - cme) / p_net) * Decimal('100.0'))
+                hist_period_margins.append((p_profit / p_net) * Decimal('100.0'))
+
+        avg_period_margin = sum(period_margins) / len(period_margins) if period_margins else Decimal('0.00')
+        avg_hist_period_margin = sum(hist_period_margins) / len(hist_period_margins) if hist_period_margins else Decimal('0.00')
+
+        return {
+            'cme': cme,
+            'past_cost': past_cost,
+            'simulated_net_margin': simulated_net_margin,
+            'historic_margin': historic_margin,
+            'avg_period_margin': avg_period_margin,
+            'avg_hist_period_margin': avg_hist_period_margin,
+            'avg_monthly_discountable_sales': Decimal('0.00'),
+            'estimated_monthly_discount': Decimal('0.00'),
+            'estimated_total_discount': benefit_cost,
+        }
+
     def validate_agreement_margin(
         self,
         *,
@@ -522,9 +570,6 @@ class CustomerAgreementsService(UsersService):
 
         
         total_agreement_periods = get_periods_count(agr_start, agr_end, target_frequency)
-        cme = benefit.cost / Decimal(str(total_agreement_periods)) if total_agreement_periods > 0 else benefit.cost
-
-        
         delta_agr = relativedelta(agr_end + timedelta(days=1), agr_start)
         agr_duration_months = delta_agr.years * 12 + delta_agr.months
 
@@ -540,43 +585,43 @@ class CustomerAgreementsService(UsersService):
                 periodicity_months = 1
 
         has_partial_periods = (hist_months % periodicity_months != 0)
-
         hist_periods_count = get_periods_count(start_date, end_date, target_frequency)
-        past_cost = cme * Decimal(str(hist_periods_count))
 
-        
-        if total_net > 0:
-            simulated_net_margin = ((total_profit - past_cost) / total_net) * Decimal('100.0')
-            historic_margin = (total_profit / total_net) * Decimal('100.0')
-        else:
-            simulated_net_margin = Decimal('0.00')
-            historic_margin = Decimal('0.00')
-
-        
+        sub_periods = []
+        sub_period_metrics = []
         current_start = start_date
-        period_margins = []
-        hist_period_margins = []
-
         while current_start <= end_date:
             current_end = current_start + freq_delta - relativedelta(days=1)
             if current_end > end_date:
                 current_end = end_date
-
+            sub_periods.append((current_start, current_end))
             p_sales = sales.filter(sale_date__gte=current_start, sale_date__lte=current_end)
             p_agg = p_sales.aggregate(p_net=Sum('net_amount'), p_profit=Sum('profit'))
             p_net = p_agg['p_net'] or Decimal('0.00')
             p_profit = p_agg['p_profit'] or Decimal('0.00')
-
-            if p_net > 0:
-                p_margin = ((p_profit - cme) / p_net) * Decimal('100.0')
-                p_hist = (p_profit / p_net) * Decimal('100.0')
-                period_margins.append(p_margin)
-                hist_period_margins.append(p_hist)
-
+            sub_period_metrics.append({
+                'start': current_start,
+                'end': current_end,
+                'net': p_net,
+                'profit': p_profit,
+                'discountable_net': p_net,
+            })
             current_start = current_start + freq_delta
 
-        avg_period_margin = sum(period_margins) / len(period_margins) if period_margins else Decimal('0.00')
-        avg_hist_period_margin = sum(hist_period_margins) / len(hist_period_margins) if hist_period_margins else Decimal('0.00')
+        impact = self.calculate_fixed_benefit_margin_impact(
+            benefit_cost=benefit.cost,
+            total_agreement_periods=total_agreement_periods,
+            hist_periods_count=hist_periods_count,
+            total_net=total_net,
+            total_profit=total_profit,
+            sub_period_metrics=sub_period_metrics,
+        )
+        cme = impact['cme']
+        past_cost = impact['past_cost']
+        simulated_net_margin = impact['simulated_net_margin']
+        historic_margin = impact['historic_margin']
+        avg_period_margin = impact['avg_period_margin']
+        avg_hist_period_margin = impact['avg_hist_period_margin']
 
         min_margins = self.customer_margin_model.objects.filter(customer_id=customer_id)
         if participating_class_ids:
@@ -592,15 +637,6 @@ class CustomerAgreementsService(UsersService):
             m.product_class_id: m.min_margin_percentage
             for m in min_margins
         }
-
-        sub_periods = []
-        cur_s = start_date
-        while cur_s <= end_date:
-            cur_e = cur_s + freq_delta - relativedelta(days=1)
-            if cur_e > end_date:
-                cur_e = end_date
-            sub_periods.append((cur_s, cur_e))
-            cur_s = cur_s + freq_delta
 
         mandatory_items = [c for c in participating_classes_data if c.get('is_mandatory')]
         complementary_items = [c for c in participating_classes_data if not c.get('is_mandatory')]
