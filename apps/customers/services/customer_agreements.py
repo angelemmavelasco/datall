@@ -572,12 +572,13 @@ class CustomerAgreementsService(UsersService):
         global_target_amount: Decimal | float | str | None = None,
         growth_value: Decimal | float | str = Decimal('0.00'),
         growth_frequency: str = '',
+        apply_discount_to_all_classes: bool = True,
+        discount_class_ids: list[str] | None = None,
+        discount_application_mode: str = '',
     ) -> tuple[bool, Decimal, Decimal, bool, dict[str, Any]]:
         """
-        calculates historical margin, simulates amortized benefit impact and compound growth,
-        and evaluates biconditionally against CustomerClassMargin.
-        strict business rule: only participating classes are included. non-participating classes
-        are completely excluded from the sales evaluation and margin minimum checks.
+        evalua la viabilidad financiera del convenio comparando margen historico y costo del beneficio contra margenes minimos.
+        requiere cliente, beneficio, vigencia, frecuencia y alcance de clases y retorna validez, margenes, volatilidad y desglose o lanza error.
         """
         agr_start_val = agreement_start or agreement_start_date
         agr_end_val = agreement_end or agreement_end_date
@@ -605,21 +606,32 @@ class CustomerAgreementsService(UsersService):
         participating_class_ids = [
             str(c.get('product_class_id')) for c in participating_classes_data if c.get('product_class_id')
         ]
+        clean_discount_class_ids = [
+            str(cid).strip() for cid in (discount_class_ids or []) if str(cid).strip()
+        ]
+        is_discount = benefit.is_discount
+        is_pct_discount = benefit.is_percentage_discount
+        discount_pct = benefit.cost if is_pct_discount else Decimal('0.00')
+        pct_ratio = discount_pct / Decimal('100.0')
+        effective_discount_mode = (
+            discount_application_mode or DiscountApplicationModeChoices.PERIODIC
+            if is_discount else ''
+        )
 
-        
         delta_hist = relativedelta(end_date + timedelta(days=1), start_date)
         hist_months = delta_hist.years * 12 + delta_hist.months
         if hist_months <= 0:
             hist_months = 1
 
-        
-        sales = self.sale_transaction_model.objects.filter(
+        all_customer_sales = self.sale_transaction_model.objects.filter(
             customer_id=customer_id,
             sale_date__gte=start_date,
             sale_date__lte=end_date
         )
-        if participating_class_ids:
-            sales = sales.filter(product_class_id__in=participating_class_ids)
+        sales = (
+            all_customer_sales.filter(product_class_id__in=participating_class_ids)
+            if participating_class_ids else all_customer_sales
+        )
 
         totals = sales.aggregate(
             total_net=Sum('net_amount'),
@@ -628,7 +640,19 @@ class CustomerAgreementsService(UsersService):
         total_net = totals['total_net'] or Decimal('0.00')
         total_profit = totals['total_profit'] or Decimal('0.00')
 
-        
+        if is_discount:
+            if apply_discount_to_all_classes:
+                discount_sales = all_customer_sales
+            elif clean_discount_class_ids:
+                discount_sales = all_customer_sales.filter(product_class_id__in=clean_discount_class_ids)
+            else:
+                discount_sales = all_customer_sales.none()
+            disc_totals = discount_sales.aggregate(d_net=Sum('net_amount'))
+            discountable_net = disc_totals['d_net'] or Decimal('0.00')
+        else:
+            discount_sales = all_customer_sales.none()
+            discountable_net = Decimal('0.00')
+
         total_agreement_periods = get_periods_count(agr_start, agr_end, target_frequency)
         delta_agr = relativedelta(agr_end + timedelta(days=1), agr_start)
         agr_duration_months = delta_agr.years * 12 + delta_agr.months
@@ -659,23 +683,47 @@ class CustomerAgreementsService(UsersService):
             p_agg = p_sales.aggregate(p_net=Sum('net_amount'), p_profit=Sum('profit'))
             p_net = p_agg['p_net'] or Decimal('0.00')
             p_profit = p_agg['p_profit'] or Decimal('0.00')
+            if is_discount:
+                if apply_discount_to_all_classes and not participating_class_ids:
+                    p_disc_net = p_net
+                else:
+                    p_disc_agg = discount_sales.filter(
+                        sale_date__gte=current_start,
+                        sale_date__lte=current_end
+                    ).aggregate(d_net=Sum('net_amount'))
+                    p_disc_net = p_disc_agg['d_net'] or Decimal('0.00')
+            else:
+                p_disc_net = Decimal('0.00')
             sub_period_metrics.append({
                 'start': current_start,
                 'end': current_end,
                 'net': p_net,
                 'profit': p_profit,
-                'discountable_net': p_net,
+                'discountable_net': p_disc_net,
             })
             current_start = current_start + freq_delta
 
-        impact = self.calculate_fixed_benefit_margin_impact(
-            benefit_cost=benefit.cost,
-            total_agreement_periods=total_agreement_periods,
-            hist_periods_count=hist_periods_count,
-            total_net=total_net,
-            total_profit=total_profit,
-            sub_period_metrics=sub_period_metrics,
-        )
+        if is_pct_discount:
+            impact = self.calculate_percentage_benefit_margin_impact(
+                discount_pct=discount_pct,
+                hist_months=hist_months,
+                periodicity_months=periodicity_months,
+                total_agreement_periods=total_agreement_periods,
+                total_net=total_net,
+                total_profit=total_profit,
+                discountable_net=discountable_net,
+                sub_period_metrics=sub_period_metrics,
+            )
+        else:
+            impact = self.calculate_fixed_benefit_margin_impact(
+                benefit_cost=benefit.cost,
+                total_agreement_periods=total_agreement_periods,
+                hist_periods_count=hist_periods_count,
+                total_net=total_net,
+                total_profit=total_profit,
+                sub_period_metrics=sub_period_metrics,
+            )
+
         cme = impact['cme']
         past_cost = impact['past_cost']
         simulated_net_margin = impact['simulated_net_margin']
@@ -683,37 +731,39 @@ class CustomerAgreementsService(UsersService):
         avg_period_margin = impact['avg_period_margin']
         avg_hist_period_margin = impact['avg_hist_period_margin']
 
-        min_margins = self.customer_margin_model.objects.filter(customer_id=customer_id)
-        if participating_class_ids:
-            min_margins = min_margins.filter(product_class_id__in=participating_class_ids)
+        relevant_class_ids = set(participating_class_ids)
+        if is_discount and not apply_discount_to_all_classes:
+            relevant_class_ids.update(clean_discount_class_ids)
 
+        all_customer_margins = self.customer_margin_model.objects.filter(customer_id=customer_id)
+        min_margins = (
+            all_customer_margins.filter(product_class_id__in=participating_class_ids)
+            if participating_class_ids else all_customer_margins
+        )
         max_required_margin = Decimal('0.00')
         if min_margins.exists():
             max_required_margin = max(m.min_margin_percentage for m in min_margins)
 
-        classes_qs = self.product_class_model.objects.filter(id__in=participating_class_ids)
+        classes_qs = self.product_class_model.objects.filter(id__in=relevant_class_ids)
         classes_map = {c.id: c for c in classes_qs}
         customer_margins_map = {
             m.product_class_id: m.min_margin_percentage
-            for m in min_margins
+            for m in all_customer_margins
         }
 
-        mandatory_items = [c for c in participating_classes_data if c.get('is_mandatory')]
-        complementary_items = [c for c in participating_classes_data if not c.get('is_mandatory')]
+        discounted_class_set = set(clean_discount_class_ids)
 
-        mandatory_breakdown = []
-        for item in mandatory_items:
-            cid = str(item.get('product_class_id'))
-            pc = classes_map.get(cid)
-            pc_name = (pc.name if pc and pc.name else cid).title()
-            req_tgt = Decimal(str(item.get('required_target') or '0'))
-            min_m = customer_margins_map.get(cid, Decimal('0.00'))
+        def class_receives_discount(cid: str) -> bool:
+            return bool(is_discount and (apply_discount_to_all_classes or cid in discounted_class_set))
 
-            c_sales = sales.filter(product_class_id=cid)
+        def evaluate_single_class(cid: str, sales_qs: QuerySet) -> dict[str, Any]:
+            c_sales = sales_qs.filter(product_class_id=cid)
             c_totals = c_sales.aggregate(net=Sum('net_amount'), profit=Sum('profit'))
             c_net = c_totals['net'] or Decimal('0.00')
             c_profit = c_totals['profit'] or Decimal('0.00')
-            c_period_margin = (c_profit / c_net * Decimal('100.0')) if c_net > 0 else Decimal('0.00')
+            has_disc = class_receives_discount(cid)
+            eff_profit = c_profit - (c_net * pct_ratio) if (is_pct_discount and has_disc) else c_profit
+            c_period_margin = (eff_profit / c_net * Decimal('100.0')) if c_net > 0 else Decimal('0.00')
 
             c_sub_margins = []
             for p_start, p_end in sub_periods:
@@ -722,9 +772,11 @@ class CustomerAgreementsService(UsersService):
                 p_c_net = p_c_totals['net'] or Decimal('0.00')
                 p_c_profit = p_c_totals['profit'] or Decimal('0.00')
                 if p_c_net > 0:
-                    c_sub_margins.append((p_c_profit / p_c_net) * Decimal('100.0'))
+                    p_eff = p_c_profit - (p_c_net * pct_ratio) if (is_pct_discount and has_disc) else p_c_profit
+                    c_sub_margins.append((p_eff / p_c_net) * Decimal('100.0'))
 
             c_avg_period_margin = (sum(c_sub_margins) / len(c_sub_margins)) if c_sub_margins else Decimal('0.00')
+            min_m = customer_margins_map.get(cid, Decimal('0.00'))
 
             c_is_valid = True
             c_volatility = False
@@ -737,11 +789,7 @@ class CustomerAgreementsService(UsersService):
                 else:
                     c_is_valid = False
 
-            mandatory_breakdown.append({
-                'product_class_id': cid,
-                'product_class_name': pc_name,
-                'is_mandatory': True,
-                'required_target': req_tgt,
+            return {
                 'min_margin': min_m,
                 'total_net': c_net,
                 'total_profit': c_profit,
@@ -750,6 +798,25 @@ class CustomerAgreementsService(UsersService):
                 'has_sales': (c_net > 0),
                 'is_valid': c_is_valid,
                 'volatility_alert': c_volatility,
+                'has_discount': has_disc,
+            }
+
+        mandatory_items = [c for c in participating_classes_data if c.get('is_mandatory')]
+        complementary_items = [c for c in participating_classes_data if not c.get('is_mandatory')]
+
+        mandatory_breakdown = []
+        for item in mandatory_items:
+            cid = str(item.get('product_class_id'))
+            pc = classes_map.get(cid)
+            pc_name = (pc.name if pc and pc.name else cid).title()
+            req_tgt = Decimal(str(item.get('required_target') or '0'))
+            metrics = evaluate_single_class(cid, sales)
+            mandatory_breakdown.append({
+                'product_class_id': cid,
+                'product_class_name': pc_name,
+                'is_mandatory': True,
+                'required_target': req_tgt,
+                **metrics,
             })
 
         complementary_breakdown = []
@@ -759,35 +826,12 @@ class CustomerAgreementsService(UsersService):
             cid = str(item.get('product_class_id'))
             pc = classes_map.get(cid)
             pc_name = (pc.name if pc and pc.name else cid).title()
-            min_m = customer_margins_map.get(cid, Decimal('0.00'))
-
-            c_sales = sales.filter(product_class_id=cid)
-            c_totals = c_sales.aggregate(net=Sum('net_amount'), profit=Sum('profit'))
-            c_net = c_totals['net'] or Decimal('0.00')
-            c_profit = c_totals['profit'] or Decimal('0.00')
-            c_period_margin = (c_profit / c_net * Decimal('100.0')) if c_net > 0 else Decimal('0.00')
-
-            c_sub_margins = []
-            for p_start, p_end in sub_periods:
-                p_c_sales = c_sales.filter(sale_date__gte=p_start, sale_date__lte=p_end)
-                p_c_totals = p_c_sales.aggregate(net=Sum('net_amount'), profit=Sum('profit'))
-                p_c_net = p_c_totals['net'] or Decimal('0.00')
-                p_c_profit = p_c_totals['profit'] or Decimal('0.00')
-                if p_c_net > 0:
-                    c_sub_margins.append((p_c_profit / p_c_net) * Decimal('100.0'))
-
-            c_avg_period_margin = (sum(c_sub_margins) / len(c_sub_margins)) if c_sub_margins else Decimal('0.00')
-
+            metrics = evaluate_single_class(cid, sales)
             complementary_breakdown.append({
                 'product_class_id': cid,
                 'product_class_name': pc_name,
                 'is_mandatory': False,
-                'min_margin': min_m,
-                'total_net': c_net,
-                'total_profit': c_profit,
-                'period_margin': c_period_margin,
-                'avg_period_margin': c_avg_period_margin,
-                'has_sales': (c_net > 0),
+                **metrics,
                 'is_most_restrictive': False,
             })
 
@@ -807,7 +851,15 @@ class CustomerAgreementsService(UsersService):
         comp_totals = comp_sales.aggregate(net=Sum('net_amount'), profit=Sum('profit'))
         comp_net = comp_totals['net'] or Decimal('0.00')
         comp_profit = comp_totals['profit'] or Decimal('0.00')
-        comp_period_margin = (comp_profit / comp_net * Decimal('100.0')) if comp_net > 0 else Decimal('0.00')
+        comp_disc_ids = comp_class_ids if apply_discount_to_all_classes else [cid for cid in comp_class_ids if cid in discounted_class_set]
+        if is_pct_discount and comp_disc_ids:
+            comp_disc_sales = comp_sales.filter(product_class_id__in=comp_disc_ids)
+            comp_disc_net = comp_disc_sales.aggregate(d_net=Sum('net_amount'))['d_net'] or Decimal('0.00')
+            comp_eff_profit = comp_profit - (comp_disc_net * pct_ratio)
+        else:
+            comp_disc_sales = comp_sales.none()
+            comp_eff_profit = comp_profit
+        comp_period_margin = (comp_eff_profit / comp_net * Decimal('100.0')) if comp_net > 0 else Decimal('0.00')
 
         comp_sub_margins = []
         for p_start, p_end in sub_periods:
@@ -816,7 +868,12 @@ class CustomerAgreementsService(UsersService):
             p_comp_net = p_comp_totals['net'] or Decimal('0.00')
             p_comp_profit = p_comp_totals['profit'] or Decimal('0.00')
             if p_comp_net > 0:
-                comp_sub_margins.append((p_comp_profit / p_comp_net) * Decimal('100.0'))
+                if is_pct_discount and comp_disc_ids:
+                    p_cd_net = comp_disc_sales.filter(sale_date__gte=p_start, sale_date__lte=p_end).aggregate(d_net=Sum('net_amount'))['d_net'] or Decimal('0.00')
+                    p_comp_eff = p_comp_profit - (p_cd_net * pct_ratio)
+                else:
+                    p_comp_eff = p_comp_profit
+                comp_sub_margins.append((p_comp_eff / p_comp_net) * Decimal('100.0'))
 
         comp_avg_period_margin = (sum(comp_sub_margins) / len(comp_sub_margins)) if comp_sub_margins else Decimal('0.00')
 
@@ -845,6 +902,23 @@ class CustomerAgreementsService(UsersService):
             'volatility_alert': comp_volatility,
         }
 
+        discount_classes_breakdown = []
+        discount_class_names = []
+        if is_discount and not apply_discount_to_all_classes and clean_discount_class_ids:
+            participating_set = set(participating_class_ids)
+            for cid in clean_discount_class_ids:
+                pc = classes_map.get(cid)
+                pc_name = (pc.name if pc and pc.name else cid).title()
+                discount_class_names.append(pc_name)
+                metrics = evaluate_single_class(cid, all_customer_sales)
+                discount_classes_breakdown.append({
+                    'product_class_id': cid,
+                    'product_class_name': pc_name,
+                    'in_participating': (cid in participating_set) or (not participating_class_ids),
+                    'estimated_discount': (metrics['total_net'] * pct_ratio) if is_pct_discount else Decimal('0.00'),
+                    **metrics,
+                })
+
         growth_projected_totals = []
         if growth_val_dec > 0 and growth_frequency:
             try:
@@ -860,20 +934,28 @@ class CustomerAgreementsService(UsersService):
         volatile_mandatory = [c for c in mandatory_breakdown if c['volatility_alert']]
         failed_comp = bool(comp_class_ids and comp_net > 0 and most_restrictive_min_margin > 0 and not comp_is_valid and not comp_volatility)
         volatile_comp = comp_volatility
+        failed_discount_extra = [
+            c for c in discount_classes_breakdown
+            if not c['in_participating'] and c['has_sales'] and c['min_margin'] > 0 and not c['is_valid'] and not c['volatility_alert']
+        ]
+        volatile_discount_extra = [
+            c for c in discount_classes_breakdown
+            if not c['in_participating'] and c['volatility_alert']
+        ]
 
         overall_is_valid = True
         overall_volatility = False
 
-        if total_net > 0 and max_required_margin > 0:
-            if simulated_net_margin < max_required_margin:
+        if total_net > 0 and (max_required_margin > 0 or failed_discount_extra or volatile_discount_extra):
+            if max_required_margin > 0 and simulated_net_margin < max_required_margin:
                 if avg_period_margin >= max_required_margin:
                     overall_is_valid = False
                     overall_volatility = True
                 else:
                     overall_is_valid = False
-            elif failed_mandatory or failed_comp:
+            elif failed_mandatory or failed_comp or failed_discount_extra:
                 overall_is_valid = False
-            elif volatile_mandatory or volatile_comp:
+            elif volatile_mandatory or volatile_comp or volatile_discount_extra:
                 overall_is_valid = False
                 overall_volatility = True
         else:
@@ -893,6 +975,21 @@ class CustomerAgreementsService(UsersService):
             'avg_hist_period_margin': avg_hist_period_margin,
             'benefit_cost': benefit.cost,
             'benefit_name': benefit.name,
+            'benefit_type': benefit.benefit_type,
+            'benefit_display_value': benefit.display_value,
+            'is_discount': is_discount,
+            'is_percentage_discount': is_pct_discount,
+            'discount_pct': discount_pct,
+            'discount_application_mode': effective_discount_mode,
+            'discount_application_mode_display': dict(DiscountApplicationModeChoices.choices).get(effective_discount_mode, ''),
+            'apply_discount_to_all_classes': apply_discount_to_all_classes,
+            'discount_class_names': discount_class_names,
+            'discount_classes_breakdown': discount_classes_breakdown,
+            'has_extra_discount_classes': any(not c['in_participating'] for c in discount_classes_breakdown),
+            'discountable_net': discountable_net,
+            'avg_monthly_discountable_sales': impact['avg_monthly_discountable_sales'],
+            'estimated_monthly_discount': impact['estimated_monthly_discount'],
+            'estimated_total_discount': impact['estimated_total_discount'],
             'simulated_total_periods': total_agreement_periods,
             'participating_classes_count': len(participating_class_ids),
             'traffic_light': get_traffic_light_status(simulated_net_margin),
