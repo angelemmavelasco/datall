@@ -270,6 +270,11 @@ class EvaluationModeChoices(models.TextChoices):
     AT_END = 'at_end', 'Corte al término (seguimiento de comportamiento)'
 
 
+class DiscountApplicationModeChoices(models.TextChoices):
+    PERIODIC = 'periodic', 'Por periodo de evaluación'
+    AT_END = 'at_end', 'Al finalizar el convenio'
+
+
 class CustomerAgreement(models.Model):
     customer = models.ForeignKey(
         'Customer',
@@ -306,6 +311,23 @@ class CustomerAgreement(models.Model):
         choices=EvaluationModeChoices.choices,
         default=EvaluationModeChoices.PERIODIC,
         help_text='Modalidad de corte: por periodo o acumulada al término del convenio'
+    )
+    discount_application_mode = models.CharField(
+        max_length=10,
+        choices=DiscountApplicationModeChoices.choices,
+        blank=True,
+        default='',
+        help_text='Modalidad legal de aplicación del descuento: por periodo o al finalizar el convenio'
+    )
+    apply_discount_to_all_classes = models.BooleanField(
+        default=True,
+        help_text='Indica si el descuento aplica a todas las clases de producto o únicamente a clases específicas'
+    )
+    discount_classes = models.ManyToManyField(
+        'products.ProductClass',
+        blank=True,
+        related_name='discount_agreements',
+        help_text='Clases de producto específicas a las que aplica el descuento'
     )
     start_date = models.DateField(help_text='Fecha de inicio del convenio (primer día del mes)')
     end_date = models.DateField(null=True, blank=True, help_text='Fecha de fin del convenio (último día del mes)')
@@ -389,13 +411,18 @@ class CustomerAgreement(models.Model):
         ]
 
     def clean(self):
+        """
+        valida la inmutabilidad de los campos financieros y contractuales de un convenio existente.
+        requiere la instancia persistida y lanza validationerror si se intenta alterar un campo protegido.
+        """
         super().clean()
         if self.pk:
             original = CustomerAgreement.objects.get(pk=self.pk)
             immutable_fields = [
                 'customer_id', 'route_id', 'benefit_id', 'doc_id',
-                'agreement_type', 'evaluation_mode', 'start_date', 'end_date', 'global_target_amount',
-                'target_frequency', 'penalty_amount',
+                'agreement_type', 'evaluation_mode', 'discount_application_mode',
+                'apply_discount_to_all_classes', 'start_date', 'end_date',
+                'global_target_amount', 'target_frequency', 'penalty_amount',
                 'growth_value', 'growth_frequency', 'margin_warning_accepted'
             ]
             for field in immutable_fields:
