@@ -1064,8 +1064,8 @@ class CustomerAgreementsService(UsersService):
         **kwargs,
     ) -> dict[str, Any]:
         """
-        generates the formal printable 'contrato comercial' with 7 formal clauses
-        and the 'desglose de consumos esperados' matrix with compound growth.
+        genera la vista previa del contrato comercial de siete clausulas y la matriz de consumos proyectados.
+        requiere cliente, beneficio, vigencia, cuotas y alcance del descuento y retorna el diccionario de contexto o lanza serviceerror.
         """
         data = dict(form_data or {})
         data.update(kwargs)
@@ -1080,6 +1080,15 @@ class CustomerAgreementsService(UsersService):
         end_date_str = data.get('end_date')
         target_frequency = data.get('target_frequency', PeriodicityChoices.MONTHLY)
         growth_frequency = data.get('growth_frequency', '')
+        discount_application_mode = data.get('discount_application_mode') or ''
+        raw_apply_all = data.get('apply_discount_to_all_classes', True)
+        if isinstance(raw_apply_all, str):
+            apply_discount_to_all_classes = raw_apply_all.strip().lower() not in ('false', '0', 'no', '')
+        else:
+            apply_discount_to_all_classes = bool(raw_apply_all)
+        discount_class_ids = [
+            str(cid).strip() for cid in (data.get('discount_class_ids') or []) if str(cid).strip()
+        ]
         
         doc_id = data.get('doc_id')
         if doc_id and str(doc_id).strip():
@@ -1262,7 +1271,69 @@ class CustomerAgreementsService(UsersService):
 
         total_accumulated_target = sum(p['global_target'] for p in period_columns)
 
-        
+        is_discount = bool(benefit and benefit.is_discount)
+        is_percentage_discount = bool(benefit and benefit.is_percentage_discount)
+        is_fixed_discount = bool(benefit and benefit.is_fixed_discount)
+
+        if is_discount:
+            if not discount_application_mode:
+                discount_application_mode = DiscountApplicationModeChoices.PERIODIC
+            discount_classes = (
+                [] if apply_discount_to_all_classes
+                else list(self.product_class_model.objects.filter(id__in=discount_class_ids).order_by('name', 'id'))
+            )
+            if discount_application_mode == DiscountApplicationModeChoices.AT_END:
+                discount_mode_phrase = 'al finalizar la vigencia del convenio'
+            else:
+                discount_mode_phrase = f"por cada periodo de evaluación ({frequency_phrase})"
+            if apply_discount_to_all_classes:
+                discount_scope_phrase = 'todas las clases de producto'
+            elif discount_classes:
+                discount_scope_phrase = 'las clases específicas: ' + ', '.join(pc.name.title() for pc in discount_classes)
+            else:
+                discount_scope_phrase = 'las clases de producto específicas seleccionadas'
+        else:
+            discount_application_mode = ''
+            apply_discount_to_all_classes = True
+            discount_classes = []
+            discount_mode_phrase = ''
+            discount_scope_phrase = ''
+
+        if is_percentage_discount:
+            clause_2_text = (
+                f"La empresa se compromete a otorgar a favor del cliente {customer.name if customer else ''} "
+                f"un descuento comercial del {benefit.cost:,.2f}% ('{benefit.name}'), aplicable {discount_mode_phrase} "
+                f"sobre {discount_scope_phrase}, sujeto al cabal y estricto cumplimiento de los consumos y cuotas pactadas en el presente instrumento."
+            )
+            clause_7_text = (
+                "En caso de no cubrirse las cuotas pactadas o de negativa de pago de penalizaciones, la empresa podrá suspender o revocar de pleno derecho "
+                "el descuento porcentual otorgado y exigir el cargo compensatorio por los descuentos ya aplicados. "
+                "Las partes ratifican el presente instrumento sin mediar vicio en el consentimiento, sometiéndose expresamente a los tribunales de Guadalajara, Jalisco."
+            )
+        elif is_fixed_discount:
+            clause_2_text = (
+                f"La empresa se compromete a otorgar a favor del cliente {customer.name if customer else ''} "
+                f"un descuento comercial fijo de ${benefit.cost:,.2f} MXN ('{benefit.name}'), aplicable {discount_mode_phrase} "
+                f"sobre {discount_scope_phrase}, sujeto al cabal y estricto cumplimiento de los consumos y cuotas pactadas en el presente instrumento."
+            )
+            clause_7_text = (
+                "En caso de no cubrirse las cuotas pactadas o de negativa de pago de penalizaciones, la empresa podrá suspender o revocar de pleno derecho "
+                "el descuento fijo otorgado y exigir el cargo compensatorio por los importes ya aplicados. "
+                "Las partes ratifican el presente instrumento sin mediar vicio en el consentimiento, sometiéndose expresamente a los tribunales de Guadalajara, Jalisco."
+            )
+        else:
+            clause_2_text = (
+                f"La empresa se compromete a otorgar a favor del cliente {customer.name if customer else ''} "
+                f"el beneficio comercial consistente en '{benefit.name if benefit else ''}' "
+                f"({benefit.get_benefit_type_display() if benefit else ''}), "
+                f"con valor de referencia de ${benefit.cost:,.2f} MXN, sujeto al cabal y estricto cumplimiento de los consumos y cuotas pactadas en el presente instrumento."
+            )
+            clause_7_text = (
+                "En caso de no cubrirse las cuotas pactadas o de negativa de pago de penalizaciones, el cliente se compromete a cubrir el valor comercial íntegro del bien otorgado, "
+                "o autoriza expresamente la restitución o embargo del beneficio otorgado. "
+                "Las partes ratifican el presente instrumento sin mediar vicio en el consentimiento, sometiéndose expresamente a los tribunales de Guadalajara, Jalisco."
+            )
+
         clauses = [
             {
                 'number': 1,
@@ -1281,12 +1352,7 @@ class CustomerAgreementsService(UsersService):
                 'number': 2,
                 'citation': '[2]',
                 'title': 'CLÁUSULA SEGUNDA [2] — OBJETO Y ENTREGA DEL BENEFICIO COMERCIAL',
-                'text': (
-                    f"La empresa se compromete a otorgar a favor del cliente {customer.name if customer else ''} "
-                    f"el beneficio comercial consistente en '{benefit.name if benefit else ''}' "
-                    f"({benefit.get_benefit_type_display() if benefit else ''}), "
-                    f"con valor de referencia de ${benefit.cost:,.2f} MXN, sujeto al cabal y estricto cumplimiento de los consumos y cuotas pactadas en el presente instrumento."
-                ),
+                'text': clause_2_text,
             },
             {
                 'number': 3,
@@ -1356,11 +1422,7 @@ class CustomerAgreementsService(UsersService):
                 'number': 7,
                 'citation': '[7]',
                 'title': 'CLÁUSULA SÉPTIMA [7] — RESTITUCIÓN, EMBARGO, VALIDEZ Y JURISDICCIÓN',
-                'text': (
-                    "En caso de no cubrirse las cuotas pactadas o de negativa de pago de penalizaciones, el cliente se compromete a cubrir el valor comercial íntegro del bien otorgado, "
-                    "o autoriza expresamente la restitución o embargo del beneficio otorgado. "
-                    "Las partes ratifican el presente instrumento sin mediar vicio en el consentimiento, sometiéndose expresamente a los tribunales de Guadalajara, Jalisco."
-                ),
+                'text': clause_7_text,
             },
         ]
 
@@ -1440,6 +1502,16 @@ class CustomerAgreementsService(UsersService):
             'today': timezone.localdate(),
             'evaluation_mode': evaluation_mode,
             'evaluation_mode_display': dict(EvaluationModeChoices.choices).get(evaluation_mode, evaluation_mode),
+            'is_discount': is_discount,
+            'is_percentage_discount': is_percentage_discount,
+            'is_fixed_discount': is_fixed_discount,
+            'discount_application_mode': discount_application_mode,
+            'discount_application_mode_display': dict(DiscountApplicationModeChoices.choices).get(discount_application_mode, ''),
+            'discount_mode_phrase': discount_mode_phrase,
+            'apply_discount_to_all_classes': apply_discount_to_all_classes,
+            'discount_classes': discount_classes,
+            'discount_classes_names': [pc.name.title() for pc in discount_classes],
+            'discount_scope_phrase': discount_scope_phrase,
         }
 
     @transaction.atomic
