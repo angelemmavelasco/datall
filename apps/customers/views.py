@@ -960,7 +960,8 @@ def customer_agreement_create_view(request):
 @login_required
 def customer_agreement_validate_margin_view(request):
     """
-    endpoint called dynamically from create form to evaluate customer margin.
+    simula dinamicamente el margen financiero del convenio considerando beneficio, vigencia y alcance de descuento.
+    requiere datos del formulario via get o post y devuelve el parcial html con la alerta o desglose de margen.
     """
     service = CustomerAgreementsService(user=request.user)
     data = request.POST if request.method == 'POST' else request.GET
@@ -983,8 +984,10 @@ def customer_agreement_validate_margin_view(request):
     global_target = data.get('global_target_amount')
     growth_value = data.get('growth_value') or '0'
     growth_frequency = data.get('growth_frequency')
+    discount_application_mode = data.get('discount_application_mode', '')
+    apply_discount_to_all_classes = _parse_bool_flag(data.get('apply_discount_to_all_classes'), default=True)
+    discount_class_ids = [str(cid).strip() for cid in data.getlist('discount_classes') if str(cid).strip()]
 
-    # defst for evaluation dates if empty
     if not eval_end:
         today = timezone.localdate()
         prev_month = today.replace(day=1) - timedelta(days=1)
@@ -1005,6 +1008,11 @@ def customer_agreement_validate_margin_view(request):
         missing_fields.append("Mes de fin de vigencia")
     if not target_frequency:
         missing_fields.append("Frecuencia de evaluación")
+
+    if benefit_id:
+        benefit_obj = CommercialBenefit.objects.filter(pk=benefit_id).first()
+        if benefit_obj and benefit_obj.is_discount and not apply_discount_to_all_classes and not discount_class_ids:
+            missing_fields.append("Al menos una clase de producto para aplicar el descuento específico")
 
     if missing_fields:
         return render(request, 'customers/customer_agreements/partials/margin_alert.html', {
@@ -1054,6 +1062,9 @@ def customer_agreement_validate_margin_view(request):
             growth_value=Decimal(str(growth_value)) if growth_value else Decimal('0.00'),
             growth_frequency=growth_frequency,
             participating_classes_data=participating_classes_data,
+            apply_discount_to_all_classes=apply_discount_to_all_classes,
+            discount_class_ids=discount_class_ids,
+            discount_application_mode=discount_application_mode,
         )
 
         if isinstance(val_result, tuple):
