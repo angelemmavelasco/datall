@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django import forms
 from django.forms import inlineformset_factory
 
@@ -11,7 +12,9 @@ from .models import (
     CustomerContact,
     CustomerAgreement,
     CommercialBenefit,
+    CommercialBenefitTypeChoices,
     EvaluationModeChoices,
+    DiscountApplicationModeChoices,
     CustomerVisitSchedule,
 )
 from apps.core.models import PeriodicityChoices
@@ -251,6 +254,76 @@ class CustomerContactForm(forms.ModelForm):
         return None
 
 
+class CommercialBenefitForm(forms.ModelForm):
+    """
+    formulario para registrar y editar beneficios comerciales desde la interfaz operativa.
+    requiere tipo, nombre y monto o porcentaje valido y devuelve datos validados o errores de formulario.
+    """
+
+    class Meta:
+        model = CommercialBenefit
+        fields = ['benefit_type', 'name', 'cost', 'is_active']
+        labels = {
+            'benefit_type': 'Tipo de beneficio',
+            'name': 'Nombre del beneficio',
+            'cost': 'Costo / Porcentaje',
+            'is_active': 'Disponible',
+        }
+        widgets = {
+            'benefit_type': forms.Select(attrs={
+                'class': 'w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
+            }),
+            'name': forms.TextInput(attrs={
+                'placeholder': 'Ej. Refrigerador 400L o Descuento 5%',
+                'class': 'w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
+            }),
+            'cost': forms.NumberInput(attrs={
+                'step': '0.01',
+                'min': '0',
+                'placeholder': '0.00',
+                'class': 'w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong font-mono',
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'rounded border-border text-primary focus:ring-primary',
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        """
+        inicializa el formulario asegurando que la disponibilidad sea opcional y activa por defecto al crear.
+        requiere argumentos estandar de modelform y configura el estado inicial de is_active.
+        """
+        super().__init__(*args, **kwargs)
+        self.fields['is_active'].required = False
+        if not (self.instance and self.instance.pk):
+            self.fields['is_active'].initial = True
+
+    def clean_name(self):
+        """
+        normaliza el nombre del beneficio eliminando espacios y valida que no quede vacio.
+        requiere el texto capturado y retorna la cadena limpia o lanza validationerror.
+        """
+        name = (self.cleaned_data.get('name') or '').strip()
+        if not name:
+            raise forms.ValidationError("El nombre del beneficio comercial es obligatorio.")
+        return name
+
+    def clean(self):
+        """
+        valida coherencia entre el tipo de beneficio y el valor numerico capturado en cost.
+        requiere tipo y costo validos y agrega error al campo cost si incumple limites porcentuales o monetarios.
+        """
+        cleaned_data = super().clean()
+        benefit_type = cleaned_data.get('benefit_type')
+        cost = cleaned_data.get('cost')
+        if cost is None or cost < Decimal('0.00'):
+            self.add_error('cost', 'El costo o porcentaje del beneficio no puede ser negativo.')
+        elif benefit_type == CommercialBenefitTypeChoices.PERCENTAGE_DISCOUNT:
+            if cost <= Decimal('0.00') or cost > Decimal('100.00'):
+                self.add_error('cost', 'El descuento porcentual debe ser mayor a 0% y menor o igual a 100%.')
+        return cleaned_data
+
+
 class CustomerAgreementCreateForm(forms.ModelForm):
     doc_id = forms.CharField(
         max_length=50,
@@ -285,6 +358,8 @@ class CustomerAgreementCreateForm(forms.ModelForm):
             'benefit',
             'agreement_type',
             'evaluation_mode',
+            'discount_application_mode',
+            'apply_discount_to_all_classes',
             'start_date',
             'end_date',
             'global_target_amount',
@@ -311,6 +386,12 @@ class CustomerAgreementCreateForm(forms.ModelForm):
             'evaluation_mode': forms.Select(attrs={
                 'class': 'w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
             }),
+            'discount_application_mode': forms.Select(attrs={
+                'class': 'w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong',
+            }),
+            'apply_discount_to_all_classes': forms.RadioSelect(
+                choices=[(True, 'Todas las clases de producto'), (False, 'Clases específicas')],
+            ),
             'global_target_amount': forms.NumberInput(attrs={
                 'step': '0.01',
                 'min': '0',
@@ -350,6 +431,10 @@ class CustomerAgreementCreateForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        """
+        configura querysets permitidos, valores iniciales y campos opcionales del convenio.
+        requiere allowed_customers opcional y ajusta modalidad de evaluacion y fechas iniciales.
+        """
         allowed_customers = kwargs.pop('allowed_customers', None)
         super().__init__(*args, **kwargs)
         self.fields['benefit'].queryset = CommercialBenefit.objects.filter(is_active=True).order_by('name')
@@ -363,6 +448,12 @@ class CustomerAgreementCreateForm(forms.ModelForm):
         self.fields['benefit_already_provided'].required = False
         self.fields['evaluation_mode'].required = False
         self.fields['evaluation_mode'].initial = EvaluationModeChoices.PERIODIC
+        self.fields['discount_application_mode'].required = False
+        self.fields['discount_application_mode'].choices = DiscountApplicationModeChoices.choices
+        self.fields['discount_application_mode'].initial = DiscountApplicationModeChoices.PERIODIC
+        self.fields['apply_discount_to_all_classes'].required = False
+        if not (self.instance and self.instance.pk):
+            self.fields['apply_discount_to_all_classes'].initial = True
 
         if self.instance and self.instance.pk:
             if self.instance.start_date:
@@ -406,11 +497,26 @@ class CustomerAgreementCreateForm(forms.ModelForm):
         return d
 
     def clean(self):
+        """
+        valida fechas del convenio y normaliza la modalidad y alcance del descuento segun el beneficio.
+        requiere datos limpios del formulario y agrega errores si la fecha final precede a la inicial.
+        """
         cleaned_data = super().clean()
         start_date = cleaned_data.get('start_date')
         end_date = cleaned_data.get('end_date')
         if start_date and end_date and end_date < start_date:
             self.add_error('end_date', 'El mes de fin no puede ser anterior al mes de inicio.')
+
+        benefit = cleaned_data.get('benefit')
+        if benefit and benefit.is_discount:
+            if not cleaned_data.get('discount_application_mode'):
+                cleaned_data['discount_application_mode'] = DiscountApplicationModeChoices.PERIODIC
+            if 'apply_discount_to_all_classes' not in self.data:
+                cleaned_data['apply_discount_to_all_classes'] = True
+        else:
+            cleaned_data['discount_application_mode'] = ''
+            cleaned_data['apply_discount_to_all_classes'] = True
+
         return cleaned_data
 
 
@@ -444,8 +550,8 @@ class CustomerAgreementDocumentForm(forms.ModelForm):
 
 class CustomerVisitScheduleForm(forms.ModelForm):
     """
-    form for configuring and updating customer visit schedules.
-    uses PeriodicityChoices from core (excluding daily, weekly, and at_end).
+    formulario para configurar y actualizar esquemas de visitas de clientes.
+    utiliza opciones de periodicidad de core excluyendo diaria, semanal y al termino.
     """
 
     class Meta:
@@ -494,7 +600,6 @@ class CustomerVisitScheduleForm(forms.ModelForm):
         if not self.instance.pk and 'start_date' not in self.initial:
             self.initial['start_date'] = timezone.localdate()
 
-        # periodicity choices with a empty label for weekly
         valid_choices = [
             ('', 'Semanal (todas las semanas)')
         ] + [

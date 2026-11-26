@@ -18,6 +18,8 @@ Nuevo convenio comercial
 
 {% block content %}
 
+{{ benefits_metadata|json_script:"benefits-metadata-json" }}
+
 <form id="create-agreement-form" method="POST" action="{% url 'customers:customer_agreement_create_view' %}" enctype="multipart/form-data" class="flex flex-col gap-4">
     {% csrf_token %}
 
@@ -33,7 +35,6 @@ Nuevo convenio comercial
     <hr class="border-border border">
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
-        <!-- cliente -->
         <span class="text-title flex items-center gap-1">Cliente
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -91,7 +92,6 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- Beneficio -->
         <span class="text-title flex items-center gap-1">Beneficio comercial
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -102,7 +102,19 @@ Nuevo convenio comercial
             </svg>
         </span>
         <div>
-            {% render_field form.benefit class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title' required='required' %}
+            <div class="flex items-center gap-2">
+                <div class="flex-1 min-w-0">
+                    {% render_field form.benefit class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title' required='required' onchange='handleBenefitChange()' %}
+                </div>
+                {% if can_edit_benefits %}
+                <button type="button"
+                        onclick="openCreateBenefitModal()"
+                        class="shrink-0 bg-page border border-border text-strong hover:bg-hover px-2 py-1 rounded transition-colors cursor-pointer text-xs flex items-center gap-1 whitespace-nowrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    <span>Nuevo beneficio</span>
+                </button>
+                {% endif %}
+            </div>
             <p class="text-red-500 text-xs flex flex-col gap-2 mt-1">
                 {% for error in form.benefit.errors %}
                 <span class="block">• {{ error }}</span>
@@ -110,7 +122,6 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- Tipo de convenio -->
         <span class="text-title flex items-center gap-1">Tipo de convenio
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -129,7 +140,6 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- Folio de convenio -->
         <span class="text-title flex items-center gap-1">Folio</span>
         <div>
             {% render_field form.doc_id class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title' placeholder='Opcional: autogenerado si se omite' %}
@@ -140,7 +150,6 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- Mes de inicio -->
         <span class="text-title flex items-center gap-1">Mes de inicio
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -159,7 +168,6 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- Mes de fin -->
         <span class="text-title flex items-center gap-1">Mes de fin
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -178,7 +186,6 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- doc adjunto -->
         <span class="text-title flex items-center gap-1">Documento adjunto</span>
         <div>
             {% render_field form.related_doc class='w-full bg-page border border-border rounded p-1 text-xs text-secondary file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:bg-container file:text-title hover:file:bg-hover cursor-pointer' %}
@@ -190,11 +197,105 @@ Nuevo convenio comercial
         </div>
     </div>
 
+    <div id="discount-config-section" class="hidden flex-col gap-2">
+        <div class="flex items-center justify-between flex-wrap gap-2 mt-2">
+            <p class="text-title text-sm">Configuración del descuento</p>
+            <span id="selected-discount-summary-badge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-container border border-border text-title"></span>
+        </div>
+        <hr class="border-border border">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
+            <span class="text-title flex items-center gap-1">Aplicación legal del descuento</span>
+            <div>
+                {% render_field form.discount_application_mode class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title' %}
+                <p class="text-[11px] text-secondary mt-1">Define expresamente en el contrato si el descuento se otorga al corte de cada periodo o al finalizar el convenio.</p>
+            </div>
+
+            <span class="text-title flex items-center gap-1">Alcance del descuento</span>
+            <div class="flex flex-wrap items-center gap-4 text-xs text-title">
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio"
+                           name="apply_discount_to_all_classes"
+                           id="discount_scope_all"
+                           value="True"
+                           {% if selected_apply_all_classes %}checked{% endif %}
+                           onchange="handleDiscountScopeChange()"
+                           class="border-border text-primary cursor-pointer">
+                    <span>Todas las clases de producto</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio"
+                           name="apply_discount_to_all_classes"
+                           id="discount_scope_specific"
+                           value="False"
+                           {% if not selected_apply_all_classes %}checked{% endif %}
+                           onchange="handleDiscountScopeChange()"
+                           class="border-border text-primary cursor-pointer">
+                    <span>Clases específicas</span>
+                </label>
+            </div>
+        </div>
+
+        <div id="discount-specific-classes-container" class="hidden flex-col gap-2 bg-container p-2 rounded border border-border">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+                <span class="text-xs text-title">Selecciona las clases a las que aplica el descuento (independiente de la cuota de consumo)</span>
+                <span class="text-[11px] font-mono text-secondary">
+                    <span id="selected-discount-classes-count">0</span> clase(s) seleccionada(s)
+                </span>
+            </div>
+            <input type="text"
+                   id="discount-class-search"
+                   oninput="filterDiscountClasses(this.value)"
+                   placeholder="Buscar clase para aplicar descuento..."
+                   class="w-full bg-page border border-border rounded p-1 text-xs text-title focus:outline-none focus:border-strong">
+            <div class="w-full overflow-auto border border-border rounded bg-page max-h-[26vh] relative">
+                <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+                    <thead>
+                        <tr class="border-b border-border text-xs">
+                            <th class="w-[95px] p-1 text-center text-title border-r border-b border-border sticky top-0 z-20 bg-page select-none">
+                                <label class="flex items-center justify-center gap-1.5 cursor-pointer m-0">
+                                    <input type="checkbox" id="select-all-discount-classes" onchange="toggleSelectAllDiscountClasses(this.checked)" class="rounded border-border text-primary cursor-pointer">
+                                    <span>Aplica</span>
+                                </label>
+                            </th>
+                            <th class="w-[240px] p-1 text-left text-title border-r border-b border-border sticky top-0 z-20 bg-page">
+                                Clase de producto
+                            </th>
+                            <th class="w-[180px] p-1 text-left text-title border-b border-border sticky top-0 z-20 bg-page">
+                                Categoría
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pc in product_classes %}
+                        <tr class="discount-class-row" data-name="{{ pc.name|lower }} {{ pc.product_category.name|default:''|lower }}">
+                            <td class="p-1.5 text-center border-r border-b border-border">
+                                <input type="checkbox"
+                                       name="discount_classes"
+                                       value="{{ pc.id }}"
+                                       id="disc_cls_{{ pc.id }}"
+                                       {% if pc.id in selected_discount_classes %}checked{% endif %}
+                                       onchange="updateDiscountClassesCount()"
+                                       class="discount-class-check rounded border-border text-primary cursor-pointer">
+                            </td>
+                            <td class="p-1.5 truncate text-left text-title text-xs border-r border-b border-border">
+                                <label for="disc_cls_{{ pc.id }}" class="cursor-pointer">{{ pc.name|title }}</label>
+                            </td>
+                            <td class="p-1.5 truncate text-left text-secondary text-xs border-b border-border">
+                                {{ pc.product_category.name|default:'-'|title }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <p class="text-title text-sm mt-2">Compromisos financieros y metas</p>
     <hr class="border-border border">
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 items-center bg-container p-2 rounded">
-        <!-- obj global base -->
         <span class="text-title flex items-center gap-1">Cuota global ($)
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -213,7 +314,6 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- freq de evaluación -->
         <span class="text-title flex items-center gap-1">Frecuencia de evaluación
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -232,7 +332,6 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- modo de corte / penalización -->
         <span class="text-title flex items-center gap-1">Modalidad de corte
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -251,7 +350,6 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- Penalización por incumplimiento -->
         <span class="text-title flex items-center gap-1">Penalización ($)</span>
         <div>
             {% render_field form.penalty_amount class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title' placeholder='0.00' %}
@@ -262,7 +360,6 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- Tasa de crecimiento -->
         <span class="text-title flex items-center gap-1">Crecimiento (%)</span>
         <div>
             {% render_field form.growth_value class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 font-mono text-xs text-title' placeholder='0.00' %}
@@ -273,7 +370,6 @@ Nuevo convenio comercial
             </p>
         </div>
 
-        <!-- Frecuencia de crecimiento -->
         <span class="text-title flex items-center gap-1">Frecuencia de crecimiento</span>
         <div>
             {% render_field form.growth_frequency class='w-full bg-page border border-border rounded focus:outline-none focus:border-strong focus:ring-strong p-1 text-xs text-title' %}
@@ -422,10 +518,57 @@ Nuevo convenio comercial
 
 </form>
 
-<!-- Contenedor del previo contractual -->
+{% if can_edit_benefits %}
+<div id="create-benefit-modal" class="fixed inset-0 z-50 bg-black/60 hidden items-center justify-center p-4">
+    <div class="bg-container border border-border rounded max-w-md w-full shadow-xl overflow-hidden">
+        <div class="border-b border-border p-3 flex items-center justify-between bg-page">
+            <span class="text-title text-sm font-medium">Nuevo beneficio comercial</span>
+            <button type="button" onclick="closeCreateBenefitModal()" class="text-secondary hover:text-hover cursor-pointer p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+
+        <form id="quick-benefit-form" onsubmit="submitQuickBenefit(event)" class="p-4 flex flex-col gap-3 text-xs">
+            {% csrf_token %}
+            <div id="quick-benefit-error" class="hidden p-2 rounded border border-red-500/40 bg-page text-red-500 text-xs"></div>
+
+            <div class="flex flex-col gap-1">
+                <label for="quick_benefit_type" class="text-title">Tipo de beneficio</label>
+                <select name="benefit_type" id="quick_benefit_type" onchange="updateQuickBenefitCostMeta()" class="w-full bg-page border border-border rounded p-1.5 text-xs text-title focus:outline-none focus:border-strong">
+                    {% for value, label in benefit_form.fields.benefit_type.choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="flex flex-col gap-1">
+                <label for="quick_benefit_name" class="text-title">Nombre del beneficio</label>
+                <input type="text" name="name" id="quick_benefit_name" required placeholder="Ej. Refrigerador 400L o Descuento 5%" class="w-full bg-page border border-border rounded p-1.5 text-xs text-title focus:outline-none focus:border-strong">
+            </div>
+
+            <div class="flex flex-col gap-1">
+                <label for="quick_benefit_cost" id="quick_benefit_cost_label" class="text-title">Costo total ($ MXN)</label>
+                <input type="number" step="0.01" min="0" name="cost" id="quick_benefit_cost" required placeholder="0.00" class="w-full bg-page border border-border rounded p-1.5 font-mono text-xs text-title focus:outline-none focus:border-strong">
+                <span id="quick_benefit_cost_help" class="text-[11px] text-secondary">Monto total invertido en el artículo o descuento fijo del convenio.</span>
+            </div>
+
+            <input type="hidden" name="is_active" value="on">
+
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                <button type="button" onclick="closeCreateBenefitModal()" class="border border-border text-strong hover:bg-hover px-3 py-1.5 rounded transition-colors cursor-pointer">Cancelar</button>
+                <button type="submit" id="btn-submit-quick-benefit" class="bg-page border border-border text-strong hover:bg-hover px-3 py-1.5 rounded transition-colors cursor-pointer font-medium">Guardar beneficio</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <div id="preview-container" class="mt-4"></div>
 
 <script>
+const benefitsMetaEl = document.getElementById('benefits-metadata-json');
+const BENEFITS_METADATA = benefitsMetaEl ? JSON.parse(benefitsMetaEl.textContent) : {};
+
 function selectDropdownOption(fieldName, optionId, optionLabel, element) {
     const input = document.getElementById('id_' + fieldName);
     const label = document.getElementById('label_' + fieldName);
@@ -436,7 +579,6 @@ function selectDropdownOption(fieldName, optionId, optionLabel, element) {
     if (details) details.removeAttribute('open');
 }
 
-// Close dropdowns when clicking outside
 document.addEventListener('click', function(e) {
     document.querySelectorAll('.custom-search-dropdown[open]').forEach(function(details) {
         if (!details.contains(e.target)) {
@@ -445,7 +587,6 @@ document.addEventListener('click', function(e) {
     });
 });
 
-// Autocompletar fechas de evaluación histórica por defecto al cargar (últimos 3 meses terminados)
 document.addEventListener('DOMContentLoaded', function() {
     const today = new Date();
     const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
@@ -462,9 +603,174 @@ document.addEventListener('DOMContentLoaded', function() {
     if (evalStart && !evalStart.value) evalStart.value = formatMonth(startMonth);
     if (evalEnd && !evalEnd.value) evalEnd.value = formatMonth(prevMonth);
     syncSelectAllHeaders();
+    handleBenefitChange();
+    updateDiscountClassesCount();
 });
 
-// Control de checkboxes de clases participantes y obligatorias
+function handleBenefitChange() {
+    const benefitSelect = document.getElementById('id_benefit');
+    const discountSection = document.getElementById('discount-config-section');
+    const summaryBadge = document.getElementById('selected-discount-summary-badge');
+    if (!benefitSelect || !discountSection) return;
+
+    const meta = BENEFITS_METADATA[String(benefitSelect.value)];
+    if (meta && meta.is_discount) {
+        discountSection.classList.remove('hidden');
+        discountSection.classList.add('flex');
+        if (summaryBadge) {
+            summaryBadge.textContent = `${meta.benefit_type_display || ''} · ${meta.display_value}`;
+        }
+        handleDiscountScopeChange();
+    } else {
+        discountSection.classList.add('hidden');
+        discountSection.classList.remove('flex');
+    }
+}
+
+function handleDiscountScopeChange() {
+    const specificRadio = document.getElementById('discount_scope_specific');
+    const container = document.getElementById('discount-specific-classes-container');
+    if (!container) return;
+
+    if (specificRadio && specificRadio.checked) {
+        container.classList.remove('hidden');
+        container.classList.add('flex');
+    } else {
+        container.classList.add('hidden');
+        container.classList.remove('flex');
+    }
+}
+
+function filterDiscountClasses(term) {
+    const normalized = (term || '').trim().toLowerCase();
+    document.querySelectorAll('.discount-class-row').forEach(row => {
+        const name = row.dataset.name || '';
+        row.style.display = (!normalized || name.includes(normalized)) ? '' : 'none';
+    });
+    updateDiscountClassesCount();
+}
+
+function toggleSelectAllDiscountClasses(checked) {
+    document.querySelectorAll('.discount-class-row').forEach(row => {
+        if (row.style.display !== 'none') {
+            const cb = row.querySelector('.discount-class-check');
+            if (cb) cb.checked = checked;
+        }
+    });
+    updateDiscountClassesCount();
+}
+
+function updateDiscountClassesCount() {
+    const allChecks = Array.from(document.querySelectorAll('.discount-class-check'));
+    const checkedCount = allChecks.filter(cb => cb.checked).length;
+    const countEl = document.getElementById('selected-discount-classes-count');
+    if (countEl) countEl.textContent = checkedCount;
+
+    const selectAll = document.getElementById('select-all-discount-classes');
+    if (selectAll && allChecks.length > 0) {
+        selectAll.checked = checkedCount === allChecks.length;
+        selectAll.indeterminate = checkedCount > 0 && checkedCount < allChecks.length;
+    }
+}
+
+{% if can_edit_benefits %}
+function openCreateBenefitModal() {
+    const modal = document.getElementById('create-benefit-modal');
+    if (!modal) return;
+    const errBox = document.getElementById('quick-benefit-error');
+    if (errBox) {
+        errBox.classList.add('hidden');
+        errBox.textContent = '';
+    }
+    updateQuickBenefitCostMeta();
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeCreateBenefitModal() {
+    const modal = document.getElementById('create-benefit-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function updateQuickBenefitCostMeta() {
+    const typeSelect = document.getElementById('quick_benefit_type');
+    const costLabel = document.getElementById('quick_benefit_cost_label');
+    const costInput = document.getElementById('quick_benefit_cost');
+    const costHelp = document.getElementById('quick_benefit_cost_help');
+    if (!typeSelect || !costLabel || !costInput || !costHelp) return;
+
+    if (typeSelect.value === 'percentage_discount') {
+        costLabel.textContent = 'Porcentaje de descuento (%)';
+        costInput.max = '100';
+        costInput.min = '0.01';
+        costInput.placeholder = '5.00';
+        costHelp.textContent = 'Porcentaje entre 0.01% y 100.00% que se aplicará sobre las ventas elegibles.';
+    } else {
+        costLabel.textContent = 'Costo total ($ MXN)';
+        costInput.removeAttribute('max');
+        costInput.min = '0';
+        costInput.placeholder = '0.00';
+        costHelp.textContent = 'Monto total invertido en el artículo o descuento fijo del convenio.';
+    }
+}
+
+async function submitQuickBenefit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const errBox = document.getElementById('quick-benefit-error');
+    const submitBtn = document.getElementById('btn-submit-quick-benefit');
+    if (errBox) {
+        errBox.classList.add('hidden');
+        errBox.textContent = '';
+    }
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+        const formData = new FormData(form);
+        const csrfInput = form.querySelector('input[name="csrfmiddlewaretoken"]');
+        const response = await fetch("{% url 'customers:commercial_benefit_create_view' %}", {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfInput ? csrfInput.value : '',
+            },
+            body: formData,
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            if (errBox) {
+                errBox.textContent = data.error || 'No se pudo guardar el beneficio comercial.';
+                errBox.classList.remove('hidden');
+            }
+            return;
+        }
+
+        const benefit = data.benefit;
+        BENEFITS_METADATA[String(benefit.id)] = benefit;
+        const select = document.getElementById('id_benefit');
+        if (select) {
+            const option = document.createElement('option');
+            option.value = String(benefit.id);
+            option.textContent = benefit.label;
+            select.appendChild(option);
+            select.value = String(benefit.id);
+        }
+        form.reset();
+        handleBenefitChange();
+        closeCreateBenefitModal();
+    } catch (err) {
+        if (errBox) {
+            errBox.textContent = 'Ocurrió un error al comunicarse con el servidor.';
+            errBox.classList.remove('hidden');
+        }
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+{% endif %}
+
 function handleParticipatesChange(classId) {
     const partCheck = document.getElementById('part_' + classId);
     const mandCheck = document.getElementById('mand_' + classId);

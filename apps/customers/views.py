@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.urls import reverse
-from django.http import QueryDict
+from django.http import QueryDict, JsonResponse
 from django.utils import timezone
 from .exports import *
 
@@ -16,7 +16,15 @@ from django.db.models import Q
 from dateutil.relativedelta import relativedelta
 from apps.core.models import PeriodicityChoices
 from apps.products.models import ProductClass
-from .models import Customer, CommercialBenefit, CustomerAgreement, AgreementTypeChoices, EvaluationModeChoices
+from .models import (
+    Customer,
+    CommercialBenefit,
+    CommercialBenefitTypeChoices,
+    CustomerAgreement,
+    AgreementTypeChoices,
+    EvaluationModeChoices,
+    DiscountApplicationModeChoices,
+)
 from .services.customer_agreements import parse_month_input
 
 from .services import (
@@ -46,6 +54,7 @@ from .forms import (
     CustomerContactForm,
     CustomerAgreementCreateForm,
     CustomerAgreementDocumentForm,
+    CommercialBenefitForm,
     CustomerVisitScheduleForm,
 )
 from apps.sales.services.sale_transactions import SaleTransactionsService
@@ -740,12 +749,18 @@ def ar_detail_view(request, pk: str | int):
 
 @login_required
 def customer_agreement_list_view(request):
+    """
+    lista los convenios comerciales filtrados por permisos y criterios de busqueda.
+    requiere sesion iniciada y retorna la tabla completa o parciales htmx de convenios y metricas.
+    """
     template = 'customers/customer_agreements/agreement_list.html'
     service = CustomerAgreementsService(user=request.user)
     stats_service = CustomerAgreementsStats(agreements_service=service)
 
+    can_create_agreement = service.has_full_access
+    can_view_benefits = service.can_view_commercial_benefits
     available_actions = None
-    if service.has_full_access:
+    if can_create_agreement or can_view_benefits:
         available_actions = 'customers/customer_agreements/partials/agreement_list__actions.html'
 
     agreements_qs = service.read_agreements()
@@ -769,6 +784,8 @@ def customer_agreement_list_view(request):
         'query_string': query_dict.urlencode(),
         'page_obj': page_obj,
         'available_actions': available_actions,
+        'can_create_agreement': can_create_agreement,
+        'can_view_benefits': can_view_benefits,
         'filter': agreement_filter,
     }
 
@@ -783,6 +800,10 @@ def customer_agreement_list_view(request):
 
 @login_required
 def customer_agreement_detail_view(request, pk: int):
+    """
+    presenta el detalle integral del convenio comercial, sus clases participantes, descuentos y periodos.
+    requiere el id del convenio y retorna la vista html o redirige al listado ante falta de permisos o existencia.
+    """
     template = 'customers/customer_agreements/agreement_detail.html'
     service = CustomerAgreementsService(user=request.user)
 
@@ -798,6 +819,7 @@ def customer_agreement_detail_view(request, pk: int):
     is_seller = request.user.groups.filter(name='vendedor').exists()
     periods = agreement.evaluation_periods.all().prefetch_related('class_results__product_class')
     class_targets = agreement.class_targets.all().select_related('product_class')
+    discount_classes = agreement.discount_classes.all().select_related('product_category')
     doc_form = CustomerAgreementDocumentForm(instance=agreement)
 
     available_actions = None
@@ -811,6 +833,7 @@ def customer_agreement_detail_view(request, pk: int):
         'advisor_name': advisor_name,
         'periods': periods,
         'class_targets': class_targets,
+        'discount_classes': discount_classes,
         'doc_form': doc_form,
         'is_seller': is_seller,
         'can_edit': service.can_edit_agreement,
@@ -821,6 +844,10 @@ def customer_agreement_detail_view(request, pk: int):
 
 @login_required
 def customer_agreement_create_view(request):
+    """
+    gestiona la creacion de un convenio comercial incluyendo metas por clase y configuracion de descuentos.
+    requiere acceso completo al modulo y retorna el formulario html o redirige al detalle del convenio creado.
+    """
     template = 'customers/customer_agreements/agreement_create.html'
     service = CustomerAgreementsService(user=request.user)
     cust_service = CustomersService(user=request.user)
@@ -833,8 +860,18 @@ def customer_agreement_create_view(request):
     initial_customers = allowed_customers[:30]
     product_classes = ProductClass.objects.all().order_by('name', 'id')
     benefits = CommercialBenefit.objects.filter(is_active=True).order_by('name')
+    benefits_metadata = {str(b.pk): _serialize_commercial_benefit(b) for b in benefits}
+    can_edit_benefits = service.can_edit_commercial_benefits
+    benefit_form = CommercialBenefitForm()
+    selected_discount_classes = []
+    selected_apply_all_classes = True
 
     if request.method == 'POST':
+        selected_discount_classes = [str(x) for x in request.POST.getlist('discount_classes')]
+        selected_apply_all_classes = _parse_bool_flag(
+            request.POST.get('apply_discount_to_all_classes'),
+            default=True,
+        )
         form = CustomerAgreementCreateForm(request.POST, request.FILES, allowed_customers=allowed_customers)
         if form.is_valid():
             try:
@@ -879,6 +916,9 @@ def customer_agreement_create_view(request):
                     benefit_id=form.cleaned_data['benefit'].pk,
                     agreement_type=form.cleaned_data['agreement_type'],
                     evaluation_mode=form.cleaned_data.get('evaluation_mode', EvaluationModeChoices.PERIODIC),
+                    discount_application_mode=form.cleaned_data.get('discount_application_mode', ''),
+                    apply_discount_to_all_classes=bool(form.cleaned_data.get('apply_discount_to_all_classes', True)),
+                    discount_class_ids=selected_discount_classes,
                     start_date=form.cleaned_data['start_date'],
                     end_date=form.cleaned_data['end_date'],
                     global_target_amount=form.cleaned_data['global_target_amount'],
@@ -898,9 +938,14 @@ def customer_agreement_create_view(request):
                 form.add_error(None, f"Alerta de Margen: {e.message}")
                 context = {
                     'form': form,
+                    'benefit_form': benefit_form,
                     'benefits': benefits,
+                    'benefits_metadata': benefits_metadata,
+                    'can_edit_benefits': can_edit_benefits,
                     'product_classes': product_classes,
                     'initial_customers': initial_customers,
+                    'selected_discount_classes': selected_discount_classes,
+                    'selected_apply_all_classes': selected_apply_all_classes,
                     'margin_error': str(e),
                     'simulated_margin': e.simulated_margin,
                     'min_margin': e.min_margin,
@@ -915,16 +960,22 @@ def customer_agreement_create_view(request):
 
     context = {
         'form': form,
+        'benefit_form': benefit_form,
         'benefits': benefits,
+        'benefits_metadata': benefits_metadata,
+        'can_edit_benefits': can_edit_benefits,
         'product_classes': product_classes,
         'initial_customers': initial_customers,
+        'selected_discount_classes': selected_discount_classes,
+        'selected_apply_all_classes': selected_apply_all_classes,
     }
     return render(request, template, context)
 
 @login_required
 def customer_agreement_validate_margin_view(request):
     """
-    endpoint called dynamically from create form to evaluate customer margin.
+    simula dinamicamente el margen financiero del convenio considerando beneficio, vigencia y alcance de descuento.
+    requiere datos del formulario via get o post y devuelve el parcial html con la alerta o desglose de margen.
     """
     service = CustomerAgreementsService(user=request.user)
     data = request.POST if request.method == 'POST' else request.GET
@@ -947,8 +998,10 @@ def customer_agreement_validate_margin_view(request):
     global_target = data.get('global_target_amount')
     growth_value = data.get('growth_value') or '0'
     growth_frequency = data.get('growth_frequency')
+    discount_application_mode = data.get('discount_application_mode', '')
+    apply_discount_to_all_classes = _parse_bool_flag(data.get('apply_discount_to_all_classes'), default=True)
+    discount_class_ids = [str(cid).strip() for cid in data.getlist('discount_classes') if str(cid).strip()]
 
-    # defst for evaluation dates if empty
     if not eval_end:
         today = timezone.localdate()
         prev_month = today.replace(day=1) - timedelta(days=1)
@@ -969,6 +1022,11 @@ def customer_agreement_validate_margin_view(request):
         missing_fields.append("Mes de fin de vigencia")
     if not target_frequency:
         missing_fields.append("Frecuencia de evaluación")
+
+    if benefit_id and str(benefit_id).strip().isdigit():
+        benefit_obj = CommercialBenefit.objects.filter(pk=int(str(benefit_id).strip())).first()
+        if benefit_obj and benefit_obj.is_discount and not apply_discount_to_all_classes and not discount_class_ids:
+            missing_fields.append("Al menos una clase de producto para aplicar el descuento específico")
 
     if missing_fields:
         return render(request, 'customers/customer_agreements/partials/margin_alert.html', {
@@ -1018,6 +1076,9 @@ def customer_agreement_validate_margin_view(request):
             growth_value=Decimal(str(growth_value)) if growth_value else Decimal('0.00'),
             growth_frequency=growth_frequency,
             participating_classes_data=participating_classes_data,
+            apply_discount_to_all_classes=apply_discount_to_all_classes,
+            discount_class_ids=discount_class_ids,
+            discount_application_mode=discount_application_mode,
         )
 
         if isinstance(val_result, tuple):
@@ -1042,20 +1103,34 @@ def customer_agreement_validate_margin_view(request):
 @login_required
 def customer_agreement_preview_view(request):
     """
-    modal endpoint returning printable contract preview and expected consumption matrix.
+    genera el previo imprimible del contrato comercial y la matriz de consumos proyectados.
+    requiere datos de un convenio existente o formulario y retorna el parcial html o un error descriptivo.
     """
     service = CustomerAgreementsService(user=request.user)
     data = request.POST if request.method == 'POST' else request.GET
 
     agreement_id = data.get('agreement_id') or data.get('agreement')
     participating_classes_data = None
+    discount_class_ids = []
     if agreement_id:
-        agr = CustomerAgreement.objects.filter(pk=agreement_id).first()
+        agreement_id_str = str(agreement_id).strip()
+        if not agreement_id_str.isdigit():
+            return render(request, 'customers/customer_agreements/partials/agreement_preview.html', {
+                'error': f"Convenio #{agreement_id} no encontrado.",
+            })
+        agr = (
+            service.read_agreements()
+            .filter(pk=int(agreement_id_str))
+            .first()
+        )
         if agr:
             customer_id = agr.customer_id
             benefit_id = agr.benefit_id
             agreement_type = agr.agreement_type
             evaluation_mode = agr.evaluation_mode
+            discount_application_mode = agr.discount_application_mode
+            apply_discount_to_all_classes = agr.apply_discount_to_all_classes
+            discount_class_ids = [str(dc.pk) for dc in agr.discount_classes.all()]
             start_date = agr.start_date.strftime('%Y-%m') if agr.start_date else None
             end_date = agr.end_date.strftime('%Y-%m') if agr.end_date else None
             target_frequency = agr.target_frequency
@@ -1071,11 +1146,15 @@ def customer_agreement_preview_view(request):
                     'is_mandatory': ct.is_mandatory,
                     'required_target': ct.required_target,
                 }
-                for ct in agr.class_targets.select_related('product_class')
+                for ct in agr.class_targets.all()
             ]
         else:
+            if CustomerAgreement.objects.filter(pk=int(agreement_id_str)).exists():
+                err_msg = f'No tienes permiso para acceder al convenio con ID "{agreement_id_str}".'
+            else:
+                err_msg = f"Convenio #{agreement_id} no encontrado."
             return render(request, 'customers/customer_agreements/partials/agreement_preview.html', {
-                'error': f"Convenio #{agreement_id} no encontrado.",
+                'error': err_msg,
             })
     else:
         customer_id = data.get('customer') or data.get('q')
@@ -1090,6 +1169,9 @@ def customer_agreement_preview_view(request):
         benefit_id = data.get('benefit')
         agreement_type = data.get('agreement_type', AgreementTypeChoices.SHORT_TERM)
         evaluation_mode = data.get('evaluation_mode', EvaluationModeChoices.PERIODIC)
+        discount_application_mode = data.get('discount_application_mode', '')
+        apply_discount_to_all_classes = _parse_bool_flag(data.get('apply_discount_to_all_classes'), default=True)
+        discount_class_ids = [str(cid).strip() for cid in data.getlist('discount_classes') if str(cid).strip()]
         start_date = data.get('start_date')
         end_date = data.get('end_date')
         target_frequency = data.get('target_frequency', PeriodicityChoices.MONTHLY)
@@ -1158,6 +1240,9 @@ def customer_agreement_preview_view(request):
             benefit_id=int(benefit_id),
             agreement_type=agreement_type,
             evaluation_mode=evaluation_mode,
+            discount_application_mode=discount_application_mode,
+            apply_discount_to_all_classes=apply_discount_to_all_classes,
+            discount_class_ids=discount_class_ids,
             start_date=start_date,
             end_date=end_date,
             global_target_amount=Decimal(str(global_target)),
@@ -1181,6 +1266,10 @@ def customer_agreement_preview_view(request):
 @login_required
 @require_POST
 def customer_agreement_update_document_view(request, pk: int):
+    """
+    actualiza el documento adjunto y banderas operativas de firma o entrega de beneficio en un convenio.
+    requiere permiso de edicion de convenio y retorna redireccion al detalle del convenio.
+    """
     service = CustomerAgreementsService(user=request.user)
     if not service.can_edit_agreement:
         messages.error(request, "No tienes permiso para modificar este convenio.")
@@ -1214,6 +1303,10 @@ def customer_agreement_update_document_view(request, pk: int):
 @login_required
 @require_POST
 def customer_agreement_evaluate_action_view(request, pk: int):
+    """
+    ejecuta manualmente la evaluacion de periodos pendientes o recientes de un convenio comercial.
+    requiere el id del convenio y redirige al detalle mostrando resultado o mensaje de error.
+    """
     service = CustomerAgreementsService(user=request.user)
     try:
         periods_count, _ = service.evaluate_pending_periods(pk=pk)
@@ -1223,8 +1316,223 @@ def customer_agreement_evaluate_action_view(request, pk: int):
     return redirect('customers:customer_agreement_detail_view', pk=pk)
 
 
+def _parse_bool_flag(raw_value, default: bool = True) -> bool:
+    """
+    convierte un valor booleano recibido por peticion http a tipo bool de python.
+    requiere el valor crudo y un valor por defecto y devuelve verdadero o falso.
+    """
+    if raw_value is None:
+        return default
+    if isinstance(raw_value, bool):
+        return raw_value
+    return str(raw_value).strip().lower() not in ('false', '0', 'no', '')
+
+
+def _serialize_commercial_benefit(benefit: CommercialBenefit) -> dict:
+    """
+    serializa un beneficio comercial a diccionario para respuestas json y metadatos de interfaz.
+    requiere una instancia de beneficio comercial y retorna sus campos y banderas de descuento.
+    """
+    return {
+        'id': benefit.pk,
+        'name': benefit.name,
+        'benefit_type': benefit.benefit_type,
+        'benefit_type_display': benefit.get_benefit_type_display(),
+        'cost': str(benefit.cost),
+        'display_value': benefit.display_value,
+        'label': str(benefit),
+        'is_discount': benefit.is_discount,
+        'is_percentage_discount': benefit.is_percentage_discount,
+        'is_active': benefit.is_active,
+    }
+
+
+@login_required
+def commercial_benefit_list_view(request):
+    """
+    muestra el catalogo de beneficios comerciales filtrando segun permisos del submodulo.
+    requiere acceso al submodulo y retorna la vista html o parcial htmx o redirige sin permiso.
+    """
+    template = 'customers/customer_agreements/benefit_list.html'
+    service = CustomerAgreementsService(user=request.user)
+
+    try:
+        benefits_qs = service.read_benefits(include_inactive=True)
+    except PermissionsError as e:
+        messages.error(request, str(e))
+        return redirect('customers:customer_agreement_list_view')
+
+    search = request.GET.get('search', '').strip()
+    benefit_type = request.GET.get('benefit_type', '').strip()
+    is_active_param = request.GET.get('is_active', '').strip()
+
+    if search:
+        benefits_qs = benefits_qs.filter(name__icontains=search)
+    if benefit_type in CommercialBenefitTypeChoices.values:
+        benefits_qs = benefits_qs.filter(benefit_type=benefit_type)
+    if is_active_param in ('true', 'false'):
+        benefits_qs = benefits_qs.filter(is_active=(is_active_param == 'true'))
+
+    can_edit_benefits = service.can_edit_commercial_benefits
+    available_actions = (
+        'customers/customer_agreements/partials/benefit_list__actions.html'
+        if can_edit_benefits else None
+    )
+
+    context = {
+        'benefits': benefits_qs,
+        'benefit_form': CommercialBenefitForm(),
+        'benefit_type_choices': CommercialBenefitTypeChoices.choices,
+        'search': search,
+        'selected_type': benefit_type,
+        'selected_active': is_active_param,
+        'can_edit_benefits': can_edit_benefits,
+        'available_actions': available_actions,
+    }
+
+    if request.htmx:
+        return render(request, 'customers/customer_agreements/partials/benefit_list_content.html', context)
+
+    return render(request, template, context)
+
+
+@login_required
+@require_POST
+def commercial_benefit_create_view(request):
+    """
+    registra un nuevo beneficio comercial validando permisos dinamicos en reference y datos del formulario.
+    requiere peticion post autenticada y retorna respuesta json en ajax o redirige al catalogo.
+    """
+    service = CustomerAgreementsService(user=request.user)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    if not service.can_edit_commercial_benefits:
+        err_msg = "No tienes permiso para agregar o editar beneficios comerciales."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': err_msg}, status=403)
+        messages.error(request, err_msg)
+        return redirect('customers:commercial_benefit_list_view')
+
+    post_data = request.POST.copy()
+    if 'is_active' not in post_data and is_ajax:
+        post_data['is_active'] = 'on'
+
+    form = CommercialBenefitForm(post_data)
+    if not form.is_valid():
+        error_text = " ".join(str(err) for errs in form.errors.values() for err in errs)
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': error_text}, status=400)
+        messages.error(request, error_text or "Datos inválidos para el beneficio comercial.")
+        return redirect('customers:commercial_benefit_list_view')
+
+    try:
+        benefit = service.create_commercial_benefit(
+            benefit_type=form.cleaned_data['benefit_type'],
+            name=form.cleaned_data['name'],
+            cost=form.cleaned_data['cost'],
+            is_active=bool(form.cleaned_data.get('is_active', True)),
+        )
+    except (PermissionsError, ServiceError) as e:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        messages.error(request, str(e))
+        return redirect('customers:commercial_benefit_list_view')
+
+    if is_ajax:
+        return JsonResponse({
+            'success': True,
+            'benefit': _serialize_commercial_benefit(benefit),
+        })
+
+    messages.success(request, f"Beneficio comercial '{benefit.name}' registrado correctamente.")
+    return redirect('customers:commercial_benefit_list_view')
+
+
+@login_required
+@require_POST
+def commercial_benefit_update_view(request, pk: int):
+    """
+    actualiza un beneficio comercial existente si el rol del usuario esta autorizado en reference.
+    requiere el identificador del beneficio y retorna json en ajax o redirige al listado.
+    """
+    service = CustomerAgreementsService(user=request.user)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    if not service.can_edit_commercial_benefits:
+        err_msg = "No tienes permiso para agregar o editar beneficios comerciales."
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': err_msg}, status=403)
+        messages.error(request, err_msg)
+        return redirect('customers:commercial_benefit_list_view')
+
+    try:
+        benefit_instance = service.read_benefit(pk)
+    except CommercialBenefitNotFound as e:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': str(e)}, status=404)
+        messages.error(request, str(e))
+        return redirect('customers:commercial_benefit_list_view')
+    except PermissionsError as e:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': str(e)}, status=403)
+        messages.error(request, str(e))
+        return redirect('customers:commercial_benefit_list_view')
+
+    form = CommercialBenefitForm(request.POST, instance=benefit_instance)
+    if not form.is_valid():
+        error_text = " ".join(str(err) for errs in form.errors.values() for err in errs)
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': error_text}, status=400)
+        messages.error(request, error_text or "Datos inválidos para actualizar el beneficio.")
+        return redirect('customers:commercial_benefit_list_view')
+
+    try:
+        updated = service.update_commercial_benefit(
+            pk=pk,
+            benefit_type=form.cleaned_data['benefit_type'],
+            name=form.cleaned_data['name'],
+            cost=form.cleaned_data['cost'],
+            is_active=bool(form.cleaned_data.get('is_active', False)),
+        )
+    except (PermissionsError, ServiceError, CommercialBenefitNotFound) as e:
+        if is_ajax:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        messages.error(request, str(e))
+        return redirect('customers:commercial_benefit_list_view')
+
+    if is_ajax:
+        return JsonResponse({
+            'success': True,
+            'benefit': _serialize_commercial_benefit(updated),
+        })
+
+    messages.success(request, f"Beneficio comercial '{updated.name}' actualizado correctamente.")
+    return redirect('customers:commercial_benefit_list_view')
+
+
+@login_required
+@require_POST
+def commercial_benefit_toggle_active_view(request, pk: int):
+    """
+    cambia el estado activo o inactivo de un beneficio comercial desde el catalogo.
+    requiere permiso de edicion en reference y redirige al catalogo con mensaje de resultado.
+    """
+    service = CustomerAgreementsService(user=request.user)
+    try:
+        benefit = service.toggle_commercial_benefit_status(pk=pk)
+        estado = "activado" if benefit.is_active else "desactivado"
+        messages.success(request, f"Beneficio '{benefit.name}' {estado} correctamente.")
+    except (PermissionsError, CommercialBenefitNotFound, ServiceError) as e:
+        messages.error(request, str(e))
+    return redirect('customers:commercial_benefit_list_view')
+
+
 @login_required
 def customer_agreement_search_customers_view(request):
+    """
+    busca clientes autorizados por clave o nombre para el selector de convenios comerciales.
+    requiere el parametro de consulta q y devuelve un parcial html con hasta veinticinco coincidencias.
+    """
     query = request.GET.get('q', '').strip()
     cust_service = CustomersService(user=request.user)
     customers_qs = cust_service.read_customers()
@@ -1236,11 +1544,11 @@ def customer_agreement_search_customers_view(request):
     })
 
 
-# used universally
 @login_required
 def customer_options_view(request):
     """
-    Returns HTML option items for searchable customer dropdowns via HTMX.
+    genera opciones html de clientes filtrados para selectores desplegables mediante htmx.
+    requiere parametro de busqueda opcional y nombre de campo y retorna el parcial de opciones.
     """
     q = request.GET.get('q_customer', request.GET.get('q', '')).strip()
     field_name = request.GET.get('field_name', 'customer')

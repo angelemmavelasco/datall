@@ -1,0 +1,92 @@
+{% load humanize %}
+
+<div class="flex flex-col w-full gap-4" id="benefit-list-content">
+    <p class="text-title pb-1 border-b border-border">
+        Catálogo de beneficios comerciales
+    </p>
+
+    <div class="w-full overflow-auto border border-border rounded bg-container max-h-[80vh] relative @container">
+        <table class="w-max min-w-full border-separate border-spacing-0 table-fixed">
+            <thead>
+                <tr class="border-b border-border text-xs">
+                    <th class="w-[80px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        ID
+                    </th>
+                    <th class="w-[260px] p-1 text-left text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Nombre
+                    </th>
+                    <th class="w-[180px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Tipo de beneficio
+                    </th>
+                    <th class="w-[150px] p-1 text-right text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Costo / Porcentaje
+                    </th>
+                    <th class="w-[120px] p-1 text-center text-title border-r border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Estado
+                    </th>
+                    {% if can_edit_benefits %}
+                    <th class="w-[190px] p-1 text-center text-title border-t border-b border-border sticky top-0 z-30 bg-page">
+                        Acciones
+                    </th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for benefit in benefits %}
+                <tr>
+                    <td class="p-2 truncate text-center font-mono text-xs text-secondary border-b border-border">
+                        #{{ benefit.pk }}
+                    </td>
+                    <td class="p-2 truncate text-left text-title border-b border-border">
+                        {{ benefit.name|title }}
+                    </td>
+                    <td class="p-2 truncate text-center text-xs border-b border-border">
+                        {% if benefit.benefit_type == 'percentage_discount' %}
+                            <span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-500 border border-sky-500/20">{{ benefit.get_benefit_type_display }}</span>
+                        {% elif benefit.benefit_type == 'fixed_discount' %}
+                            <span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">{{ benefit.get_benefit_type_display }}</span>
+                        {% else %}
+                            <span class="px-2 py-0.5 rounded bg-page text-title border border-border">{{ benefit.get_benefit_type_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-2 truncate text-right font-mono text-title border-b border-border">
+                        {{ benefit.display_value }}
+                    </td>
+                    <td class="p-2 truncate text-center border-b border-border">
+                        {% if benefit.is_active %}
+                            <span class="text-emerald-500 text-xs">Disponible</span>
+                        {% else %}
+                            <span class="text-secondary text-xs">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    {% if can_edit_benefits %}
+                    <td class="p-2 truncate text-center border-b border-border">
+                        <div class="flex items-center justify-center gap-2 text-xs">
+                            <button type="button"
+                                    onclick="openBenefitModal({{ benefit.pk }}, '{{ benefit.benefit_type|escapejs }}', '{{ benefit.name|escapejs }}', '{{ benefit.cost|stringformat:'s' }}', {{ benefit.is_active|yesno:'true,false' }})"
+                                    class="px-2 py-0.5 rounded border border-border bg-page hover:bg-hover text-title transition-colors cursor-pointer">
+                                Editar
+                            </button>
+                            <form method="POST" action="{% url 'customers:commercial_benefit_toggle_active_view' benefit.pk %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit" class="px-2 py-0.5 rounded border border-border bg-page hover:bg-hover text-secondary hover:text-hover transition-colors cursor-pointer">
+                                    {% if benefit.is_active %}Desactivar{% else %}Activar{% endif %}
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="100%" class="py-50">
+                        <div class="sticky left-0 flex justify-center items-center w-[100cqw]">
+                            {% include 'layouts/data_not_found.html' %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

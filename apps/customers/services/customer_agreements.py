@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import ClassVar, Optional, Any
 from dateutil.relativedelta import relativedelta
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import transaction, IntegrityError
 from django.db.models import (
@@ -24,13 +25,14 @@ from django.db.models import (
 )
 from django.utils import timezone
 
-from apps.core.models import PeriodicityChoices, Reference
+from apps.core.models import PeriodicityChoices, Reference, Submodule
 from apps.core.services.users import UsersService
 from apps.customers.models import (
     Customer,
     CustomerAssignment,
     CustomerClassMargin,
     CommercialBenefit,
+    CommercialBenefitTypeChoices,
     CustomerAgreement,
     AgreementClassTarget,
     AgreementEvaluationPeriod,
@@ -38,19 +40,12 @@ from apps.customers.models import (
     PeriodStatusChoices,
     AgreementTypeChoices,
     EvaluationModeChoices,
+    DiscountApplicationModeChoices,
 )
-from apps.customers.services.customers import CustomersService
+from apps.customers.services.customers import CustomersService, ServiceError, PermissionsError
 from apps.products.models import ProductClass
 from apps.sales.models import Route, SaleTransaction, RouteAssignment
 from apps.sales.services.routes import RoutesService
-
-
-class ServiceError(Exception):
-    pass
-
-
-class PermissionsError(ServiceError):
-    pass
 
 
 class CustomerAgreementNotFound(ServiceError):
@@ -71,9 +66,8 @@ class MarginValidationException(ServiceError):
 
 def parse_month_input(date_str: str | date | None, is_end: bool = False) -> Optional[date]:
     """
-    parses a string in format 'YYYY-MM' or 'YYYY-MM-DD' or a date object.
-    always snaps to the 1st of the month (if is_end=False) or the last day
-    of that month (if is_end=True) to enforce complete monthly periods.
+    convierte una fecha o cadena mensual al primer o ultimo dia del mes segun se indique.
+    requiere cadena de fecha y bandera is_end y retorna un objeto date o none si es invalida.
     """
     if not date_str:
         return None
@@ -105,8 +99,8 @@ def parse_month_input(date_str: str | date | None, is_end: bool = False) -> Opti
 
 def get_periods_count(start_date: date, end_date: Optional[date], freq_val: str) -> int:
     """
-    calculates how many evaluation periods occur between start_date and end_date
-    according to the specified PeriodicityChoices.
+    calcula la cantidad de periodos comprendidos entre la fecha inicial y final segun la periodicidad.
+    requiere fechas de vigencia y clave de frecuencia y retorna un entero mayor o igual a uno.
     """
     if not end_date or start_date > end_date:
         return 1
@@ -127,7 +121,8 @@ def get_periods_count(start_date: date, end_date: Optional[date], freq_val: str)
 
 def get_traffic_light_status(margin: Decimal | float | None) -> dict:
     """
-    standard qualitative traffic light representation for seller role.
+    asigna una etiqueta y color cualitativo de rentabilidad para visualizacion comercial.
+    requiere el margen numerico o none y retorna un diccionario con etiqueta y clase de estilo.
     """
     if margin is None:
         return {'label': 'Sin datos', 'color_class': 'text-secondary'}
@@ -168,11 +163,8 @@ class CustomerAgreementsService(UsersService):
     @property
     def can_edit_agreement(self) -> bool:
         """
-        determines whether the user has permission to modify the agreement's
-        execution parameters (signed, benefit_already_provided, and related_doc).
-        allowed users are those with full access (superuser, staff, or configured
-        full-access groups) or users belonging to any group defined in Reference
-        with key='can_edit_customer_agreement'.
+        evalua si el usuario puede modificar el estado operativo y documento de un convenio existente.
+        requiere usuario autenticado y retorna verdadero si tiene acceso total o rol configurado en reference.
         """
         if self.has_full_access:
             return True
@@ -181,11 +173,181 @@ class CustomerAgreementsService(UsersService):
             return False
         return self.user.groups.filter(name__in=allowed_groups).exists()
 
+    @property
+    def can_view_commercial_benefits(self) -> bool:
+        """
+        determina si el usuario tiene acceso al modulo de beneficios comerciales.
+        consulta el submodulo asignado por usuario o grupo y retorna un booleano de autorizacion.
+        """
+        if getattr(self.user, 'is_superuser', False) or getattr(self.user, 'is_staff', False):
+            return True
+        submodule = Submodule.objects.filter(
+            url_name='customers:commercial_benefit_list_view',
+            is_active=True,
+            module__is_active=True,
+        ).first()
+        if not submodule:
+            return False
+        user_group_ids = self.user.groups.values_list('pk', flat=True)
+        return (
+            submodule.allowed_users.filter(pk=self.user.pk).exists()
+            or submodule.allowed_groups.filter(pk__in=user_group_ids).exists()
+        )
+
+    @property
+    def can_edit_commercial_benefits(self) -> bool:
+        """
+        evalua si el usuario puede agregar o editar beneficios comerciales segun mapeo de roles en reference.
+        requiere grupos del usuario activos y retorna verdadero para superusuario, staff o rol autorizado.
+        """
+        if getattr(self.user, 'is_superuser', False) or getattr(self.user, 'is_staff', False):
+            return True
+        user_group_names = {
+            g.strip().lower()
+            for g in self.user.groups.values_list('name', flat=True)
+            if g and g.strip()
+        }
+        if not user_group_names:
+            return False
+        ref_ct = ContentType.objects.get_for_model(Reference)
+        refs = Reference.objects.filter(
+            context='editar_beneficioscomerciales'
+        ).filter(
+            Q(content_type=ref_ct) | Q(content_type__isnull=True)
+        ).values_list('key', 'value')
+        for key, val in refs:
+            clean_key = (key or '').strip().lower()
+            clean_val = (val or '').strip().lower()
+            if clean_key in user_group_names and clean_val not in ('false', '0', 'no'):
+                return True
+        return False
+
+    def read_benefits(self, *, include_inactive: bool = False) -> QuerySet:
+        """
+        obtiene el catalogo de beneficios comerciales ordenado alfabeticamente para usuarios con acceso al modulo.
+        requiere permiso de visualizacion y retorna el queryset filtrado o lanza permissionserror.
+        """
+        if not self.can_view_commercial_benefits:
+            raise PermissionsError("No tienes permiso para visualizar el catálogo de beneficios comerciales.")
+        qs = self.benefit_model.objects.all().order_by('-is_active', 'name', 'id')
+        if not include_inactive:
+            qs = qs.filter(is_active=True)
+        return qs
+
+    def read_benefit(self, pk: int | str) -> CommercialBenefit:
+        """
+        recupera un beneficio comercial especifico verificando acceso al modulo.
+        requiere el identificador del beneficio y retorna la instancia o lanza commercialbenefitnotfound o permissionserror.
+        """
+        if not self.can_view_commercial_benefits and not self.can_edit_commercial_benefits:
+            raise PermissionsError("No tienes permiso para consultar este beneficio comercial.")
+        benefit = self.benefit_model.objects.filter(pk=pk).first()
+        if not benefit:
+            raise CommercialBenefitNotFound(f'No se encontró el beneficio comercial con ID "{pk}".')
+        return benefit
+
+    @transaction.atomic
+    def create_commercial_benefit(
+        self,
+        *,
+        benefit_type: str,
+        name: str,
+        cost: Decimal | float | str,
+        is_active: bool = True,
+    ) -> CommercialBenefit:
+        """
+        crea un nuevo beneficio comercial validando permisos de edicion, tipo, nombre y monto o porcentaje.
+        requiere tipo, nombre y valor numerico y retorna la instancia guardada o lanza permissionserror o serviceerror.
+        """
+        if not self.can_edit_commercial_benefits:
+            raise PermissionsError("No tienes permiso para agregar o editar beneficios comerciales.")
+        clean_name = (name or '').strip()
+        if not clean_name:
+            raise ServiceError("El nombre del beneficio comercial es obligatorio.")
+        if benefit_type not in CommercialBenefitTypeChoices.values:
+            raise ServiceError("El tipo de beneficio comercial seleccionado no es válido.")
+        try:
+            clean_cost = Decimal(str(cost))
+        except Exception:
+            raise ServiceError("El costo o porcentaje proporcionado no es un número válido.")
+        benefit = self.benefit_model(
+            benefit_type=benefit_type,
+            name=clean_name,
+            cost=clean_cost,
+            is_active=bool(is_active),
+        )
+        try:
+            benefit.full_clean()
+        except ValidationError as exc:
+            err_msg = " ".join(
+                str(msg)
+                for msgs in exc.message_dict.values()
+                for msg in msgs
+            ) if hasattr(exc, 'message_dict') else str(exc)
+            raise ServiceError(err_msg)
+        benefit.save()
+        return benefit
+
+    @transaction.atomic
+    def update_commercial_benefit(
+        self,
+        *,
+        pk: int | str,
+        benefit_type: str,
+        name: str,
+        cost: Decimal | float | str,
+        is_active: Optional[bool] = None,
+    ) -> CommercialBenefit:
+        """
+        actualiza los datos de un beneficio comercial existente verificando permisos de edicion.
+        requiere id, tipo, nombre y monto o porcentaje valido y devuelve la instancia actualizada o lanza serviceerror.
+        """
+        if not self.can_edit_commercial_benefits:
+            raise PermissionsError("No tienes permiso para agregar o editar beneficios comerciales.")
+        benefit = self.read_benefit(pk)
+        clean_name = (name or '').strip()
+        if not clean_name:
+            raise ServiceError("El nombre del beneficio comercial es obligatorio.")
+        if benefit_type not in CommercialBenefitTypeChoices.values:
+            raise ServiceError("El tipo de beneficio comercial seleccionado no es válido.")
+        try:
+            clean_cost = Decimal(str(cost))
+        except Exception:
+            raise ServiceError("El costo o porcentaje proporcionado no es un número válido.")
+        benefit.benefit_type = benefit_type
+        benefit.name = clean_name
+        benefit.cost = clean_cost
+        if is_active is not None:
+            benefit.is_active = bool(is_active)
+        try:
+            benefit.full_clean()
+        except ValidationError as exc:
+            err_msg = " ".join(
+                str(msg)
+                for msgs in exc.message_dict.values()
+                for msg in msgs
+            ) if hasattr(exc, 'message_dict') else str(exc)
+            raise ServiceError(err_msg)
+        benefit.save()
+        return benefit
+
+    @transaction.atomic
+    def toggle_commercial_benefit_status(self, *, pk: int | str) -> CommercialBenefit:
+        """
+        alterna el estado activo o inactivo de un beneficio comercial existente.
+        requiere el identificador del beneficio y permiso de edicion y retorna la instancia actualizada.
+        """
+        if not self.can_edit_commercial_benefits:
+            raise PermissionsError("No tienes permiso para agregar o editar beneficios comerciales.")
+        benefit = self.read_benefit(pk)
+        benefit.is_active = not benefit.is_active
+        benefit.save(update_fields=['is_active'])
+        return benefit
+
     def get_allowed_agreements(self) -> QuerySet:
         """
-        agreements visible to a user are those whose customers are currently
-        assigned to routes the user has permission to view (or if user has full access).
-        the agreement itself still records the originating route.
+        filtra los convenios cuyo cliente corresponde a rutas autorizadas para el usuario actual.
+        no requiere parametros adicionales y devuelve un queryset de convenios visibles.
         """
         if self.has_full_access:
             return self.agreement_model.objects.all()
@@ -196,7 +358,8 @@ class CustomerAgreementsService(UsersService):
 
     def read_agreements(self) -> QuerySet:
         """
-        Returns the queryset of allowed agreements annotated and optimized for listing.
+        retorna el queryset de convenios visibles con relaciones precargadas para evitar consultas repetidas.
+        usa los permisos del usuario activo y devuelve los convenios ordenados del mas reciente al mas antiguo.
         """
         today = timezone.localdate()
         base_qs = self.get_allowed_agreements().select_related(
@@ -209,6 +372,8 @@ class CustomerAgreementsService(UsersService):
         ).prefetch_related(
             'class_targets',
             'class_targets__product_class',
+            'discount_classes',
+            'discount_classes__product_category',
             'evaluation_periods'
         ).annotate(
             is_active_now=Case(
@@ -225,7 +390,8 @@ class CustomerAgreementsService(UsersService):
 
     def read_agreement(self, pk: int | str) -> CustomerAgreement:
         """
-        retrieves a single agreement enforcing permissions.
+        recupera un convenio comercial verificando permisos de lectura para el usuario.
+        requiere el identificador del convenio y retorna la instancia o lanza permissionserror o notfound.
         """
         agreement = self.read_agreements().filter(pk=pk).first()
         if agreement:
@@ -238,7 +404,8 @@ class CustomerAgreementsService(UsersService):
 
     def read_agreement_details(self, pk: int | str) -> dict[str, Any]:
         """
-        prepares complete agreement details for presentation.
+        reune los datos detallados, margenes de clase y periodos evaluados de un convenio.
+        requiere el identificador del convenio y retorna el contexto o lanza permissionserror o notfound.
         """
         agreement = self.read_agreement(pk)
         customer = agreement.customer
@@ -273,6 +440,115 @@ class CustomerAgreementsService(UsersService):
             'can_edit': self.can_edit_agreement,
         }
 
+    def calculate_fixed_benefit_margin_impact(
+        self,
+        *,
+        benefit_cost: Decimal,
+        total_agreement_periods: int,
+        hist_periods_count: int,
+        total_net: Decimal,
+        total_profit: Decimal,
+        sub_period_metrics: list[dict[str, Decimal]],
+    ) -> dict[str, Decimal]:
+        """
+        calcula el impacto en margen neto amortizando el costo fijo del beneficio entre los periodos del convenio.
+        requiere costo total, conteos de periodos, totales historicos y metricas por subperiodo y devuelve margen simulado y amortizacion.
+        """
+        cme = benefit_cost / Decimal(str(total_agreement_periods)) if total_agreement_periods > 0 else benefit_cost
+        past_cost = cme * Decimal(str(hist_periods_count))
+
+        if total_net > 0:
+            simulated_net_margin = ((total_profit - past_cost) / total_net) * Decimal('100.0')
+            historic_margin = (total_profit / total_net) * Decimal('100.0')
+        else:
+            simulated_net_margin = Decimal('0.00')
+            historic_margin = Decimal('0.00')
+
+        period_margins = []
+        hist_period_margins = []
+        for metric in sub_period_metrics:
+            p_net = metric['net']
+            p_profit = metric['profit']
+            if p_net > 0:
+                period_margins.append(((p_profit - cme) / p_net) * Decimal('100.0'))
+                hist_period_margins.append((p_profit / p_net) * Decimal('100.0'))
+
+        avg_period_margin = sum(period_margins) / len(period_margins) if period_margins else Decimal('0.00')
+        avg_hist_period_margin = sum(hist_period_margins) / len(hist_period_margins) if hist_period_margins else Decimal('0.00')
+
+        return {
+            'cme': cme,
+            'past_cost': past_cost,
+            'simulated_net_margin': simulated_net_margin,
+            'historic_margin': historic_margin,
+            'avg_period_margin': avg_period_margin,
+            'avg_hist_period_margin': avg_hist_period_margin,
+            'avg_monthly_discountable_sales': Decimal('0.00'),
+            'estimated_monthly_discount': Decimal('0.00'),
+            'estimated_total_discount': benefit_cost,
+        }
+
+    def calculate_percentage_benefit_margin_impact(
+        self,
+        *,
+        discount_pct: Decimal,
+        hist_months: int,
+        agr_duration_months: int,
+        total_agreement_periods: int,
+        total_net: Decimal,
+        total_profit: Decimal,
+        discountable_net: Decimal,
+        sub_period_metrics: list[dict[str, Decimal]],
+    ) -> dict[str, Decimal]:
+        """
+        calcula el impacto en margen aplicando el descuento porcentual al promedio mensual de venta evaluada.
+        requiere porcentaje, meses historicos y de vigencia, periodos, ventas totales y con descuento y retorna margenes y montos estimados.
+        """
+        pct_ratio = discount_pct / Decimal('100.0')
+        months_dec = Decimal(str(hist_months if hist_months > 0 else 1))
+        agr_months_dec = Decimal(str(agr_duration_months if agr_duration_months > 0 else 1))
+        agreement_periods_dec = Decimal(str(total_agreement_periods if total_agreement_periods > 0 else 1))
+        effective_discountable_net = max(Decimal('0.00'), discountable_net)
+
+        avg_monthly_discountable_sales = effective_discountable_net / months_dec
+        estimated_monthly_discount = avg_monthly_discountable_sales * pct_ratio
+        estimated_total_discount = estimated_monthly_discount * agr_months_dec
+        cme = estimated_total_discount / agreement_periods_dec
+        past_cost = effective_discountable_net * pct_ratio
+
+        if total_net > 0:
+            simulated_net_margin = ((total_profit - past_cost) / total_net) * Decimal('100.0')
+            historic_margin = (total_profit / total_net) * Decimal('100.0')
+        else:
+            simulated_net_margin = Decimal('0.00')
+            historic_margin = Decimal('0.00')
+
+        period_margins = []
+        hist_period_margins = []
+        for metric in sub_period_metrics:
+            p_net = metric['net']
+            p_profit = metric['profit']
+            p_disc_net = max(Decimal('0.00'), metric.get('discountable_net', Decimal('0.00')))
+            if p_net > 0:
+                p_disc_cost = p_disc_net * pct_ratio
+                period_margins.append(((p_profit - p_disc_cost) / p_net) * Decimal('100.0'))
+                hist_period_margins.append((p_profit / p_net) * Decimal('100.0'))
+
+        avg_period_margin = sum(period_margins) / len(period_margins) if period_margins else Decimal('0.00')
+        avg_hist_period_margin = sum(hist_period_margins) / len(hist_period_margins) if hist_period_margins else Decimal('0.00')
+
+        return {
+            'cme': cme,
+            'past_cost': past_cost,
+            'simulated_net_margin': simulated_net_margin,
+            'historic_margin': historic_margin,
+            'avg_period_margin': avg_period_margin,
+            'avg_hist_period_margin': avg_hist_period_margin,
+            'avg_monthly_discountable_sales': avg_monthly_discountable_sales,
+            'estimated_monthly_discount': estimated_monthly_discount,
+            'estimated_total_discount': estimated_total_discount,
+        }
+
     def validate_agreement_margin(
         self,
         *,
@@ -290,12 +566,13 @@ class CustomerAgreementsService(UsersService):
         global_target_amount: Decimal | float | str | None = None,
         growth_value: Decimal | float | str = Decimal('0.00'),
         growth_frequency: str = '',
+        apply_discount_to_all_classes: bool = True,
+        discount_class_ids: list[str] | None = None,
+        discount_application_mode: str = '',
     ) -> tuple[bool, Decimal, Decimal, bool, dict[str, Any]]:
         """
-        calculates historical margin, simulates amortized benefit impact and compound growth,
-        and evaluates biconditionally against CustomerClassMargin.
-        strict business rule: only participating classes are included. non-participating classes
-        are completely excluded from the sales evaluation and margin minimum checks.
+        evalua la viabilidad financiera del convenio comparando margen historico y costo del beneficio contra margenes minimos.
+        requiere cliente, beneficio, vigencia, frecuencia y alcance de clases y retorna validez, margenes, volatilidad y desglose o lanza error.
         """
         agr_start_val = agreement_start or agreement_start_date
         agr_end_val = agreement_end or agreement_end_date
@@ -308,6 +585,10 @@ class CustomerAgreementsService(UsersService):
 
         if not start_date or not end_date or not agr_start or not agr_end:
             raise ServiceError("Fechas de evaluación o vigencia inválidas.")
+        if end_date < start_date:
+            raise ServiceError("La fecha final de evaluación no puede ser anterior a la fecha inicial.")
+        if agr_end < agr_start:
+            raise ServiceError("La fecha de fin del convenio no puede ser anterior a la fecha de inicio.")
 
         benefit = self.benefit_model.objects.filter(pk=benefit_id).first()
         if not benefit:
@@ -323,21 +604,32 @@ class CustomerAgreementsService(UsersService):
         participating_class_ids = [
             str(c.get('product_class_id')) for c in participating_classes_data if c.get('product_class_id')
         ]
+        clean_discount_class_ids = [
+            str(cid).strip() for cid in (discount_class_ids or []) if str(cid).strip()
+        ]
+        is_discount = benefit.is_discount
+        is_pct_discount = benefit.is_percentage_discount
+        discount_pct = benefit.cost if is_pct_discount else Decimal('0.00')
+        pct_ratio = discount_pct / Decimal('100.0')
+        effective_discount_mode = (
+            discount_application_mode or DiscountApplicationModeChoices.PERIODIC
+            if is_discount else ''
+        )
 
-        
         delta_hist = relativedelta(end_date + timedelta(days=1), start_date)
         hist_months = delta_hist.years * 12 + delta_hist.months
         if hist_months <= 0:
             hist_months = 1
 
-        
-        sales = self.sale_transaction_model.objects.filter(
+        all_customer_sales = self.sale_transaction_model.objects.filter(
             customer_id=customer_id,
             sale_date__gte=start_date,
             sale_date__lte=end_date
         )
-        if participating_class_ids:
-            sales = sales.filter(product_class_id__in=participating_class_ids)
+        sales = (
+            all_customer_sales.filter(product_class_id__in=participating_class_ids)
+            if participating_class_ids else all_customer_sales
+        )
 
         totals = sales.aggregate(
             total_net=Sum('net_amount'),
@@ -346,13 +638,22 @@ class CustomerAgreementsService(UsersService):
         total_net = totals['total_net'] or Decimal('0.00')
         total_profit = totals['total_profit'] or Decimal('0.00')
 
-        
-        total_agreement_periods = get_periods_count(agr_start, agr_end, target_frequency)
-        cme = benefit.cost / Decimal(str(total_agreement_periods)) if total_agreement_periods > 0 else benefit.cost
+        if is_discount:
+            if apply_discount_to_all_classes:
+                discount_sales = all_customer_sales
+            elif clean_discount_class_ids:
+                discount_sales = all_customer_sales.filter(product_class_id__in=clean_discount_class_ids)
+            else:
+                discount_sales = all_customer_sales.none()
+            disc_totals = discount_sales.aggregate(d_net=Sum('net_amount'))
+            discountable_net = disc_totals['d_net'] or Decimal('0.00')
+        else:
+            discount_sales = all_customer_sales.none()
+            discountable_net = Decimal('0.00')
 
-        
+        total_agreement_periods = get_periods_count(agr_start, agr_end, target_frequency)
         delta_agr = relativedelta(agr_end + timedelta(days=1), agr_start)
-        agr_duration_months = delta_agr.years * 12 + delta_agr.months
+        agr_duration_months = max(1, delta_agr.years * 12 + delta_agr.months)
 
         if target_frequency in (PeriodicityChoices.AT_END, 'end'):
             freq_delta = relativedelta(end_date + timedelta(days=1), start_date)
@@ -366,84 +667,101 @@ class CustomerAgreementsService(UsersService):
                 periodicity_months = 1
 
         has_partial_periods = (hist_months % periodicity_months != 0)
-
         hist_periods_count = get_periods_count(start_date, end_date, target_frequency)
-        past_cost = cme * Decimal(str(hist_periods_count))
 
-        
-        if total_net > 0:
-            simulated_net_margin = ((total_profit - past_cost) / total_net) * Decimal('100.0')
-            historic_margin = (total_profit / total_net) * Decimal('100.0')
-        else:
-            simulated_net_margin = Decimal('0.00')
-            historic_margin = Decimal('0.00')
-
-        
+        sub_periods = []
+        sub_period_metrics = []
         current_start = start_date
-        period_margins = []
-        hist_period_margins = []
-
         while current_start <= end_date:
             current_end = current_start + freq_delta - relativedelta(days=1)
             if current_end > end_date:
                 current_end = end_date
-
+            sub_periods.append((current_start, current_end))
             p_sales = sales.filter(sale_date__gte=current_start, sale_date__lte=current_end)
             p_agg = p_sales.aggregate(p_net=Sum('net_amount'), p_profit=Sum('profit'))
             p_net = p_agg['p_net'] or Decimal('0.00')
             p_profit = p_agg['p_profit'] or Decimal('0.00')
-
-            if p_net > 0:
-                p_margin = ((p_profit - cme) / p_net) * Decimal('100.0')
-                p_hist = (p_profit / p_net) * Decimal('100.0')
-                period_margins.append(p_margin)
-                hist_period_margins.append(p_hist)
-
+            if is_discount:
+                if apply_discount_to_all_classes and not participating_class_ids:
+                    p_disc_net = p_net
+                else:
+                    p_disc_agg = discount_sales.filter(
+                        sale_date__gte=current_start,
+                        sale_date__lte=current_end
+                    ).aggregate(d_net=Sum('net_amount'))
+                    p_disc_net = p_disc_agg['d_net'] or Decimal('0.00')
+            else:
+                p_disc_net = Decimal('0.00')
+            sub_period_metrics.append({
+                'start': current_start,
+                'end': current_end,
+                'net': p_net,
+                'profit': p_profit,
+                'discountable_net': p_disc_net,
+            })
             current_start = current_start + freq_delta
 
-        avg_period_margin = sum(period_margins) / len(period_margins) if period_margins else Decimal('0.00')
-        avg_hist_period_margin = sum(hist_period_margins) / len(hist_period_margins) if hist_period_margins else Decimal('0.00')
+        if is_pct_discount:
+            impact = self.calculate_percentage_benefit_margin_impact(
+                discount_pct=discount_pct,
+                hist_months=hist_months,
+                agr_duration_months=agr_duration_months,
+                total_agreement_periods=total_agreement_periods,
+                total_net=total_net,
+                total_profit=total_profit,
+                discountable_net=discountable_net,
+                sub_period_metrics=sub_period_metrics,
+            )
+        else:
+            impact = self.calculate_fixed_benefit_margin_impact(
+                benefit_cost=benefit.cost,
+                total_agreement_periods=total_agreement_periods,
+                hist_periods_count=hist_periods_count,
+                total_net=total_net,
+                total_profit=total_profit,
+                sub_period_metrics=sub_period_metrics,
+            )
 
-        min_margins = self.customer_margin_model.objects.filter(customer_id=customer_id)
-        if participating_class_ids:
-            min_margins = min_margins.filter(product_class_id__in=participating_class_ids)
+        cme = impact['cme']
+        past_cost = impact['past_cost']
+        simulated_net_margin = impact['simulated_net_margin']
+        historic_margin = impact['historic_margin']
+        avg_period_margin = impact['avg_period_margin']
+        avg_hist_period_margin = impact['avg_hist_period_margin']
 
+        relevant_class_ids = set(participating_class_ids)
+        if is_discount and not apply_discount_to_all_classes:
+            relevant_class_ids.update(clean_discount_class_ids)
+
+        all_customer_margins = self.customer_margin_model.objects.filter(customer_id=customer_id)
+        min_margins = (
+            all_customer_margins.filter(product_class_id__in=participating_class_ids)
+            if participating_class_ids else all_customer_margins
+        )
         max_required_margin = Decimal('0.00')
         if min_margins.exists():
             max_required_margin = max(m.min_margin_percentage for m in min_margins)
 
-        classes_qs = self.product_class_model.objects.filter(id__in=participating_class_ids)
+        classes_qs = self.product_class_model.objects.filter(id__in=relevant_class_ids)
         classes_map = {c.id: c for c in classes_qs}
         customer_margins_map = {
             m.product_class_id: m.min_margin_percentage
-            for m in min_margins
+            for m in all_customer_margins
         }
 
-        sub_periods = []
-        cur_s = start_date
-        while cur_s <= end_date:
-            cur_e = cur_s + freq_delta - relativedelta(days=1)
-            if cur_e > end_date:
-                cur_e = end_date
-            sub_periods.append((cur_s, cur_e))
-            cur_s = cur_s + freq_delta
+        discounted_class_set = set(clean_discount_class_ids)
 
-        mandatory_items = [c for c in participating_classes_data if c.get('is_mandatory')]
-        complementary_items = [c for c in participating_classes_data if not c.get('is_mandatory')]
+        def class_receives_discount(cid: str) -> bool:
+            return bool(is_discount and (apply_discount_to_all_classes or cid in discounted_class_set))
 
-        mandatory_breakdown = []
-        for item in mandatory_items:
-            cid = str(item.get('product_class_id'))
-            pc = classes_map.get(cid)
-            pc_name = (pc.name if pc and pc.name else cid).title()
-            req_tgt = Decimal(str(item.get('required_target') or '0'))
-            min_m = customer_margins_map.get(cid, Decimal('0.00'))
-
-            c_sales = sales.filter(product_class_id=cid)
+        def evaluate_single_class(cid: str, sales_qs: QuerySet) -> dict[str, Any]:
+            c_sales = sales_qs.filter(product_class_id=cid)
             c_totals = c_sales.aggregate(net=Sum('net_amount'), profit=Sum('profit'))
             c_net = c_totals['net'] or Decimal('0.00')
             c_profit = c_totals['profit'] or Decimal('0.00')
-            c_period_margin = (c_profit / c_net * Decimal('100.0')) if c_net > 0 else Decimal('0.00')
+            has_disc = class_receives_discount(cid)
+            eff_profit = c_profit - (c_net * pct_ratio) if (is_pct_discount and has_disc) else c_profit
+            c_period_margin = (eff_profit / c_net * Decimal('100.0')) if c_net > 0 else Decimal('0.00')
 
             c_sub_margins = []
             for p_start, p_end in sub_periods:
@@ -452,9 +770,11 @@ class CustomerAgreementsService(UsersService):
                 p_c_net = p_c_totals['net'] or Decimal('0.00')
                 p_c_profit = p_c_totals['profit'] or Decimal('0.00')
                 if p_c_net > 0:
-                    c_sub_margins.append((p_c_profit / p_c_net) * Decimal('100.0'))
+                    p_eff = p_c_profit - (p_c_net * pct_ratio) if (is_pct_discount and has_disc) else p_c_profit
+                    c_sub_margins.append((p_eff / p_c_net) * Decimal('100.0'))
 
             c_avg_period_margin = (sum(c_sub_margins) / len(c_sub_margins)) if c_sub_margins else Decimal('0.00')
+            min_m = customer_margins_map.get(cid, Decimal('0.00'))
 
             c_is_valid = True
             c_volatility = False
@@ -467,11 +787,7 @@ class CustomerAgreementsService(UsersService):
                 else:
                     c_is_valid = False
 
-            mandatory_breakdown.append({
-                'product_class_id': cid,
-                'product_class_name': pc_name,
-                'is_mandatory': True,
-                'required_target': req_tgt,
+            return {
                 'min_margin': min_m,
                 'total_net': c_net,
                 'total_profit': c_profit,
@@ -480,6 +796,25 @@ class CustomerAgreementsService(UsersService):
                 'has_sales': (c_net > 0),
                 'is_valid': c_is_valid,
                 'volatility_alert': c_volatility,
+                'has_discount': has_disc,
+            }
+
+        mandatory_items = [c for c in participating_classes_data if c.get('is_mandatory')]
+        complementary_items = [c for c in participating_classes_data if not c.get('is_mandatory')]
+
+        mandatory_breakdown = []
+        for item in mandatory_items:
+            cid = str(item.get('product_class_id'))
+            pc = classes_map.get(cid)
+            pc_name = (pc.name if pc and pc.name else cid).title()
+            req_tgt = Decimal(str(item.get('required_target') or '0'))
+            metrics = evaluate_single_class(cid, sales)
+            mandatory_breakdown.append({
+                'product_class_id': cid,
+                'product_class_name': pc_name,
+                'is_mandatory': True,
+                'required_target': req_tgt,
+                **metrics,
             })
 
         complementary_breakdown = []
@@ -489,35 +824,12 @@ class CustomerAgreementsService(UsersService):
             cid = str(item.get('product_class_id'))
             pc = classes_map.get(cid)
             pc_name = (pc.name if pc and pc.name else cid).title()
-            min_m = customer_margins_map.get(cid, Decimal('0.00'))
-
-            c_sales = sales.filter(product_class_id=cid)
-            c_totals = c_sales.aggregate(net=Sum('net_amount'), profit=Sum('profit'))
-            c_net = c_totals['net'] or Decimal('0.00')
-            c_profit = c_totals['profit'] or Decimal('0.00')
-            c_period_margin = (c_profit / c_net * Decimal('100.0')) if c_net > 0 else Decimal('0.00')
-
-            c_sub_margins = []
-            for p_start, p_end in sub_periods:
-                p_c_sales = c_sales.filter(sale_date__gte=p_start, sale_date__lte=p_end)
-                p_c_totals = p_c_sales.aggregate(net=Sum('net_amount'), profit=Sum('profit'))
-                p_c_net = p_c_totals['net'] or Decimal('0.00')
-                p_c_profit = p_c_totals['profit'] or Decimal('0.00')
-                if p_c_net > 0:
-                    c_sub_margins.append((p_c_profit / p_c_net) * Decimal('100.0'))
-
-            c_avg_period_margin = (sum(c_sub_margins) / len(c_sub_margins)) if c_sub_margins else Decimal('0.00')
-
+            metrics = evaluate_single_class(cid, sales)
             complementary_breakdown.append({
                 'product_class_id': cid,
                 'product_class_name': pc_name,
                 'is_mandatory': False,
-                'min_margin': min_m,
-                'total_net': c_net,
-                'total_profit': c_profit,
-                'period_margin': c_period_margin,
-                'avg_period_margin': c_avg_period_margin,
-                'has_sales': (c_net > 0),
+                **metrics,
                 'is_most_restrictive': False,
             })
 
@@ -537,7 +849,15 @@ class CustomerAgreementsService(UsersService):
         comp_totals = comp_sales.aggregate(net=Sum('net_amount'), profit=Sum('profit'))
         comp_net = comp_totals['net'] or Decimal('0.00')
         comp_profit = comp_totals['profit'] or Decimal('0.00')
-        comp_period_margin = (comp_profit / comp_net * Decimal('100.0')) if comp_net > 0 else Decimal('0.00')
+        comp_disc_ids = comp_class_ids if apply_discount_to_all_classes else [cid for cid in comp_class_ids if cid in discounted_class_set]
+        if is_pct_discount and comp_disc_ids:
+            comp_disc_sales = comp_sales.filter(product_class_id__in=comp_disc_ids)
+            comp_disc_net = max(Decimal('0.00'), comp_disc_sales.aggregate(d_net=Sum('net_amount'))['d_net'] or Decimal('0.00'))
+            comp_eff_profit = comp_profit - (comp_disc_net * pct_ratio)
+        else:
+            comp_disc_sales = comp_sales.none()
+            comp_eff_profit = comp_profit
+        comp_period_margin = (comp_eff_profit / comp_net * Decimal('100.0')) if comp_net > 0 else Decimal('0.00')
 
         comp_sub_margins = []
         for p_start, p_end in sub_periods:
@@ -546,7 +866,15 @@ class CustomerAgreementsService(UsersService):
             p_comp_net = p_comp_totals['net'] or Decimal('0.00')
             p_comp_profit = p_comp_totals['profit'] or Decimal('0.00')
             if p_comp_net > 0:
-                comp_sub_margins.append((p_comp_profit / p_comp_net) * Decimal('100.0'))
+                if is_pct_discount and comp_disc_ids:
+                    p_cd_net = max(
+                        Decimal('0.00'),
+                        comp_disc_sales.filter(sale_date__gte=p_start, sale_date__lte=p_end).aggregate(d_net=Sum('net_amount'))['d_net'] or Decimal('0.00')
+                    )
+                    p_comp_eff = p_comp_profit - (p_cd_net * pct_ratio)
+                else:
+                    p_comp_eff = p_comp_profit
+                comp_sub_margins.append((p_comp_eff / p_comp_net) * Decimal('100.0'))
 
         comp_avg_period_margin = (sum(comp_sub_margins) / len(comp_sub_margins)) if comp_sub_margins else Decimal('0.00')
 
@@ -575,6 +903,23 @@ class CustomerAgreementsService(UsersService):
             'volatility_alert': comp_volatility,
         }
 
+        discount_classes_breakdown = []
+        discount_class_names = []
+        if is_discount and not apply_discount_to_all_classes and clean_discount_class_ids:
+            participating_set = set(participating_class_ids)
+            for cid in clean_discount_class_ids:
+                pc = classes_map.get(cid)
+                pc_name = (pc.name if pc and pc.name else cid).title()
+                discount_class_names.append(pc_name)
+                metrics = evaluate_single_class(cid, all_customer_sales)
+                discount_classes_breakdown.append({
+                    'product_class_id': cid,
+                    'product_class_name': pc_name,
+                    'in_participating': (cid in participating_set) or (not participating_class_ids),
+                    'estimated_discount': (max(Decimal('0.00'), metrics['total_net']) * pct_ratio) if is_pct_discount else Decimal('0.00'),
+                    **metrics,
+                })
+
         growth_projected_totals = []
         if growth_val_dec > 0 and growth_frequency:
             try:
@@ -590,25 +935,29 @@ class CustomerAgreementsService(UsersService):
         volatile_mandatory = [c for c in mandatory_breakdown if c['volatility_alert']]
         failed_comp = bool(comp_class_ids and comp_net > 0 and most_restrictive_min_margin > 0 and not comp_is_valid and not comp_volatility)
         volatile_comp = comp_volatility
+        failed_discount_extra = [
+            c for c in discount_classes_breakdown
+            if not c['in_participating'] and c['has_sales'] and c['min_margin'] > 0 and not c['is_valid'] and not c['volatility_alert']
+        ]
+        volatile_discount_extra = [
+            c for c in discount_classes_breakdown
+            if not c['in_participating'] and c['volatility_alert']
+        ]
 
         overall_is_valid = True
         overall_volatility = False
 
-        if total_net > 0 and max_required_margin > 0:
-            if simulated_net_margin < max_required_margin:
-                if avg_period_margin >= max_required_margin:
-                    overall_is_valid = False
-                    overall_volatility = True
-                else:
-                    overall_is_valid = False
-            elif failed_mandatory or failed_comp:
-                overall_is_valid = False
-            elif volatile_mandatory or volatile_comp:
+        if total_net > 0 and max_required_margin > 0 and simulated_net_margin < max_required_margin:
+            if avg_period_margin >= max_required_margin:
                 overall_is_valid = False
                 overall_volatility = True
-        else:
-            overall_is_valid = True
-            overall_volatility = False
+            else:
+                overall_is_valid = False
+        elif failed_mandatory or failed_comp or failed_discount_extra:
+            overall_is_valid = False
+        elif volatile_mandatory or volatile_comp or volatile_discount_extra:
+            overall_is_valid = False
+            overall_volatility = True
 
         result_data = {
             'avg_period_margin': avg_period_margin,
@@ -623,6 +972,21 @@ class CustomerAgreementsService(UsersService):
             'avg_hist_period_margin': avg_hist_period_margin,
             'benefit_cost': benefit.cost,
             'benefit_name': benefit.name,
+            'benefit_type': benefit.benefit_type,
+            'benefit_display_value': benefit.display_value,
+            'is_discount': is_discount,
+            'is_percentage_discount': is_pct_discount,
+            'discount_pct': discount_pct,
+            'discount_application_mode': effective_discount_mode,
+            'discount_application_mode_display': dict(DiscountApplicationModeChoices.choices).get(effective_discount_mode, ''),
+            'apply_discount_to_all_classes': apply_discount_to_all_classes,
+            'discount_class_names': discount_class_names,
+            'discount_classes_breakdown': discount_classes_breakdown,
+            'has_extra_discount_classes': any(not c['in_participating'] for c in discount_classes_breakdown),
+            'discountable_net': discountable_net,
+            'avg_monthly_discountable_sales': impact['avg_monthly_discountable_sales'],
+            'estimated_monthly_discount': impact['estimated_monthly_discount'],
+            'estimated_total_discount': impact['estimated_total_discount'],
             'simulated_total_periods': total_agreement_periods,
             'participating_classes_count': len(participating_class_ids),
             'traffic_light': get_traffic_light_status(simulated_net_margin),
@@ -648,8 +1012,8 @@ class CustomerAgreementsService(UsersService):
 
     def get_assigned_advisor_name(self, route: Route | None, target_date: date | None = None) -> str:
         """
-        finds the full name of the collaborator assigned to the route via RouteAssignment.
-        checks active assignment (date_end__isnull=True), assignment at target_date, or latest assignment.
+        obtiene el nombre del asesor comercial asignado a una ruta en una fecha determinada.
+        requiere la ruta y fecha opcional y retorna el nombre formateado o cadena vacia.
         """
         if not route:
             return ""
@@ -683,7 +1047,8 @@ class CustomerAgreementsService(UsersService):
 
     def generate_random_doc_id(self) -> str:
         """
-        generates a unique 5 character random alphanumeric uppercase folio (doc_id).
+        genera un folio alfanumerico unico de cinco caracteres en mayusculas para un convenio.
+        no requiere argumentos y devuelve una cadena unica garantizada en base de datos.
         """
         while True:
             candidate = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
@@ -697,8 +1062,8 @@ class CustomerAgreementsService(UsersService):
         **kwargs,
     ) -> dict[str, Any]:
         """
-        generates the formal printable 'contrato comercial' with 7 formal clauses
-        and the 'desglose de consumos esperados' matrix with compound growth.
+        genera la vista previa del contrato comercial de siete clausulas y la matriz de consumos proyectados.
+        requiere cliente, beneficio, vigencia, cuotas y alcance del descuento y retorna el diccionario de contexto o lanza serviceerror.
         """
         data = dict(form_data or {})
         data.update(kwargs)
@@ -713,6 +1078,15 @@ class CustomerAgreementsService(UsersService):
         end_date_str = data.get('end_date')
         target_frequency = data.get('target_frequency', PeriodicityChoices.MONTHLY)
         growth_frequency = data.get('growth_frequency', '')
+        discount_application_mode = data.get('discount_application_mode') or ''
+        raw_apply_all = data.get('apply_discount_to_all_classes', True)
+        if isinstance(raw_apply_all, str):
+            apply_discount_to_all_classes = raw_apply_all.strip().lower() not in ('false', '0', 'no', '')
+        else:
+            apply_discount_to_all_classes = bool(raw_apply_all)
+        discount_class_ids = [
+            str(cid).strip() for cid in (data.get('discount_class_ids') or []) if str(cid).strip()
+        ]
         
         doc_id = data.get('doc_id')
         if doc_id and str(doc_id).strip():
@@ -730,13 +1104,19 @@ class CustomerAgreementsService(UsersService):
             growth_value = Decimal('0.00')
 
         customer = Customer.objects.filter(pk=customer_id).first()
+        if not customer:
+            raise ServiceError("El cliente seleccionado no existe.")
         benefit = self.benefit_model.objects.filter(pk=benefit_id).first()
+        if not benefit:
+            raise CommercialBenefitNotFound("El beneficio comercial seleccionado no existe.")
 
         start_date = parse_month_input(start_date_str)
         end_date = parse_month_input(end_date_str, is_end=True)
 
         if not start_date or not end_date:
             raise ServiceError("Las fechas de inicio y fin son obligatorias.")
+        if end_date < start_date:
+            raise ServiceError("La fecha de fin del convenio no puede ser anterior a la fecha de inicio.")
 
         delta_agr = relativedelta(end_date + timedelta(days=1), start_date)
         duration_months = delta_agr.years * 12 + delta_agr.months
@@ -895,7 +1275,69 @@ class CustomerAgreementsService(UsersService):
 
         total_accumulated_target = sum(p['global_target'] for p in period_columns)
 
-        
+        is_discount = bool(benefit and benefit.is_discount)
+        is_percentage_discount = bool(benefit and benefit.is_percentage_discount)
+        is_fixed_discount = bool(benefit and benefit.is_fixed_discount)
+
+        if is_discount:
+            if not discount_application_mode:
+                discount_application_mode = DiscountApplicationModeChoices.PERIODIC
+            discount_classes = (
+                [] if apply_discount_to_all_classes
+                else list(self.product_class_model.objects.filter(id__in=discount_class_ids).order_by('name', 'id'))
+            )
+            if discount_application_mode == DiscountApplicationModeChoices.AT_END:
+                discount_mode_phrase = 'al finalizar la vigencia del convenio'
+            else:
+                discount_mode_phrase = f"por cada periodo de evaluación ({frequency_phrase})"
+            if apply_discount_to_all_classes:
+                discount_scope_phrase = 'todas las clases de producto'
+            elif discount_classes:
+                discount_scope_phrase = 'las clases específicas: ' + ', '.join(pc.name.title() for pc in discount_classes)
+            else:
+                discount_scope_phrase = 'las clases de producto específicas seleccionadas'
+        else:
+            discount_application_mode = ''
+            apply_discount_to_all_classes = True
+            discount_classes = []
+            discount_mode_phrase = ''
+            discount_scope_phrase = ''
+
+        if is_percentage_discount:
+            clause_2_text = (
+                f"La empresa se compromete a otorgar a favor del cliente {customer.name if customer else ''} "
+                f"un descuento comercial del {benefit.cost:,.2f}% ('{benefit.name}'), aplicable {discount_mode_phrase} "
+                f"sobre {discount_scope_phrase}, sujeto al cabal y estricto cumplimiento de los consumos y cuotas pactadas en el presente instrumento."
+            )
+            clause_7_text = (
+                "En caso de no cubrirse las cuotas pactadas o de negativa de pago de penalizaciones, la empresa podrá suspender o revocar de pleno derecho "
+                "el descuento porcentual otorgado y exigir el cargo compensatorio por los descuentos ya aplicados. "
+                "Las partes ratifican el presente instrumento sin mediar vicio en el consentimiento, sometiéndose expresamente a los tribunales de Guadalajara, Jalisco."
+            )
+        elif is_fixed_discount:
+            clause_2_text = (
+                f"La empresa se compromete a otorgar a favor del cliente {customer.name if customer else ''} "
+                f"un descuento comercial fijo de ${benefit.cost:,.2f} MXN ('{benefit.name}'), aplicable {discount_mode_phrase} "
+                f"sobre {discount_scope_phrase}, sujeto al cabal y estricto cumplimiento de los consumos y cuotas pactadas en el presente instrumento."
+            )
+            clause_7_text = (
+                "En caso de no cubrirse las cuotas pactadas o de negativa de pago de penalizaciones, la empresa podrá suspender o revocar de pleno derecho "
+                "el descuento fijo otorgado y exigir el cargo compensatorio por los importes ya aplicados. "
+                "Las partes ratifican el presente instrumento sin mediar vicio en el consentimiento, sometiéndose expresamente a los tribunales de Guadalajara, Jalisco."
+            )
+        else:
+            clause_2_text = (
+                f"La empresa se compromete a otorgar a favor del cliente {customer.name if customer else ''} "
+                f"el beneficio comercial consistente en '{benefit.name if benefit else ''}' "
+                f"({benefit.get_benefit_type_display() if benefit else ''}), "
+                f"con valor de referencia de ${benefit.cost:,.2f} MXN, sujeto al cabal y estricto cumplimiento de los consumos y cuotas pactadas en el presente instrumento."
+            )
+            clause_7_text = (
+                "En caso de no cubrirse las cuotas pactadas o de negativa de pago de penalizaciones, el cliente se compromete a cubrir el valor comercial íntegro del bien otorgado, "
+                "o autoriza expresamente la restitución o embargo del beneficio otorgado. "
+                "Las partes ratifican el presente instrumento sin mediar vicio en el consentimiento, sometiéndose expresamente a los tribunales de Guadalajara, Jalisco."
+            )
+
         clauses = [
             {
                 'number': 1,
@@ -914,12 +1356,7 @@ class CustomerAgreementsService(UsersService):
                 'number': 2,
                 'citation': '[2]',
                 'title': 'CLÁUSULA SEGUNDA [2] — OBJETO Y ENTREGA DEL BENEFICIO COMERCIAL',
-                'text': (
-                    f"La empresa se compromete a otorgar a favor del cliente {customer.name if customer else ''} "
-                    f"el beneficio comercial consistente en '{benefit.name if benefit else ''}' "
-                    f"({benefit.get_benefit_type_display() if benefit else ''}), "
-                    f"con valor de referencia de ${benefit.cost:,.2f} MXN, sujeto al cabal y estricto cumplimiento de los consumos y cuotas pactadas en el presente instrumento."
-                ),
+                'text': clause_2_text,
             },
             {
                 'number': 3,
@@ -989,11 +1426,7 @@ class CustomerAgreementsService(UsersService):
                 'number': 7,
                 'citation': '[7]',
                 'title': 'CLÁUSULA SÉPTIMA [7] — RESTITUCIÓN, EMBARGO, VALIDEZ Y JURISDICCIÓN',
-                'text': (
-                    "En caso de no cubrirse las cuotas pactadas o de negativa de pago de penalizaciones, el cliente se compromete a cubrir el valor comercial íntegro del bien otorgado, "
-                    "o autoriza expresamente la restitución o embargo del beneficio otorgado. "
-                    "Las partes ratifican el presente instrumento sin mediar vicio en el consentimiento, sometiéndose expresamente a los tribunales de Guadalajara, Jalisco."
-                ),
+                'text': clause_7_text,
             },
         ]
 
@@ -1073,6 +1506,16 @@ class CustomerAgreementsService(UsersService):
             'today': timezone.localdate(),
             'evaluation_mode': evaluation_mode,
             'evaluation_mode_display': dict(EvaluationModeChoices.choices).get(evaluation_mode, evaluation_mode),
+            'is_discount': is_discount,
+            'is_percentage_discount': is_percentage_discount,
+            'is_fixed_discount': is_fixed_discount,
+            'discount_application_mode': discount_application_mode,
+            'discount_application_mode_display': dict(DiscountApplicationModeChoices.choices).get(discount_application_mode, ''),
+            'discount_mode_phrase': discount_mode_phrase,
+            'apply_discount_to_all_classes': apply_discount_to_all_classes,
+            'discount_classes': discount_classes,
+            'discount_classes_names': [pc.name.title() for pc in discount_classes],
+            'discount_scope_phrase': discount_scope_phrase,
         }
 
     @transaction.atomic
@@ -1082,6 +1525,9 @@ class CustomerAgreementsService(UsersService):
         benefit_id: int | None = None,
         agreement_type: str = AgreementTypeChoices.SHORT_TERM,
         evaluation_mode: str = EvaluationModeChoices.PERIODIC,
+        discount_application_mode: str | None = None,
+        apply_discount_to_all_classes: bool | None = None,
+        discount_class_ids: list[str] | None = None,
         start_date: Any = None,
         end_date: Any = None,
         global_target_amount: Decimal | None = None,
@@ -1101,9 +1547,8 @@ class CustomerAgreementsService(UsersService):
         **kwargs,
     ) -> CustomerAgreement:
         """
-        creates CustomerAgreement, AgreementClassTarget, and up-front generation
-        of all AgreementEvaluationPeriod and AgreementPeriodClassResult records.
-        guarantees doc_id uniqueness and sets immutability.
+        registra un convenio comercial, sus metas por clase, clases con descuento y periodos de evaluacion.
+        requiere cliente autorizado, beneficio, vigencia y cuotas y retorna el convenio creado o lanza serviceerror.
         """
         user = user or self.user
         payload = dict(data or {})
@@ -1116,6 +1561,12 @@ class CustomerAgreementsService(UsersService):
             payload['agreement_type'] = agreement_type
         if evaluation_mode is not None:
             payload['evaluation_mode'] = evaluation_mode
+        if discount_application_mode is not None:
+            payload['discount_application_mode'] = discount_application_mode
+        if apply_discount_to_all_classes is not None:
+            payload['apply_discount_to_all_classes'] = apply_discount_to_all_classes
+        if discount_class_ids is not None:
+            payload['discount_class_ids'] = discount_class_ids
         if start_date is not None:
             payload['start_date'] = start_date
         if end_date is not None:
@@ -1148,8 +1599,40 @@ class CustomerAgreementsService(UsersService):
         if not customers_service.get_allowed_customers(can_view=True).filter(pk=customer_id).exists():
             raise PermissionsError(f"No tienes permiso para generar convenios para el cliente {customer_id}.")
 
-        customer = Customer.objects.get(pk=customer_id)
-        benefit = self.benefit_model.objects.get(pk=data['benefit_id'])
+        customer = Customer.objects.filter(pk=customer_id).first()
+        if not customer:
+            raise ServiceError("El cliente seleccionado no existe.")
+        benefit = self.benefit_model.objects.filter(pk=data.get('benefit_id')).first()
+        if not benefit:
+            raise CommercialBenefitNotFound("El beneficio comercial seleccionado no existe.")
+        if not benefit.is_active:
+            raise ServiceError("El beneficio comercial seleccionado no está activo.")
+
+        if benefit.is_discount:
+            effective_discount_mode = data.get('discount_application_mode') or DiscountApplicationModeChoices.PERIODIC
+            if effective_discount_mode not in DiscountApplicationModeChoices.values:
+                effective_discount_mode = DiscountApplicationModeChoices.PERIODIC
+            raw_apply_all = data.get('apply_discount_to_all_classes', True)
+            if isinstance(raw_apply_all, str):
+                effective_apply_all = raw_apply_all.strip().lower() not in ('false', '0', 'no', '')
+            else:
+                effective_apply_all = bool(raw_apply_all)
+            clean_discount_class_ids = list(dict.fromkeys(
+                str(cid).strip() for cid in (data.get('discount_class_ids') or []) if str(cid).strip()
+            ))
+            if not effective_apply_all and not clean_discount_class_ids:
+                raise ServiceError("Debes seleccionar al menos una clase de producto para aplicar el descuento específico.")
+            if not effective_apply_all and clean_discount_class_ids:
+                existing_discount_ids = set(
+                    self.product_class_model.objects.filter(pk__in=clean_discount_class_ids).values_list('pk', flat=True)
+                )
+                missing_discount_ids = [cid for cid in clean_discount_class_ids if cid not in existing_discount_ids]
+                if missing_discount_ids:
+                    raise ServiceError(f"Las siguientes clases de producto para descuento no existen: {', '.join(missing_discount_ids)}.")
+        else:
+            effective_discount_mode = ''
+            effective_apply_all = True
+            clean_discount_class_ids = []
 
         route_id = data.get('route_id')
         route = Route.objects.filter(pk=route_id).first() if route_id else None
@@ -1181,6 +1664,8 @@ class CustomerAgreementsService(UsersService):
 
         if not start_date or not end_date:
             raise ServiceError("Fechas de inicio y fin requeridas.")
+        if end_date < start_date:
+            raise ServiceError("La fecha de fin del convenio no puede ser anterior a la fecha de inicio.")
 
         doc_id = data.get('doc_id')
         if doc_id and str(doc_id).strip():
@@ -1197,6 +1682,8 @@ class CustomerAgreementsService(UsersService):
             doc_id=doc_id,
             agreement_type=data.get('agreement_type', AgreementTypeChoices.SHORT_TERM),
             evaluation_mode=data.get('evaluation_mode', EvaluationModeChoices.PERIODIC),
+            discount_application_mode=effective_discount_mode,
+            apply_discount_to_all_classes=effective_apply_all,
             start_date=start_date,
             end_date=end_date,
             global_target_amount=Decimal(str(data.get('global_target_amount') or '0')),
@@ -1210,6 +1697,9 @@ class CustomerAgreementsService(UsersService):
             margin_warning_accepted=margin_warning_accepted,
             created_by=user,
         )
+
+        if not effective_apply_all and clean_discount_class_ids:
+            agreement.discount_classes.set(clean_discount_class_ids)
 
         created_targets = []
         for td in targets_data:
@@ -1228,7 +1718,10 @@ class CustomerAgreementsService(UsersService):
             )
 
         total_periods = get_periods_count(start_date, end_date, agreement.target_frequency)
-        amortized_cost = (benefit.cost / Decimal(str(total_periods))).quantize(Decimal('0.01')) if total_periods > 0 else Decimal('0.00')
+        if benefit.is_percentage_discount:
+            amortized_cost = Decimal('0.00')
+        else:
+            amortized_cost = (benefit.cost / Decimal(str(total_periods))).quantize(Decimal('0.01')) if total_periods > 0 else Decimal('0.00')
 
         if agreement.target_frequency in (PeriodicityChoices.AT_END, 'end'):
             freq_delta = relativedelta(end_date + timedelta(days=1), start_date)
@@ -1319,8 +1812,8 @@ class CustomerAgreementsService(UsersService):
         related_doc: Any = None,
     ) -> CustomerAgreement:
         """
-        updates execution state (signed, benefit_already_provided, and/or related_doc)
-        of an existing agreement. only authorized users (can_edit_agreement) can perform this.
+        actualiza el estado de firma, entrega del beneficio y archivo adjunto de un convenio.
+        requiere el id del convenio y permiso de edicion y retorna el convenio o lanza permissionserror.
         """
         if not self.can_edit_agreement:
             raise PermissionsError("No tienes permiso para modificar el convenio ni su documentación.")
@@ -1346,8 +1839,8 @@ class CustomerAgreementsService(UsersService):
 
     def update_agreement_document(self, *, pk: int | str, file_obj: Any = None, related_doc: Any = None) -> CustomerAgreement:
         """
-        only the related_doc file is updated on the existing agreement.
-        enforces can_edit_agreement permission.
+        reemplaza unicamente el archivo escaneado asociado a un convenio comercial.
+        requiere el id del convenio y el archivo nuevo y retorna la instancia o lanza validationerror o permissionserror.
         """
         doc = file_obj if file_obj is not None else related_doc
         if not doc:
@@ -1358,16 +1851,20 @@ class CustomerAgreementsService(UsersService):
     @transaction.atomic
     def evaluate_pending_periods(self, agreement_id: int | str | None = None, pk: int | str | None = None) -> tuple[int, int]:
         """
-        evaluates periods that are pending or ended within the last 45 days (or all periods of a specific agreement if agreement_id/pk given).
-        updates achieved sales, statuses, penalties and margins in batch.
+        evalua periodos pendientes o recientes con ventas reales y recalcula costo de beneficio porcentual, utilidad y margen.
+        requiere opcionalmente el id del convenio y retorna una tupla con total de periodos y convenios actualizados.
         """
         target_agreement_id = agreement_id or pk
         today = timezone.localdate()
         limit_date = today - timedelta(days=45)
 
-        periods_qs = self.evaluation_period_model.objects.select_related('agreement').prefetch_related(
+        periods_qs = self.evaluation_period_model.objects.select_related(
+            'agreement',
+            'agreement__benefit',
+        ).prefetch_related(
             'agreement__class_targets',
-            'class_results'
+            'agreement__discount_classes',
+            'class_results',
         )
 
         if target_agreement_id:
@@ -1477,6 +1974,20 @@ class CustomerAgreementsService(UsersService):
                         period.penalty_applied = True
                         period.observations = "Periodo vencido sin alcanzar objetivo global o metas obligatorias."
 
+            if agreement.benefit.is_percentage_discount:
+                pct_ratio = agreement.benefit.cost / Decimal('100.0')
+                if agreement.apply_discount_to_all_classes:
+                    discountable_sales = total_net
+                else:
+                    discount_class_ids = {dc.pk for dc in agreement.discount_classes.all()}
+                    discountable_sales = sum(
+                        (s['net_amount'] or Decimal('0.00'))
+                        for s in p_sales
+                        if s['product_class_id'] in discount_class_ids
+                    )
+                effective_discountable_sales = max(Decimal('0.00'), discountable_sales)
+                period.amortized_benefit_cost = (effective_discountable_sales * pct_ratio).quantize(Decimal('0.01'))
+
             if period.penalty_applied:
                 period.period_profit = total_profit
             else:
@@ -1500,7 +2011,13 @@ class CustomerAgreementsService(UsersService):
 
         if periods_to_update:
             self.evaluation_period_model.objects.bulk_update(periods_to_update, [
-                'achieved_global_sales', 'status', 'penalty_applied', 'observations', 'period_profit', 'period_margin'
+                'achieved_global_sales',
+                'amortized_benefit_cost',
+                'status',
+                'penalty_applied',
+                'observations',
+                'period_profit',
+                'period_margin',
             ])
 
         return len(periods_to_update), len(agreements_affected)

@@ -9,12 +9,8 @@ logger = logging.getLogger(__name__)
 
 class ActivityTrackingMiddleware:
     """
-    middleware which gets user activity, which includes:
-    - view and urls visited (view_name, path, http method).
-    - system submodule associated.
-    - filters and get parameters applied (without sensitive data).
-    - technical metrics (response code, response time in ms, ip, user agent).
-    - inferred action type (VIEW, FILTER, EXPORT, IMPORT, CREATE, UPDATE, DELETE, LOGIN, LOGOUT).
+    registra la actividad de usuarios autenticados incluyendo rutas, parametros seguros y tiempos de respuesta.
+    requiere el callable get_response de django y devuelve el objeto httpresponse procesado.
     """
 
     EXCLUDED_PREFIXES = (
@@ -82,6 +78,10 @@ class ActivityTrackingMiddleware:
         'customers:customer_agreement_detail_view': ('customers', 'customeragreement'),
         'customers:customer_agreement_update_document_view': ('customers', 'customeragreement'),
         'customers:customer_agreement_evaluate_action_view': ('customers', 'customeragreement'),
+        'customers:commercial_benefit_list_view': ('customers', 'commercialbenefit'),
+        'customers:commercial_benefit_create_view': ('customers', 'commercialbenefit'),
+        'customers:commercial_benefit_update_view': ('customers', 'commercialbenefit'),
+        'customers:commercial_benefit_toggle_active_view': ('customers', 'commercialbenefit'),
         'products:product_list_view': ('products', 'product'),
         'products:product_create_view': ('products', 'product'),
         'products:product_detail_view': ('products', 'product'),
@@ -241,8 +241,8 @@ class ActivityTrackingMiddleware:
 
     def _resolve_object_reference(self, resolver_match, extra_log: dict):
         """
-        Resolves ContentType and object_id from explicit view metadata or falls back
-        to URL kwargs and VIEW_MODEL_MAP when the view does not set activity_log_extra.
+        resuelve el contenttype y el identificador de objeto desde metadatos de vista o parametros de url.
+        requiere el resolver_match y diccionario extra y retorna la tupla content_type y object_id.
         """
         content_object = extra_log.get('content_object')
         if content_object is not None and getattr(content_object, 'pk', None) is not None:

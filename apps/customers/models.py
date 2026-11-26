@@ -213,7 +213,7 @@ class CommercialBenefit(models.Model):
         max_digits=14,
         decimal_places=2,
         default=Decimal('0.00'),
-        help_text='Costo total del beneficio para la empresa'
+        help_text='Costo total del beneficio o porcentaje de descuento'
     )
     is_active = models.BooleanField(default=True, help_text='Indica si el beneficio está disponible')
 
@@ -222,8 +222,41 @@ class CommercialBenefit(models.Model):
         verbose_name_plural = 'Beneficios comerciales'
         ordering = ['name']
 
+    @property
+    def is_percentage_discount(self) -> bool:
+        return self.benefit_type == CommercialBenefitTypeChoices.PERCENTAGE_DISCOUNT
+
+    @property
+    def is_fixed_discount(self) -> bool:
+        return self.benefit_type == CommercialBenefitTypeChoices.FIXED_DISCOUNT
+
+    @property
+    def is_discount(self) -> bool:
+        return self.benefit_type in (
+            CommercialBenefitTypeChoices.FIXED_DISCOUNT,
+            CommercialBenefitTypeChoices.PERCENTAGE_DISCOUNT,
+        )
+
+    @property
+    def display_value(self) -> str:
+        val = self.cost if self.cost is not None else Decimal('0.00')
+        if self.is_percentage_discount:
+            return f"{val:,.2f}%"
+        return f"${val:,.2f}"
+
+    def clean(self):
+        """
+        valida que el costo o porcentaje del beneficio respete los limites permitidos por tipo.
+        requiere un valor numerico valido y lanza validationerror si es negativo o excede cien porciento.
+        """
+        super().clean()
+        if self.cost is None or self.cost < Decimal('0.00'):
+            raise ValidationError({'cost': 'El costo o porcentaje del beneficio no puede ser negativo.'})
+        if self.is_percentage_discount and (self.cost <= Decimal('0.00') or self.cost > Decimal('100.00')):
+            raise ValidationError({'cost': 'El descuento porcentual debe ser mayor a 0% y menor o igual a 100%.'})
+
     def __str__(self):
-        return f"{self.name.title()} ({self.get_benefit_type_display()}) - ${self.cost:,.2f}"
+        return f"{self.name.title()} ({self.get_benefit_type_display()}) - {self.display_value}"
 
 
 class AgreementTypeChoices(models.TextChoices):
@@ -235,6 +268,11 @@ class AgreementTypeChoices(models.TextChoices):
 class EvaluationModeChoices(models.TextChoices):
     PERIODIC = 'periodic', 'Corte por periodo (penalización periódica)'
     AT_END = 'at_end', 'Corte al término (seguimiento de comportamiento)'
+
+
+class DiscountApplicationModeChoices(models.TextChoices):
+    PERIODIC = 'periodic', 'Por periodo de evaluación'
+    AT_END = 'at_end', 'Al finalizar el convenio'
 
 
 class CustomerAgreement(models.Model):
@@ -273,6 +311,23 @@ class CustomerAgreement(models.Model):
         choices=EvaluationModeChoices.choices,
         default=EvaluationModeChoices.PERIODIC,
         help_text='Modalidad de corte: por periodo o acumulada al término del convenio'
+    )
+    discount_application_mode = models.CharField(
+        max_length=10,
+        choices=DiscountApplicationModeChoices.choices,
+        blank=True,
+        default='',
+        help_text='Modalidad legal de aplicación del descuento: por periodo o al finalizar el convenio'
+    )
+    apply_discount_to_all_classes = models.BooleanField(
+        default=True,
+        help_text='Indica si el descuento aplica a todas las clases de producto o únicamente a clases específicas'
+    )
+    discount_classes = models.ManyToManyField(
+        'products.ProductClass',
+        blank=True,
+        related_name='discount_agreements',
+        help_text='Clases de producto específicas a las que aplica el descuento'
     )
     start_date = models.DateField(help_text='Fecha de inicio del convenio (primer día del mes)')
     end_date = models.DateField(null=True, blank=True, help_text='Fecha de fin del convenio (último día del mes)')
@@ -356,13 +411,18 @@ class CustomerAgreement(models.Model):
         ]
 
     def clean(self):
+        """
+        valida la inmutabilidad de los campos financieros y contractuales de un convenio existente.
+        requiere la instancia persistida y lanza validationerror si se intenta alterar un campo protegido.
+        """
         super().clean()
         if self.pk:
             original = CustomerAgreement.objects.get(pk=self.pk)
             immutable_fields = [
                 'customer_id', 'route_id', 'benefit_id', 'doc_id',
-                'agreement_type', 'evaluation_mode', 'start_date', 'end_date', 'global_target_amount',
-                'target_frequency', 'penalty_amount',
+                'agreement_type', 'evaluation_mode', 'discount_application_mode',
+                'apply_discount_to_all_classes', 'start_date', 'end_date',
+                'global_target_amount', 'target_frequency', 'penalty_amount',
                 'growth_value', 'growth_frequency', 'margin_warning_accepted'
             ]
             for field in immutable_fields:

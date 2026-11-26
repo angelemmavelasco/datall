@@ -41,12 +41,39 @@
     </div>
     {% endif %}
 
+    {% if result.is_discount %}
+    <div class="p-2 border border-border rounded bg-page text-[11px] flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2 text-secondary">
+            <span class="text-title font-medium">Descuento aplicado ({{ result.benefit_display_value }})</span>
+            <span>·</span>
+            <span>Modalidad: <span class="text-title">{{ result.discount_application_mode_display }}</span></span>
+            <span>·</span>
+            <span>Alcance:
+                <span class="text-title">
+                    {% if result.apply_discount_to_all_classes %}
+                        Todas las clases
+                    {% else %}
+                        {{ result.discount_class_names|join:", "|default:"Sin clases seleccionadas" }}
+                    {% endif %}
+                </span>
+            </span>
+        </div>
+        {% if result.is_percentage_discount and not result.is_seller %}
+        <div class="font-mono text-title">
+            Prom. mensual elegible: ${{ result.avg_monthly_discountable_sales|default:0|floatformat:2|intcomma }} · Est. mensual: ${{ result.estimated_monthly_discount|default:0|floatformat:2|intcomma }} · Total convenio: ${{ result.estimated_total_discount|default:0|floatformat:2|intcomma }}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     {% if not result.is_seller %}
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-xs">
         <div>
             <span class="text-secondary block font-sans">Margen simulado neto</span>
             <span class="text-title">{{ result.simulated_margin|default:0|floatformat:2 }}%</span>
-            <span class="text-[10px] text-secondary font-sans block">Con beneficio amortizado</span>
+            <span class="text-[10px] text-secondary font-sans block">
+                {% if result.is_percentage_discount %}Con descuento porcentual{% else %}Con beneficio amortizado{% endif %}
+            </span>
         </div>
         <div>
             <span class="text-secondary block font-sans">Margen histórico global</span>
@@ -54,9 +81,15 @@
             <span class="text-[10px] text-secondary font-sans block">Prom. subperíodos: {{ result.avg_hist_period_margin|default:0|floatformat:2 }}%</span>
         </div>
         <div>
-            <span class="text-secondary block font-sans">Amortización beneficio (CME)</span>
-            <span class="text-title">${{ result.amortized_benefit_cost|default:0|floatformat:2|intcomma }}</span>
-            <span class="text-[10px] text-secondary font-sans block">Por periodo de evaluación</span>
+            {% if result.is_percentage_discount %}
+                <span class="text-secondary block font-sans">Descuento est. / periodo</span>
+                <span class="text-title">${{ result.amortized_benefit_cost|default:0|floatformat:2|intcomma }}</span>
+                <span class="text-[10px] text-secondary font-sans block">{{ result.discount_pct|floatformat:2 }}% sobre prom. periodo</span>
+            {% else %}
+                <span class="text-secondary block font-sans">Amortización beneficio (CME)</span>
+                <span class="text-title">${{ result.amortized_benefit_cost|default:0|floatformat:2|intcomma }}</span>
+                <span class="text-[10px] text-secondary font-sans block">Por periodo de evaluación</span>
+            {% endif %}
         </div>
         <div>
             <span class="text-secondary block font-sans">Venta neta histórica</span>
@@ -111,7 +144,12 @@
                     {% for row in result.mandatory_breakdown %}
                     <tr>
                         <td class="p-2 truncate text-left text-title border-r border-b border-border">
-                            {{ row.product_class_name }}
+                            <div class="flex items-center justify-between gap-1">
+                                <span class="truncate">{{ row.product_class_name }}</span>
+                                {% if row.has_discount %}
+                                <span class="text-[9px] text-sky-500 border border-sky-500/40 bg-page px-1 py-0.2 rounded shrink-0">Descuento</span>
+                                {% endif %}
+                            </div>
                         </td>
                         <td class="p-2 truncate text-center border-r border-b border-border">
                             <span class="px-1.5 py-0.5 rounded text-[10px] bg-page border border-border text-title">Obligatoria</span>
@@ -154,9 +192,14 @@
                         <td class="p-2 truncate text-left text-title border-r border-b border-border">
                             <div class="flex items-center justify-between gap-1">
                                 <span class="truncate">{{ row.product_class_name }}</span>
-                                {% if row.is_most_restrictive and row.min_margin > 0 %}
-                                <span class="text-[9px] text-amber-500 border border-amber-500/40 bg-page px-1 py-0.2 rounded shrink-0">Más restrictiva</span>
-                                {% endif %}
+                                <div class="flex items-center gap-1 shrink-0">
+                                    {% if row.has_discount %}
+                                    <span class="text-[9px] text-sky-500 border border-sky-500/40 bg-page px-1 py-0.2 rounded">Descuento</span>
+                                    {% endif %}
+                                    {% if row.is_most_restrictive and row.min_margin > 0 %}
+                                    <span class="text-[9px] text-amber-500 border border-amber-500/40 bg-page px-1 py-0.2 rounded">Más restrictiva</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </td>
                         <td class="p-2 truncate text-center border-r border-b border-border">
@@ -225,6 +268,49 @@
                         </td>
                     </tr>
                     {% endif %}
+
+                    {% if result.has_extra_discount_classes %}
+                    <tr class="bg-page/60">
+                        <td colspan="7" class="p-1 px-2 text-[11px] font-medium text-title border-b border-border">
+                            Clases específicas con descuento fuera de cuota particular
+                        </td>
+                    </tr>
+                    {% for row in result.discount_classes_breakdown %}
+                    {% if not row.in_participating %}
+                    <tr>
+                        <td class="p-2 truncate text-left text-title border-r border-b border-border">
+                            {{ row.product_class_name }}
+                        </td>
+                        <td class="p-2 truncate text-center border-r border-b border-border">
+                            <span class="text-[10px] text-sky-500 border border-sky-500/40 bg-page px-1.5 py-0.5 rounded">Con descuento</span>
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            {{ row.min_margin|floatformat:2 }}%
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            {% if row.has_sales %}{{ row.avg_period_margin|floatformat:2 }}%{% else %}-{% endif %}
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            {% if row.has_sales %}{{ row.period_margin|floatformat:2 }}%{% else %}-{% endif %}
+                        </td>
+                        <td class="p-2 truncate text-right font-mono border-r border-b border-border">
+                            ${{ row.total_net|floatformat:2|intcomma }}
+                        </td>
+                        <td class="p-2 truncate text-center border-b border-border">
+                            {% if not row.has_sales %}
+                                <span class="text-secondary text-[11px]">Sin ventas</span>
+                            {% elif row.is_valid %}
+                                <span class="text-emerald-500 font-medium">Cumple</span>
+                            {% elif row.volatility_alert %}
+                                <span class="text-amber-500 font-medium">Volatilidad</span>
+                            {% else %}
+                                <span class="text-red-500 font-medium">No cumple</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
         </div>
@@ -262,4 +348,3 @@
     {% endif %}
 </div>
 {% endif %}
-
